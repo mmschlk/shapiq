@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <title>A weighted least-squares fit to sampled coalitions</title>
   <path d="M44 30 V244 H372" stroke="#8b93a7" stroke-width="3"/>
-  <path d="M60 220.6 L362 58.2" stroke="#e3326a" stroke-width="4"/>
-  <circle cx="76" cy="212" r="12.5" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="100.5" cy="212" r="7.7" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="125.1" cy="170.7" r="5.9" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="149.6" cy="196.2" r="5.1" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="174.2" cy="149.1" r="4.7" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="198.7" cy="175.6" r="4.5" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="223.3" cy="108.4" r="4.5" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="247.8" cy="132.8" r="4.7" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="272.4" cy="79.9" r="5.1" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="296.9" cy="107.3" r="5.9" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="321.5" cy="69.6" r="7.7" fill="#5773e5" fill-opacity="0.85"/>
-  <circle cx="346" cy="66" r="12.5" fill="#5773e5" fill-opacity="0.85"/>
+  <path d="M60 220.6 L362 58.2" stroke="#f12d67" stroke-width="4"/>
+  <circle cx="76" cy="212" r="12.5" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="100.5" cy="212" r="7.7" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="125.1" cy="170.7" r="5.9" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="149.6" cy="196.2" r="5.1" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="174.2" cy="149.1" r="4.7" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="198.7" cy="175.6" r="4.5" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="223.3" cy="108.4" r="4.5" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="247.8" cy="132.8" r="4.7" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="272.4" cy="79.9" r="5.1" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="296.9" cy="107.3" r="5.9" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="321.5" cy="69.6" r="7.7" fill="#4567f2" fill-opacity="0.85"/>
+  <circle cx="346" cy="66" r="12.5" fill="#4567f2" fill-opacity="0.85"/>
 </svg>

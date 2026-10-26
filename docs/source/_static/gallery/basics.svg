@@ -2,17 +2,17 @@
   <title>Players sharing a payout</title>
   <path d="M60 52 V42 H340 V52 M200 42 V30" stroke="#8b93a7" stroke-width="3"/>
   <circle cx="200" cy="22" r="9" fill="#b3c2e5" stroke="#8b93a7" stroke-width="3"/>
-  <rect x="60" y="64" width="118" height="36" rx="8" fill="#e3326a"/>
-  <rect x="184" y="64" width="102" height="36" rx="8" fill="#5773e5"/>
-  <rect x="292" y="64" width="48" height="36" rx="8" fill="#79ace5"/>
-  <path d="M119 108 C119 140, 110 136, 110 166" stroke="#e3326a" stroke-width="3" stroke-dasharray="2 7"/>
-  <circle cx="110" cy="194" r="17" fill="#e3326a"/>
-  <path d="M80 252 C80 216, 140 216, 140 252 Z" fill="#e3326a"/>
-  <path d="M235 108 C235 140, 200 136, 200 166" stroke="#5773e5" stroke-width="3" stroke-dasharray="2 7"/>
-  <circle cx="200" cy="194" r="17" fill="#5773e5"/>
-  <path d="M170 252 C170 216, 230 216, 230 252 Z" fill="#5773e5"/>
-  <path d="M316 108 C316 140, 290 136, 290 166" stroke="#79ace5" stroke-width="3" stroke-dasharray="2 7"/>
-  <circle cx="290" cy="194" r="17" fill="#79ace5"/>
-  <path d="M260 252 C260 216, 320 216, 320 252 Z" fill="#79ace5"/>
+  <rect x="60" y="64" width="118" height="36" rx="8" fill="#f12d67"/>
+  <rect x="184" y="64" width="102" height="36" rx="8" fill="#4567f2"/>
+  <rect x="292" y="64" width="48" height="36" rx="8" fill="#82a9e7"/>
+  <path d="M119 108 C119 140, 110 136, 110 166" stroke="#f12d67" stroke-width="3" stroke-dasharray="2 7"/>
+  <circle cx="110" cy="194" r="17" fill="#f12d67"/>
+  <path d="M80 252 C80 216, 140 216, 140 252 Z" fill="#f12d67"/>
+  <path d="M235 108 C235 140, 200 136, 200 166" stroke="#4567f2" stroke-width="3" stroke-dasharray="2 7"/>
+  <circle cx="200" cy="194" r="17" fill="#4567f2"/>
+  <path d="M170 252 C170 216, 230 216, 230 252 Z" fill="#4567f2"/>
+  <path d="M316 108 C316 140, 290 136, 290 166" stroke="#82a9e7" stroke-width="3" stroke-dasharray="2 7"/>
+  <circle cx="290" cy="194" r="17" fill="#82a9e7"/>
+  <path d="M260 252 C260 216, 320 216, 320 252 Z" fill="#82a9e7"/>
   <path d="M50 258 H350" stroke="#8b93a7" stroke-width="3" opacity="0.6"/>
 </svg>

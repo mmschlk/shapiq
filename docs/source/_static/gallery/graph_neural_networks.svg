@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <title>A graph with the receptive field of one node highlighted</title>
-  <path d="M120 70 L186 52 L250 96 L236 172 L160 190 L104 136 Z" fill="#e3326a" fill-opacity="0.08" stroke="#e3326a" stroke-width="3" stroke-dasharray="8 8"/>
-  <g stroke="#79ace5" stroke-width="4">
+  <path d="M120 70 L186 52 L250 96 L236 172 L160 190 L104 136 Z" fill="#f12d67" fill-opacity="0.08" stroke="#f12d67" stroke-width="3" stroke-dasharray="8 8"/>
+  <g stroke="#82a9e7" stroke-width="4">
     <line x1="60" y1="60" x2="128" y2="84"/>
     <line x1="128" y1="84" x2="180" y2="70"/>
     <line x1="180" y1="70" x2="232" y2="104"/>
@@ -16,12 +16,12 @@
     <line x1="166" y1="174" x2="132" y2="240"/>
     <line x1="122" y1="132" x2="52" y2="168"/>
   </g>
-  <g stroke="#e3326a" stroke-width="4">
+  <g stroke="#f12d67" stroke-width="4">
     <line x1="176" y1="122" x2="128" y2="84"/>
     <line x1="176" y1="122" x2="232" y2="104"/>
     <line x1="176" y1="122" x2="166" y2="174"/>
   </g>
-  <g fill="#5773e5">
+  <g fill="#4567f2">
     <circle cx="60" cy="60" r="11"/>
     <circle cx="300" cy="84" r="11"/>
     <circle cx="350" cy="122" r="11"/>
@@ -30,7 +30,7 @@
     <circle cx="132" cy="240" r="11"/>
     <circle cx="52" cy="168" r="11"/>
   </g>
-  <g fill="#79ace5" stroke="#e3326a" stroke-width="3">
+  <g fill="#82a9e7" stroke="#f12d67" stroke-width="3">
     <circle cx="128" cy="84" r="11"/>
     <circle cx="180" cy="70" r="11"/>
     <circle cx="232" cy="104" r="11"/>
@@ -38,5 +38,5 @@
     <circle cx="166" cy="174" r="11"/>
     <circle cx="122" cy="132" r="11"/>
   </g>
-  <polygon points="176,107 179.8,116.7 190.3,117.4 182.2,124 184.8,134.1 176,128.5 167.2,134.1 169.8,124 161.7,117.4 172.2,116.7" fill="#e3326a" stroke="#e3326a" stroke-width="2"/>
+  <polygon points="176,107 179.8,116.7 190.3,117.4 182.2,124 184.8,134.1 176,128.5 167.2,134.1 169.8,124 161.7,117.4 172.2,116.7" fill="#f12d67" stroke="#f12d67" stroke-width="2"/>
 </svg>
