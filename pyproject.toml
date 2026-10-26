@@ -62,6 +62,11 @@ keywords = [
 ]
 
 [project.optional-dependencies]
+graph = [
+    # required by shapiq.graph (GraphExplainer, GraphGame); torch has no Python 3.15 wheels yet
+    "torch; python_version < '3.15'",
+    "torch-geometric>=2.8; python_version < '3.15'",
+]
 tree = [
     # required by the Woodelf fast path of shapiq.tree.TreeExplainer
     "woodelf-explainer>=0.4.7",  # imports as `woodelf`; pulls in treelite>=4.0
@@ -98,6 +103,7 @@ games = [
     "torch; python_version < '3.15'",         # image games
     "torchvision; python_version < '3.15'",   # ResNet image games
     "transformers",  # vision transformer, DINOv2, CLIP, SigLIP, and sentiment games
+    "torch-geometric>=2.8; python_version < '3.15'",  # graph games
     "xgboost",       # the conditional imputer of the local and uncertainty explanation games
 ]
 benchmark = [

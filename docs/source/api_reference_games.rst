@@ -101,6 +101,7 @@ players.
    WeightedKNNGame
    ThresholdNNGame
    ProductKernelGame
+   GraphGame
 
 .. _games-explanation:
 

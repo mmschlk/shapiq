@@ -26,6 +26,7 @@ from .benchmark import Benchmark
 from .computers import (
     BruteForceComputer,
     Computer,
+    GraphComputer,
     InterventionalTreeComputer,
     MoebiusComputer,
     NearestNeighborComputer,
@@ -41,6 +42,7 @@ __all__ = [
     "Benchmark",
     "BruteForceComputer",
     "Computer",
+    "GraphComputer",
     "InterventionalTreeComputer",
     "MoebiusComputer",
     "NearestNeighborComputer",

@@ -28,11 +28,13 @@ Where to start
    .. grid-item-card:: :octicon:`zap;1.1em` Exact values for my model
       :class-card: shapiq-path-card
 
-      Trees, nearest neighbors, and kernel methods have exact algorithms: no sampling, no budget.
+      Trees, graph neural networks, nearest neighbors, and kernel methods have exact algorithms:
+      no sampling, no budget.
 
       .. rst-class:: shapiq-path-steps
 
       :doc:`Tree Ensembles <auto_examples/trees/index>`
+      :doc:`Graph Neural Networks <auto_examples/graph_neural_networks/index>`
       :doc:`Nearest Neighbors <auto_examples/nearest_neighbors/index>`
       :doc:`Kernel Methods <auto_examples/kernel_methods/index>`
 
@@ -100,6 +102,15 @@ All examples by topic
 
       Exact values and interactions of decision trees, random forests, and gradient boosting.
 
+   .. grid-item-card:: Graph Neural Networks
+      :img-top: /_static/gallery/graph_neural_networks.svg
+      :img-alt: A graph with the receptive field of one node highlighted
+      :link: auto_examples/graph_neural_networks/index
+      :link-type: doc
+      :class-card: shapiq-group-card
+
+      Exact values and interactions of the nodes of graph neural networks with GraphSHAP-IQ.
+
    .. grid-item-card:: Nearest Neighbors
       :img-top: /_static/gallery/nearest_neighbors.svg
       :img-alt: A query point and its nearest neighbors
@@ -162,6 +173,7 @@ All examples by topic
    auto_examples/exact_computation/index
    auto_examples/approximators/index
    auto_examples/trees/index
+   auto_examples/graph_neural_networks/index
    auto_examples/nearest_neighbors/index
    auto_examples/kernel_methods/index
    auto_examples/visualization/index
