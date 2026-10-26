@@ -1,0 +1,114 @@
+# The FIxLIP demo: its models, its photos with their captions, and the texts it shows.
+#
+# explain.py reads the models and the photos (the COCO photo, its crop and its caption) and computes
+# the explanations; pack.py writes them into ../assets/data.js, with the texts the demo shows.
+
+# how the explanations were computed, as the demo says it (explain.py's budget)
+method = "ProxySHAP from 10,000 coalitions"
+budget = 10_000
+
+# The models, as FIxLIP's figures show them: ViT-B/32, one player per image patch.
+[[models]]
+id = "siglip2"
+label = "SigLIP 2"
+detail = "ViT-B/32"
+checkpoint = "google/siglip2-base-patch32-256"  # 256 x 256 pixels: 8 x 8 patches
+grid = 8
+
+[[models]]
+id = "clip"
+label = "CLIP"
+detail = "ViT-B/32"
+checkpoint = "openai/clip-vit-base-patch32"  # 224 x 224 pixels: 7 x 7 patches
+grid = 7
+
+# The photos, in the demo's order: COCO photos (all of the train2017 split) and the captions of
+# FIxLIP's figures. ``crop`` is the square of the photo that the models and the demo see, as
+# (left, top, right, bottom) in pixels. The other texts are what the demo shows: the title and the
+# alt text of the photo, the excerpt (an invented text around the caption, shown without an
+# explanation) and the credit of the photo.
+
+[[photos]]
+id = "elephant"
+coco = 46761
+crop = [76, 0, 503, 427]
+caption = "a small elephant standing next to a white bird."
+title = "A baby elephant and an egret"
+alt = "A baby elephant in tall grass, looking at a small white egret on the left."
+excerpt = [
+    "The rains came late that year, and the herd stayed near the waterhole for weeks. While the adults dozed in the afternoon heat, the youngest wandered off into the tall grass, and for a while, all the camera saw was",
+    "Neither of them seemed to mind the other. A few minutes later, the bird took off, and the calf trotted back to its mother, ears flapping, as if nothing had happened at all.",
+]
+credit.title = "“Baby Elephant with Egret”"
+credit.author = "Wilson Kwo"
+credit.url = "https://www.flickr.com/photos/43884348@N08/7035223219"
+credit.license = "CC BY-NC-SA 2.0"
+credit.licenseUrl = "https://creativecommons.org/licenses/by-nc-sa/2.0/"
+
+[[photos]]
+id = "giraffe-tree"
+coco = 277208
+crop = [128, 0, 552, 424]
+caption = "a giraffe has its front legs spread to bend down for a drink of water at a pond."
+title = "A giraffe drinking at a pond, a dead tree behind it"
+alt = "A giraffe spreads its front legs to drink at a pond; a dead tree stands in the background."
+excerpt = [
+    "Drinking is the most dangerous moment of a giraffe's day. In the dry season, the last pools of the park draw every animal for miles, and a single photo shows why it takes so long:",
+    "Behind it, the bare branches of a dead tree reach out of the bush, and the rest of the herd keeps watch from a safe distance until it is their turn to drink.",
+]
+credit.title = "“Giraffe”"
+credit.author = "Tim Ellis"
+credit.url = "https://www.flickr.com/photos/14113765@N00/249234674"
+credit.license = "CC BY-NC 2.0"
+credit.licenseUrl = "https://creativecommons.org/licenses/by-nc/2.0/"
+
+[[photos]]
+id = "pineapple"
+coco = 321973
+crop = [80, 0, 560, 480]
+caption = "a pineapple, banana, and piece of meat placed next to each other."
+title = "A pineapple, a banana, and a piece of meat"
+alt = "A pineapple between a bag of meat and a banana on a granite cutting board."
+excerpt = [
+    "Everything for Saturday's barbecue was laid out on the kitchen counter by noon, and the shopping list had been short from the start:",
+    "Nobody could agree on what to grill first, so in the end the pineapple went on the grill too, and it was gone before anything else was ready.",
+]
+credit.title = "MS COCO image 321973"
+credit.author = ""
+credit.url = "https://cocodataset.org/#explore?id=321973"
+credit.license = "CC BY 2.0"
+credit.licenseUrl = "https://creativecommons.org/licenses/by/2.0/"
+
+[[photos]]
+id = "juice-theory"
+coco = 527164
+crop = [62, 0, 437, 375]
+caption = "a sign reading \"juice theory\" near a traffic light."
+title = "A sign reading “Juice Theory” next to a traffic light"
+alt = "A diamond-shaped party poster reading “Juice Theory” on a wooden pole, next to a red traffic light."
+excerpt = [
+    "On the drive into town, every pole along the road carried a poster for some party or other. At the busiest crossing, right where everyone had to stop, there was",
+    "The light stayed red long enough for everyone waiting at it to read the poster twice, and by the end of the week, half the town seemed to know the date by heart.",
+]
+credit.title = "“juice theory”"
+credit.author = "Nicholas Laughlin"
+credit.url = "https://www.flickr.com/photos/nicholaslaughlin/3347799380"
+credit.license = "CC BY-NC-SA 2.0"
+credit.licenseUrl = "https://creativecommons.org/licenses/by-nc-sa/2.0/"
+
+[[photos]]
+id = "clock-tower"
+coco = 371958
+crop = [0, 0, 640, 640]
+caption = "a flock of birds is seen flying around a clock tower."
+title = "A flock of birds around a clock tower"
+alt = "Birds fly around a brick church tower with a clock and a domed roof, against a pale evening sky."
+excerpt = [
+    "For most of the day, the old church on the market square is a quiet place. But every evening in late autumn, just before dusk,",
+    "The birds circle three or four times, as if waiting for the bells, and then settle on the roof of the tower, one by one, until the whole flock has found its place for the night.",
+]
+credit.title = "“The Birds”"
+credit.author = "Andrew M Butler"
+credit.url = "https://www.flickr.com/photos/andrewmbutler/6502386085"
+credit.license = "CC BY-NC 2.0"
+credit.licenseUrl = "https://creativecommons.org/licenses/by-nc/2.0/"
