@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from shapiq.approximator.sparse import Sparse
@@ -215,3 +216,18 @@ def test_approximate_with_spex(
                 assert estimates[interaction_key] == pytest.approx(1 / n, rel=0.01)
     recovered_interactions = recovered_interactions - zero_interactions
     assert recovered_interactions == expected_interactions
+
+
+def test_random_state_makes_approximation_reproducible():
+    """The random_state applies to the sparse transform, which draws from numpy's global state."""
+    game = DummyGame(20, (0, 2))
+    estimates = []
+    for global_seed in (0, 1):
+        np.random.seed(global_seed)
+        global_state = np.random.get_state()[1].copy()
+        approximator = Sparse(n=20, index="FSII", random_state=42)
+        estimates.append(approximator.approximate(1600, game))
+        # the global random state is left as it was
+        assert np.array_equal(np.random.get_state()[1], global_state)
+    assert estimates[0].interaction_lookup == estimates[1].interaction_lookup
+    assert np.array_equal(estimates[0].values, estimates[1].values)
