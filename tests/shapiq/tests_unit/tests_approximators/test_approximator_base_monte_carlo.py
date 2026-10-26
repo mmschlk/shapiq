@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import warnings
+
+import numpy as np
 import pytest
 
 from shapiq.approximator.montecarlo import MonteCarlo
@@ -121,3 +124,16 @@ def test_full_budget_matches_exact(index, max_order):
     exact = ExactComputer(game, n_players=n)(estimates.index, max_order)
     for interaction in powerset(range(n), min_size=1, max_size=max_order):
         assert estimates[interaction] == pytest.approx(exact[interaction], abs=1e-10)
+
+
+@pytest.mark.parametrize(("n", "max_order"), [(6, 3), (2000, 1)])
+def test_chii_log_weights(n, max_order):
+    """The CHII log-weights are never ``nan``: ``-inf`` for the empty interaction, else finite."""
+    approximator = MonteCarlo(n, max_order, index="CHII")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        sign_weights, log_abs_weights = approximator._get_standard_form_log_weights("CHII")
+
+    assert not np.isnan(log_abs_weights).any()
+    assert np.isneginf(log_abs_weights[0]).all()
+    assert np.isfinite(log_abs_weights[1:][sign_weights[1:] != 0]).all()
