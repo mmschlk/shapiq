@@ -104,6 +104,7 @@ def test_baseline_value_function_imputes_correctly():
     x = np.array([[1, 2, 3]])
     baseline = np.array([[10, 20, 30]])
     imputer = BaselineImputer(model=model, data=baseline, x=x)
+    captured.clear()  # the empty prediction is computed at construction
 
     coalitions = np.array([[True, False, True], [False, True, False]])
     imputer(coalitions)
@@ -154,3 +155,12 @@ def test_baseline_imputer_init():
     assert imputer.random_state == 42
     imputer.fit(x=np.ones((n_features,)))  # test with vector
     assert np.array_equal(imputer.x, np.ones((1, n_features)))
+
+
+@pytest.mark.parametrize("baseline", [np.zeros(3), np.zeros((1, 3))])
+def test_given_baseline_sets_the_empty_prediction(baseline):
+    """A baseline given directly is the empty data point: the game is centered on its prediction."""
+    imputer = BaselineImputer(lambda x: x.sum(axis=1) + 5.0, data=baseline, x=np.ones(3))
+    assert imputer.empty_prediction == pytest.approx(5.0)
+    assert imputer(np.zeros(3, dtype=bool))[0] == pytest.approx(0.0)
+    assert imputer(np.ones(3, dtype=bool))[0] == pytest.approx(3.0)

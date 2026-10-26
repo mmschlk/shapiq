@@ -1,0 +1,15 @@
+# Runs the full CI (every OS and Python version, see ci.yml) on a pull request when a maintainer adds
+# the label "full ci". While the label is on, the pushes after it run the full CI as well.
+# A separate workflow on purpose: if ci.yml itself ran on "labeled", adding any other label would
+# start a run whose skipped jobs replace the results of the last run on the same commit.
+name: Full CI
+on:
+    pull_request:
+        types: [labeled]
+jobs:
+    full_ci:
+        name: Full CI
+        # only the label itself, not when other labels are added
+        if: github.event.label.name == 'full ci'
+        uses: ./.github/workflows/ci.yml
+        secrets: inherit

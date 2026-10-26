@@ -1,20 +1,68 @@
 # A GitHub Actions workflow file to run on pull request and on main.
+# A pull request runs the code-quality checks and the tests on Ubuntu with stable Python. The full
+# matrix (Windows, macOS, newer Pythons) runs on main, for manual runs, for pull requests that
+# change the build, the dependencies, the C++ extensions or this workflow, and for pull requests
+# with the label "full ci" (adding the label starts a run, see ci_full.yml). A pull request that
+# only changes the documentation, the examples or Markdown files runs the code-quality checks only.
+# Require the job "CI result" in branch protection: it fails if any job failed.
 name: CI Tests
 on:
     pull_request:
     push:
         branches: [main]
     workflow_dispatch:
+    workflow_call:
+# a new push cancels a pull request's run, but every commit on main gets its own full run
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-    cancel-in-progress: true
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+    # ----------------------------------------------------------------------------------------------
+    # Decide which jobs a pull request needs
+    # ----------------------------------------------------------------------------------------------
+    changes:
+        name: Detect changes
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        outputs:
+            code: ${{ steps.filter.outputs.code }}
+            full: ${{ steps.filter.outputs.full }}
+        steps:
+            # a pull request checks out its merge commit: HEAD^1 is the base branch
+            -   uses: actions/checkout@v7
+                with:
+                    fetch-depth: 2
+            -   name: Check the changed files
+                id: filter
+                env:
+                    EVENT_NAME: ${{ github.event_name }}
+                    FULL_CI_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'full ci') || github.event.label.name == 'full ci' }}
+                    # changes that cannot affect the tests
+                    DOCS_ONLY: '^(docs/|examples/|\.claude/|\.github/ISSUE_TEMPLATE/|\.github/workflows/docs\.yml$|\.readthedocs\.yaml$|CITATION\.cff$|LICENSE$)|\.md$'
+                    # changes that can break other platforms or Python versions
+                    NEEDS_FULL: '^(setup\.py|pyproject\.toml|uv\.lock|MANIFEST\.in|build_tools/|\.github/workflows/ci)|/cext/'
+                run: |
+                    if [ "$EVENT_NAME" != "pull_request" ] || [ "$FULL_CI_LABEL" = "true" ]; then
+                        echo "code=true" >> "$GITHUB_OUTPUT"
+                        echo "full=true" >> "$GITHUB_OUTPUT"
+                        exit 0
+                    fi
+                    # without renames: a file moved out of src/ also lists its old path
+                    files=$(git diff --name-only --no-renames HEAD^1 HEAD)
+                    echo "Changed files:"
+                    echo "$files"
+                    if grep -qvE "$DOCS_ONLY" <<< "$files"; then code=true; else code=false; fi
+                    if grep -qE "$NEEDS_FULL" <<< "$files"; then full=true; else full=false; fi
+                    echo "code=$code" >> "$GITHUB_OUTPUT"
+                    echo "full=$full" >> "$GITHUB_OUTPUT"
+                    echo "Run the tests: $code, run the full matrix: $full"
     # ----------------------------------------------------------------------------------------------
     # Code Quality Checks and Linting
     # ----------------------------------------------------------------------------------------------
     check_code_quality:
         name: Code Quality Checks
         runs-on: ubuntu-latest
+        timeout-minutes: 15
         steps:
             -   uses: actions/checkout@v7
             -   name: Set up Python and uv
@@ -31,33 +79,21 @@ jobs:
     # ----------------------------------------------------------------------------------------------
     # Install and Import Check `shapiq`
     # ----------------------------------------------------------------------------------------------
+    # a non-editable install on Ubuntu: the test matrix installs shapiq on the other platforms
     install_and_import_shapiq:
         name: Install and import check shapiq
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - os: ubuntu-latest
-                      python-version: "3.12"
-                    - os: ubuntu-latest
-                      python-version: "3.14"
-                    - os: ubuntu-latest
-                      python-version: "3.15"
-                    - os: windows-latest
-                      python-version: "3.12"
-                    - os: macos-latest
-                      python-version: "3.12"
-        runs-on: ${{ matrix.os }}
+        needs:
+            - changes
+        if: needs.changes.outputs.code == 'true'
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
         steps:
             -   uses: actions/checkout@v7
             -   name: Set up Python and uv
                 uses: astral-sh/setup-uv@v7
                 with:
-                    python-version: ${{ matrix.python-version }}
+                    python-version: "3.12"
                     enable-cache: true
-            -   if: matrix.os == 'macos-latest'
-                name: Install libomp on macOS
-                run: brew install libomp
             -   name: Create uv virtual environment
                 run: uv venv
             -   name: Install shapiq package
@@ -70,6 +106,7 @@ jobs:
     install_and_import_shapiq_games:
         name: Install and import check shapiq-games
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         needs:
             - install_and_import_shapiq
         steps:
@@ -97,6 +134,7 @@ jobs:
     test_shapiq_benchmark:
         name: Install and test shapiq-benchmark
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         needs:
             - install_and_import_shapiq
         steps:
@@ -120,6 +158,7 @@ jobs:
         # pretrained models and OpenML/UCI/Imagenette downloads: run from the Actions tab
         if: github.event_name == 'workflow_dispatch'
         runs-on: ubuntu-latest
+        timeout-minutes: 60
         needs:
             - install_and_import_shapiq
         env:
@@ -136,11 +175,12 @@ jobs:
             -   name: Run the heavy tests
                 run: uv run --no-sync pytest "tests/shapiq_benchmark/test_heavy.py" -rs
     # ----------------------------------------------------------------------------------------------
-    # Unit Tests for shapiq (Stable Python and Matrix)
+    # Unit Tests and Coverage for shapiq (Stable Python and Matrix)
     # ----------------------------------------------------------------------------------------------
     test_shapiq_stable:
-        name: Run Unit Tests (Stable Python)
+        name: Run Unit Tests and Coverage (Stable Python)
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         needs:
             - install_and_import_shapiq
         steps:
@@ -158,13 +198,20 @@ jobs:
                     key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
-            -   name: Run unit tests
-                run: uv run pytest "tests/shapiq"
+            -   name: Run unit tests and measure coverage
+                run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
+            -   name: Upload coverage to codecov
+                uses: codecov/codecov-action@v7
+                with:
+                    token: ${{ secrets.CODECOV_TOKEN }}
+                    fail_ci_if_error: true
     test_shapiq_matrix:
         name: Run Unit Tests (Matrix)
         needs:
+            - changes
             - test_shapiq_stable
-            - install_and_import_shapiq
+        if: needs.changes.outputs.full == 'true'
+        timeout-minutes: 60
         strategy:
             fail-fast: false
             matrix:
@@ -196,37 +243,35 @@ jobs:
                     key: scikit-learn-data-${{ runner.os }}
             -   name: Install test dependencies
                 run: uv sync --all-extras
+            # some Windows runners crash the tests with an illegal instruction (0xc000001d) in
+            # TabPFN: log the CPU and the instruction sets numpy and torch detect on each runner
+            -   if: matrix.os == 'windows-latest'
+                name: Show the CPU and its instruction sets
+                continue-on-error: true
+                run: |
+                    Get-CimInstance Win32_Processor | Select-Object Name, Manufacturer, NumberOfCores
+                    uv run --no-sync python -c "import numpy; numpy.show_runtime()"
+                    uv run --no-sync python -c "import torch; print('torch', torch.__version__, 'CPU capability:', torch.backends.cpu.get_cpu_capability())"
             -   name: Run unit tests
                 run: uv run pytest "tests/shapiq"
     # ----------------------------------------------------------------------------------------------
-    # Code Coverage
+    # One Result for Branch Protection (a skipped job counts as passed)
     # ----------------------------------------------------------------------------------------------
-    run_coverage:
-        name: Run Test Coverage
-        runs-on: ubuntu-latest
+    ci_result:
+        name: CI result
+        if: always()
         needs:
-            - install_and_import_shapiq
+            - changes
             - check_code_quality
+            - install_and_import_shapiq
+            - install_and_import_shapiq_games
+            - test_shapiq_benchmark
+            - test_shapiq_benchmark_heavy
             - test_shapiq_stable
+            - test_shapiq_matrix
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
         steps:
-            -   uses: actions/checkout@v7
-            -   name: Set up Python and uv
-                uses: astral-sh/setup-uv@v7
-                with:
-                    python-version: "3.12"
-                    enable-cache: true
-            # California housing of the core fixtures: fetched once, not on every run
-            -   name: Cache scikit-learn datasets
-                uses: actions/cache@v6
-                with:
-                    path: ~/scikit_learn_data
-                    key: scikit-learn-data-${{ runner.os }}
-            -   name: Install test dependencies
-                run: uv sync --all-extras
-            -   name: Measure coverage
-                run: uv run pytest "tests/shapiq" --cov=shapiq --cov-report=xml -n logical
-            -   name: Upload coverage to codecov
-                uses: codecov/codecov-action@v7
-                with:
-                    token: ${{ secrets.CODECOV_TOKEN }}
-                    fail_ci_if_error: true
+            -   name: Fail if a job failed or was cancelled
+                if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+                run: exit 1
