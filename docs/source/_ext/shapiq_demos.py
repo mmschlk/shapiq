@@ -13,7 +13,7 @@ The ``shapiq-demo`` directive embeds a demo in a page, its own or any other (the
 embeds the FIxLIP demo)::
 
     .. shapiq-demo:: fixlip
-       :anchor: interactive-demo
+       :anchor: fixlip-demo
        :fallback: images/hero_siglip2.png
        :alt: What the fallback image shows.
 

@@ -60,11 +60,15 @@ Shapley Interactions for Machine Learning
 
       Python 3.12+ · MIT license · Published at NeurIPS 2024
 
-.. the FIxLIP demo of demos/fixlip (README.md links to its anchor); the static figure shows without
-   JavaScript (and when the demo cannot start)
+.. the FIxLIP demo of demos/fixlip, in a section that README.md links to (#interactive-demo); the
+   static figure shows without JavaScript (and when the demo cannot start)
+
+.. _interactive-demo:
+
+Explaining Vision-Language Models
+---------------------------------
 
 .. shapiq-demo:: fixlip
-   :anchor: interactive-demo
    :fallback: images/hero_siglip2.png
    :alt: A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
 

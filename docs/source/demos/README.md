@@ -21,7 +21,7 @@ one (the landing page embeds the FIxLIP demo):
 
 ```rst
 .. shapiq-demo:: fixlip
-   :anchor: interactive-demo
+   :anchor: fixlip-demo
    :fallback: images/hero_siglip2.png
    :alt: What the fallback image shows.
 ```
