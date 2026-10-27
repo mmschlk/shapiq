@@ -31,9 +31,9 @@ takes too long or needs too large a model to run with the docs, and it shows wha
       :img-top: /_static/images/hero_orders.png
       :img-alt: A molecule explained at every order, as a stack of sheets from the Shapley values to the full decomposition, with the fit of each order to the model.
 
-      How much of a model does an explanation explain? A molecule of GraphSHAP-IQ's Figure 1,
-      explained exactly at every order of interaction, from the Shapley values to the full
-      decomposition, which adds up to the model.
+      How much of a model does an explanation explain? A molecule of GraphSHAP-IQ's Figure 1 and
+      houses of California housing, explained exactly at every order of interaction, from the
+      Shapley values to the full decomposition, which adds up to the model.
 
 .. toctree::
    :hidden:

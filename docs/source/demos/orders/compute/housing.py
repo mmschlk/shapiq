@@ -1,0 +1,172 @@
+"""Explain an XGBoost model of California housing at every order: ``results/house(s).json``.
+
+The model is an XGBoost regressor of depth 7 (300 trees) trained on 80 % of the California housing
+dataset of scikit-learn. Its players are the 8 features of a house. An absent feature takes its
+values from 100 training houses (interventional explanations, as in background SHAP), and
+``shapiq.TreeExplainer`` computes the Möbius transform of this game exactly from the trees, with
+the Woodelf algorithm for many houses at once. Every path of a tree of depth 7 splits on at most 7
+features, so the Möbius transform has no interaction of all 8 features: k-SII of order 7 is already
+the full decomposition (k-SII of order n = 8).
+
+``shapiq`` converts the Möbius transform of every house into k-SII of every order, and scores every
+order by its R^2 on all 2^8 coalitions of the house's game (every feature present with probability
+1/2, as for the molecule): how much of the model's output on those coalitions the explanation
+reproduces. Two files:
+
+- ``results/house.json``: one house in Los Angeles, where latitude and longitude interact strongly:
+  of the test houses within 0.15 degrees of downtown Los Angeles, the one whose Shapley values fit
+  closest to R^2 = 0.3 (many fit worse);
+- ``results/houses.json``: 150 random test houses, for a heatmap of their explanations, with the
+  mean R^2 of every order, and the R^2 of the Shapley values of all test houses.
+
+Usage::
+
+    python housing.py
+
+The dataset is downloaded by scikit-learn to ``results/sklearn/``. The explanations of all 4,128
+test houses take about 20 seconds on four CPU cores, their k-SII of every order and R^2 about three
+minutes.
+"""
+
+from __future__ import annotations
+
+import argparse
+import itertools
+import json
+from pathlib import Path
+
+import numpy as np
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
+from xgboost import XGBRegressor
+
+import shapiq
+from shapiq.game_theory.moebius_converter import MoebiusConverter
+
+HERE = Path(__file__).resolve().parent
+DEPTH = 7
+N_BACKGROUND = 100  # the training houses whose values absent features take
+N_HOUSES = 150  # the houses of the heatmap
+LOS_ANGELES = (34.05, -118.25)  # downtown, as latitude and longitude
+TARGET_R2 = 0.3  # the fit of the Shapley values of the house of house.json
+NAMES = ["Income", "House age", "Rooms", "Bedrooms", "Population", "Occupancy", "Latitude"]
+NAMES += ["Longitude"]  # the features of scikit-learn's California housing, in its order
+
+
+def predictions(values: dict[tuple[int, ...], float], coalitions: np.ndarray) -> np.ndarray:
+    """Return the sum of the values of every coalition's subsets: the explanation's prediction."""
+    players = [interaction for interaction in values if interaction]
+    members = np.zeros((len(players), coalitions.shape[1]))
+    for row, interaction in enumerate(players):
+        members[row, list(interaction)] = 1
+    inside = coalitions.astype(float) @ members.T == members.sum(axis=1)
+    return inside @ np.array([values[interaction] for interaction in players])
+
+
+def explain(moebius: shapiq.InteractionValues, coalitions: np.ndarray) -> dict[int, dict]:
+    """Return k-SII of every order of a house, with its R^2 on all coalitions of its game."""
+    game = predictions({key: moebius[key] for key in moebius.interaction_lookup}, coalitions)
+    variance = np.sum((game - game.mean()) ** 2)
+    converter = MoebiusConverter(moebius)
+    largest = max(len(key) for key in moebius.interaction_lookup if abs(moebius[key]) > 1e-9)
+    orders = {}
+    for order in range(1, largest + 1):
+        explanation = converter("k-SII", order)
+        values = {
+            key: float(explanation[key])
+            for key in explanation.interaction_lookup
+            if key and abs(explanation[key]) > 1e-9
+        }
+        residual = game - predictions(values, coalitions)
+        orders[order] = {"r2": float(1 - np.sum(residual**2) / variance), "values": values}
+    return orders
+
+
+def main() -> None:
+    """Train the model, explain the houses, and write ``results/house.json`` and ``houses.json``."""
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--results", type=Path, default=HERE / "results")
+    args = parser.parse_args()
+    args.results.mkdir(parents=True, exist_ok=True)
+
+    data = fetch_california_housing(data_home=str(args.results / "sklearn"))
+    X_train, X_test, y_train, y_test = train_test_split(
+        data.data, data.target, test_size=0.2, random_state=0
+    )
+    model = XGBRegressor(
+        n_estimators=300, max_depth=DEPTH, learning_rate=0.1, random_state=0, n_jobs=4
+    ).fit(X_train, y_train)
+    rng = np.random.default_rng(0)
+    background = X_train[rng.choice(len(X_train), N_BACKGROUND, replace=False)]
+    explainer = shapiq.TreeExplainer(
+        model,
+        mode="interventional",
+        reference_dataset=background,
+        index="Moebius",
+        max_order=X_train.shape[1],
+    )
+    moebius = explainer.explain_X(X_test)  # every test house, exactly
+    n = X_test.shape[1]
+    coalitions = np.array(list(itertools.product([False, True], repeat=n)))
+
+    # the fit of the Shapley values of every test house
+    shapley_r2 = np.array([explain(moebius[i], coalitions)[1]["r2"] for i in range(len(X_test))])
+    print(f"test R^2 {model.score(X_test, y_test):.3f}; Shapley values' R^2 quartiles", end=" ")
+    print(np.quantile(shapley_r2, [0.25, 0.5, 0.75]).round(3))
+
+    # one house in Los Angeles, where the Shapley values fit poorly
+    near = np.flatnonzero(
+        (np.abs(X_test[:, 6] - LOS_ANGELES[0]) < 0.15)
+        & (np.abs(X_test[:, 7] - LOS_ANGELES[1]) < 0.15)
+    )
+    house = int(near[np.argmin(np.abs(shapley_r2[near] - TARGET_R2))])
+    orders = explain(moebius[house], coalitions)
+    result = {
+        "features": NAMES,
+        "x": X_test[house].tolist(),
+        "prediction": float(model.predict(X_test[house : house + 1])[0]),
+        "baseline": float(moebius[house].baseline_value),
+        "test_r2": float(model.score(X_test, y_test)),
+        "largest_order": max(orders),
+        "n_players": n,
+        "orders": {
+            order: {
+                "r2": explanation["r2"],
+                "values": [[list(key), value] for key, value in explanation["values"].items()],
+            }
+            for order, explanation in orders.items()
+        },
+    }
+    (args.results / "house.json").write_text(json.dumps(result))
+    print(f"house {house}: R^2 by order", [round(o["r2"], 3) for o in orders.values()])
+
+    # many houses: their explanations of every order, for the heatmap
+    houses = np.random.default_rng(1).choice(len(X_test), N_HOUSES, replace=False)
+    explained = [explain(moebius[int(i)], coalitions) for i in houses]
+    largest = max(max(orders) for orders in explained)
+    by_order = {}
+    for order in range(1, largest + 1):
+        keys = sorted({key for e in explained for key in e[min(order, max(e))]["values"]})
+        by_order[order] = {
+            "r2": float(np.mean([e[min(order, max(e))]["r2"] for e in explained])),
+            "values": {
+                ",".join(map(str, key)): [
+                    e[min(order, max(e))]["values"].get(key, 0.0) for e in explained
+                ]
+                for key in keys
+            },
+        }
+    result = {
+        "features": NAMES,
+        "predictions": model.predict(X_test[houses]).tolist(),
+        "largest_order": largest,
+        "n_players": n,
+        "shapley_r2_quartiles": np.quantile(shapley_r2, [0.25, 0.5, 0.75]).tolist(),
+        "orders": by_order,
+    }
+    (args.results / "houses.json").write_text(json.dumps(result))
+    print(f"{N_HOUSES} houses: mean R^2 by order", [round(o["r2"], 3) for o in by_order.values()])
+
+
+if __name__ == "__main__":
+    main()

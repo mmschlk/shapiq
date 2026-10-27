@@ -10,6 +10,7 @@
   --orders-ink: var(--color-foreground-primary, #1b1e27);
   --orders-muted: var(--color-foreground-secondary, #5b6275);
   --orders-sheet: var(--shapiq-surface, #ffffff);
+  --orders-page: var(--color-background-primary, #ffffff);
   --orders-raised: var(--shapiq-surface-raised, #f7f8fc);
   --orders-line: var(--shapiq-border, #e2e6f3);
   --orders-edge: #ccd3e6;
@@ -69,10 +70,22 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-switch {
   display: inline-flex;
+  flex-wrap: wrap;
   padding: 3px;
   border: 1px solid var(--orders-line);
-  border-radius: 999px;
+  border-radius: 1.3rem;
   background: var(--orders-raised);
+}
+
+/* on narrow screens, the examples without their models */
+@container (max-width: 34rem) {
+  .orders-demo-option-detail {
+    display: none;
+  }
+
+  .orders-demo-option {
+    padding-inline: 0.75rem;
+  }
 }
 
 .orders-demo-option {
@@ -206,6 +219,52 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-atoms text {
   font-size: 2.5px;
   font-weight: 600;
+}
+
+/* one house: the names and values of its features, around the circle */
+.orders-demo-features text {
+  dominant-baseline: central;
+}
+
+.orders-demo-feature-name {
+  fill: var(--orders-ink);
+  font-size: 3.4px;
+  font-weight: 700;
+}
+
+.orders-demo-feature-value {
+  fill: var(--orders-muted);
+  font-size: 2.8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* many houses: the heatmap, its rows, and the prediction of every house */
+.orders-demo-heat-cells {
+  image-rendering: pixelated;
+}
+
+.orders-demo-heat-rows line {
+  stroke: var(--orders-line);
+  stroke-width: 0.15;
+}
+
+.orders-demo-heat-label {
+  fill: var(--orders-muted);
+  font-size: 2.5px;
+  text-anchor: end;
+  dominant-baseline: central;
+}
+
+.orders-demo-heat-area {
+  fill: var(--orders-ink);
+  opacity: 0.07;
+}
+
+.orders-demo-heat-line {
+  fill: none;
+  stroke: var(--orders-ink);
+  stroke-width: 0.45;
+  stroke-linejoin: round;
 }
 
 .orders-demo-wash {
@@ -384,6 +443,10 @@ body[data-theme="dark"] .orders-demo {
   display: none;
 }
 
+.orders-demo-narrow .orders-demo-blank-row .orders-demo-row-name {
+  display: inline;
+}
+
 .orders-demo-narrow .orders-demo-meter {
   min-width: 1.5rem;
 }
@@ -457,6 +520,20 @@ body[data-theme="dark"] .orders-demo {
   stroke-width: 1.75;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.orders-demo-plot-skipped {
+  stroke-dasharray: 3 4;
+}
+
+.orders-demo-plot-break rect {
+  fill: var(--orders-page);
+}
+
+.orders-demo-plot-break path {
+  fill: none;
+  stroke: var(--orders-muted);
+  stroke-width: 1.25;
 }
 
 .orders-demo-plot-dot {

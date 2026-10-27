@@ -7,9 +7,13 @@
 // every order: it rises from the Shapley values to the full decomposition, which reproduces the
 // model exactly.
 //
-// Two examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
-// graph convolutional network, and the photo and caption of the FIxLIP demo, explained by an
-// illustrative toy game. The explanations are precomputed (../compute) into data.js. Pointing at a
+// The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
+// graph convolutional network; one house and 150 houses of California housing, explained exactly by
+// shapiq's TreeExplainer for an XGBoost model of depth 7 (the 150 houses as a heatmap, a column
+// each); and the photo and caption of the FIxLIP demo, explained by an illustrative toy game. The
+// full decomposition is k-SII of order n, the number of players; the orders above the highest one
+// with an interaction (the trees' depth, the network's receptive field) all equal it. The
+// explanations are precomputed (../compute) into data.js. Pointing at a
 // sheet (hover, keyboard focus on its row, or a tap that pins it) lifts it out of the stack: the
 // sheets above it move up, those below it move down, and the sheet tilts towards the reader and
 // grows. A ring marks its order on the plot; pointing along the plot lifts the sheet of the order
@@ -242,32 +246,137 @@
     });
   }
 
+  // one house: its features on a circle, as in shapiq's network plot, with their values
+  function featuresFace(svg, example, sheet) {
+    const n = example.features.length;
+    const angle = (i) => ((-90 + (360 * i) / n) * Math.PI) / 180;
+    const at = (i, radius) => [50 + radius * Math.cos(angle(i)), 51 + radius * Math.sin(angle(i))];
+    const position = example.features.map((_, i) => at(i, 29));
+    const largest = largestValue(sheet);
+    drawGroups(svg, sheet, (feature) => position[feature], largest, 5.4);
+    const halos = add(svg, "g", { class: "orders-demo-halos" });
+    sheet.first.forEach((value, i) => {
+      const ratio = Math.abs(value) / largest;
+      if (ratio < 0.02) return;
+      add(halos, "circle", {
+        cx: roundTo(position[i][0], 2),
+        cy: roundTo(position[i][1], 2),
+        r: roundTo(3.2 + 6.5 * ratio, 2),
+        fill: solid(value),
+        opacity: roundTo(0.15 + 0.85 * ratio, 3),
+      });
+    });
+    const nodes = add(svg, "g", { class: "orders-demo-atoms" });
+    const labels = add(svg, "g", { class: "orders-demo-features" });
+    example.features.forEach((name, i) => {
+      const [x, y] = position[i];
+      add(nodes, "circle", { cx: roundTo(x, 2), cy: roundTo(y, 2), r: 3 });
+      const [lx, ly] = at(i, 38);
+      const cos = Math.cos(angle(i));
+      const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
+      const label = add(labels, "text", { x: roundTo(lx, 2), y: roundTo(ly - 1.6, 2), "text-anchor": anchor }, name);
+      label.classList.add("orders-demo-feature-name");
+      add(labels, "text", { x: roundTo(lx, 2), y: roundTo(ly + 2.2, 2), "text-anchor": anchor, class: "orders-demo-feature-value" }, example.values[i]);
+    });
+  }
+
+  // many houses: a heatmap, a column per house sorted by its prediction (the line on top), a row
+  // per feature or group of features; the cells are drawn on a canvas, one pixel each
+  function heatmapFace(svg, example, sheet) {
+    const box = { left: 30, right: 97, top: 23, row: 4.7, band: [6, 18] };
+    const columns = example.predictions.length;
+    const rows = sheet.rows;
+    const width = (box.right - box.left) / columns;
+
+    const [low, high] = [Math.min(...example.predictions), Math.max(...example.predictions)];
+    const line = example.predictions.map((value, k) => {
+      const x = box.left + (k + 0.5) * width;
+      const y = box.band[1] - ((value - low) / (high - low)) * (box.band[1] - box.band[0]);
+      return `${roundTo(x, 2)},${roundTo(y, 2)}`;
+    });
+    add(svg, "path", {
+      class: "orders-demo-heat-area",
+      d: `M${box.left},${box.band[1]}L${line.join("L")}L${box.right},${box.band[1]}Z`,
+    });
+    add(svg, "path", { class: "orders-demo-heat-line", d: `M${line.join("L")}` });
+    add(svg, "text", { class: "orders-demo-heat-label", x: box.left - 1.5, y: box.band[1] - 2 }, "prediction");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = columns;
+    canvas.height = rows.length;
+    const context = canvas.getContext("2d");
+    const pixels = context.createImageData(columns, rows.length);
+    rows.forEach(([, values], r) => {
+      values.forEach((value, k) => {
+        const [red, green, blue] = value >= 0 ? RED : BLUE;
+        const offset = 4 * (r * columns + k);
+        pixels.data.set([red, green, blue, Math.round(255 * (Math.abs(value) / 99) ** 0.85)], offset);
+      });
+    });
+    context.putImageData(pixels, 0, 0);
+    add(svg, "image", {
+      href: canvas.toDataURL(),
+      x: box.left,
+      y: box.top,
+      width: box.right - box.left,
+      height: roundTo(rows.length * box.row, 2),
+      preserveAspectRatio: "none",
+      class: "orders-demo-heat-cells",
+    });
+    const lines = add(svg, "g", { class: "orders-demo-heat-rows" });
+    rows.forEach(([players], r) => {
+      const y = box.top + r * box.row;
+      add(lines, "line", { x1: box.left, x2: box.right, y1: roundTo(y + box.row, 2), y2: roundTo(y + box.row, 2) });
+      const name = players.map((feature) => example.features[feature]).join(" × ");
+      add(svg, "text", { class: "orders-demo-heat-label", x: box.left - 1.5, y: roundTo(y + box.row / 2, 2) }, name);
+    });
+  }
+
   // -- the sheets' names and the captions of the examples ---------------------------------------------
 
   // the name of a sheet: on its face, as its row's tag, and in words
   const sheetName = (sheet) => {
-    if (sheet.full) return { face: "Full decomposition", tag: "n-SII", name: "Full decomposition" };
+    if (sheet.full) return { face: "Full decomposition", tag: "n-SII", name: `Full decomposition, n = ${sheet.order}` };
     if (sheet.order === 1) return { face: "SV", tag: "SV", name: "Shapley values" };
     const tag = `${sheet.order}-SII`;
     return { face: tag, tag, name: "Shapley interactions" };
   };
-  const fit2 = (r2) => r2.toFixed(2);
+  // R^2 as text: two decimals, three close to 1, and 1.00 only where the fit is exact
+  const fit2 = (r2) => {
+    if (r2 >= 0.999995) return "1.00";
+    if (r2 < 0.995) return r2.toFixed(2);
+    return r2 >= 0.9995 ? "> 0.999" : r2.toFixed(3);
+  };
+  const fitted = (r2) => {
+    const text = fit2(r2);
+    return ["R² ", text.startsWith(">") ? text : `= ${text}`];
+  };
   const verdict = (r2) => {
-    if (r2 >= 0.9995) return "exact";
+    if (r2 >= 0.999995) return "exact";
     if (r2 >= 0.95) return "good";
     if (r2 >= 0.8) return "workable";
     return "poor";
   };
   const count = (n) => n.toLocaleString("en-US");
+  // a house's value in $100,000, as a change in thousands of dollars
+  const dollars = (value) => `${value < 0 ? "−" : "+"}$${Math.round(Math.abs(value) * 100)}k`;
+  const groupValue = (sheet, players) =>
+    sheet.groups.find(([group]) => group.join() === players.join())?.[1] ?? 0;
 
   // what the caption says, at rest (nothing pointed at), for every sheet, and for every order between
   // the sheets (a blank sheet: its order, R^2 and number of values); the numbers are the data's
   const CAPTIONS = {
     molecule: (example, { sheet, blank }) => {
+      const n = example.sheets.at(-1).order;
       if (blank) {
         const [order, r2, values] = blank;
+        if (order >= example.largest) {
+          return [
+            [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The network's largest receptive field holds ${example.largest} atoms, so no larger group has a value: from order ${example.largest} to n = ${n}, the explanation is the full decomposition, `, fitted(r2), "."],
+          ];
+        }
         return [
-          [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The orders between 4 and the full decomposition add thousands of values but change the fit little: `, ["R² = ", fit2(r2)], "."],
+          [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The orders between 4 and the full decomposition add thousands of values but change the fit little: `, fitted(r2), "."],
         ];
       }
       if (!sheet) {
@@ -277,7 +386,7 @@
           ["The Shapley values on top credit every atom alone; each order below adds the interactions of larger groups of atoms, down to the full decomposition, which adds up to the model exactly."],
         ];
       }
-      const fit = ["R² = ", fit2(sheet.r2)];
+      const fit = fitted(sheet.r2);
       if (sheet.order === 1) {
         return [
           ["Shapley values: one number per atom. The nitrogen atoms of the three nitro groups get the most credit, but the 30 numbers reproduce the model's output on random parts of the molecule only with ", fit, "."],
@@ -285,7 +394,7 @@
       }
       if (sheet.full) {
         return [
-          [`The full decomposition: every group of atoms that the network's two layers see together, ${count(sheet.count)} values of up to ${sheet.order} atoms (larger groups have none), computed exactly by GraphSHAP-IQ with ${count(example.budget)} calls of the model instead of 2³⁰. It is the model itself, written as a sum: `, fit, "."],
+          [`The full decomposition of all n = ${n} atoms: every group of atoms that the network's two layers see together, ${count(sheet.count)} values of up to ${example.largest} atoms (larger groups have none), computed exactly by GraphSHAP-IQ with ${count(example.budget)} calls of the model instead of 2³⁰. It is the model itself, written as a sum: `, fit, "."],
         ];
       }
       const texts = {
@@ -297,12 +406,75 @@
         [`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values of up to ${sheet.order} atoms. ${texts[sheet.order] ?? ""}`, fit, "."],
       ];
     },
+    house: (example, { sheet, blank }) => {
+      const n = example.sheets.at(-1).order;
+      const depth = `The trees have depth ${example.largest}: no path splits on more than ${example.largest} features, so from order ${example.largest} on, the explanation is the full decomposition`;
+      if (blank) {
+        const [order, r2, values] = blank;
+        return [[`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} features. ${depth}. `, fitted(r2), "."]];
+      }
+      if (!sheet) {
+        return [
+          ["An XGBoost model of depth 7 values this house in Los Angeles at ", ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). Every sheet explains this prediction, from the features alone (top) to the full decomposition (bottom).`],
+        ];
+      }
+      const fit = fitted(sheet.r2);
+      const [latitude, longitude] = [6, 7];
+      if (sheet.order === 1) {
+        return [
+          [`Shapley values: one number per feature. Longitude lowers the price (${dollars(sheet.first[longitude])}) and latitude raises it (${dollars(sheet.first[latitude])}), but the ${n} numbers reproduce the model's output on random subsets of the features only with `, fit, ", a poor fit."],
+        ];
+      }
+      if (sheet.order === 2) {
+        const location = groupValue(sheet, [latitude, longitude]);
+        return [
+          [`Pairs of features: latitude and longitude only together locate the house, and their interaction changes its price by ${dollars(location)}. With it, the explanation fits: `, fit, "."],
+        ];
+      }
+      if (sheet.full) {
+        return [
+          [`The full decomposition of all n = ${n} features: ${count(sheet.count)} values of groups of up to ${example.largest} features, the trees' depth, computed exactly by shapiq's TreeExplainer. It is the model itself, written as a sum: `, fit, "."],
+        ];
+      }
+      const texts = { 3: "Groups of three: the income with the location. ", 4: "Groups of four add hardly anything: " };
+      return [[`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values. ${texts[sheet.order] ?? ""}`, fit, "."]];
+    },
+    houses: (example, { sheet, blank }) => {
+      const n = example.sheets.at(-1).order;
+      const columns = example.predictions.length;
+      if (blank) {
+        const [order, r2] = blank;
+        return [[`Order ${order}, on average over the ${columns} houses: `, fitted(r2), `. The trees have depth ${example.largest}, so from order ${example.largest} on, every house's explanation is its full decomposition.`]];
+      }
+      if (!sheet) {
+        return [
+          [`Explanations of ${columns} houses, a column each, sorted by the model's prediction (top). Every row is a feature or a group of features, red where it raises a house's value and blue where it lowers it.`],
+        ];
+      }
+      const fit = fitted(sheet.r2);
+      if (sheet.order === 1) {
+        return [
+          [`Shapley values of ${columns} houses: latitude and longitude matter most. On average, they reproduce the model's output for a house with `, fit, `, and for a quarter of all test houses with R² below ${example.quartiles[0].toFixed(2)}.`],
+        ];
+      }
+      if (sheet.order === 2) {
+        return [["Pairs: the interaction of latitude and longitude, the location, is the third strongest row. On average, ", fit, "."]];
+      }
+      if (sheet.full) {
+        return [
+          [`The full decomposition of every house (n = ${n} features): groups of up to ${example.largest} features, the trees' depth. It is the model itself, written as a sum: `, fit, "."],
+        ];
+      }
+      const texts = { 3: "Groups of three join the income and the occupancy to the location. On average, ", 4: "Groups of four add hardly anything. On average, " };
+      return [[texts[sheet.order] ?? "", fit, "."]];
+    },
     fixlip: (example, { sheet, blank }) => {
       const illustrative = " Illustrative values, after the FIxLIP demo.";
+      const n = example.sheets.at(-1).order;
       if (blank) {
         const [order, r2, values] = blank;
         return [
-          [`Groups of up to ${order} patches and words: ${count(values)} values. Every order between 4 and the full decomposition adds a little more: `, ["R² = ", fit2(r2)], ".", illustrative],
+          [`Groups of up to ${order} patches and words: ${count(values)} values. Every order between 4 and the full decomposition adds a little more: `, fitted(r2), ".", illustrative],
         ];
       }
       if (!sheet) {
@@ -310,7 +482,7 @@
           ["How well does SigLIP 2 match the photo and its caption? Every sheet explains it, from the patches and words alone (top) to the full decomposition (bottom).", illustrative],
         ];
       }
-      const fit = ["R² = ", fit2(sheet.r2)];
+      const fit = fitted(sheet.r2);
       const texts = {
         1: ["Shapley values credit every patch and word alone: “elephant”, and the elephant's head. They miss that “white” and “bird” matter only on the egret: ", fit, ", a poor fit."],
         2: ["Pairs link the words to the regions they name: “bird” and “white” with the egret, “elephant” with the elephant. ", fit, ", a workable explanation."],
@@ -319,12 +491,17 @@
       };
       if (sheet.full) {
         return [
-          ["The full decomposition: all orders, up to “a small elephant … next to a white bird” as one group of eight patches and words. ", fit, ".", illustrative],
+          [`The full decomposition of all n = ${n} patches and words: every order, up to “a small elephant … next to a white bird” as one group of ${example.largest}. `, fit, ".", illustrative],
         ];
       }
       return [texts[sheet.order]];
     },
   };
+
+  // the orders of an example's plot between its last sheet of interactions and the full
+  // decomposition: a blank sheet each
+  const between = (example) =>
+    example.fits.filter(([order]) => order > example.sheets.at(-2).order && order < example.sheets.at(-1).order);
 
   // -- the demo -------------------------------------------------------------------------------------
 
@@ -399,12 +576,7 @@
       const height = (pose) => side * pose.scale * pose.tilt * spread;
       // the same height for every example: the most sheets and blank sheets of any
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
-      const blanks = Math.max(
-        ...data.examples.map((example) => {
-          const orders = example.sheets.map((sheet) => sheet.order);
-          return orders.at(-1) - orders.at(-2) - 1;
-        }),
-      );
+      const blanks = Math.max(...data.examples.map((example) => between(example).length));
       // the tallest stack: the second sheet lifted, the first above it, the others below
       const open =
         height(RECEDED) + height(LIFTED) - OVERLAP * side + (n - 2) * OPEN_STRIP * side + blanks * BLANK_OPEN_STRIP * side;
@@ -500,15 +672,16 @@
       geometry = measure();
 
       const last = example.sheets.at(-1);
-      const between = example.fits.filter(([order]) => order > example.sheets.at(-2).order && order < last.order);
       items = [];
       example.sheets.forEach((sheet, i) => {
         if (sheet === last) {
-          for (const fitted of between) items.push({ order: fitted[0], fitted });
+          for (const fit of between(example)) items.push({ order: fit[0], fit });
         }
         const node = el("div", "orders-demo-sheet");
         const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
         if (example.kind === "graph") moleculeFace(svg, example, sheet);
+        else if (example.kind === "features") featuresFace(svg, example, sheet);
+        else if (example.kind === "heatmap") heatmapFace(svg, example, sheet);
         else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${instance}-${i}`);
         // the name along the bottom edge, from the bottom corner: the part of a sheet that shows
         add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, sheetName(sheet).face);
@@ -526,17 +699,17 @@
         row.setAttribute("aria-label", `${names.name}, order ${sheet.full ? "n" : sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`);
         const title = el("span", "orders-demo-row-title");
         title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", names.name));
-        const fitted = el("span", "orders-demo-row-fit");
+        const fitBox = el("span", "orders-demo-row-fit");
         const meter = el("span", "orders-demo-meter");
         const fill = el("span", "orders-demo-meter-fill");
         fill.style.width = `${Math.max(0, Math.min(1, sheet.r2)) * 100}%`;
         meter.append(fill);
-        fitted.append(
+        fitBox.append(
           meter,
           el("span", "orders-demo-r2", fit2(sheet.r2)),
           el("span", `orders-demo-verdict orders-demo-verdict-${verdict(sheet.r2)}`, verdict(sheet.r2)),
         );
-        row.append(title, fitted);
+        row.append(title, fitBox);
         row.addEventListener("pointerenter", (event) => {
           if (event.pointerType === "mouse" && !state.pinned) point(i, null);
         });
@@ -560,7 +733,7 @@
 
       // one row for all blank sheets: the orders between, which the plot shows one by one
       blankRow = null;
-      if (between.length) {
+      if (between(example).length) {
         blankRow = el("div", "orders-demo-row orders-demo-blank-row");
         blankRow.setAttribute("aria-hidden", "true");
         const title = el("span", "orders-demo-row-title");
@@ -590,6 +763,7 @@
       root.classList.toggle("orders-demo-narrow", g.narrow);
       const lifted = typeof active === "number";
       const places = active === "pile" ? layout(null).map((p) => ({ ...p, y: g.height / 2 })) : layout(active);
+      const rowY = []; // the height of every sheet's row, for the row of the blank sheets
       items.forEach((item, position) => {
         const { pose, x, y } = places[position];
         const node = item.node;
@@ -610,6 +784,7 @@
         if (!item.sheet) return;
         const row = rows[item.index];
         const right = rightCorner(places[position]);
+        rowY[item.index] = right[1];
         row.style.left = `${g.ladderLeft}px`;
         row.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
         row.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
@@ -623,15 +798,24 @@
         const blanks = blankItems();
         const target = blanks.find((item) => item.order === state.blank) ?? blanks[Math.floor((blanks.length - 1) / 2)];
         const right = rightCorner(places[items.indexOf(target)]);
-        blankRow.style.left = `${g.ladderLeft}px`;
-        blankRow.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
-        blankRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
         blankRow.classList.toggle("orders-demo-compact", lifted);
-        const [first, last] = [blanks[0].order, blanks.at(-1).order];
+        // beside the blank sheet, but clear of the rows above and below it, which are taller where
+        // the blank sheets lie close together (on narrow screens)
+        const [above, below] = [rows.length - 2, rows.length - 1];
+        const half = (row) => row.offsetHeight / 2;
+        const y = Math.min(
+          Math.max(right[1], rowY[above] + half(rows[above]) + half(blankRow) + 2),
+          rowY[below] - half(rows[below]) - half(blankRow) - 2,
+        );
+        blankRow.style.left = `${g.ladderLeft}px`;
+        blankRow.style.transform = `translateY(${roundTo(y, 2)}px) translateY(-50%)`;
+        blankRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
+        // the orders the blank sheets stand for: all between order 4 and n
+        const [first, last] = [blanks[0].order, current().sheets.at(-1).order - 1];
         blankRow.querySelector(".orders-demo-row-name").textContent =
           state.blank !== null
-            ? `Order ${state.blank}: R² ${fit2(blanks.find((item) => item.order === state.blank).fitted[1])}`
+            ? `Order ${state.blank}: R² ${fit2(blanks.find((item) => item.order === state.blank).fit[1])}`
             : `Orders ${first}–${last}`;
       }
     }
@@ -651,12 +835,17 @@
       );
       plot.replaceChildren();
       const fits = example.fits;
-      const largest = fits.at(-1)[0];
+      const n = fits.at(-1)[0];
       const sheetOrders = new Set(example.sheets.map((sheet) => sheet.order));
       const [x0, x1, y0, y1] = [PLOT.left, w - PLOT.right, h - PLOT.bottom, PLOT.top];
       // R^2 from 0, or from 0.5 when every order fits better, so that the rise shows
-      const low = Math.min(...fits.map((fitted) => fitted[1])) >= 0.5 ? 0.5 : 0;
-      const x = (order) => x0 + ((order - 1) / (largest - 1)) * (x1 - x0);
+      const low = Math.min(...fits.map((fit) => fit[1])) >= 0.5 ? 0.5 : 0;
+      // the orders evenly spaced, and a break before n where the orders between are left out:
+      // they all equal the highest order with an interaction
+      const broken = n - fits.at(-2)[0] > 1;
+      const slots = fits.map((_, k) => k + (broken && k === fits.length - 1 ? 0.8 : 0));
+      const places = new Map(fits.map(([order], k) => [order, x0 + (slots[k] / slots.at(-1)) * (x1 - x0)]));
+      const x = (order) => places.get(order);
       const y = (r2) => y0 - ((Math.max(low, Math.min(1, r2)) - low) / (1 - low)) * (y0 - y1);
 
       const grid = add(plot, "g", { class: "orders-demo-plot-grid" });
@@ -668,15 +857,35 @@
         }
       }
       for (const [order] of fits) {
-        const label = add(plot, "text", { class: "orders-demo-plot-tick", x: roundTo(x(order), 1), y: y0 + 14, "text-anchor": "middle" }, String(order));
-        if (order === largest) label.classList.add("orders-demo-plot-strong");
+        const last = order === n;
+        add(
+          plot,
+          "text",
+          {
+            class: last ? "orders-demo-plot-tick orders-demo-plot-strong" : "orders-demo-plot-tick",
+            x: roundTo(x(order) + (last ? 6 : 0), 1),
+            y: y0 + 14,
+            "text-anchor": last ? "end" : "middle",
+          },
+          last ? `n = ${order}` : String(order),
+        );
       }
       add(plot, "text", { class: "orders-demo-plot-axis", x: x0, y: h - 6 }, "order");
-      add(plot, "text", { class: "orders-demo-plot-axis", x: x1, y: h - 6, "text-anchor": "end" }, "full decomposition");
+      add(plot, "text", { class: "orders-demo-plot-axis", x: x1 + 6, y: h - 6, "text-anchor": "end" }, "full decomposition");
 
       const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
       add(plot, "path", { class: "orders-demo-plot-area", d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z` });
-      add(plot, "path", { class: "orders-demo-plot-line", d: `M${points.join("L")}` });
+      // across the break, the line is dashed: the orders it skips have the same fit
+      const solid = broken ? points.slice(0, -1) : points;
+      add(plot, "path", { class: "orders-demo-plot-line", d: `M${solid.join("L")}` });
+      if (broken) {
+        add(plot, "path", { class: "orders-demo-plot-line orders-demo-plot-skipped", d: `M${points.slice(-2).join("L")}` });
+        // the break: two slashes across the axis, between the highest order with an interaction and n
+        const at = (x(fits.at(-2)[0]) + x(n)) / 2;
+        const mark = add(plot, "g", { class: "orders-demo-plot-break" });
+        add(mark, "rect", { x: roundTo(at - 4.5, 1), y: y0 - 4, width: 9, height: 8 });
+        add(mark, "path", { d: `M${roundTo(at - 5, 1)},${y0 + 4}L${roundTo(at - 1, 1)},${y0 - 4}M${roundTo(at + 1, 1)},${y0 + 4}L${roundTo(at + 5, 1)},${y0 - 4}` });
+      }
       for (const [order, r2] of fits) {
         add(plot, "circle", {
           class: sheetOrders.has(order) ? "orders-demo-plot-dot" : "orders-demo-plot-dot orders-demo-plot-between",
@@ -694,15 +903,15 @@
       add(ring, "circle", { r: 7 });
       add(ring, "circle", { class: "orders-demo-plot-core", r: 3 });
       const label = add(ring, "text", { class: "orders-demo-plot-label", "text-anchor": "middle" });
-      marker = { guide, ring, label, x, y, fits, largest, middle: (y0 + y1) / 2 };
+      marker = { guide, ring, label, x, y, fits, last: n, middle: (y0 + y1) / 2 };
 
       // a cover over the plot: the order nearest to the pointer
       const cover = add(plot, "rect", { class: "orders-demo-plot-cover", x: x0 - 12, y: 0, width: x1 - x0 + 24, height: h });
       const nearest = (event) => {
         const box = plot.getBoundingClientRect();
         const at = ((event.clientX - box.left) * w) / box.width;
-        const order = Math.round(1 + ((at - x0) / (x1 - x0)) * (largest - 1));
-        return Math.max(1, Math.min(largest, order));
+        const distance = (order) => Math.abs(x(order) - at);
+        return fits.reduce((best, [order]) => (distance(order) < distance(best) ? order : best), fits[0][0]);
       };
       let touched = false;
       cover.addEventListener("pointermove", (event) => {
@@ -747,13 +956,13 @@
       const [cx, cy] = [roundTo(marker.x(order), 1), roundTo(marker.y(r2), 1)];
       marker.ring.style.transform = `translate(${cx}px, ${cy}px)`;
       marker.guide.style.transform = `translateX(${cx}px)`;
-      // the value below the ring, under the line where it runs high, else right of the ring, where
-      // the line rises away from it
+      // the value right of the ring (where the line rises away from it), below the ring where the
+      // line runs high; left of it at the last order
       marker.label.textContent = `R² ${fit2(r2)}`;
       const below = marker.y(r2) < marker.middle;
-      const anchor = !below ? "start" : order === 1 ? "start" : order === marker.largest ? "end" : "middle";
-      marker.label.setAttribute("text-anchor", anchor);
-      marker.label.setAttribute("x", !below ? 12 : anchor === "start" ? -6 : anchor === "end" ? 6 : 0);
+      const last = order === marker.last;
+      marker.label.setAttribute("text-anchor", last ? "end" : "start");
+      marker.label.setAttribute("x", last ? 6 : below ? -4 : 12);
       marker.label.setAttribute("y", below ? 22 : 0);
     }
 
