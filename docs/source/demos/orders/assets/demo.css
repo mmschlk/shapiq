@@ -1,0 +1,376 @@
+/* The explanation of every order (demo.js; see demos/orders/README in compute/): a stack of
+   sheets, the Shapley values on top and the Möbius transform at the bottom, each with its fit. */
+
+.orders-demo {
+  clear: both;
+  margin: 1.5rem 0 1rem;
+  /* the sheets, their lines and their edges; the docs' tokens (tokens.css) and Furo's colors */
+  --orders-ink: var(--color-foreground-primary, #1b1e27);
+  --orders-muted: var(--color-foreground-secondary, #5b6275);
+  --orders-sheet: var(--shapiq-surface, #ffffff);
+  --orders-raised: var(--shapiq-surface-raised, #f7f8fc);
+  --orders-line: var(--shapiq-border, #e2e6f3);
+  --orders-edge: #ccd3e6;
+  --orders-shade: rgba(20, 28, 60, 0.14);
+  --orders-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --orders-duration: 640ms;
+}
+
+body[data-theme="dark"] .orders-demo {
+  --orders-edge: #3b4152;
+  --orders-shade: rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .orders-demo {
+    --orders-edge: #3b4152;
+    --orders-shade: rgba(0, 0, 0, 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo {
+    --orders-duration: 0ms;
+  }
+}
+
+/* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
+@media (scripting: enabled) {
+  .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
+    min-height: 48rem;
+  }
+}
+
+@media (scripting: enabled) and (max-width: 45em) {
+  .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
+    min-height: 34rem;
+  }
+}
+
+/* the static figure, until the demo has loaded (and without JavaScript) */
+.orders-demo-fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* -- the examples ------------------------------------------------------------------------------ */
+
+.orders-demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.orders-demo-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--orders-line);
+  border-radius: 999px;
+  background: var(--orders-raised);
+}
+
+.orders-demo-option {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.35rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--orders-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--shapiq-duration, 220ms), color var(--shapiq-duration, 220ms);
+}
+
+.orders-demo-option-detail {
+  font-size: 0.78rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.orders-demo-option[aria-pressed="true"] {
+  background: var(--orders-ink);
+  color: var(--orders-sheet);
+}
+
+.orders-demo-option:focus-visible,
+.orders-demo-row:focus-visible {
+  outline: 2px dashed var(--orders-ink);
+  outline-offset: 2px;
+}
+
+.orders-demo-hint {
+  margin: 0;
+  color: var(--orders-muted);
+  font-size: 0.82rem;
+}
+
+@media (hover: none) {
+  .orders-demo-hint {
+    display: none;
+  }
+}
+
+/* -- the stage: the stack of sheets, and the ladder of their fits ------------------------------ */
+
+.orders-demo-stage {
+  position: relative;
+  touch-action: manipulation;
+}
+
+.orders-demo-stack {
+  position: absolute;
+  inset: 0;
+}
+
+.orders-demo-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--orders-line);
+  border-radius: 3%;
+  background: var(--orders-sheet);
+  /* the edge below the face (demo.js sets its offset in the face's coordinates), and a shadow */
+  box-shadow:
+    var(--orders-edge-x, 0) var(--orders-edge-y, 4px) 0 0 var(--orders-edge),
+    calc(var(--orders-edge-x, 0) * 2.5) calc(var(--orders-edge-y, 4px) * 2.5) 18px 0 var(--orders-shade);
+  cursor: pointer;
+  transition:
+    transform var(--orders-duration) var(--orders-ease),
+    box-shadow var(--orders-duration) var(--orders-ease);
+  will-change: transform;
+}
+
+.orders-demo-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity var(--orders-duration) var(--orders-ease);
+}
+
+/* while a sheet is lifted, the others step back */
+.orders-demo-receded .orders-demo-face {
+  opacity: 0.45;
+}
+
+.orders-demo-tag {
+  fill: var(--orders-ink);
+  font-size: 4.6px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.orders-demo-bonds line {
+  stroke: var(--orders-ink);
+  stroke-width: 0.45;
+  stroke-linecap: round;
+}
+
+.orders-demo-atoms circle {
+  fill: var(--orders-sheet);
+  stroke: var(--orders-ink);
+  stroke-width: 0.35;
+}
+
+.orders-demo-atoms text,
+.orders-demo-tokens text {
+  fill: var(--orders-ink);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.orders-demo-atoms text {
+  font-size: 2.5px;
+  font-weight: 600;
+}
+
+.orders-demo-wash {
+  fill: var(--orders-sheet);
+  opacity: 0.3;
+}
+
+.orders-demo-grid line {
+  stroke: #ffffff;
+  stroke-opacity: 0.35;
+  stroke-width: 0.2;
+}
+
+.orders-demo-tokens rect:not(.orders-demo-tint) {
+  fill: var(--orders-raised);
+  stroke: var(--orders-line);
+  stroke-width: 0.3;
+}
+
+.orders-demo-tokens text {
+  font-size: 3.4px;
+  font-weight: 600;
+}
+
+/* the ladder: a row per sheet, beside its right corner, with the sheet's fit */
+.orders-demo-ladder {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.orders-demo-row {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.15rem 0 0.15rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--orders-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.25;
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+  transition:
+    transform var(--orders-duration) var(--orders-ease),
+    color var(--shapiq-duration, 220ms);
+}
+
+/* the line from the sheet's right corner to its row */
+.orders-demo-row::before {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: var(--orders-lead, 0);
+  border-top: 1px dashed var(--orders-edge);
+  content: "";
+  transition: width var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-row-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.orders-demo-row-title strong {
+  color: var(--orders-ink);
+  font-weight: 700;
+}
+
+.orders-demo-row-fit {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.orders-demo-meter {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 3rem;
+  max-width: 7.5rem;
+  height: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--orders-line);
+}
+
+.orders-demo-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--orders-ink);
+  opacity: 0.7;
+  transition: opacity var(--shapiq-duration, 220ms);
+}
+
+.orders-demo-r2 {
+  color: var(--orders-ink);
+  font-weight: 700;
+}
+
+.orders-demo-r2::before {
+  content: "R² ";
+  color: var(--orders-muted);
+  font-weight: 500;
+}
+
+.orders-demo-verdict {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.orders-demo-row:hover,
+.orders-demo-active {
+  color: var(--orders-ink);
+}
+
+.orders-demo-active .orders-demo-meter-fill {
+  opacity: 1;
+}
+
+.orders-demo-active::before {
+  border-top-style: solid;
+  border-color: var(--orders-ink);
+}
+
+/* while a sheet is lifted, the rows of the others have room for one line */
+.orders-demo-compact .orders-demo-row-name,
+.orders-demo-compact .orders-demo-verdict {
+  display: none;
+}
+
+.orders-demo-compact .orders-demo-row-title {
+  min-width: 3.6em;
+}
+
+.orders-demo-compact {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* on narrow screens, the rows have room for the tag and the fit only */
+.orders-demo-narrow .orders-demo-row {
+  font-size: 0.75rem;
+  padding-left: 0.35rem;
+}
+
+.orders-demo-narrow .orders-demo-row-name,
+.orders-demo-narrow .orders-demo-verdict,
+.orders-demo-narrow .orders-demo-r2::before {
+  display: none;
+}
+
+.orders-demo-narrow .orders-demo-meter {
+  min-width: 1.5rem;
+}
+
+/* -- the caption: what the sheet shows, and its fit -------------------------------------------- */
+
+.orders-demo-caption {
+  max-width: 44rem;
+  min-height: 4.65em; /* three lines: the captions of the sheets differ in length */
+  margin: 0.5rem auto 0;
+  color: var(--orders-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.orders-demo-caption strong {
+  color: var(--orders-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

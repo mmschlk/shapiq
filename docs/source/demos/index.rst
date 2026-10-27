@@ -25,7 +25,18 @@ takes too long or needs too large a model to run with the docs, and it shows wha
       image regions and words of five COCO photos, explained as in FIxLIP and computed with
       ProxySHAP.
 
+   .. grid-item-card:: From Shapley values to the Möbius transform
+      :link: orders/index
+      :link-type: doc
+      :img-top: /_static/images/hero_orders.png
+      :img-alt: A molecule explained at every order, as a stack of sheets from the Shapley values to the Möbius interactions, with the fit of each order to the model.
+
+      How much of a model does an explanation explain? A molecule of GraphSHAP-IQ's Figure 1,
+      explained exactly at every order of interaction, from the Shapley values to the Möbius
+      transform, which adds up to the model.
+
 .. toctree::
    :hidden:
 
    fixlip/index
+   orders/index
