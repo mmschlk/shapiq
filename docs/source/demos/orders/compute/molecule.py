@@ -12,9 +12,10 @@ fields: 7,693 evaluations instead of 2^30.
 The players are the atoms; an absent atom keeps its bonds, and its features are zeros. The value of
 a coalition is the logit of the class "mutagen". From the Möbius transform, ``shapiq`` converts the
 explanation into k-SII of every order: the Shapley values (order 1), the Shapley interactions of
-order 2, 3, ..., and the Möbius transform itself (k-SII of the highest order). Every order is scored
-by its R^2 on 2,048 coalitions, every atom present with probability 1/2 (as the FIxLIP demo scores
-its explanations): how much of the model's output on those coalitions the explanation reproduces.
+order 2, 3, ..., and the full decomposition, the Möbius transform itself (k-SII of the highest
+order). Every order is scored by its R^2 on 2,048 coalitions, every atom present with probability
+1/2 (as the FIxLIP demo scores its explanations): how much of the model's output on those
+coalitions the explanation reproduces.
 The explanation predicts a coalition's value as the sum of the values of its subsets; k-SII is
 efficient, so this prediction needs no constant of its own (for the coalition of all atoms, it is
 the model's output).

@@ -1,16 +1,19 @@
 // The orders demo (demos/orders): one prediction, explained at every order of interaction, as a
 // stack of sheets. The top sheet holds the Shapley values (order 1); every sheet below adds the
-// interactions of one more order (k-SII), and the bottom one holds the Möbius transform, the
-// interactions of all orders, which add up to the model itself. Next to every sheet is its R^2,
-// how much of the model's output on random coalitions the explanation reproduces: it rises from the
-// top to the bottom, from the Shapley values to the Möbius transform, which reproduces it exactly.
+// interactions of one more order (k-SII), up to order 4. Below them, blank sheets stand for the
+// orders that follow, up to the bottom sheet: the full decomposition, the interactions of all
+// orders, which add up to the model itself. Beside every sheet is its R^2, how much of the model's
+// output on random coalitions the explanation reproduces, and below the stack a plot of the R^2 of
+// every order: it rises from the Shapley values to the full decomposition, which reproduces the
+// model exactly.
 //
 // Two examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network, and the photo and caption of the FIxLIP demo, explained by an
 // illustrative toy game. The explanations are precomputed (../compute) into data.js. Pointing at a
 // sheet (hover, keyboard focus on its row, or a tap that pins it) lifts it out of the stack: the
 // sheets above it move up, those below it move down, and the sheet tilts towards the reader and
-// grows.
+// grows. A ring marks its order on the plot; pointing along the plot lifts the sheet of the order
+// pointed at, or brings out the blank sheet of an order between.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -32,11 +35,18 @@
   const LIFTED = { scale: 1.06, tilt: 0.66 };
   const RECEDED = { scale: 0.92, tilt: 0.4 };
   // in units of a sheet's side: what shows of a sheet below the one above it, at rest and while
-  // one is lifted, and how far the lifted sheet may cover the bottom corner of the one above it
-  const REST_STRIP = 0.27;
+  // one is lifted, the same for the blank sheets of the orders between, and how far the lifted
+  // sheet may cover the bottom corner of the one above it
+  const REST_STRIP = 0.24;
   const OPEN_STRIP = 0.115;
+  const BLANK_REST_STRIP = 0.04;
+  const BLANK_OPEN_STRIP = 0.028;
   const OVERLAP = 0.06;
+  // how far the blank sheet of the order pointed at slides out of the stack, towards the reader:
+  // less than its strip, so that the blank sheet below it still shows
+  const PEEK = 0.03;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
+  const PLOT = { height: 176, left: 42, right: 14, top: 14, bottom: 40 }; // pixels
 
   const roundTo = (value, digits) => Number(value.toFixed(digits));
   const el = (tag, className, text) => {
@@ -120,7 +130,7 @@
 
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
   function moleculeFace(svg, example, sheet) {
-    const position = fit(example.coords, [9, 15, 93, 93]);
+    const position = fit(example.coords, [9, 5, 93, 87]);
     const largest = largestValue(sheet);
     drawGroups(svg, sheet, (atom) => position[atom], largest, 4.6);
     const halos = add(svg, "g", { class: "orders-demo-halos" });
@@ -150,7 +160,7 @@
 
   // the photo and its caption: the photo's patches on the left, the caption's tokens on the right
   function imageTextFace(svg, example, sheet, url, id) {
-    const photo = { x: 4, y: 20, size: 62 };
+    const photo = { x: 4, y: 11, size: 62 };
     const grid = example.grid;
     const cell = photo.size / grid;
     const tokens = { x: 72, width: 24, top: 5, bottom: 95 };
@@ -234,10 +244,12 @@
 
   // -- the sheets' names and the captions of the examples ---------------------------------------------
 
+  // the name of a sheet: on its face, as its row's tag, and in words
   const sheetName = (sheet) => {
-    if (sheet.moebius) return { tag: "Möbius", order: "Order n", name: "Möbius interactions" };
-    if (sheet.order === 1) return { tag: "SV", order: "Order 1", name: "Shapley values" };
-    return { tag: `${sheet.order}-SII`, order: `Order ${sheet.order}`, name: "Shapley interactions" };
+    if (sheet.full) return { face: "Full decomposition", tag: "n-SII", name: "Full decomposition" };
+    if (sheet.order === 1) return { face: "SV", tag: "SV", name: "Shapley values" };
+    const tag = `${sheet.order}-SII`;
+    return { face: tag, tag, name: "Shapley interactions" };
   };
   const fit2 = (r2) => r2.toFixed(2);
   const verdict = (r2) => {
@@ -248,14 +260,21 @@
   };
   const count = (n) => n.toLocaleString("en-US");
 
-  // what the caption says, at rest (sheet null) and for every sheet; the numbers are the data's
+  // what the caption says, at rest (nothing pointed at), for every sheet, and for every order between
+  // the sheets (a blank sheet: its order, R^2 and number of values); the numbers are the data's
   const CAPTIONS = {
-    molecule: (example, sheet) => {
-      const p = `${Math.round(example.probability * 1000) / 10}%`;
+    molecule: (example, { sheet, blank }) => {
+      if (blank) {
+        const [order, r2, values] = blank;
+        return [
+          [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The orders between 4 and the full decomposition add thousands of values but change the fit little: `, ["R² = ", fit2(r2)], "."],
+        ];
+      }
       if (!sheet) {
+        const p = `${Math.round(example.probability * 1000) / 10}%`;
         return [
           ["A graph neural network predicts that this molecule is mutagenic (", ["probability ", p], "), and every sheet explains this prediction. "],
-          ["The Shapley values on top credit every atom alone; each order below adds the interactions of larger groups of atoms, down to the Möbius transform, which adds up to the model exactly."],
+          ["The Shapley values on top credit every atom alone; each order below adds the interactions of larger groups of atoms, down to the full decomposition, which adds up to the model exactly."],
         ];
       }
       const fit = ["R² = ", fit2(sheet.r2)];
@@ -264,9 +283,9 @@
           ["Shapley values: one number per atom. The nitrogen atoms of the three nitro groups get the most credit, but the 30 numbers reproduce the model's output on random parts of the molecule only with ", fit, "."],
         ];
       }
-      if (sheet.moebius) {
+      if (sheet.full) {
         return [
-          [`The Möbius transform: every group of atoms that the network's two layers see together, ${count(sheet.count)} values of up to ${sheet.order} atoms, computed exactly by GraphSHAP-IQ with ${count(example.budget)} calls of the model instead of 2³⁰. It is the model itself, written as a sum: `, fit, "."],
+          [`The full decomposition: every group of atoms that the network's two layers see together, ${count(sheet.count)} values of up to ${sheet.order} atoms (larger groups have none), computed exactly by GraphSHAP-IQ with ${count(example.budget)} calls of the model instead of 2³⁰. It is the model itself, written as a sum: `, fit, "."],
         ];
       }
       const texts = {
@@ -278,11 +297,17 @@
         [`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values of up to ${sheet.order} atoms. ${texts[sheet.order] ?? ""}`, fit, "."],
       ];
     },
-    fixlip: (example, sheet) => {
+    fixlip: (example, { sheet, blank }) => {
+      const illustrative = " Illustrative values, after the FIxLIP demo.";
+      if (blank) {
+        const [order, r2, values] = blank;
+        return [
+          [`Groups of up to ${order} patches and words: ${count(values)} values. Every order between 4 and the full decomposition adds a little more: `, ["R² = ", fit2(r2)], ".", illustrative],
+        ];
+      }
       if (!sheet) {
         return [
-          ["How well does SigLIP 2 match the photo and its caption? Every sheet explains it, from the patches and words alone (top) to the interactions of all orders (bottom). "],
-          ["Illustrative values, after the FIxLIP demo."],
+          ["How well does SigLIP 2 match the photo and its caption? Every sheet explains it, from the patches and words alone (top) to the full decomposition (bottom).", illustrative],
         ];
       }
       const fit = ["R² = ", fit2(sheet.r2)];
@@ -292,10 +317,9 @@
         3: ["Groups of three: “white bird” on the egret, “small elephant” on its head. ", fit, "."],
         4: ["“next to” needs both animals: groups of four patches and words. ", fit, "."],
       };
-      if (sheet.moebius) {
+      if (sheet.full) {
         return [
-          ["All orders, up to “a small elephant … next to a white bird” as one group of eight patches and words: the whole decomposition, ", fit, "."],
-          [" Illustrative values, after the FIxLIP demo."],
+          ["The full decomposition: all orders, up to “a small elephant … next to a white bird” as one group of eight patches and words. ", fit, ".", illustrative],
         ];
       }
       return [texts[sheet.order]];
@@ -305,7 +329,8 @@
   // -- the demo -------------------------------------------------------------------------------------
 
   function start(root, data) {
-    const state = { example: data.examples[0].id, active: null, pinned: false };
+    // what is pointed at: a lifted sheet (its index), or the blank sheet of an order between
+    const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
     let instance = 0;
 
@@ -320,15 +345,13 @@
       option.append(el("span", "orders-demo-option-label", example.label), el("span", "orders-demo-option-detail", example.detail));
       option.addEventListener("click", () => {
         if (state.example === example.id) return;
-        state.example = example.id;
-        state.active = null;
-        state.pinned = false;
+        Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
         render();
       });
       switcher.append(option);
       return [example.id, option];
     });
-    const hint = el("p", "orders-demo-hint", "Point at a sheet to lift it out of the stack.");
+    const hint = el("p", "orders-demo-hint", "Point at a sheet, or along the plot.");
     bar.append(switcher, hint);
 
     const stage = el("div", "orders-demo-stage");
@@ -337,15 +360,31 @@
     stack.setAttribute("aria-hidden", "true");
     const ladder = el("div", "orders-demo-ladder");
     stage.append(stack, ladder);
+
+    const footer = el("div", "orders-demo-footer");
+    const plotBox = el("figure", "orders-demo-plot");
+    const plotTitle = el("figcaption", "orders-demo-plot-title", "Fit to the model (R²) by order");
+    const plot = document.createElementNS(SVG, "svg");
+    plot.setAttribute("class", "orders-demo-plot-svg");
+    plot.setAttribute("role", "img");
+    plotBox.append(plotTitle, plot);
     const caption = el("p", "orders-demo-caption");
     caption.setAttribute("aria-live", "polite");
-    root.append(bar, stage, caption);
+    footer.append(plotBox, caption);
+    root.append(bar, stage, footer);
     root.classList.add("orders-demo-ready");
 
-    let sheets = [];
+    // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
+    // the full decomposition, and the sheet of the full decomposition
+    let items = [];
     let rows = [];
+    let blankRow = null;
+    let marker = null;
+    let plotWidth = 0;
 
     const current = () => data.examples.find((example) => example.id === state.example);
+    const sheetItems = () => items.filter((item) => item.sheet);
+    const blankItems = () => items.filter((item) => !item.sheet);
 
     // -- geometry: the size of the sheets, the stage, and every sheet's place and pose ---------------
 
@@ -357,16 +396,23 @@
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const room = width - ladderWidth - gap;
       const side = Math.max(110, Math.min(360, room / (LIFTED.scale * spread)));
-      const n = current().sheets.length;
       const height = (pose) => side * pose.scale * pose.tilt * spread;
+      // the same height for every example: the most sheets and blank sheets of any
+      const n = Math.max(...data.examples.map((example) => example.sheets.length));
+      const blanks = Math.max(
+        ...data.examples.map((example) => {
+          const orders = example.sheets.map((sheet) => sheet.order);
+          return orders.at(-1) - orders.at(-2) - 1;
+        }),
+      );
       // the tallest stack: the second sheet lifted, the first above it, the others below
-      const open = height(RECEDED) + height(LIFTED) - OVERLAP * side + (n - 2) * OPEN_STRIP * side;
-      const rest = height(REST) + (n - 1) * REST_STRIP * side;
+      const open =
+        height(RECEDED) + height(LIFTED) - OVERLAP * side + (n - 2) * OPEN_STRIP * side + blanks * BLANK_OPEN_STRIP * side;
+      const rest = height(REST) + (n - 1) * REST_STRIP * side + blanks * BLANK_REST_STRIP * side;
       return {
         width,
         narrow,
         side,
-        spread,
         ladderLeft: width - ladderWidth,
         center: room / 2,
         height: Math.ceil(Math.max(open, rest) + 2 * THICKNESS + 16),
@@ -374,24 +420,30 @@
       };
     }
 
-    // the place (center) and pose of every sheet: stacked so that a strip of every sheet shows below
+    // the place (center) and pose of every item: stacked so that a strip of every sheet shows below
     // the one above it, and the lifted sheet, which lies over all others, shows whole
     function layout(active) {
       const g = geometry;
-      const n = sheets.length;
-      const poses = sheets.map((_, i) => (active === null ? REST : i === active ? LIFTED : RECEDED));
-      const strip = (active === null ? REST_STRIP : OPEN_STRIP) * g.side;
+      const lifted = active === null ? null : sheetItems()[active];
       const centers = [];
+      const poses = [];
       let bottom = 0;
-      for (let i = 0; i < n; i++) {
-        const h = g.poseHeight(poses[i]);
-        if (i === 0) bottom = h;
-        else if (i === active) bottom += h - OVERLAP * g.side;
-        else bottom += strip;
+      items.forEach((item, position) => {
+        const pose = lifted === null ? REST : item === lifted ? LIFTED : RECEDED;
+        const h = g.poseHeight(pose);
+        if (position === 0) bottom = h;
+        else if (item === lifted) bottom += h - OVERLAP * g.side;
+        else if (!item.sheet) bottom += (lifted === null ? BLANK_REST_STRIP : BLANK_OPEN_STRIP) * g.side;
+        else bottom += (lifted === null ? REST_STRIP : OPEN_STRIP) * g.side;
         centers.push(bottom - h / 2);
-      }
+        poses.push(pose);
+      });
       const offset = (g.height - bottom) / 2;
-      return poses.map((pose, i) => ({ pose, x: g.center, y: centers[i] + offset }));
+      return items.map((item, position) => ({
+        pose: poses[position],
+        x: g.center,
+        y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0),
+      }));
     }
 
     // the corners of a sheet on the stage (left, top, right, bottom for the turn of -45 degrees)
@@ -407,6 +459,7 @@
         y + pose.scale * pose.tilt * (u * Math.sin(TURN) + v * Math.cos(TURN)),
       ]);
     };
+    const rightCorner = (place) => corners(place).reduce((a, b) => (b[0] > a[0] ? b : a));
 
     const inside = ([px, py], polygon) => {
       let sign = 0;
@@ -422,15 +475,18 @@
       return true;
     };
 
-    // the sheet under a point of the stage, where the sheets are going (not where they are while
-    // they move), the one on top first
-    function sheetAt(point) {
-      const places = layout(state.active);
-      const order = places.map((_, i) => i).sort((a, b) => zIndex(b) - zIndex(a));
-      return order.find((i) => inside(point, corners(places[i]))) ?? null;
-    }
+    const zIndex = (item, active) =>
+      active !== null && item === sheetItems()[active] ? items.length + 1 : items.length - items.indexOf(item);
 
-    const zIndex = (i) => (i === state.active ? sheets.length + 1 : sheets.length - i);
+    // the item under a point of the stage, where the sheets are going (not where they are while
+    // they move), the one on top first
+    function itemAt(point) {
+      const places = layout(state.active);
+      const order = items.map((_, position) => position);
+      order.sort((a, b) => zIndex(items[b], state.active) - zIndex(items[a], state.active));
+      const position = order.find((p) => inside(point, corners(places[p])));
+      return position === undefined ? null : items[position];
+    }
 
     // -- drawing --------------------------------------------------------------------------------
 
@@ -438,52 +494,56 @@
       const example = current();
       instance += 1;
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
-      stage.setAttribute(
-        "aria-label",
-        `${example.label}: its explanations of order 1 to n, stacked, with their fit`,
-      );
+      stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
-      for (const row of rows) row.remove();
+      for (const row of [...rows, blankRow]) row?.remove();
       geometry = measure();
 
-      sheets = example.sheets.map((sheet, i) => {
+      const last = example.sheets.at(-1);
+      const between = example.fits.filter(([order]) => order > example.sheets.at(-2).order && order < last.order);
+      items = [];
+      example.sheets.forEach((sheet, i) => {
+        if (sheet === last) {
+          for (const fitted of between) items.push({ order: fitted[0], fitted });
+        }
         const node = el("div", "orders-demo-sheet");
         const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
         if (example.kind === "graph") moleculeFace(svg, example, sheet);
         else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${instance}-${i}`);
-        add(svg, "text", { class: "orders-demo-tag", x: 5.5, y: 9.5 }, sheetName(sheet).tag);
-        stack.append(node);
-        return node;
+        // the name along the bottom edge, from the bottom corner: the part of a sheet that shows
+        add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, sheetName(sheet).face);
+        items.push({ order: sheet.order, sheet, index: i, node });
       });
+      for (const item of items) {
+        if (!item.sheet) item.node = el("div", "orders-demo-sheet orders-demo-blank");
+      }
+      stack.append(...items.map((item) => item.node));
 
       rows = example.sheets.map((sheet, i) => {
         const names = sheetName(sheet);
         const row = el("button", "orders-demo-row");
         row.type = "button";
-        row.setAttribute(
-          "aria-label",
-          `${names.order}, ${names.name}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`,
-        );
+        row.setAttribute("aria-label", `${names.name}, order ${sheet.full ? "n" : sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`);
         const title = el("span", "orders-demo-row-title");
         title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", names.name));
-        const fit = el("span", "orders-demo-row-fit");
+        const fitted = el("span", "orders-demo-row-fit");
         const meter = el("span", "orders-demo-meter");
         const fill = el("span", "orders-demo-meter-fill");
         fill.style.width = `${Math.max(0, Math.min(1, sheet.r2)) * 100}%`;
         meter.append(fill);
-        fit.append(
+        fitted.append(
           meter,
           el("span", "orders-demo-r2", fit2(sheet.r2)),
           el("span", `orders-demo-verdict orders-demo-verdict-${verdict(sheet.r2)}`, verdict(sheet.r2)),
         );
-        row.append(title, fit);
+        row.append(title, fitted);
         row.addEventListener("pointerenter", (event) => {
-          if (event.pointerType === "mouse" && !state.pinned) activate(i);
+          if (event.pointerType === "mouse" && !state.pinned) point(i, null);
         });
         row.addEventListener("focus", () => {
-          if (!state.pinned) activate(i);
+          if (!state.pinned) point(i, null);
         });
-        row.addEventListener("click", () => toggle(i));
+        row.addEventListener("click", () => toggle(i, null));
         row.addEventListener("keydown", (event) => {
           const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
           if (step) {
@@ -491,17 +551,31 @@
             rows[(i + step + rows.length) % rows.length].focus();
           } else if (event.key === "Escape") {
             state.pinned = false;
-            activate(null);
+            point(null, null);
           }
         });
         ladder.append(row);
         return row;
       });
 
+      // one row for all blank sheets: the orders between, which the plot shows one by one
+      blankRow = null;
+      if (between.length) {
+        blankRow = el("div", "orders-demo-row orders-demo-blank-row");
+        blankRow.setAttribute("aria-hidden", "true");
+        const title = el("span", "orders-demo-row-title");
+        title.append(el("strong", "", "⋮"), el("span", "orders-demo-row-name"));
+        blankRow.append(title);
+        ladder.append(blankRow);
+      }
+
+      drawPlot();
       // the stack opens out of a pile: first all sheets on top of each other, then their strips
       // show; without motion, the stack is shown at rest at once
-      place(reducedMotion() ? state.active : "pile");
-      if (!reducedMotion()) {
+      place("pile");
+      if (reducedMotion()) {
+        place(state.active);
+      } else {
         stack.getBoundingClientRect(); // the pile is drawn before the stack opens
         requestAnimationFrame(() => place(state.active));
       }
@@ -514,43 +588,181 @@
       const g = geometry;
       stage.style.height = `${g.height}px`;
       root.classList.toggle("orders-demo-narrow", g.narrow);
-      root.classList.toggle("orders-demo-open", active !== null && active !== "pile");
-      const places =
-        active === "pile"
-          ? layout(null).map((p) => ({ ...p, y: g.height / 2 }))
-          : layout(active);
-      places.forEach(({ pose, x, y }, i) => {
-        const sheet = sheets[i];
-        sheet.style.width = sheet.style.height = `${g.side}px`;
-        sheet.style.marginLeft = sheet.style.marginTop = `${-g.side / 2}px`;
-        sheet.style.zIndex = active === i ? sheets.length + 1 : sheets.length - i;
-        sheet.style.transform =
+      const lifted = typeof active === "number";
+      const places = active === "pile" ? layout(null).map((p) => ({ ...p, y: g.height / 2 })) : layout(active);
+      items.forEach((item, position) => {
+        const { pose, x, y } = places[position];
+        const node = item.node;
+        node.style.width = node.style.height = `${g.side}px`;
+        node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
+        node.style.zIndex = lifted && item.index === active ? items.length + 1 : items.length - position;
+        node.style.transform =
           `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scale(${pose.scale}) ` +
           `scaleY(${pose.tilt}) rotate(${(TURN * 180) / Math.PI}deg)`;
         // the edge below the face, in the face's own coordinates: straight down on the stage
-        const depth = THICKNESS / (pose.scale * pose.tilt);
-        const [dx, dy] = [Math.sin(TURN) * depth, Math.cos(TURN) * depth];
-        sheet.style.setProperty("--orders-edge-x", `${roundTo(dx, 2)}px`);
-        sheet.style.setProperty("--orders-edge-y", `${roundTo(dy, 2)}px`);
-        sheet.classList.toggle("orders-demo-lifted", active === i);
-        sheet.classList.toggle("orders-demo-receded", typeof active === "number" && active !== i);
+        const depth = (item.sheet ? THICKNESS : THICKNESS / 2) / (pose.scale * pose.tilt);
+        node.style.setProperty("--orders-edge-x", `${roundTo(Math.sin(TURN) * depth, 2)}px`);
+        node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
+        node.classList.toggle("orders-demo-lifted", lifted && item.index === active);
+        node.classList.toggle("orders-demo-receded", lifted && item.index !== active);
+        node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
 
-        const row = rows[i];
-        const right = corners({ pose, x, y }).reduce((a, b) => (b[0] > a[0] ? b : a));
+        if (!item.sheet) return;
+        const row = rows[item.index];
+        const right = rightCorner(places[position]);
         row.style.left = `${g.ladderLeft}px`;
         row.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
         row.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
-        row.classList.toggle("orders-demo-active", active === i);
-        row.classList.toggle("orders-demo-compact", typeof active === "number" && active !== i);
-        row.setAttribute("aria-pressed", String(active === i));
+        row.classList.toggle("orders-demo-active", lifted && item.index === active);
+        row.classList.toggle("orders-demo-compact", lifted && item.index !== active);
+        row.setAttribute("aria-pressed", String(lifted && item.index === active));
       });
+
+      // the row of the blank sheets: beside the one pointed at, or the middle one
+      if (blankRow) {
+        const blanks = blankItems();
+        const target = blanks.find((item) => item.order === state.blank) ?? blanks[Math.floor((blanks.length - 1) / 2)];
+        const right = rightCorner(places[items.indexOf(target)]);
+        blankRow.style.left = `${g.ladderLeft}px`;
+        blankRow.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
+        blankRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
+        blankRow.classList.toggle("orders-demo-active", state.blank !== null);
+        blankRow.classList.toggle("orders-demo-compact", lifted);
+        const [first, last] = [blanks[0].order, blanks.at(-1).order];
+        blankRow.querySelector(".orders-demo-row-name").textContent =
+          state.blank !== null
+            ? `Order ${state.blank}: R² ${fit2(blanks.find((item) => item.order === state.blank).fitted[1])}`
+            : `Orders ${first}–${last}`;
+      }
+    }
+
+    // -- the plot of the fit by order: a ring on the line marks the order pointed at -------------
+
+    function drawPlot() {
+      const example = current();
+      plotWidth = plotBox.clientWidth;
+      const [w, h] = [Math.max(200, plotWidth), PLOT.height];
+      plot.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      plot.setAttribute("width", w);
+      plot.setAttribute("height", h);
+      plot.setAttribute(
+        "aria-label",
+        `R² by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition`,
+      );
+      plot.replaceChildren();
+      const fits = example.fits;
+      const largest = fits.at(-1)[0];
+      const sheetOrders = new Set(example.sheets.map((sheet) => sheet.order));
+      const [x0, x1, y0, y1] = [PLOT.left, w - PLOT.right, h - PLOT.bottom, PLOT.top];
+      // R^2 from 0, or from 0.5 when every order fits better, so that the rise shows
+      const low = Math.min(...fits.map((fitted) => fitted[1])) >= 0.5 ? 0.5 : 0;
+      const x = (order) => x0 + ((order - 1) / (largest - 1)) * (x1 - x0);
+      const y = (r2) => y0 - ((Math.max(low, Math.min(1, r2)) - low) / (1 - low)) * (y0 - y1);
+
+      const grid = add(plot, "g", { class: "orders-demo-plot-grid" });
+      for (let k = 0; k <= 4; k++) {
+        const level = low + (k / 4) * (1 - low);
+        add(grid, "line", { x1: x0, x2: x1, y1: roundTo(y(level), 1), y2: roundTo(y(level), 1) });
+        if (k % 2 === 0) {
+          add(plot, "text", { class: "orders-demo-plot-tick", x: x0 - 13, y: roundTo(y(level), 1), "text-anchor": "end" }, String(level));
+        }
+      }
+      for (const [order] of fits) {
+        const label = add(plot, "text", { class: "orders-demo-plot-tick", x: roundTo(x(order), 1), y: y0 + 14, "text-anchor": "middle" }, String(order));
+        if (order === largest) label.classList.add("orders-demo-plot-strong");
+      }
+      add(plot, "text", { class: "orders-demo-plot-axis", x: x0, y: h - 6 }, "order");
+      add(plot, "text", { class: "orders-demo-plot-axis", x: x1, y: h - 6, "text-anchor": "end" }, "full decomposition");
+
+      const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
+      add(plot, "path", { class: "orders-demo-plot-area", d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z` });
+      add(plot, "path", { class: "orders-demo-plot-line", d: `M${points.join("L")}` });
+      for (const [order, r2] of fits) {
+        add(plot, "circle", {
+          class: sheetOrders.has(order) ? "orders-demo-plot-dot" : "orders-demo-plot-dot orders-demo-plot-between",
+          cx: roundTo(x(order), 1),
+          cy: roundTo(y(r2), 1),
+          r: sheetOrders.has(order) ? 3 : 2.4,
+          "data-order": order,
+        });
+      }
+
+      // the marker: a guide down to the axis and a ring on the line, with the order's R^2
+      const guide = add(plot, "g", { class: "orders-demo-plot-guide" });
+      add(guide, "line", { x1: 0, x2: 0, y1: y1, y2: y0 });
+      const ring = add(plot, "g", { class: "orders-demo-plot-marker" });
+      add(ring, "circle", { r: 7 });
+      add(ring, "circle", { class: "orders-demo-plot-core", r: 3 });
+      const label = add(ring, "text", { class: "orders-demo-plot-label", "text-anchor": "middle" });
+      marker = { guide, ring, label, x, y, fits, largest, middle: (y0 + y1) / 2 };
+
+      // a cover over the plot: the order nearest to the pointer
+      const cover = add(plot, "rect", { class: "orders-demo-plot-cover", x: x0 - 12, y: 0, width: x1 - x0 + 24, height: h });
+      const nearest = (event) => {
+        const box = plot.getBoundingClientRect();
+        const at = ((event.clientX - box.left) * w) / box.width;
+        const order = Math.round(1 + ((at - x0) / (x1 - x0)) * (largest - 1));
+        return Math.max(1, Math.min(largest, order));
+      };
+      let touched = false;
+      cover.addEventListener("pointermove", (event) => {
+        if (event.pointerType === "mouse" ? !state.pinned : cover.hasPointerCapture(event.pointerId)) {
+          pointAtOrder(nearest(event));
+        }
+      });
+      cover.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") return;
+        touched = true;
+        cover.setPointerCapture(event.pointerId);
+        state.pinned = true;
+        pointAtOrder(nearest(event));
+      });
+      cover.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse" && !state.pinned) point(null, null);
+      });
+      cover.addEventListener("click", (event) => {
+        if (touched) {
+          touched = false;
+          return;
+        }
+        const order = nearest(event);
+        const index = current().sheets.findIndex((sheet) => sheet.order === order);
+        if (index >= 0) toggle(index, null);
+        else toggle(null, order);
+      });
+      mark();
+    }
+
+    // the ring at the order pointed at (a lifted sheet's, or a blank sheet's), hidden at rest
+    function mark() {
+      if (!marker) return;
+      const example = current();
+      const order = state.active !== null ? example.sheets[state.active].order : state.blank;
+      plot.classList.toggle("orders-demo-plot-pointing", order !== null);
+      for (const dot of plot.querySelectorAll(".orders-demo-plot-dot")) {
+        dot.classList.toggle("orders-demo-plot-dot-active", Number(dot.dataset.order) === order);
+      }
+      if (order === null) return;
+      const r2 = marker.fits.find(([k]) => k === order)[1];
+      const [cx, cy] = [roundTo(marker.x(order), 1), roundTo(marker.y(r2), 1)];
+      marker.ring.style.transform = `translate(${cx}px, ${cy}px)`;
+      marker.guide.style.transform = `translateX(${cx}px)`;
+      // the value below the ring, under the line where it runs high, else right of the ring, where
+      // the line rises away from it
+      marker.label.textContent = `R² ${fit2(r2)}`;
+      const below = marker.y(r2) < marker.middle;
+      const anchor = !below ? "start" : order === 1 ? "start" : order === marker.largest ? "end" : "middle";
+      marker.label.setAttribute("text-anchor", anchor);
+      marker.label.setAttribute("x", !below ? 12 : anchor === "start" ? -6 : anchor === "end" ? 6 : 0);
+      marker.label.setAttribute("y", below ? 22 : 0);
     }
 
     function describe() {
       const example = current();
       const sheet = state.active === null ? null : example.sheets[state.active];
+      const blank = state.blank === null ? null : example.fits.find(([order]) => order === state.blank);
       caption.replaceChildren();
-      for (const sentence of CAPTIONS[example.id](example, sheet)) {
+      for (const sentence of CAPTIONS[example.id](example, { sheet, blank })) {
         for (const part of sentence) {
           if (Array.isArray(part)) {
             const strong = el("strong", "");
@@ -563,56 +775,71 @@
       }
     }
 
-    function activate(i) {
-      if (state.active === i) return;
-      state.active = i;
-      place(i);
+    // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
+    function point(active, blank) {
+      if (state.active === active && state.blank === blank) return;
+      Object.assign(state, { active, blank });
+      place(active);
       describe();
+      mark();
     }
 
-    function toggle(i) {
-      if (state.pinned && state.active === i) {
+    function toggle(active, blank) {
+      if (state.pinned && state.active === active && state.blank === blank) {
         state.pinned = false;
-        activate(null);
+        point(null, null);
       } else {
         state.pinned = true;
-        activate(i);
+        point(active, blank);
       }
     }
 
-    const point = (event) => {
+    // the plot points at an order: the sheet of that order, or its blank sheet
+    function pointAtOrder(order) {
+      const index = current().sheets.findIndex((sheet) => sheet.order === order);
+      if (index >= 0) point(index, null);
+      else point(null, order);
+    }
+
+    const pointer = (event) => {
       const box = stage.getBoundingClientRect();
       return [event.clientX - box.left, event.clientY - box.top];
     };
     stage.addEventListener("pointermove", (event) => {
       if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row")) return;
-      const i = sheetAt(point(event));
-      if (i !== null) activate(i);
+      const item = itemAt(pointer(event));
+      if (item?.sheet) point(item.index, null);
+      // a blank sheet comes out only from the stack at rest, which it does not change
+      else if (item && state.active === null) point(null, item.order);
     });
     stage.addEventListener("pointerleave", (event) => {
-      if (event.pointerType === "mouse" && !state.pinned) activate(null);
+      if (event.pointerType === "mouse" && !state.pinned) point(null, null);
     });
     stack.addEventListener("click", (event) => {
-      const i = sheetAt(point(event));
-      if (i === null) {
+      const item = itemAt(pointer(event));
+      if (item === null) {
         state.pinned = false;
-        activate(null);
+        point(null, null);
+      } else if (item.sheet) {
+        toggle(item.index, null);
       } else {
-        toggle(i);
+        toggle(null, item.order);
       }
     });
     // when the keyboard leaves the rows, the stack closes again
     ladder.addEventListener("focusout", (event) => {
-      if (!state.pinned && !ladder.contains(event.relatedTarget)) activate(null);
+      if (!state.pinned && !ladder.contains(event.relatedTarget)) point(null, null);
     });
 
     let width = 0;
     new ResizeObserver(() => {
-      if (stage.clientWidth === width) return;
-      width = stage.clientWidth;
-      geometry = measure();
-      place(state.active);
-    }).observe(stage);
+      if (stage.clientWidth !== width) {
+        width = stage.clientWidth;
+        geometry = measure();
+        place(state.active);
+      }
+      if (plotBox.clientWidth !== plotWidth) drawPlot();
+    }).observe(root);
 
     render();
   }

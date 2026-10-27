@@ -2,7 +2,9 @@
 
 Reads the molecule's explanation (molecule.py) and the illustrative explanation of the FIxLIP demo's
 elephant (fixlip.py), and keeps what the demo draws on its sheets, rounded: the orders 1 to 4 and
-the highest (the Möbius transform), every main effect, and the strongest interactions of each order.
+the highest (the full decomposition, the Möbius transform), every main effect, and the strongest
+interactions of each order; and the R^2 and the number of values of every order, for the plot of
+the fit by order.
 It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from disk too, where
 the browser would not fetch a JSON file).
 
@@ -19,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).resolve().parent
-ORDERS = (1, 2, 3, 4)  # the sheets, above the one of the highest order (the Möbius transform)
+ORDERS = (1, 2, 3, 4)  # the sheets, above the one of the highest order (the full decomposition)
 STRONGEST = 72  # the interactions (of two or more players) drawn on a sheet
 
 
@@ -41,7 +43,7 @@ def sheets(result: dict[str, Any]) -> list[dict[str, Any]]:
         out.append(
             {
                 "order": order,
-                "moebius": order == largest,
+                "full": order == largest,
                 "r2": round(explanation["r2"], 3),
                 "first": [round(value, 5) for value in first],
                 "groups": [[players, round(value, 5)] for players, value in groups[:STRONGEST]],
@@ -49,6 +51,14 @@ def sheets(result: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def fits(result: dict[str, Any]) -> list[list[float]]:
+    """Return the order, the R^2 and the number of values of every order of an explanation."""
+    return [
+        [int(order), round(explanation["r2"], 4), len(explanation["values"])]
+        for order, explanation in sorted(result["orders"].items(), key=lambda item: int(item[0]))
+    ]
 
 
 def main() -> None:
@@ -76,6 +86,7 @@ def main() -> None:
                 "accuracy": round(molecule["test_accuracy"], 3),
                 "budget": molecule["budget"],
                 "sheets": sheets(molecule),
+                "fits": fits(molecule),
             },
             {
                 "id": "fixlip",
@@ -87,6 +98,7 @@ def main() -> None:
                 "grid": fixlip["grid"],
                 "tokens": fixlip["tokens"],
                 "sheets": sheets(fixlip),
+                "fits": fits(fixlip),
             },
         ]
     }

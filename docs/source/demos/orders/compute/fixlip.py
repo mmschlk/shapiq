@@ -1,4 +1,4 @@
-"""The illustrative explanation of the FIxLIP demo's elephant at every order: ``results/fixlip.json``.
+"""The FIxLIP demo's elephant, explained at every order for illustration: ``results/fixlip.json``.
 
 Unlike the molecule's, this explanation is not computed from a model: it illustrates what the
 orders of an explanation of a vision-language model add, on the photo and caption of the FIxLIP
@@ -7,7 +7,7 @@ of the photo and the 10 tokens of the caption, as in the demo. A toy game is def
 transform: a few main effects, and interactions of patches and words that the demo's explanation
 suggests, e.g. the egret's patch with "white" and "bird" (order 2 and 3), and "next to" with both
 the elephant and the egret (order 4 and more). ``shapiq`` converts it into k-SII of every order, as
-for the molecule.
+for the molecule, up to the full decomposition (k-SII of the highest order, the Möbius transform).
 
 The R^2 of the orders are illustrative too: they show how much more of a vision-language model's
 output higher orders typically explain, and are not computed from the toy game.
@@ -35,7 +35,8 @@ N_PLAYERS = GRID * GRID + len(TOKENS)  # the patches, then the tokens
 A, SMALL, ELEPHANT, STANDING, NEXT, TO, A2, WHITE, BIRD, _ = range(GRID * GRID, N_PLAYERS)
 HEAD, EGRET = 35, 40  # the elephant's head (row 4, column 3) and the egret (row 5, column 0)
 BODY = [36, 38, 21, 20, 39]  # the patches of the elephant's body and ears
-R2 = {1: 0.31, 2: 0.80, 3: 0.95, 4: 0.98, 8: 1.0}  # illustrative, by order (8: all orders)
+# illustrative, by order (8: all orders, the full decomposition)
+R2 = {1: 0.31, 2: 0.80, 3: 0.95, 4: 0.98, 5: 0.986, 6: 0.989, 7: 0.992, 8: 1.0}
 
 # the toy game's Möbius transform: the interactions of patches and words, by order
 MOEBIUS: dict[tuple[int, ...], float] = {
@@ -101,7 +102,7 @@ MOEBIUS: dict[tuple[int, ...], float] = {
 
 
 def main() -> None:
-    """Convert the toy game into k-SII of the orders of ``R2``, and write ``results/fixlip.json``."""
+    """Convert the toy game into k-SII of every order of ``R2``: ``results/fixlip.json``."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--results", type=Path, default=HERE / "results")
     args = parser.parse_args()

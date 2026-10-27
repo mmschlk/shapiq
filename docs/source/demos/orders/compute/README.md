@@ -2,13 +2,13 @@
 
 These scripts computed the data of the [orders demo](https://shapiq.readthedocs.io/en/latest/demos/orders/index.html)
 (`../assets/data.js`): one prediction explained at every order of interaction, from the Shapley
-values to the Möbius transform. They are run by hand, once; the docs only show their result.
+values to the full decomposition. They are run by hand, once; the docs only show their result.
 
 | File | What it does |
 |---|---|
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2: `results/molecule.json`. |
 | `fixlip.py` | The illustrative explanation of the FIxLIP demo's elephant, from a toy game: `results/fixlip.json`. |
-| `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the Möbius transform, with the strongest interactions of each. |
+| `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the full decomposition, with the strongest interactions of each, and the R^2 of every order. |
 
 ## Run
 
