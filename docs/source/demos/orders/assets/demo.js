@@ -10,9 +10,10 @@
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
 // shapiq's TreeExplainer for an XGBoost model of depth 7 (the 150 houses as a heatmap, a column
-// each); and the photo and caption of the FIxLIP demo, explained by an illustrative toy game. The
-// full decomposition is k-SII of order n, the number of players; the orders above the highest one
-// with an interaction (the trees' depth, the network's receptive field) all equal it. The
+// each); and how SigLIP 2, a black box, matches the photo and caption of the FIxLIP demo, explained
+// by ProxySHAP through an XGBoost proxy, without adjustment. The full decomposition is k-SII of
+// order n, the number of players; the orders above the highest one with an interaction (the trees'
+// depth, the network's receptive field, the proxy's depth) all equal it. The
 // explanations are precomputed (../compute) into data.js. Pointing at a
 // sheet (hover, keyboard focus on its row, or a tap that pins it) lifts it out of the stack: the
 // sheets above it move up, those below it move down, and the sheet tilts towards the reader and
@@ -559,29 +560,32 @@
       return [[texts[sheet.order] ?? "", fit, "."]];
     },
     fixlip: (example, { sheet, blank }) => {
-      const illustrative = " Illustrative values, after the FIxLIP demo.";
       const n = example.sheets.at(-1).order;
+      const proxy = example.model.method;
       if (blank) {
         const [order, r2, values] = blank;
-        return [
-          [`Groups of up to ${order} patches and words: ${count(values)} values. Every order between 4 and the full decomposition adds a little more: `, fitted(r2), ".", illustrative],
-        ];
+        if (order >= example.largest) {
+          return [
+            [`Shapley interactions of order ${order}: ${count(values)} values. The proxy's trees have depth ${example.largest}, so no larger group has a value: from order ${example.largest} to ${n}, the explanation is the proxy's full decomposition, `, fitted(r2), "."],
+          ];
+        }
+        return [[`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} patches and words, `, fitted(r2), "."]];
       }
       if (!sheet) {
         return [
-          ["How well does SigLIP 2 match the photo and its caption? Every sheet explains it, from the patches and words alone (top) to the full decomposition (bottom).", illustrative],
+          [`SigLIP 2, a black box, finds the photo and its caption similar: cosine similarity ${example.similarity.toFixed(2)}. Every sheet explains it, from the patches and words alone (top) to the full decomposition (bottom), read by ${proxy} off an XGBoost proxy of the model.`],
         ];
       }
       const fit = fitted(sheet.r2);
       const texts = {
-        1: ["Shapley values credit every patch and word alone: “elephant”, and the elephant's head. They miss that “white” and “bird” matter only on the egret: ", fit, ", a poor fit."],
-        2: ["Pairs link the words to the regions they name: “bird” and “white” with the egret, “elephant” with the elephant. ", fit, ", a workable explanation."],
-        3: ["Groups of three: “white bird” on the egret, “small elephant” on its head. ", fit, "."],
-        4: ["“next to” needs both animals: groups of four patches and words. ", fit, "."],
+        1: ["Shapley values credit every patch and word alone: “elephant” the most, then the egret's patch and “bird”. They reproduce the model on random coalitions only with ", fit, ", a poor fit."],
+        2: ["Pairs link words to the regions they name: the egret's patch with “bird” and “white”, the elephant's head with “elephant”; alone, “white” now lowers the similarity. Yet pairs alone fit no better here: ", fit, " (Shapley interactions are not fit to these coalitions)."],
+        3: ["Groups of three, such as “small … elephant … bird”, or the egret's two patches with “bird”: ", fit, "."],
+        4: [`Shapley interactions of order 4: ${count(sheet.count)} values, the groups of four none strong alone (the strongest join the egret's patch with “a”, “elephant” and “bird”). Together, they lift the fit to `, fit, "."],
       };
       if (sheet.full) {
         return [
-          [`The full decomposition of all ${n} patches and words: every order, up to “a small elephant … next to a white bird” as one group of ${example.largest}. `, fit, ".", illustrative],
+          [`The full decomposition of all ${n} patches and words, of ProxySHAP's proxy: its trees have depth ${example.largest}, so no group of more has a value. It reproduces SigLIP 2 on held-out coalitions with `, fit, ": what is left is what the proxy misses, not a missing order."],
         ];
       }
       return [texts[sheet.order]];

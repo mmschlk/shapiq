@@ -6,10 +6,11 @@ the photo with only the coalition's patches and the caption with only its tokens
 FIxLIP demo, imported from its scripts (``../../fixlip/compute/explain.py``).
 
 SigLIP 2 is a black box: unlike trees or graph neural networks, it has no structure that would give
-its interactions exactly. ProxySHAP fits an XGBoost proxy to coalitions of the game, as many of every
-size, and reads the proxy's interactions off its trees exactly. Without the residual adjustment, k-SII
-of the proxy's depth is the full decomposition of the proxy: its trees split on at most that many
-players, so no larger group has a value, and every lower order of k-SII follows from it.
+its interactions exactly. ProxySHAP fits an XGBoost proxy to coalitions of the game, as many of
+every size, and reads the proxy's interactions off its trees exactly. Without the residual
+adjustment, k-SII of the proxy's depth is the full decomposition of the proxy: its trees split on
+at most that many players, so no larger group has a value, and every lower order of k-SII follows
+from it. The depth, 6, is the best of 3 to 8 in a 5-fold cross-validation on the coalitions.
 
 Every order is scored by its R^2 on coalitions it was not fit to, every player present with
 probability 1/2 (as for the molecule and the houses), against the model itself: the full
@@ -19,9 +20,9 @@ Usage::
 
     python fixlip.py
 
-The game's evaluations are kept in ``results/fixlip_coalitions.npz``: the model is evaluated once per
-coalition (5,000 and 512 held out, about ten minutes on four CPU cores), and a run again only fits
-the proxy.
+The game's evaluations are kept in ``results/fixlip_coalitions.npz``: the model is evaluated once
+per coalition (5,000 and 512 held out, about five minutes on four CPU cores), and a run again only
+fits the proxy.
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ import explain as fixlip  # noqa: E402  (the FIxLIP demo's game)
 PHOTO, MODEL = "elephant", "siglip2"
 BUDGET = 5_000  # the coalitions the proxy is fit to
 N_TEST = 512  # the coalitions every order is scored on
-DEPTH = 5  # the proxy's depth: its highest order of interaction
+DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
 PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
 
 
@@ -67,7 +68,9 @@ class CachedGame:
     def __call__(self, coalitions: np.ndarray) -> np.ndarray:
         """Return the game's (centered) values, evaluating the coalitions not seen before."""
         coalitions = np.asarray(coalitions, dtype=bool)
-        missing = list({row.tobytes(): row for row in coalitions if row.tobytes() not in self.values}.values())
+        missing = list(
+            {row.tobytes(): row for row in coalitions if row.tobytes() not in self.values}.values()
+        )
         for start in range(0, len(missing), 256):
             chunk = np.array(missing[start : start + 256])
             for row, value in zip(chunk, self.game(chunk), strict=True):
@@ -76,7 +79,9 @@ class CachedGame:
         if missing:
             keys = list(self.values)
             rows = np.array([np.frombuffer(key, dtype=bool) for key in keys])
-            np.savez_compressed(self.path, coalitions=rows, values=np.array([self.values[k] for k in keys]))
+            np.savez_compressed(
+                self.path, coalitions=rows, values=np.array([self.values[k] for k in keys])
+            )
         return np.array([self.values[row.tobytes()] for row in coalitions])
 
 
@@ -110,7 +115,7 @@ def predictions(values: dict[tuple[int, ...], float], coalitions: np.ndarray) ->
 
 
 def main() -> None:
-    """Evaluate the game, fit the proxy, and write k-SII of every order to ``results/fixlip.json``."""
+    """Evaluate the game, fit the proxy, and write k-SII of every order: ``results/fixlip.json``."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--results", type=Path, default=HERE / "results")
     args = parser.parse_args()
@@ -169,7 +174,9 @@ def main() -> None:
         adjustment=False,
         random_state=0,
     ).approximate(budget=BUDGET, game=cached)
-    difference = max(abs(pairs[key] - converter("k-SII", 2)[key]) for key in pairs.interaction_lookup)
+    difference = max(
+        abs(pairs[key] - converter("k-SII", 2)[key]) for key in pairs.interaction_lookup
+    )
     print(f"largest difference to ProxySHAP of order 2: {difference:.1e}")
 
     result = {

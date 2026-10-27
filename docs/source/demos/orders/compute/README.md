@@ -8,20 +8,22 @@ values to the full decomposition. They are run by hand, once; the docs only show
 |---|---|
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2: `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 7 on California housing and explains one house in Los Angeles and 150 random houses exactly (interventional), at every order: `results/house.json`, `results/houses.json`. |
-| `fixlip.py` | The illustrative explanation of the FIxLIP demo's elephant, from a toy game: `results/fixlip.json`. |
+| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment) from 5,000 coalitions, at every order, scored on 512 held-out coalitions: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
 | `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the full decomposition (order n), with the strongest interactions of each (for the 150 houses, the strongest rows of their heatmap), and the R^2 of every order. |
 
 ## Run
 
 From this folder, with `shapiq` installed from the repository, with `torch`, `torch_geometric` and
-RDKit (for the drawing of the molecule), and XGBoost, scikit-learn and Woodelf (for the houses):
+RDKit (for the drawing of the molecule), XGBoost, scikit-learn and Woodelf (for the houses), and
+the dependencies of the FIxLIP demo's scripts (for SigLIP 2, which `fixlip.py` imports from
+`../../fixlip/compute`):
 
 ```bash
-pip install -e "../../../../..[graph,tree]" rdkit xgboost scikit-learn
+pip install -e "../../../../..[graph,tree,games]" rdkit xgboost scikit-learn
 
 python molecule.py  # downloads Mutagenicity; trains the GCN in about four minutes on four CPU cores
 python housing.py   # downloads California housing; explains 4,128 houses in about three minutes
-python fixlip.py
+python fixlip.py    # downloads SigLIP 2; evaluates 5,512 coalitions in about five minutes
 python pack.py
 ```
 
@@ -34,4 +36,6 @@ woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly
 7,693 evaluations of it. The XGBoost model reaches R^2 = 0.852 on the test houses.
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
-demo loads it from there.
+demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the
+proxy; it picked the proxy's depth, 6, as the best of 3 to 8 in a 5-fold cross-validation on the
+5,000 coalitions.

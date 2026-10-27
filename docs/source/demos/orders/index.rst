@@ -62,11 +62,16 @@ features, led by the interaction of latitude and longitude, the fit rises to 0.9
 depth 7, so no group of all 8 features has a value.
 
 **The photo and caption** are those of the :doc:`FIxLIP demo <../fixlip/index>`: SigLIP 2
-:cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's patches
-and the caption's tokens. Its values are **illustrative**: a toy game, defined by interactions that
-the FIxLIP demo's explanation suggests (e.g. "white" and "bird" with the egret, and "next to" with
-both animals), shows what higher orders add to the explanation of a vision-language model
-:cite:p:`Baniecki.2025`. Its :math:`R^2` are illustrative too.
+:cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's 64
+patches and the caption's 10 tokens, as in FIxLIP :cite:p:`Baniecki.2025`. SigLIP 2 is a black box:
+nothing in it gives its interactions exactly. :class:`~shapiq.approximator.ProxySHAP`
+:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 5,000 coalitions of the game and, without
+its residual adjustment, reads the proxy's full decomposition off its trees exactly; every order of
+k-SII follows from it. The Shapley values fit SigLIP 2 with :math:`R^2 = 0.55`; pairs, which link
+"bird" and "white" to the egret's patch, fit no better on these coalitions (0.52: Shapley
+interactions are not fit to them), and groups of up to four lift the fit to 0.88. The full
+decomposition reproduces the proxy exactly, and SigLIP 2 as well as the proxy does:
+:math:`R^2 = 0.89` on held-out coalitions.
 
 How it was computed
 -------------------
@@ -126,6 +131,26 @@ With ``index="Moebius"`` and ``max_order=8``, the explainer computes the full de
 which the demo's scripts convert every order of k-SII. On the test houses, the model reaches
 :math:`R^2 = 0.85`.
 
+**The photo and caption.** For a black box, :class:`~shapiq.approximator.ProxySHAP` explains a
+proxy of the model instead. Without its residual adjustment, k-SII of the proxy's depth is the
+proxy's full decomposition, and every lower order follows from it:
+
+.. code-block:: python
+
+   from xgboost import XGBRegressor
+
+   import shapiq
+
+   # game: the FIxLIP demo's game of SigLIP 2, the elephant and its caption (74 players)
+   approximator = shapiq.approximator.ProxySHAP(
+       n=game.n_players,
+       index="k-SII",
+       max_order=6,  # the proxy's depth: its trees split on at most 6 players
+       proxy_model=XGBRegressor(n_estimators=1000, max_depth=6, learning_rate=0.05, reg_lambda=5.0),
+       adjustment=False,
+   )
+   full = approximator.approximate(budget=5_000, game=game)  # the proxy's full decomposition
+
 Run it again
 ------------
 
@@ -137,5 +162,5 @@ with a README on how to run them:
 
    python molecule.py  # trains the GCN and explains the molecule at every order
    python housing.py   # trains the XGBoost model and explains the houses at every order
-   python fixlip.py    # the illustrative explanation of the photo and caption
+   python fixlip.py    # evaluates SigLIP 2 on 5,512 coalitions and explains it with ProxySHAP
    python pack.py      # the demo's data, ../assets/data.js
