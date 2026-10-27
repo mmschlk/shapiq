@@ -1,0 +1,121 @@
+# The GraphSHAP-IQ demo: its tasks (one GNN each), its molecules, and the texts it shows.
+#
+# train.py trains a GNN per task, explain.py explains every molecule for every task, and pack.py
+# writes them into ../assets/data.js, with the molecules' drawings and the texts the demo shows.
+
+# the highest order of the k-SII the demo shows (order 1: the Shapley values); beyond it, the demo
+# shows the Möbius interactions of all orders
+orders = 4
+
+# The tasks: a question about a molecule, the dataset its GNN learned to answer it from, and the
+# pattern its labels were made from (a SMARTS; its atoms are the ground truth the demo outlines).
+
+[[tasks]]
+id = "indole"
+label = "Indole?"
+question = "does it contain an indole?"
+yes = "indole"
+no = "no indole"
+probability = "probability that it contains an indole"
+dataset = "B-XAIC"
+truthLabel = "indole"
+truthYes = "It contains an indole: by B-XAIC's rule, yes."
+truthNo = "It contains no indole: by B-XAIC's rule, no."
+# B-XAIC's indole: a six-membered carbon ring fused to a five-membered ring with a nitrogen, with
+# aromatic, single or double ring bonds as in indole (this SMARTS agrees with B-XAIC's labels)
+pattern = "[#6]1:,=[#6]:,-[#6]:,=[#6]2:,-[#6](:,=[#6]1):,-[#6]:,=[#6]:,-[#7]2"
+
+[[tasks]]
+id = "mutagenic"
+label = "Mutagenic?"
+question = "is it mutagenic?"
+yes = "mutagenic"
+no = "not mutagenic"
+probability = "probability that it is mutagenic"
+dataset = "Mutagenicity"
+truthLabel = "nitro group"
+truthYes = "It carries a nitro group, a toxicophore of mutagens."
+truthNo = "It carries no nitro group."
+# the nitro group, the toxicophore of the demo's mutagens (Kazius et al., 2005)
+pattern = "[N+](=O)[O-]"
+
+[[tasks]]
+id = "PAINS"
+label = "PAINS?"
+question = "does it interfere with assays (PAINS)?"
+yes = "PAINS"
+no = "no PAINS"
+probability = "probability that it is a PAINS"
+dataset = "B-XAIC"
+truthLabel = "catechol"
+truthYes = "It contains a catechol, one of B-XAIC's PAINS."
+truthNo = "It contains no catechol."
+# the catechol, the PAINS alert of the demo's molecules (B-XAIC outlines it with its ring)
+pattern = "c1([OH1])c([OH1])cccc1"
+
+# The molecules, in the demo's order, each with the question the demo asks first.
+
+[[molecules]]
+id = "tnt"
+task = "mutagenic"  # the question the demo asks first
+name = "TNT"
+short = "TNT"
+blurb = "Trinitrotoluene, the explosive. Its three nitro groups make it mutagenic in the Ames test."
+smiles = "Cc1c(cc(cc1[N+](=O)[O-])[N+](=O)[O-])[N+](=O)[O-]"
+
+[[molecules]]
+id = "nitrofurantoin"
+task = "mutagenic"  # the question the demo asks first
+name = "Nitrofurantoin"
+short = "Nitrofur."
+blurb = "An antibiotic for urinary tract infections. Like many nitro compounds, it is mutagenic in the Ames test."
+smiles = "O=C1CN(/N=C/c2ccc(o2)[N+](=O)[O-])C(=O)N1"
+
+[[molecules]]
+id = "serotonin"
+task = "indole"  # the question the demo asks first
+name = "Serotonin"
+short = "Serotonin"
+blurb = "A neurotransmitter of mood, sleep and appetite, which the body makes from the amino acid tryptophan."
+smiles = "NCCc1c[nH]c2ccc(O)cc12"
+
+[[molecules]]
+id = "psilocybin"
+task = "indole"  # the question the demo asks first
+name = "Psilocybin"
+short = "Psilocybin"
+blurb = "The psychedelic of “magic” mushrooms; the body turns it into psilocin, which acts on serotonin receptors."
+smiles = "CN(C)CCc1c[nH]c2cccc(OP(=O)(O)O)c12"
+
+[[molecules]]
+id = "lsd"
+task = "indole"  # the question the demo asks first
+name = "LSD"
+short = "LSD"
+blurb = "Lysergic acid diethylamide, first made in 1938 by Albert Hofmann, from an alkaloid of ergot, a fungus of rye."
+smiles = "CCN(CC)C(=O)[C@H]1CN(C)[C@@H]2Cc3c[nH]c4cccc(c34)C2=C1"
+
+[[molecules]]
+id = "indigo"
+rotate = 90  # lying, not standing
+task = "indole"  # the question the demo asks first
+name = "Indigo"
+short = "Indigo"
+blurb = "The dye of blue jeans. Indole is named after it, but indigo is no indole itself: its five-membered rings are not aromatic."
+smiles = "O=C1/C(=C2/Nc3ccccc3C2=O)Nc2ccccc21"
+
+[[molecules]]
+id = "caffeine"
+task = "indole"  # the question the demo asks first
+name = "Caffeine"
+short = "Caffeine"
+blurb = "The stimulant of coffee and tea. Two fused rings of six and five atoms, as in an indole, but with nitrogens in both."
+smiles = "Cn1c(=O)c2c(ncn2C)n(C)c1=O"
+
+[[molecules]]
+id = "dopamine"
+task = "PAINS"  # the question the demo asks first
+name = "Dopamine"
+short = "Dopamine"
+blurb = "A neurotransmitter of reward and movement. Its two neighboring OH groups make a catechol."
+smiles = "NCCc1ccc(O)c(O)c1"

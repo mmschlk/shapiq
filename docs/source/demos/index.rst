@@ -25,7 +25,17 @@ takes too long or needs too large a model to run with the docs, and it shows wha
       image regions and words of five COCO photos, explained as in FIxLIP and computed with
       ProxySHAP.
 
+   .. grid-item-card:: GraphSHAP-IQ: which atoms does a graph neural network see together?
+      :link: graphshapiq/index
+      :link-type: doc
+      :img-top: /_static/images/hero_graphshapiq_demo.png
+      :img-alt: The GraphSHAP-IQ demo: TNT, with the interactions of its atoms that make a graph neural network call it mutagenic, the nitrogen and oxygens of its nitro groups.
+
+      Is it an indole? Is it mutagenic? The exact Shapley interactions of the atoms of eight
+      molecules, from serotonin to TNT, for the GNNs that answer, computed with GraphSHAP-IQ.
+
 .. toctree::
    :hidden:
 
    fixlip/index
+   graphshapiq/index

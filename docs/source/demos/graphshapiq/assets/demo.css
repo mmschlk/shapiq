@@ -1,0 +1,991 @@
+/* The interactive GraphSHAP-IQ explanation (demo.js; see demos/graphshapiq/index.rst): a molecule
+   whose atoms show their Shapley interactions, of any order, and their receptive fields. */
+
+.graphshapiq-demo {
+  clear: both;
+  margin: 2rem 0 0.75rem;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow);
+  container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  /* red and blue for values in text, darker than the tints so that they read well as text */
+  --graphshapiq-red-text: #d6003f;
+  --graphshapiq-blue-text: #1565c0;
+  --graphshapiq-ink: var(--color-foreground-primary);
+  --graphshapiq-field: #8b9ee0; /* the receptive fields, lavender */
+  --graphshapiq-truth: #2e9e6a; /* the ground truth's outline */
+}
+
+body[data-theme="dark"] .graphshapiq-demo {
+  --graphshapiq-red-text: #ff3d74;
+  --graphshapiq-blue-text: #4ba3f0;
+  --graphshapiq-field: #7f93e0;
+  --graphshapiq-truth: #4cc38a;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .graphshapiq-demo {
+    --graphshapiq-red-text: #ff3d74;
+    --graphshapiq-blue-text: #4ba3f0;
+    --graphshapiq-field: #7f93e0;
+    --graphshapiq-truth: #4cc38a;
+  }
+}
+
+.graphshapiq-demo-up {
+  color: var(--graphshapiq-red-text);
+}
+
+.graphshapiq-demo-down {
+  color: var(--graphshapiq-blue-text);
+}
+
+.graphshapiq-demo-zero {
+  color: var(--color-foreground-primary);
+}
+
+/* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
+@media (scripting: enabled) {
+  .graphshapiq-demo:not(.graphshapiq-demo-ready, .graphshapiq-demo-failed) {
+    min-height: 38rem;
+  }
+}
+
+@media (scripting: enabled) and (max-width: 45em) {
+  .graphshapiq-demo:not(.graphshapiq-demo-ready, .graphshapiq-demo-failed) {
+    min-height: 74rem;
+  }
+}
+
+/* the static figure, until the demo has loaded (and without JavaScript) */
+.graphshapiq-demo-fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--shapiq-radius-small);
+  background: #ffffff;
+}
+
+/* -- the molecules, the views, and the questions ------------------------------------------------ */
+
+.graphshapiq-demo-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.graphshapiq-demo-molecules {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.graphshapiq-demo-molecule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  width: 4rem;
+  padding: 0.3rem 0.15rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--shapiq-radius-small);
+  background: none;
+  color: var(--color-foreground-secondary);
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration), background-color var(--shapiq-duration);
+}
+
+.graphshapiq-demo-molecule:hover,
+.graphshapiq-demo-molecule[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.graphshapiq-demo-molecule[aria-pressed="true"] {
+  border-color: var(--shapiq-border);
+  background: var(--shapiq-surface-raised);
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-molecule:disabled,
+.graphshapiq-demo-option:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.graphshapiq-demo-thumbnail {
+  display: block;
+  width: 2.6rem;
+  height: 2.6rem;
+}
+
+.graphshapiq-demo-thumbnail line {
+  stroke: currentColor;
+  stroke-width: 0.16;
+  stroke-linecap: round;
+}
+
+.graphshapiq-demo-thumbnail circle {
+  fill: var(--shapiq-surface);
+  stroke: currentColor;
+  stroke-width: 0.16;
+}
+
+.graphshapiq-demo-molecule[aria-pressed="true"] .graphshapiq-demo-thumbnail circle {
+  fill: var(--shapiq-surface-raised);
+}
+
+.graphshapiq-demo-molecule-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graphshapiq-demo-switches {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* the "i" that tells what a GNN sees, and its note */
+.graphshapiq-demo-info {
+  flex: none;
+  align-self: flex-start;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+  color: var(--color-foreground-secondary);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.graphshapiq-demo-info:hover,
+.graphshapiq-demo-info[aria-expanded="true"] {
+  border-color: var(--color-foreground-primary);
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-about {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 5;
+  box-sizing: border-box;
+  width: min(27rem, 100%);
+  padding: 0.9rem 1.1rem 0.4rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow), 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-foreground-secondary);
+}
+
+.graphshapiq-demo-about p {
+  margin: 0 0 0.6rem;
+}
+
+.graphshapiq-demo-about strong,
+.graphshapiq-demo-about .graphshapiq-demo-about-title {
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-about-title {
+  padding-right: 1.5rem;
+  font-weight: 700;
+}
+
+.graphshapiq-demo-about-close {
+  float: right;
+  margin: -0.35rem -0.5rem 0 0;
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  color: var(--color-foreground-secondary);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.graphshapiq-demo-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+}
+
+.graphshapiq-demo-option {
+  padding: 0.35rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-foreground-secondary);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.graphshapiq-demo-option[aria-pressed="true"] {
+  background: var(--color-foreground-primary);
+  color: var(--color-background-primary);
+}
+
+.graphshapiq-demo-short {
+  display: none;
+}
+
+/* -- the stage: the molecule, its atoms, and what the explanation draws on it ------------------- */
+
+.graphshapiq-demo-body {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+
+.graphshapiq-demo-stage {
+  position: relative;
+}
+
+.graphshapiq-demo-frame {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--shapiq-border);
+}
+
+.graphshapiq-demo-drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity 450ms ease;
+}
+
+/* a new molecule fades in over the old one (a copy), which fades out */
+.graphshapiq-demo-drawing.graphshapiq-demo-fresh {
+  opacity: 0;
+  transition: none;
+}
+
+.graphshapiq-demo-ghost {
+  pointer-events: none;
+}
+
+.graphshapiq-demo-ghost.graphshapiq-demo-gone {
+  opacity: 0;
+}
+
+.graphshapiq-demo-bonds line {
+  stroke: var(--graphshapiq-ink);
+  stroke-width: 0.075;
+  stroke-linecap: round;
+  transition: stroke-opacity var(--shapiq-duration);
+}
+
+.graphshapiq-demo-knockouts circle {
+  fill: var(--shapiq-surface-raised);
+}
+
+.graphshapiq-demo-label text {
+  fill: var(--graphshapiq-ink);
+  font-family: var(--font-stack, system-ui, sans-serif);
+  font-size: 0.56px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.graphshapiq-demo-label .graphshapiq-demo-sub {
+  font-size: 0.38px;
+}
+
+.graphshapiq-demo-label .graphshapiq-demo-charge {
+  font-size: 0.38px;
+}
+
+.graphshapiq-demo-label,
+.graphshapiq-demo-knockouts circle {
+  transition: opacity var(--shapiq-duration);
+}
+
+/* outside a receptive field, and masked atoms: faded */
+.graphshapiq-demo-bonds line.graphshapiq-demo-far {
+  stroke-opacity: 0.22;
+}
+
+.graphshapiq-demo-label.graphshapiq-demo-far {
+  opacity: 0.3;
+}
+
+.graphshapiq-demo-nodes circle {
+  stroke: var(--shapiq-surface-raised);
+  stroke-width: 0.04;
+  transition: r var(--shapiq-duration), fill var(--shapiq-duration);
+}
+
+.graphshapiq-demo-nodes circle.graphshapiq-demo-masked {
+  fill: var(--shapiq-surface) !important; /* over the tint the script sets */
+  stroke: var(--color-foreground-secondary);
+  stroke-width: 0.06;
+  stroke-dasharray: 0.14 0.1;
+}
+
+/* the interactions fade in as they change, and step back while a row of the list is pointed at */
+.graphshapiq-demo-edges > g {
+  animation: graphshapiq-demo-fade-in 300ms ease both;
+}
+
+.graphshapiq-demo-edges.graphshapiq-demo-dimmed > g:not(.graphshapiq-demo-highlight) {
+  opacity: 0.12;
+}
+
+.graphshapiq-demo-edges > .graphshapiq-demo-highlight {
+  animation: none;
+}
+
+@keyframes graphshapiq-demo-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* the ground truth: an outline around the pattern's atoms and bonds */
+.graphshapiq-demo-truth circle,
+.graphshapiq-demo-truth line {
+  fill: #000000;
+  stroke: #000000;
+  stroke-linecap: round;
+}
+
+.graphshapiq-demo-truth-color {
+  flood-color: var(--graphshapiq-truth);
+}
+
+.graphshapiq-demo-none .graphshapiq-demo-truth {
+  display: none;
+}
+
+/* the receptive field: rings of atoms within 0, 1, 2, ... bonds, the nearest the darkest; they
+   spread from the atom when it changes */
+.graphshapiq-demo-hop circle,
+.graphshapiq-demo-hop line {
+  fill: var(--graphshapiq-field);
+  stroke: var(--graphshapiq-field);
+  stroke-linecap: round;
+}
+
+.graphshapiq-demo-hop {
+  opacity: 0.2;
+  animation: graphshapiq-demo-fade-in 260ms ease both;
+  animation-delay: calc(var(--graphshapiq-hop) * 110ms);
+}
+
+.graphshapiq-demo-hop-0 {
+  opacity: 0.75;
+}
+
+/* the atoms as buttons over the drawing */
+.graphshapiq-demo-atoms {
+  position: absolute;
+  inset: 0;
+}
+
+.graphshapiq-demo-atom {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.graphshapiq-demo-atom:hover,
+.graphshapiq-demo-atom.graphshapiq-demo-marked {
+  box-shadow: 0 0 0 1.5px var(--color-foreground-secondary);
+}
+
+.graphshapiq-demo-atom.graphshapiq-demo-focus,
+.graphshapiq-demo-atom:focus-visible {
+  outline: 2px dashed var(--color-foreground-primary);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.graphshapiq-demo-caption {
+  margin: 0.75rem 0 0;
+  text-align: center;
+}
+
+.graphshapiq-demo-caption p {
+  margin: 0;
+}
+
+.graphshapiq-demo-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-formula {
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--shapiq-text-muted);
+}
+
+.graphshapiq-demo-blurb {
+  min-height: calc(2 * 1.45em);
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-foreground-secondary);
+}
+
+/* -- the panel: what is shown, the strongest interactions, the legend, the model -------------- */
+
+.graphshapiq-demo-panel {
+  --graphshapiq-row: 2.75rem;
+  --graphshapiq-slot: calc(2.3rem + 0.6rem + 5 * var(--graphshapiq-row) + 4 * 0.45rem);
+  position: relative;
+  font-size: 0.92rem;
+  color: var(--color-foreground-secondary);
+}
+
+/* the explanation fades out without one (and keeps its room), the prediction fades in after it */
+.graphshapiq-demo-panel > :not(.graphshapiq-demo-live) {
+  transition: opacity 250ms 150ms, visibility 250ms 150ms;
+}
+
+.graphshapiq-demo-none .graphshapiq-demo-panel > :not(.graphshapiq-demo-prediction, .graphshapiq-demo-live) {
+  opacity: 0;
+  visibility: hidden;
+  transition-delay: 0s;
+}
+
+.graphshapiq-demo-panel > .graphshapiq-demo-prediction {
+  position: absolute;
+  inset: 0 0 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 150ms, visibility 150ms;
+}
+
+.graphshapiq-demo-none .graphshapiq-demo-panel > .graphshapiq-demo-prediction {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 350ms 300ms, visibility 350ms 300ms;
+}
+
+.graphshapiq-demo-prediction p {
+  margin: 0;
+}
+
+.graphshapiq-demo-prediction-model {
+  font-weight: 600;
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-prediction .graphshapiq-demo-prediction-number {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.graphshapiq-demo-prediction-value {
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-verdict {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--shapiq-lavender) 40%, transparent);
+  color: var(--color-foreground-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.graphshapiq-demo-verdict[data-verdict="no"] {
+  background: color-mix(in srgb, var(--color-foreground-secondary) 16%, transparent);
+}
+
+.graphshapiq-demo-prediction .graphshapiq-demo-prediction-label {
+  font-size: 0.85rem;
+  color: var(--shapiq-text-muted);
+}
+
+/* the probability, and where it was without masked atoms */
+.graphshapiq-demo-gauge {
+  position: relative;
+  max-width: 17rem;
+  height: 6px;
+  margin: 0.7rem 0 0.9rem;
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--shapiq-border);
+}
+
+.graphshapiq-demo-gauge-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--shapiq-lavender);
+  transition: width 400ms var(--shapiq-ease);
+}
+
+.graphshapiq-demo-gauge-was {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 14px;
+  background: var(--color-foreground-secondary);
+  transform: translateX(-50%);
+}
+
+.graphshapiq-demo-gauge-was[hidden] {
+  display: none;
+}
+
+.graphshapiq-demo-prediction .graphshapiq-demo-prediction-truth {
+  font-size: 0.88rem;
+}
+
+.graphshapiq-demo-truth-mark {
+  display: inline-block;
+  width: 1.1rem;
+  font-weight: 700;
+}
+
+.graphshapiq-demo-truth-yes {
+  color: var(--graphshapiq-truth);
+}
+
+.graphshapiq-demo-prediction .graphshapiq-demo-prediction-mask {
+  margin-top: 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.graphshapiq-demo-prediction .graphshapiq-demo-prediction-why {
+  margin-top: 0.75rem;
+}
+
+/* the views named in the prediction's text, as links */
+.graphshapiq-demo-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-brand-content, #2962ff);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* the title, the description, and the slot keep their heights in all views, so that pointing at
+   atoms does not move the panel */
+.graphshapiq-demo-title {
+  min-height: 1.35em; /* the script reserves the room of the longest title */
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-detail {
+  min-height: calc(3 * 1.55em); /* the script reserves the room of the longest description */
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+}
+
+.graphshapiq-demo-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: var(--graphshapiq-slot);
+  margin-bottom: 0.8rem;
+}
+
+.graphshapiq-demo-list[hidden],
+.graphshapiq-demo-chart[hidden],
+.graphshapiq-demo-step-group[hidden],
+.graphshapiq-demo-legend[hidden] {
+  display: none;
+}
+
+/* the order (or the layers): a control that stands out above the list */
+.graphshapiq-demo-step-group {
+  display: inline-flex;
+  flex: none;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 3px;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+}
+
+.graphshapiq-demo-step {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-foreground-primary);
+  color: var(--color-background-primary);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity var(--shapiq-duration);
+}
+
+.graphshapiq-demo-step:hover {
+  opacity: 0.8;
+}
+
+.graphshapiq-demo-step[aria-disabled="true"] {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.graphshapiq-demo-step-label {
+  min-width: 13rem;
+  padding: 0 0.4rem;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-list {
+  display: grid;
+  grid-auto-rows: var(--graphshapiq-row);
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.graphshapiq-demo-list li {
+  display: grid;
+  grid-template-columns: var(--graphshapiq-row) minmax(0, 9rem) minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.graphshapiq-demo-group-thumb {
+  width: var(--graphshapiq-row);
+  height: var(--graphshapiq-row);
+  border: 1px solid var(--shapiq-border);
+  border-radius: 6px;
+  background: var(--shapiq-surface-raised);
+}
+
+.graphshapiq-demo-group-thumb line {
+  stroke: var(--color-foreground-secondary);
+  stroke-width: 0.13;
+  stroke-linecap: round;
+  opacity: 0.5;
+}
+
+.graphshapiq-demo-group-thumb .graphshapiq-demo-thumb-focus {
+  stroke: var(--color-foreground-primary);
+  stroke-width: 0.18;
+}
+
+.graphshapiq-demo-group {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-foreground-primary);
+}
+
+/* a group within the ground truth: a ring of the outline's color */
+.graphshapiq-demo-in-truth {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-left: 0.4rem;
+  border: 2px solid var(--graphshapiq-truth);
+  border-radius: 999px;
+  vertical-align: 0.05rem;
+}
+
+.graphshapiq-demo-bar-value {
+  height: 0.55rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--graphshapiq-color), var(--graphshapiq-color)) left / var(--graphshapiq-width) 100% no-repeat,
+    var(--shapiq-surface-raised);
+}
+
+.graphshapiq-demo-number {
+  text-align: right;
+  font-family: var(--font-stack--monospace);
+  font-size: 0.85rem;
+  color: var(--color-foreground-primary);
+}
+
+/* the maskings of GraphSHAP-IQ for 1 to 4 layers, and of all of them */
+.graphshapiq-demo-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.graphshapiq-demo-chart p {
+  margin: 0;
+}
+
+.graphshapiq-demo-chart-head {
+  font-size: 0.8rem;
+  color: var(--shapiq-text-muted);
+}
+
+.graphshapiq-demo-chart-row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) 6.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.graphshapiq-demo-chart-track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+}
+
+.graphshapiq-demo-chart-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--graphshapiq-field) 55%, transparent);
+  transition: width 400ms var(--shapiq-ease);
+}
+
+.graphshapiq-demo-chart-now {
+  font-weight: 700;
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-chart-now .graphshapiq-demo-chart-fill {
+  background: var(--graphshapiq-field);
+}
+
+.graphshapiq-demo-chart-all .graphshapiq-demo-chart-fill {
+  background: color-mix(in srgb, var(--color-foreground-secondary) 40%, transparent);
+}
+
+.graphshapiq-demo-chart-count {
+  text-align: right;
+  font-family: var(--font-stack--monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.graphshapiq-demo-chart-note {
+  margin-top: 0.3rem !important;
+  font-size: 0.85rem;
+  color: var(--color-foreground-primary);
+}
+
+.graphshapiq-demo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.graphshapiq-demo-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.graphshapiq-demo-key {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+}
+
+.graphshapiq-demo-key-red {
+  background: #ff0d57;
+}
+
+.graphshapiq-demo-key-blue {
+  background: #1e88e5;
+}
+
+.graphshapiq-demo-key-truth {
+  box-sizing: border-box;
+  border: 2px solid var(--graphshapiq-truth);
+  border-radius: 999px;
+}
+
+.graphshapiq-demo-meta {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--shapiq-text-muted);
+}
+
+.graphshapiq-demo-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* -- narrower demos: a smaller molecule next to a panel that keeps more room for its text ------ */
+
+@container (max-width: 50rem) {
+  .graphshapiq-demo-body {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .graphshapiq-demo-panel {
+    --graphshapiq-row: 2.5rem;
+  }
+
+  .graphshapiq-demo-title {
+    min-height: calc(2 * 1.35em);
+  }
+
+  .graphshapiq-demo-detail {
+    min-height: calc(4 * 1.55em);
+  }
+
+  .graphshapiq-demo-list li {
+    grid-template-columns: var(--graphshapiq-row) minmax(0, 6rem) minmax(0, 1fr) 3.25rem;
+  }
+}
+
+/* -- small screens: the panel goes under the molecule ------------------------------------------- */
+
+@container (max-width: 42rem) {
+  .graphshapiq-demo-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  /* the molecules in rows of four */
+  .graphshapiq-demo-molecules {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .graphshapiq-demo-molecule {
+    width: auto;
+  }
+
+  .graphshapiq-demo-stage {
+    justify-self: center;
+    width: 100%;
+    max-width: 26rem;
+  }
+
+  .graphshapiq-demo-detail {
+    min-height: calc(4 * 1.55em);
+  }
+
+  .graphshapiq-demo-long {
+    display: none;
+  }
+
+  .graphshapiq-demo-short {
+    display: inline;
+  }
+
+  .graphshapiq-demo-step-label {
+    min-width: 10rem;
+  }
+
+  /* under the molecule, the prediction takes the panel's place */
+  .graphshapiq-demo-panel > .graphshapiq-demo-prediction {
+    position: static;
+    display: none;
+  }
+
+  .graphshapiq-demo-none .graphshapiq-demo-panel > .graphshapiq-demo-prediction {
+    display: flex;
+  }
+
+  .graphshapiq-demo-none .graphshapiq-demo-panel > :not(.graphshapiq-demo-prediction, .graphshapiq-demo-live) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* as specific as the rules with transitions and animations */
+  .graphshapiq-demo-drawing,
+  .graphshapiq-demo-nodes circle,
+  .graphshapiq-demo-gauge-fill,
+  .graphshapiq-demo-chart-fill,
+  .graphshapiq-demo-panel > :not(.graphshapiq-demo-live),
+  .graphshapiq-demo-panel > .graphshapiq-demo-prediction,
+  .graphshapiq-demo-none .graphshapiq-demo-panel > .graphshapiq-demo-prediction {
+    transition: none;
+  }
+
+  .graphshapiq-demo-edges > g,
+  .graphshapiq-demo-hop {
+    animation: none;
+  }
+}
+
+@media (max-width: 46em) {
+  .graphshapiq-demo {
+    padding: 0.85rem;
+  }
+}
