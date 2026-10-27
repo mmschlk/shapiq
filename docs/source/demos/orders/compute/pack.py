@@ -1,7 +1,7 @@
 """Write the orders demo's data, ``../assets/data.js``, from the results of the other scripts.
 
 Reads the explanations of the molecule (molecule.py), of the houses of California housing
-(housing.py), and the illustrative explanation of the FIxLIP demo's elephant (fixlip.py). It keeps
+(housing.py), and of how SigLIP 2 matches the FIxLIP demo's elephant and its caption (fixlip.py). It keeps
 what the demo draws on its sheets, rounded: the orders 1 to 4 and the full decomposition (k-SII of
 order n, the number of players, which equals the Möbius transform), every main effect, and the
 strongest interactions of each order; for the houses, the strongest rows of their heatmap. And the
@@ -36,7 +36,7 @@ TREE_LAYOUT = [1, 3, 0, 6, 7, 5, 2, 4]
 MODELS = {
     "graph": ["graph", "Graph neural network", "GCN with 2 layers", "exact with GraphSHAP-IQ"],
     "tree": ["tree", "Tree ensemble", "XGBoost, 300 trees of depth 7", "exact with TreeExplainer"],
-    "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "illustrative values"],
+    "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "ProxySHAP"],
 }
 
 
@@ -218,8 +218,11 @@ def main() -> None:
                 "kind": "image-text",
                 "label": "Photo and caption",
                 "detail": "SigLIP 2",
-                "model": model("black box"),
-                "illustrative": True,
+                "model": {
+                    **model("black box"),
+                    "method": f"ProxySHAP from {fixlip['budget']:,} coalitions",
+                },
+                "similarity": round(fixlip["similarity"], 4),
                 "image": "../fixlip/elephant.jpg",  # the FIxLIP demo's photo, next to its assets
                 "grid": fixlip["grid"],
                 "tokens": fixlip["tokens"],
