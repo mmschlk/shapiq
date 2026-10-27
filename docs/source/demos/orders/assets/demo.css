@@ -15,6 +15,8 @@
   --orders-line: var(--shapiq-border, #e2e6f3);
   --orders-edge: #ccd3e6;
   --orders-shade: rgba(20, 28, 60, 0.14);
+  /* the black box stays black in both themes; on a dark page, its edges show */
+  --orders-box-edge: #ffffff;
   --orders-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --orders-duration: 640ms;
 }
@@ -22,12 +24,14 @@
 body[data-theme="dark"] .orders-demo {
   --orders-edge: #3b4152;
   --orders-shade: rgba(0, 0, 0, 0.45);
+  --orders-box-edge: #9aa1b4;
 }
 
 @media (prefers-color-scheme: dark) {
   body:not([data-theme="light"]) .orders-demo {
     --orders-edge: #3b4152;
     --orders-shade: rgba(0, 0, 0, 0.45);
+    --orders-box-edge: #9aa1b4;
   }
 }
 
@@ -140,6 +144,112 @@ body[data-theme="dark"] .orders-demo {
   touch-action: manipulation;
 }
 
+/* the model of the example, under the examples, and the hint beside it */
+.orders-demo-about {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  width: 100%;
+}
+
+.orders-demo-model {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  color: var(--orders-ink);
+}
+
+.orders-demo-model-enter {
+  animation: orders-demo-model-enter 520ms var(--orders-ease);
+}
+
+@keyframes orders-demo-model-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-0.35rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo-model-enter {
+    animation: none;
+  }
+}
+
+.orders-demo-model-icon {
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+}
+
+.orders-demo-model-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  color: var(--orders-muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.orders-demo-model-text strong {
+  color: var(--orders-ink);
+  font-size: 0.9rem;
+}
+
+.orders-demo-model-text span + span::before {
+  margin-right: 0.5rem;
+  content: "·";
+}
+
+.orders-demo-model-method {
+  font-style: italic;
+}
+
+
+/* the icons: lines in the text's color; the black box solid, its sides shaded */
+.orders-demo-icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orders-demo-icon-leaf,
+.orders-demo-icon-node {
+  fill: var(--orders-page);
+}
+
+.orders-demo-icon-leaf {
+  fill: currentColor;
+  stroke: none;
+}
+
+.orders-demo-icon-side {
+  fill: #15171d;
+  stroke: var(--orders-box-edge);
+  stroke-width: 1;
+}
+
+.orders-demo-icon-right {
+  fill: #2b2f3a;
+}
+
+.orders-demo-icon-top {
+  fill: #4b5161;
+}
+
+.orders-demo-option-icon {
+  width: 1rem;
+  height: 1rem;
+  align-self: center;
+  stroke-width: 2.2;
+}
+
 .orders-demo-stack {
   position: absolute;
   inset: 0;
@@ -236,6 +346,33 @@ body[data-theme="dark"] .orders-demo {
   fill: var(--orders-muted);
   font-size: 2.8px;
   font-variant-numeric: tabular-nums;
+}
+
+/* one house: the levels of its tree, the links of the groups to their features, their values */
+.orders-demo-tree-levels line {
+  stroke: var(--orders-line);
+  stroke-width: 0.25;
+  stroke-dasharray: 0.8 1.2;
+}
+
+.orders-demo-tree-levels text {
+  fill: var(--orders-muted);
+  font-size: 2.4px;
+  font-variant-numeric: tabular-nums;
+  dominant-baseline: central;
+}
+
+.orders-demo-tree-links path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.orders-demo-tree-groups text {
+  fill: var(--orders-ink);
+  font-size: 2.4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  dominant-baseline: central;
 }
 
 /* many houses: the heatmap, its rows, and the prediction of every house */

@@ -28,6 +28,16 @@ ORDERS = (1, 2, 3, 4)  # the sheets, above the one of order n (the full decompos
 STRONGEST = 72  # the interactions (of two or more players) drawn on a sheet
 ROWS = 14  # the rows of a sheet of the heatmap
 SHORT = ["Income", "Age", "Rooms", "Bedrooms", "Population", "Occupancy", "Lat", "Long"]
+# the house's features as its tree shows them, left to right: the location in the middle, next to
+# the income and the occupancy, with which it interacts the most
+TREE_NAMES = ["Income", "Age", "Rooms", "Beds", "Pop.", "Occup.", "Lat", "Long"]
+TREE_LAYOUT = [1, 3, 0, 6, 7, 5, 2, 4]
+# the models, as the demo's badge shows them: its icon, name, details, and how it was explained
+MODELS = {
+    "graph": ["graph", "Graph neural network", "GCN with 2 layers", "exact with GraphSHAP-IQ"],
+    "tree": ["tree", "Tree ensemble", "XGBoost, 300 trees of depth 7", "exact with TreeExplainer"],
+    "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "illustrative values"],
+}
 
 
 def explanation(result: dict[str, Any], order: int) -> dict[str, Any]:
@@ -35,8 +45,16 @@ def explanation(result: dict[str, Any], order: int) -> dict[str, Any]:
     return result["orders"][str(min(order, result["largest_order"]))]
 
 
-def sheets(result: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return the sheets of an explanation: per order, its R^2, main effects and interactions."""
+def model(kind: str) -> dict[str, str]:
+    """Return the model of an example, as the demo's badge shows it."""
+    return dict(zip(("icon", "title", "detail", "method"), MODELS[kind], strict=True))
+
+
+def sheets(result: dict[str, Any], strongest: int | None = STRONGEST) -> list[dict[str, Any]]:
+    """Return the sheets of an explanation: per order, its R^2, main effects and interactions.
+
+    Of the interactions, a sheet keeps the ``strongest`` (all of them for ``None``).
+    """
     n = result["n_players"]
     out = []
     for order in (*ORDERS, n):
@@ -55,7 +73,7 @@ def sheets(result: dict[str, Any]) -> list[dict[str, Any]]:
                 "full": order == n,
                 "r2": round(explanation(result, order)["r2"], 6),
                 "first": [round(value, 5) for value in first],
-                "groups": [[players, round(value, 5)] for players, value in groups[:STRONGEST]],
+                "groups": [[players, round(value, 5)] for players, value in groups[:strongest]],
                 "count": len(values),
             }
         )
@@ -118,15 +136,15 @@ def heatmap(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def house_values(x: list[float]) -> list[str]:
-    """Return the features of a house as the demo shows them."""
+    """Return the features of a house as its tree shows them, under their names."""
     income, age, rooms, bedrooms, population, occupancy, latitude, longitude = x
     return [
         f"${income * 10:.1f}k",  # the median income of the block, in $10,000
-        f"{age:.0f} years",
-        f"{rooms:.1f} per home",
-        f"{bedrooms:.1f} per home",
-        f"{population:,.0f} people",
-        f"{occupancy:.1f} per home",
+        f"{age:.0f} yrs",
+        f"{rooms:.1f}",  # per home
+        f"{bedrooms:.1f}",  # per home
+        f"{population:,.0f}",  # people
+        f"{occupancy:.1f}",  # per home
         f"{latitude:.2f}°N",
         f"{-longitude:.2f}°W",
     ]
@@ -158,6 +176,7 @@ def main() -> None:
                 "kind": "graph",
                 "label": "Molecule",
                 "detail": "GCN",
+                "model": model("graph"),
                 "atoms": molecule["atoms"],
                 "bonds": molecule["bonds"],
                 "coords": molecule["coords"],
@@ -170,16 +189,18 @@ def main() -> None:
             },
             {
                 "id": "house",
-                "kind": "features",
+                "kind": "tree",
                 "label": "One house",
                 "detail": "XGBoost",
-                "features": house["features"],
+                "model": model("tree"),
+                "features": TREE_NAMES,
                 "values": house_values(house["x"]),
+                "layout": TREE_LAYOUT,
                 "prediction": round(house["prediction"], 4),
                 "baseline": round(house["baseline"], 4),
                 "accuracy": round(house["test_r2"], 3),
                 "largest": house["largest_order"],
-                "sheets": sheets(house),
+                "sheets": sheets(house, strongest=None),
                 "fits": fits(house),
             },
             {
@@ -187,6 +208,7 @@ def main() -> None:
                 "kind": "heatmap",
                 "label": "150 houses",
                 "detail": "XGBoost",
+                "model": model("tree"),
                 "features": SHORT,
                 "largest": houses["largest_order"],
                 **heatmap(houses),
@@ -196,6 +218,7 @@ def main() -> None:
                 "kind": "image-text",
                 "label": "Photo and caption",
                 "detail": "SigLIP 2",
+                "model": model("black box"),
                 "illustrative": True,
                 "image": "../fixlip/elephant.jpg",  # the FIxLIP demo's photo, next to its assets
                 "grid": fixlip["grid"],

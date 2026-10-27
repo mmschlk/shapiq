@@ -23,7 +23,8 @@ order more, k-SII :cite:p:`Bordt.2023`: the effects of the players and of all gr
 **full decomposition**: k-SII of order :math:`n`, the number of players, which gives every group of
 players its own value, the Möbius transform :cite:p:`Grabisch.1999`. Red raises the prediction,
 blue lowers it; the larger and the more opaque, the stronger. Point at a sheet (or tap it) to lift
-it out of the stack.
+it out of the stack. Above the stack, an icon shows the kind of model: a tree for tree ensembles, a
+graph for graph neural networks, and a black box for any other model.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
 the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output
@@ -47,8 +48,11 @@ exactly. No group of more than 10 atoms has a value: the GCN's receptive fields 
 features of the house; an absent feature takes its values from 100 training houses (interventional
 explanations). The Shapley values split the location into a negative longitude and a positive
 latitude and fit the model with :math:`R^2 = 0.30`. Latitude and longitude only together locate the
-house: with their interaction, the explanation of order 2 fits with :math:`R^2 = 0.995`. Among the
-test houses near downtown Los Angeles, this is the one whose Shapley values fit closest to
+house: with their interaction, the explanation of order 2 fits with :math:`R^2 = 0.995`. Every sheet
+draws the explanation as a tree that grows one level per order: the features on top, and every group
+of :math:`k` features at level :math:`k`, joined to its features. The full decomposition is a tree
+of depth 7, as deep as the model's trees, whose paths split on at most 7 features. Among the test
+houses near downtown Los Angeles, this is the one whose Shapley values fit closest to
 :math:`R^2 = 0.3`; many fit worse.
 
 **150 houses**, explained in the same way, as a heatmap: a column per house, sorted by the

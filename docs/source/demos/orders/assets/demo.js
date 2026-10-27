@@ -67,6 +67,33 @@
     return node;
   };
   const solid = (value) => `rgb(${(value >= 0 ? RED : BLUE).join(", ")})`;
+
+  // the models' icons, on a 32 x 32 grid: a decision tree for tree ensembles, a graph for graph
+  // neural networks, and a black box (an isometric cube, as the sheets) for any other model
+  const ICONS = {
+    tree:
+      '<rect x="11" y="3" width="10" height="6" rx="1.5"/><path d="M16 9v3.5M7 16v-3.5h17V16"/>' +
+      '<circle class="orders-demo-icon-leaf" cx="7" cy="19" r="3"/><rect x="19" y="16" width="10" height="6" rx="1.5"/>' +
+      '<path d="M24 22v3M19.5 27v-2h9v2"/><circle class="orders-demo-icon-leaf" cx="19.5" cy="29" r="2"/>' +
+      '<circle class="orders-demo-icon-leaf" cx="28.5" cy="29" r="2"/>',
+    graph:
+      '<path d="M9 7l14 2 5 9-6 9-13-1-5-9zM9 7l7 9 12 2M16 16l-7 10"/>' +
+      [[9, 7], [23, 9], [28, 18], [22, 27], [9, 26], [4, 17], [16, 16]]
+        .map(([x, y]) => `<circle class="orders-demo-icon-node" cx="${x}" cy="${y}" r="2.6"/>`)
+        .join(""),
+    box:
+      '<path class="orders-demo-icon-side" d="M4 10l12 6v13L4 23z"/>' +
+      '<path class="orders-demo-icon-side orders-demo-icon-right" d="M28 10l-12 6v13l12-6z"/>' +
+      '<path class="orders-demo-icon-side orders-demo-icon-top" d="M16 4l12 6-12 6-12-6z"/>',
+  };
+  const icon = (name, className) => {
+    const node = document.createElementNS(SVG, "svg");
+    node.setAttribute("viewBox", "0 0 32 32");
+    node.setAttribute("aria-hidden", "true");
+    node.setAttribute("class", `orders-demo-icon orders-demo-icon-${name} ${className}`);
+    node.innerHTML = ICONS[name];
+    return node;
+  };
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // -- the faces of the sheets: the explanation of one order, in a 100 x 100 square ---------------
@@ -246,37 +273,100 @@
     });
   }
 
-  // one house: its features on a circle, as in shapiq's network plot, with their values
-  function featuresFace(svg, example, sheet) {
-    const n = example.features.length;
-    const angle = (i) => ((-90 + (360 * i) / n) * Math.PI) / 180;
-    const at = (i, radius) => [50 + radius * Math.cos(angle(i)), 51 + radius * Math.sin(angle(i))];
-    const position = example.features.map((_, i) => at(i, 29));
+  // one house: its explanation as a tree that grows one level per order. The features are on top,
+  // every group of k features hangs at level k, below the middle of its features, and joined to
+  // each of them; red raises the value of the house, blue lowers it. The full decomposition of a
+  // tree ensemble is as deep as its trees.
+  const TREE_GROUPS = [0, 0, 6, 5, 4, 3, 3, 2]; // the strongest groups shown, by level
+  function treeFace(svg, example, sheet) {
+    const levels = example.largest;
+    const [top, bottom] = [24, 88];
+    const step = (bottom - top) / (levels - 1);
+    const slot = new Map(example.layout.map((feature, k) => [feature, 9 + (k * 82) / (example.layout.length - 1)]));
     const largest = largestValue(sheet);
-    drawGroups(svg, sheet, (feature) => position[feature], largest, 5.4);
-    const halos = add(svg, "g", { class: "orders-demo-halos" });
-    sheet.first.forEach((value, i) => {
-      const ratio = Math.abs(value) / largest;
-      if (ratio < 0.02) return;
-      add(halos, "circle", {
-        cx: roundTo(position[i][0], 2),
-        cy: roundTo(position[i][1], 2),
-        r: roundTo(3.2 + 6.5 * ratio, 2),
-        fill: solid(value),
-        opacity: roundTo(0.15 + 0.85 * ratio, 3),
+    const ratioOf = (value) => Math.abs(value) / largest;
+
+    const guides = add(svg, "g", { class: "orders-demo-tree-levels" });
+    for (let level = 1; level <= levels; level++) {
+      const y = roundTo(top + (level - 1) * step, 2);
+      add(guides, "line", { x1: 6, x2: 94, y1: y, y2: y });
+      add(guides, "text", { x: 2.5, y }, String(level));
+    }
+
+    // the strongest groups of every level, below the middle of their features, apart
+    const nodes = [];
+    for (let level = 2; level <= levels; level++) {
+      // the strongest of the level, however small: the tree reaches as deep as the explanation
+      const groups = sheet.groups
+        .filter(([players, value]) => players.length === level && value !== 0)
+        .slice(0, TREE_GROUPS[level] ?? 2)
+        .map(([players, value]) => ({
+          players,
+          value,
+          x: players.reduce((sum, p) => sum + slot.get(p), 0) / players.length,
+          y: top + (level - 1) * step,
+        }))
+        .sort((a, b) => a.x - b.x);
+      // apart, then shifted back to their middle, and kept on the sheet
+      const middle = groups.reduce((sum, group) => sum + group.x, 0) / (groups.length || 1);
+      for (let k = 1; k < groups.length; k++) groups[k].x = Math.max(groups[k].x, groups[k - 1].x + 6.5);
+      const moved = groups.reduce((sum, group) => sum + group.x, 0) / (groups.length || 1);
+      const shift = Math.min(Math.max(middle - moved, 9 - (groups[0]?.x ?? 9)), 91 - (groups.at(-1)?.x ?? 91));
+      for (const group of groups) group.x += shift;
+      nodes.push(...groups);
+    }
+
+    const links = add(svg, "g", { class: "orders-demo-tree-links" });
+    for (const node of [...nodes].sort((a, b) => Math.abs(a.value) - Math.abs(b.value))) {
+      const ratio = ratioOf(node.value);
+      for (const player of node.players) {
+        const [x1, y1, x2] = [node.x, node.y, slot.get(player)];
+        const bend = (y1 - top) * 0.55;
+        add(links, "path", {
+          d: `M${roundTo(x1, 2)} ${roundTo(y1, 2)}C${roundTo(x1, 2)} ${roundTo(y1 - bend, 2)} ${roundTo(x2, 2)} ${roundTo(top + bend, 2)} ${roundTo(x2, 2)} ${top}`,
+          stroke: solid(node.value),
+          "stroke-width": roundTo(0.2 + 1.3 * ratio, 2),
+          opacity: roundTo(0.18 + 0.6 * ratio, 3),
+        });
+      }
+    }
+    const groups = add(svg, "g", { class: "orders-demo-tree-groups" });
+    for (const node of nodes) {
+      const ratio = ratioOf(node.value);
+      const r = 1 + 4.6 * ratio ** 0.8;
+      add(groups, "circle", {
+        cx: roundTo(node.x, 2),
+        cy: roundTo(node.y, 2),
+        r: roundTo(r, 2),
+        fill: solid(node.value),
+        opacity: roundTo(0.4 + 0.6 * ratio, 3),
       });
-    });
-    const nodes = add(svg, "g", { class: "orders-demo-atoms" });
+      if (ratio >= 0.25) {
+        add(groups, "text", { x: roundTo(node.x + r + 1, 2), y: roundTo(node.y, 2) }, dollars(node.value));
+      }
+    }
+
+    // the features: their main effects as halos, their names and values above them, every other
+    // one higher, so that they do not touch
+    const halos = add(svg, "g", { class: "orders-demo-halos" });
+    const features = add(svg, "g", { class: "orders-demo-atoms" });
     const labels = add(svg, "g", { class: "orders-demo-features" });
-    example.features.forEach((name, i) => {
-      const [x, y] = position[i];
-      add(nodes, "circle", { cx: roundTo(x, 2), cy: roundTo(y, 2), r: 3 });
-      const [lx, ly] = at(i, 38);
-      const cos = Math.cos(angle(i));
-      const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
-      const label = add(labels, "text", { x: roundTo(lx, 2), y: roundTo(ly - 1.6, 2), "text-anchor": anchor }, name);
-      label.classList.add("orders-demo-feature-name");
-      add(labels, "text", { x: roundTo(lx, 2), y: roundTo(ly + 2.2, 2), "text-anchor": anchor, class: "orders-demo-feature-value" }, example.values[i]);
+    example.layout.forEach((feature, k) => {
+      const x = roundTo(slot.get(feature), 2);
+      const ratio = ratioOf(sheet.first[feature]);
+      if (ratio >= 0.02) {
+        add(halos, "circle", {
+          cx: x,
+          cy: top,
+          r: roundTo(2.2 + 4.4 * ratio, 2),
+          fill: solid(sheet.first[feature]),
+          opacity: roundTo(0.15 + 0.85 * ratio, 3),
+        });
+      }
+      add(features, "circle", { cx: x, cy: top, r: 2 });
+      const y = k % 2 === 0 ? 5.6 : 12;
+      add(labels, "text", { x, y, "text-anchor": "middle", class: "orders-demo-feature-name" }, example.features[feature]);
+      add(labels, "text", { x, y: y + 3.3, "text-anchor": "middle", class: "orders-demo-feature-value" }, example.values[feature]);
     });
   }
 
@@ -336,7 +426,7 @@
 
   // the name of a sheet: on its face, as its row's tag, and in words
   const sheetName = (sheet) => {
-    if (sheet.full) return { face: "Full decomposition", tag: "n-SII", name: `Full decomposition, n = ${sheet.order}` };
+    if (sheet.full) return { face: "Full decomposition", tag: `${sheet.order}-SII`, name: "Full decomposition" };
     if (sheet.order === 1) return { face: "SV", tag: "SV", name: "Shapley values" };
     const tag = `${sheet.order}-SII`;
     return { face: tag, tag, name: "Shapley interactions" };
@@ -372,7 +462,7 @@
         const [order, r2, values] = blank;
         if (order >= example.largest) {
           return [
-            [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The network's largest receptive field holds ${example.largest} atoms, so no larger group has a value: from order ${example.largest} to n = ${n}, the explanation is the full decomposition, `, fitted(r2), "."],
+            [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The network's largest receptive field holds ${example.largest} atoms, so no larger group has a value: from order ${example.largest} to ${n}, the explanation is the full decomposition, `, fitted(r2), "."],
           ];
         }
         return [
@@ -394,7 +484,7 @@
       }
       if (sheet.full) {
         return [
-          [`The full decomposition of all n = ${n} atoms: every group of atoms that the network's two layers see together, ${count(sheet.count)} values of up to ${example.largest} atoms (larger groups have none), computed exactly by GraphSHAP-IQ with ${count(example.budget)} calls of the model instead of 2³⁰. It is the model itself, written as a sum: `, fit, "."],
+          [`The full decomposition of all ${n} atoms: every group of atoms that the network's two layers see together, ${count(sheet.count)} values of up to ${example.largest} atoms (larger groups have none), computed exactly by GraphSHAP-IQ with ${count(example.budget)} calls of the model instead of 2³⁰. It is the model itself, written as a sum: `, fit, "."],
         ];
       }
       const texts = {
@@ -415,7 +505,7 @@
       }
       if (!sheet) {
         return [
-          ["An XGBoost model of depth 7 values this house in Los Angeles at ", ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). Every sheet explains this prediction, from the features alone (top) to the full decomposition (bottom).`],
+          ["An XGBoost model of depth 7 values this house in Los Angeles at ", ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). Every sheet explains this prediction as a tree that grows one level per order: the features on top, and every group of features as many levels down as it has features, joined to them.`],
         ];
       }
       const fit = fitted(sheet.r2);
@@ -433,7 +523,7 @@
       }
       if (sheet.full) {
         return [
-          [`The full decomposition of all n = ${n} features: ${count(sheet.count)} values of groups of up to ${example.largest} features, the trees' depth, computed exactly by shapiq's TreeExplainer. It is the model itself, written as a sum: `, fit, "."],
+          [`The full decomposition of all ${n} features: ${count(sheet.count)} values, in a tree as deep as the model's trees. None of their paths splits on more than ${example.largest} features, so no group of all ${n} has a value. Computed exactly by shapiq's TreeExplainer, it is the model itself, written as a sum: `, fit, "."],
         ];
       }
       const texts = { 3: "Groups of three: the income with the location. ", 4: "Groups of four add hardly anything: " };
@@ -462,7 +552,7 @@
       }
       if (sheet.full) {
         return [
-          [`The full decomposition of every house (n = ${n} features): groups of up to ${example.largest} features, the trees' depth. It is the model itself, written as a sum: `, fit, "."],
+          [`The full decomposition of every house, of all ${n} features: groups of up to ${example.largest} features, the trees' depth. It is the model itself, written as a sum: `, fit, "."],
         ];
       }
       const texts = { 3: "Groups of three join the income and the occupancy to the location. On average, ", 4: "Groups of four add hardly anything. On average, " };
@@ -491,7 +581,7 @@
       };
       if (sheet.full) {
         return [
-          [`The full decomposition of all n = ${n} patches and words: every order, up to “a small elephant … next to a white bird” as one group of ${example.largest}. `, fit, ".", illustrative],
+          [`The full decomposition of all ${n} patches and words: every order, up to “a small elephant … next to a white bird” as one group of ${example.largest}. `, fit, ".", illustrative],
         ];
       }
       return [texts[sheet.order]];
@@ -519,7 +609,7 @@
     const options = data.examples.map((example) => {
       const option = el("button", "orders-demo-option");
       option.type = "button";
-      option.append(el("span", "orders-demo-option-label", example.label), el("span", "orders-demo-option-detail", example.detail));
+      option.append(icon(example.model.icon, "orders-demo-option-icon"), el("span", "orders-demo-option-label", example.label));
       option.addEventListener("click", () => {
         if (state.example === example.id) return;
         Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
@@ -529,7 +619,12 @@
       return [example.id, option];
     });
     const hint = el("p", "orders-demo-hint", "Point at a sheet, or along the plot.");
-    bar.append(switcher, hint);
+    // the model of the example: its icon, what it is, and how it was explained
+    const badge = el("div", "orders-demo-model");
+    badge.setAttribute("aria-live", "polite");
+    const about = el("div", "orders-demo-about");
+    about.append(badge, hint);
+    bar.append(switcher, about);
 
     const stage = el("div", "orders-demo-stage");
     stage.setAttribute("role", "group");
@@ -669,6 +764,16 @@
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
       for (const row of [...rows, blankRow]) row?.remove();
+      const text = el("span", "orders-demo-model-text");
+      text.append(
+        el("strong", "", example.model.title),
+        el("span", "", example.model.detail),
+        el("span", "orders-demo-model-method", example.model.method),
+      );
+      badge.replaceChildren(icon(example.model.icon, "orders-demo-model-icon"), text);
+      badge.classList.remove("orders-demo-model-enter");
+      badge.getBoundingClientRect(); // restart the badge's entrance
+      badge.classList.add("orders-demo-model-enter");
       geometry = measure();
 
       const last = example.sheets.at(-1);
@@ -680,7 +785,7 @@
         const node = el("div", "orders-demo-sheet");
         const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
         if (example.kind === "graph") moleculeFace(svg, example, sheet);
-        else if (example.kind === "features") featuresFace(svg, example, sheet);
+        else if (example.kind === "tree") treeFace(svg, example, sheet);
         else if (example.kind === "heatmap") heatmapFace(svg, example, sheet);
         else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${instance}-${i}`);
         // the name along the bottom edge, from the bottom corner: the part of a sheet that shows
@@ -863,11 +968,11 @@
           "text",
           {
             class: last ? "orders-demo-plot-tick orders-demo-plot-strong" : "orders-demo-plot-tick",
-            x: roundTo(x(order) + (last ? 6 : 0), 1),
+            x: roundTo(x(order), 1),
             y: y0 + 14,
-            "text-anchor": last ? "end" : "middle",
+            "text-anchor": "middle",
           },
-          last ? `n = ${order}` : String(order),
+          String(order),
         );
       }
       add(plot, "text", { class: "orders-demo-plot-axis", x: x0, y: h - 6 }, "order");
