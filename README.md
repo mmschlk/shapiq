@@ -1,4 +1,4 @@
-# shapiq: Shapley Interactions for Machine Learning <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/logo/shapiq-logo-horizontal-dark.svg"><img alt="shapiq" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/logo/shapiq-logo-horizontal-light.svg" align="right" height="120px"></picture>
+# shapiq: Shapley Interactions for Machine Learning <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/logo/shapiq-logo-stacked-dark.svg"><img alt="shapiq" src="https://raw.githubusercontent.com/mmschlk/shapiq/main/docs/source/_static/logo/shapiq-logo-stacked-light.svg" align="right" height="250px"></picture>
 
 [![PyPI version](https://badge.fury.io/py/shapiq.svg)](https://badge.fury.io/py/shapiq)
 [![License](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
