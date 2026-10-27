@@ -6,11 +6,12 @@ the photo with only the coalition's patches and the caption with only its tokens
 FIxLIP demo, imported from its scripts (``../../fixlip/compute/explain.py``).
 
 SigLIP 2 is a black box: unlike trees or graph neural networks, it has no structure that would give
-its interactions exactly. ProxySHAP fits an XGBoost proxy to coalitions of the game, as many of
-every size, and reads the proxy's interactions off its trees exactly. Without the residual
-adjustment, k-SII of the proxy's depth is the full decomposition of the proxy: its trees split on
-at most that many players, so no larger group has a value, and every lower order of k-SII follows
-from it. The depth, 6, is the best of 3 to 8 in a 5-fold cross-validation on the coalitions.
+its interactions exactly. ProxySHAP fits an XGBoost proxy to coalitions of the game, every player
+present with probability 1/2 (as FIxLIP samples them), and reads the proxy's interactions off its
+trees exactly. Without the residual adjustment, k-SII of the proxy's depth is the full
+decomposition of the proxy: its trees split on at most that many players, so no larger group has a
+value, and every lower order of k-SII follows from it. The depth, 6, is the best of 3 to 8 in a
+5-fold cross-validation on the coalitions.
 
 Every order is scored by its R^2 on coalitions it was not fit to, every player present with
 probability 1/2 (as for the molecule and the houses), against the model itself: the full
@@ -21,7 +22,7 @@ Usage::
     python fixlip.py
 
 The game's evaluations are kept in ``results/fixlip_coalitions.npz``: the model is evaluated once
-per coalition (5,000 and 512 held out, about five minutes on four CPU cores), and a run again only
+per coalition (10,000 and 512 held out, about ten minutes on four CPU cores), and a run again only
 fits the proxy.
 """
 
@@ -29,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 import tomllib
@@ -47,7 +49,7 @@ sys.path.insert(0, str(FIXLIP))
 import explain as fixlip  # noqa: E402  (the FIxLIP demo's game)
 
 PHOTO, MODEL = "elephant", "siglip2"
-BUDGET = 5_000  # the coalitions the proxy is fit to
+BUDGET = 10_000  # the coalitions the proxy is fit to
 N_TEST = 512  # the coalitions every order is scored on
 DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
 PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
@@ -125,6 +127,9 @@ def main() -> None:
     game, tokens = build_game(args.results)
     n = game.n_players
     cached = CachedGame(game, args.results / "fixlip_coalitions.npz")
+    # every coalition as likely as any other (a size as often as it has coalitions): every player
+    # present with probability 1/2
+    p_half = np.array([math.comb(n, size) for size in range(n + 1)], dtype=float)
 
     # the full decomposition of the proxy: k-SII of its highest order, without adjustment
     start = time.time()
@@ -132,6 +137,7 @@ def main() -> None:
         n=n,
         index="k-SII",
         max_order=DEPTH,
+        sampling_weights=p_half,
         proxy_model=XGBRegressor(**PROXY, random_state=0, n_jobs=4),
         adjustment=False,
         random_state=0,
@@ -170,6 +176,7 @@ def main() -> None:
         n=n,
         index="k-SII",
         max_order=2,
+        sampling_weights=p_half,
         proxy_model=XGBRegressor(**PROXY, random_state=0, n_jobs=4),
         adjustment=False,
         random_state=0,

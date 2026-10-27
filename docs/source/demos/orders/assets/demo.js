@@ -579,9 +579,9 @@
       const fit = fitted(sheet.r2);
       const texts = {
         1: ["Shapley values credit every patch and word alone: “elephant” the most, then the egret's patch and “bird”. They reproduce the model on random coalitions only with ", fit, ", a poor fit."],
-        2: ["Pairs link words to the regions they name: the egret's patch with “bird” and “white”, the elephant's head with “elephant”; alone, “white” now lowers the similarity. Yet pairs alone fit no better here: ", fit, " (Shapley interactions are not fit to these coalitions)."],
-        3: ["Groups of three, such as “small … elephant … bird”, or the egret's two patches with “bird”: ", fit, "."],
-        4: [`Shapley interactions of order 4: ${count(sheet.count)} values, the groups of four none strong alone (the strongest join the egret's patch with “a”, “elephant” and “bird”). Together, they lift the fit to `, fit, "."],
+        2: ["Pairs link words to the regions they name: the egret's patch with “bird” and “white”, the elephant's head with “elephant”; alone, “white” now lowers the similarity. The fit jumps to ", fit, "."],
+        3: ["Groups of three read phrases, “standing next to” and “small … elephant … bird”, or join the egret's two patches with “bird”: ", fit, "."],
+        4: [`Shapley interactions of order 4: ${count(sheet.count)} values, the strongest the phrase “elephant standing next to”. They add little: `, fit, "."],
       };
       if (sheet.full) {
         return [

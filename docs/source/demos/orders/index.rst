@@ -65,13 +65,12 @@ depth 7, so no group of all 8 features has a value.
 :cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's 64
 patches and the caption's 10 tokens, as in FIxLIP :cite:p:`Baniecki.2025`. SigLIP 2 is a black box:
 nothing in it gives its interactions exactly. :class:`~shapiq.approximator.ProxySHAP`
-:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 5,000 coalitions of the game and, without
-its residual adjustment, reads the proxy's full decomposition off its trees exactly; every order of
-k-SII follows from it. The Shapley values fit SigLIP 2 with :math:`R^2 = 0.55`; pairs, which link
-"bird" and "white" to the egret's patch, fit no better on these coalitions (0.52: Shapley
-interactions are not fit to them), and groups of up to four lift the fit to 0.88. The full
-decomposition reproduces the proxy exactly, and SigLIP 2 as well as the proxy does:
-:math:`R^2 = 0.89` on held-out coalitions.
+:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 10,000 coalitions of the game, every
+player present with probability 1/2 as in FIxLIP, and, without its residual adjustment, reads the
+proxy's full decomposition off its trees exactly; every order of k-SII follows from it. The Shapley
+values fit SigLIP 2 with :math:`R^2 = 0.54`; pairs, which link "bird" and "white" to the egret's
+patch, lift the fit to 0.93, and groups of three to 0.95. The full decomposition reproduces the
+proxy exactly, and SigLIP 2 as well as the proxy does: :math:`R^2 = 0.96` on held-out coalitions.
 
 How it was computed
 -------------------
@@ -137,19 +136,25 @@ proxy's full decomposition, and every lower order follows from it:
 
 .. code-block:: python
 
+   import math
+
+   import numpy as np
    from xgboost import XGBRegressor
 
    import shapiq
 
    # game: the FIxLIP demo's game of SigLIP 2, the elephant and its caption (74 players)
+   n = game.n_players
    approximator = shapiq.approximator.ProxySHAP(
-       n=game.n_players,
+       n=n,
        index="k-SII",
        max_order=6,  # the proxy's depth: its trees split on at most 6 players
+       # every coalition as likely as any other: every player present with probability 1/2
+       sampling_weights=np.array([math.comb(n, size) for size in range(n + 1)], dtype=float),
        proxy_model=XGBRegressor(n_estimators=1000, max_depth=6, learning_rate=0.05, reg_lambda=5.0),
        adjustment=False,
    )
-   full = approximator.approximate(budget=5_000, game=game)  # the proxy's full decomposition
+   full = approximator.approximate(budget=10_000, game=game)  # the proxy's full decomposition
 
 Run it again
 ------------
@@ -162,5 +167,5 @@ with a README on how to run them:
 
    python molecule.py  # trains the GCN and explains the molecule at every order
    python housing.py   # trains the XGBoost model and explains the houses at every order
-   python fixlip.py    # evaluates SigLIP 2 on 5,512 coalitions and explains it with ProxySHAP
+   python fixlip.py    # evaluates SigLIP 2 on 10,512 coalitions and explains it with ProxySHAP
    python pack.py      # the demo's data, ../assets/data.js

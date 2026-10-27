@@ -8,7 +8,7 @@ values to the full decomposition. They are run by hand, once; the docs only show
 |---|---|
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2: `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 7 on California housing and explains one house in Los Angeles and 150 random houses exactly (interventional), at every order: `results/house.json`, `results/houses.json`. |
-| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment) from 5,000 coalitions, at every order, scored on 512 held-out coalitions: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
+| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment) from 10,000 coalitions, every player present with probability 1/2 as in FIxLIP, at every order, scored on 512 held-out coalitions: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
 | `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the full decomposition (order n), with the strongest interactions of each (for the 150 houses, the strongest rows of their heatmap), and the R^2 of every order. |
 
 ## Run
@@ -23,7 +23,7 @@ pip install -e "../../../../..[graph,tree,games]" rdkit xgboost scikit-learn
 
 python molecule.py  # downloads Mutagenicity; trains the GCN in about four minutes on four CPU cores
 python housing.py   # downloads California housing; explains 4,128 houses in about three minutes
-python fixlip.py    # downloads SigLIP 2; evaluates 5,512 coalitions in about five minutes
+python fixlip.py    # downloads SigLIP 2; evaluates 10,512 coalitions in about ten minutes
 python pack.py
 ```
 
@@ -38,4 +38,4 @@ woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the
 proxy; it picked the proxy's depth, 6, as the best of 3 to 8 in a 5-fold cross-validation on the
-5,000 coalitions.
+10,000 coalitions.
