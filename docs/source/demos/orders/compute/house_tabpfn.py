@@ -2,11 +2,12 @@
 
 The house is the one of ``housing.py``, in Los Angeles: the same split of the California housing
 dataset of scikit-learn, the same test house (of the test houses within 0.15 degrees of downtown
-Los Angeles, the one whose Shapley values of the XGBoost model fit closest to R^2 = 0.3). The model
-is TabPFN, a transformer pretrained on synthetic tables, which predicts by in-context learning: it
-is not trained on the houses, but reads training houses (its context) together with the house it
-predicts. Its context is 2,000 training houses drawn at random (with a fixed seed), not all 16,512:
-on four CPU cores, TabPFN takes about five seconds per prediction with this context.
+Los Angeles, the one whose Shapley values of the XGBoost model of depth 5 fit closest to
+R^2 = 0.3). The model is TabPFN, a transformer pretrained on synthetic tables, which predicts by
+in-context learning: it is not trained on the houses, but reads training houses (its context)
+together with the house it predicts. Its context is 2,000 training houses drawn at random (with a
+fixed seed), not all 16,512: on four CPU cores, TabPFN takes about five seconds per prediction with
+this context.
 
 TabPFN is a black box: unlike trees, it has no structure that would give its interactions exactly,
 and no depth that would limit their order. But a house has only 8 features, so the game has only
@@ -29,7 +30,7 @@ Usage::
 
 The dataset is downloaded by scikit-learn to ``results/sklearn/``, TabPFN's weights from Hugging
 Face on the first run. TabPFN's predictions of all 4,128 test houses (for its R^2 on them) take
-about two minutes on four CPU cores, its predictions of the 255 coalitions of the house about 20
+about a minute on four CPU cores, its predictions of the 255 coalitions of the house about 20
 minutes.
 """
 
@@ -52,7 +53,7 @@ from tabpfn.constants import ModelVersion
 import shapiq
 
 HERE = Path(__file__).resolve().parent
-HOUSE = 1487  # the test house of results/house.json, which housing.py chose
+HOUSE = 837  # the test house of results/house.json, which housing.py picks (XGBoost of depth 5)
 N_CONTEXT = 2000  # the training houses in TabPFN's context
 
 
