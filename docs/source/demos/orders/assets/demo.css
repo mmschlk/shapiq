@@ -464,17 +464,26 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
-/* beside the stack, an arrow down from its top sheet to its bottom one (demo.js places it): every
-   order below is more complex */
+/* the slider of the orders, in its column left of the stack (demo.js places its parts): an arrow
+   down, every order below more complex, a tick at every sheet, and a handle on it */
 .orders-demo-rail {
   position: absolute;
+  z-index: 100; /* over the stack, which spans the stage: no sheet comes into the column */
   top: 0;
+  bottom: 0;
   left: 0;
-  border-left: 1px solid var(--orders-edge);
-  pointer-events: none;
+  cursor: pointer;
+  touch-action: none; /* dragging the handle does not scroll the page */
 }
 
-.orders-demo-rail::after {
+.orders-demo-rail-line {
+  position: absolute;
+  top: 0;
+  left: var(--orders-rail-line);
+  border-left: 1px solid var(--orders-edge);
+}
+
+.orders-demo-rail-line::after {
   position: absolute;
   bottom: -1px;
   left: -4.5px;
@@ -486,8 +495,7 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-rail-label {
   position: absolute;
-  top: 50%;
-  right: 0.35rem;
+  left: calc(var(--orders-rail-line) - 1.6rem);
   color: var(--orders-muted);
   font-size: 0.72rem;
   font-style: italic;
@@ -495,52 +503,76 @@ body[data-theme="dark"] .orders-demo {
   white-space: nowrap;
   writing-mode: vertical-rl;
   transform: translateY(-50%);
+  pointer-events: none;
 }
 
-/* under the stack, a chip for every sheet: shown where nothing hovers (touch screens), or where
-   the room is short */
-.orders-demo-steps {
-  display: none;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.35rem;
-  margin: 0.2rem 0 1rem;
+.orders-demo-tick {
+  position: absolute;
+  top: 0;
+  left: calc(var(--orders-rail-line) - 4px);
+  width: 9px;
+  border-top: 1.5px solid var(--orders-edge);
+  margin-top: -0.75px;
 }
 
-@media (hover: none) {
-  .orders-demo-steps {
-    display: flex;
-  }
+.orders-demo-tick-blank {
+  left: calc(var(--orders-rail-line) - 2px);
+  width: 5px;
+  border-top-width: 1px;
+  margin-top: -0.5px;
 }
 
-@container (max-width: 34rem) {
-  .orders-demo-steps {
-    display: flex;
-  }
-}
-
-.orders-demo-step {
-  padding: 0.3rem 0.75rem;
-  border: 1px solid var(--orders-line);
-  border-radius: 999px;
-  background: var(--orders-raised);
-  color: var(--orders-muted);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition:
-    background var(--shapiq-duration, 220ms),
-    border-color var(--shapiq-duration, 220ms),
-    color var(--shapiq-duration, 220ms);
-}
-
-.orders-demo-step.orders-demo-active {
-  border-color: var(--orders-ink);
+.orders-demo-thumb {
+  position: absolute;
+  top: -8px;
+  left: calc(var(--orders-rail-line) - 7.5px);
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--orders-sheet);
+  border-radius: 50%;
   background: var(--orders-ink);
-  color: var(--orders-sheet);
+  box-shadow:
+    0 0 0 1px var(--orders-ink),
+    0 1px 4px var(--orders-shade);
+  cursor: grab;
+  transition:
+    transform 320ms var(--orders-ease),
+    background var(--shapiq-duration, 220ms),
+    box-shadow var(--shapiq-duration, 220ms);
+}
+
+/* at rest, above the top sheet, the handle is hollow */
+.orders-demo-thumb-rest {
+  background: var(--orders-sheet);
+  box-shadow:
+    0 0 0 1.5px var(--orders-muted),
+    0 1px 4px var(--orders-shade);
+}
+
+.orders-demo-rail:hover .orders-demo-thumb {
+  scale: 1.12;
+}
+
+.orders-demo-thumb:focus-visible {
+  outline: 2px dashed var(--orders-ink);
+  outline-offset: 3px;
+}
+
+/* while dragged, the handle follows the pointer at once */
+.orders-demo-dragging,
+.orders-demo-dragging .orders-demo-thumb {
+  cursor: grabbing;
+}
+
+.orders-demo-dragging .orders-demo-thumb {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo-thumb {
+    transition: none;
+  }
 }
 
 /* the ladder: a row per sheet, beside its right corner, with the sheet's fit */

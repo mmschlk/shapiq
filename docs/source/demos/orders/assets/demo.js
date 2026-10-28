@@ -17,13 +17,13 @@
 // order n, the number of players; the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
 // precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, a
-// tap that pins it, or, on touch screens, its chip under the stack) slides it out to the side of the
+// tap that pins it, or the slider beside the stack) slides it out to the side of the
 // stack as it lies, under the sheets above it, and the others stay where they are; with
 // data-lift="lift" on the demo, it lifts out of the stack instead: the sheets above it move up, those
 // below it move down, and the sheet tilts towards the reader and grows. A ring marks its order on the
 // plot; pointing along the plot brings out the sheet of the order pointed at, or the blank sheet of
-// an order between. An arrow beside the stack, and one along the plot's axis, say that the
-// explanations grow more complex from order to order.
+// an order between. The slider is an arrow down the side of the stack, and one along the plot's
+// axis matches it: the explanations grow more complex from order to order.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -63,6 +63,11 @@
   // stay where they are (unless data-lift="lift" on the demo lifts it out): how far it slides, in
   // units of its width
   const SLIDE = 0.32;
+  // pixels: the column of the slider, left of the stack; its line in it; how far above the top
+  // sheet its handle rests, when no sheet is out
+  const RAIL = 42;
+  const RAIL_LINE = 28;
+  const RAIL_REST = 24;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
   const PLOT = { height: 176, left: 42, right: 14, top: 14, bottom: 40 }; // pixels
 
@@ -723,15 +728,24 @@
     const stack = el("div", "orders-demo-stack");
     stack.setAttribute("aria-hidden", "true");
     const ladder = el("div", "orders-demo-ladder");
-    // beside the stack, an arrow down: every order below is more complex
+    // beside the stack, in a column of its own, the slider of the orders: an arrow down (every order
+    // below is more complex), a tick at every sheet, and a handle that brings out the sheet at its
+    // tick; it rests above the top sheet. It serves touch screens, where nothing hovers.
     const rail = el("div", "orders-demo-rail");
-    rail.setAttribute("aria-hidden", "true");
-    rail.append(el("span", "orders-demo-rail-label", "more complex"));
+    rail.style.width = `${RAIL}px`;
+    rail.style.setProperty("--orders-rail-line", `${RAIL_LINE}px`);
+    const railLine = el("span", "orders-demo-rail-line");
+    const railLabel = el("span", "orders-demo-rail-label", "more complex");
+    railLabel.setAttribute("aria-hidden", "true");
+    const ticks = el("span", "orders-demo-rail-ticks");
+    ticks.setAttribute("aria-hidden", "true");
+    const thumb = el("span", "orders-demo-thumb");
+    thumb.tabIndex = 0;
+    thumb.setAttribute("role", "slider");
+    thumb.setAttribute("aria-orientation", "vertical");
+    thumb.setAttribute("aria-label", "Order of the explanation");
+    rail.append(railLine, railLabel, ticks, thumb);
     stage.append(rail, stack, ladder);
-    // under the stack, a chip for every sheet: on touch screens, where nothing is pointed at by
-    // hovering, a tap brings it out (the rows of the ladder do the same for keyboards)
-    const steps = el("div", "orders-demo-steps");
-    steps.setAttribute("aria-hidden", "true");
 
     const footer = el("div", "orders-demo-footer");
     const plotBox = el("figure", "orders-demo-plot");
@@ -743,14 +757,14 @@
     const caption = el("p", "orders-demo-caption");
     caption.setAttribute("aria-live", "polite");
     footer.append(plotBox, caption);
-    root.append(bar, stage, steps, footer);
+    root.append(bar, stage, footer);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
     // the full decomposition, and the sheet of the full decomposition
     let items = [];
     let rows = [];
-    let chips = [];
+    let stops = []; // the slider's: its rest, then every sheet and blank sheet, top to bottom
     let blankRow = null;
     let marker = null;
     let plotWidth = 0;
@@ -768,7 +782,7 @@
       const ladderWidth = narrow ? Math.max(92, width * 0.3) : Math.min(240, width * 0.3);
       const gap = narrow ? 8 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
-      const room = width - ladderWidth - gap;
+      const room = width - ladderWidth - gap - RAIL;
       // the room holds the lifted sheet, or the stack and the sheet slid out of it
       const side = Math.max(110, Math.min(360, room / ((slide ? 1 + SLIDE : LIFTED.scale) * spread)));
       const height = (pose) => side * pose.scale * pose.tilt * spread;
@@ -787,7 +801,7 @@
         side,
         slideBy,
         ladderLeft: width - ladderWidth,
-        center: room / 2 + slideBy / 2,
+        center: RAIL + room / 2 + slideBy / 2,
         height: Math.ceil((slide ? rest : Math.max(open, rest)) + 2 * THICKNESS + 16),
         poseHeight: height,
       };
@@ -1005,14 +1019,7 @@
         ladder.append(row);
         return row;
       });
-      chips = example.sheets.map((sheet, i) => {
-        const chip = el("button", "orders-demo-step", sheetName(sheet).tag);
-        chip.type = "button";
-        chip.tabIndex = -1;
-        chip.addEventListener("click", () => toggle(i, null));
-        return chip;
-      });
-      steps.replaceChildren(...chips);
+      ticks.replaceChildren(...items.map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
 
       // one row for all blank sheets: the orders between, which the plot shows one by one
       blankRow = null;
@@ -1071,14 +1078,29 @@
         row.setAttribute("aria-pressed", String(lifted && item.index === active));
       });
 
-      chips.forEach((chip, i) => chip.classList.toggle("orders-demo-active", lifted && i === active));
-
-      // the arrow beside the stack at rest, from the middle of its top sheet to that of its bottom
-      // one, left of their left corners
+      // the slider: its stops at the middles of the sheets at rest (without a blank sheet's peek), its
+      // line from its rest down to the bottom sheet, and its handle at the sheet pointed at
       const rest = layout(null);
-      const [top, bottom] = [rest[0].y, rest.at(-1).y];
-      rail.style.transform = `translate(${roundTo(Math.max(18, corners(rest[0])[0][0] - 12), 2)}px, ${roundTo(top, 2)}px)`;
-      rail.style.height = `${roundTo(bottom - top, 2)}px`;
+      stops = [
+        { y: Math.max(10, rest[0].y - RAIL_REST), item: null },
+        ...items.map((item, p) => ({ y: rest[p].y - (item.order === state.blank ? PEEK * g.side : 0), item })),
+      ];
+      const [top, bottom] = [stops[0].y, stops.at(-1).y];
+      railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
+      railLine.style.height = `${roundTo(bottom - top, 2)}px`;
+      railLabel.style.top = `${roundTo((stops[1].y + bottom) / 2, 2)}px`;
+      [...ticks.children].forEach((tick, p) => {
+        tick.style.transform = `translateY(${roundTo(stops[p + 1].y, 2)}px)`;
+      });
+      const at = stops.findIndex(({ item }) =>
+        item === null ? !lifted && state.blank === null : lifted ? item.index === active : !item.sheet && item.order === state.blank,
+      );
+      thumb.style.transform = `translateY(${roundTo(stops[at].y, 2)}px)`;
+      thumb.classList.toggle("orders-demo-thumb-rest", at === 0);
+      thumb.setAttribute("aria-valuemin", "0");
+      thumb.setAttribute("aria-valuemax", String(stops.length - 1));
+      thumb.setAttribute("aria-valuenow", String(at));
+      thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
 
       // the row of the blank sheets: beside the one pointed at, or the middle one; sliding, beside the
       // middle one, where it lies at rest
@@ -1306,6 +1328,40 @@
       }
     }
 
+    // the slider: a stop's name, and bringing out its sheet (the rest puts every sheet back); a sheet
+    // brought out by the slider stays out, as one tapped
+    const stopName = (item) => (item.sheet ? sheetName(item.sheet).name + (item.sheet.order > 1 && !item.sheet.full ? ` of order ${item.order}` : "") : `order ${item.order}`);
+    function slideTo(stop) {
+      state.pinned = stop.item !== null;
+      if (stop.item === null) point(null, null);
+      else if (stop.item.sheet) point(stop.item.index, null);
+      else point(null, stop.item.order);
+    }
+    const stopAt = (clientY) => {
+      const y = clientY - stage.getBoundingClientRect().top;
+      return stops.reduce((best, stop) => (Math.abs(stop.y - y) < Math.abs(best.y - y) ? stop : best), stops[0]);
+    };
+    rail.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      rail.setPointerCapture(event.pointerId);
+      rail.classList.add("orders-demo-dragging");
+      slideTo(stopAt(event.clientY));
+    });
+    rail.addEventListener("pointermove", (event) => {
+      if (rail.hasPointerCapture(event.pointerId)) slideTo(stopAt(event.clientY));
+    });
+    for (const type of ["pointerup", "pointercancel"]) {
+      rail.addEventListener(type, () => rail.classList.remove("orders-demo-dragging"));
+    }
+    thumb.addEventListener("keydown", (event) => {
+      const at = Number(thumb.getAttribute("aria-valuenow"));
+      const last = stops.length - 1;
+      const next = { ArrowDown: at + 1, ArrowRight: at + 1, ArrowUp: at - 1, ArrowLeft: at - 1, Home: 0, End: last }[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      slideTo(stops[Math.max(0, Math.min(last, next))]);
+    });
+
     // the plot points at an order: the sheet of that order, or its blank sheet
     function pointAtOrder(order) {
       const index = current().sheets.findIndex((sheet) => sheet.order === order);
@@ -1318,7 +1374,7 @@
       return [event.clientX - box.left, event.clientY - box.top];
     };
     stage.addEventListener("pointermove", (event) => {
-      if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row")) return;
+      if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail")) return;
       const item = itemAt(pointer(event));
       if (item?.sheet) point(item.index, null);
       // a blank sheet comes out only from the stack at rest, which it does not change
