@@ -41,7 +41,7 @@
   ];
 
   const loader = document.createElement("script");
-  loader.src = `${root.dataset.root}data.js`;
+  loader.src = `${root.dataset.root}data.js?v=${root.dataset.version ?? ""}`; // past caches
   loader.onload = () => {
     try {
       start(window.SHAPIQ_FIXLIP);

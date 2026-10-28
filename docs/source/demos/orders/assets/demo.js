@@ -20,10 +20,8 @@
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
 // precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, a
 // tap that pins it, or the slider beside the stack) slides it out to the side of the
-// stack as it lies, under the sheets above it, and the others stay where they are; with
-// data-lift="lift" on the demo, it lifts out of the stack instead: the sheets above it move up, those
-// below it move down, and the sheet tilts towards the reader and grows. A ring marks its order on the
-// plot; pointing along the plot brings out the sheet of the order pointed at, or the blank sheet of
+// stack as it lies, under the sheets above it, and the others stay where they are. A ring marks its
+// order on the plot; pointing along the plot brings out the sheet of the order pointed at, or the blank sheet of
 // an order between. The slider is an arrow down the side of the stack, and one along the plot's
 // axis matches it: the explanations grow more complex from order to order.
 //
@@ -41,19 +39,11 @@
   const RED = [255, 13, 87];
   const BLUE = [30, 136, 229];
   const TURN = (-45 * Math.PI) / 180; // the sheets' rotation in their plane
-  // the poses of a sheet: at rest, lifted out of the stack, and receded while another is lifted;
-  // scale is its size, tilt how much of its depth shows (the cosine of the view's elevation)
-  const REST = { scale: 1, tilt: 0.5 };
-  const LIFTED = { scale: 1.06, tilt: 0.66 };
-  const RECEDED = { scale: 0.92, tilt: 0.4 };
-  // in units of a sheet's side: what shows of a sheet below the one above it, at rest and while
-  // one is lifted, the same for the blank sheets of the orders between, and how far the lifted
-  // sheet may cover the bottom corner of the one above it
-  const REST_STRIP = 0.24;
-  const OPEN_STRIP = 0.115;
-  const BLANK_REST_STRIP = 0.04;
-  const BLANK_OPEN_STRIP = 0.028;
-  const OVERLAP = 0.06;
+  const TILT = 0.5; // how much of a sheet's depth shows (the cosine of the view's elevation)
+  // in units of a sheet's side: what shows of a sheet below the one above it, and of a blank sheet
+  // of the orders between
+  const STRIP = 0.24;
+  const BLANK_STRIP = 0.04;
   // how far the blank sheet of the order pointed at slides out of the stack, towards the reader:
   // less than its strip, so that the blank sheet below it still shows
   const PEEK = 0.03;
@@ -62,8 +52,7 @@
   const BLANKS = 6;
   // the sheet pointed at slides out of the stack to the side, as it lies and keeping its place in
   // the stack (the sheets above it still lie over it), and the others and the rows of the ladder
-  // stay where they are (unless data-lift="lift" on the demo lifts it out): how far it slides, in
-  // units of its width
+  // stay where they are: how far it slides, in units of its width
   const SLIDE = 0.32;
   // pixels: the column of the slider, left of the stack; its line in it; how far above the top
   // sheet its handle rests, when no sheet is out
@@ -518,7 +507,7 @@
 
   function start(root, data) {
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
-    // what is pointed at: a lifted sheet (its index), or the blank sheet of an order between
+    // what is pointed at: a sheet slid out (its index), or the blank sheet of an order between
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
     let instance = 0;
@@ -604,29 +593,25 @@
     const sheetItems = () => items.filter((item) => item.sheet);
     const blankItems = () => items.filter((item) => !item.sheet);
 
-    // -- geometry: the size of the sheets, the stage, and every sheet's place and pose ---------------
+    // -- geometry: the size of the sheets, the stage, and every sheet's place ------------------------
 
     function measure() {
       const width = stage.clientWidth;
       const narrow = width < 560;
-      const slide = root.dataset.lift !== "lift";
       // the rows of the ladder: on wide screens, room for a bar, the R^2 and the verdict, all as wide
       const ladderWidth = narrow ? Math.max(92, width * 0.3) : Math.min(256, width * 0.32);
       const gap = narrow ? 8 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const room = width - ladderWidth - gap - RAIL;
-      // the room holds the lifted sheet, or the stack and the sheet slid out of it
-      const side = Math.max(110, Math.min(360, room / ((slide ? 1 + SLIDE : LIFTED.scale) * spread)));
-      const height = (pose) => side * pose.scale * pose.tilt * spread;
+      // the room holds the stack and the sheet slid out of it
+      const side = Math.max(110, Math.min(360, room / ((1 + SLIDE) * spread)));
+      const sheetHeight = side * TILT * spread;
       // the same height for every example: the most sheets and blank sheets of any
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
       const blanks = Math.max(...data.examples.map((example) => between(example).length));
-      // the tallest stack: the second sheet lifted, the first above it, the others below
-      const open =
-        height(RECEDED) + height(LIFTED) - OVERLAP * side + (n - 2) * OPEN_STRIP * side + blanks * BLANK_OPEN_STRIP * side;
-      const rest = height(REST) + (n - 1) * REST_STRIP * side + blanks * BLANK_REST_STRIP * side;
+      const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side;
       // a sheet slides out to the left: the stack lies right of the middle by half of that
-      const slideBy = slide ? SLIDE * side * spread : 0;
+      const slideBy = SLIDE * side * spread;
       return {
         width,
         narrow,
@@ -634,44 +619,33 @@
         slideBy,
         ladderLeft: width - ladderWidth,
         center: RAIL + room / 2 + slideBy / 2,
-        height: Math.ceil((slide ? rest : Math.max(open, rest)) + 2 * THICKNESS + 16),
-        poseHeight: height,
+        height: Math.ceil(stack + 2 * THICKNESS + 16),
+        sheetHeight,
       };
     }
 
-    // the place (center) and pose of every item: stacked so that a strip of every sheet shows below
-    // the one above it, and the lifted sheet, which lies over all others, shows whole; or, sliding,
-    // every sheet as at rest, and the one pointed at slid out to the side of the stack
+    // the place (center) of every item: stacked so that a strip of every sheet shows below the one
+    // above it, and the one pointed at slid out to the side of the stack
     function layout(active) {
       const g = geometry;
       const pointed = active === null ? null : sheetItems()[active];
-      const lifted = g.slideBy ? null : pointed;
+      const h = g.sheetHeight;
       const centers = [];
-      const poses = [];
       let bottom = 0;
       items.forEach((item, position) => {
-        const pose = lifted === null ? REST : item === lifted ? LIFTED : RECEDED;
-        const h = g.poseHeight(pose);
         if (position === 0) bottom = h;
-        else if (item === lifted) bottom += h - OVERLAP * g.side;
-        else if (!item.sheet) bottom += (lifted === null ? BLANK_REST_STRIP : BLANK_OPEN_STRIP) * g.side;
-        else bottom += (lifted === null ? REST_STRIP : OPEN_STRIP) * g.side;
+        else bottom += (item.sheet ? STRIP : BLANK_STRIP) * g.side;
         centers.push(bottom - h / 2);
-        poses.push(pose);
       });
       const offset = (g.height - bottom) / 2;
-      return items.map((item, position) => {
-        const out = g.slideBy && item === pointed;
-        return {
-          pose: poses[position],
-          x: g.center - (out ? g.slideBy : 0),
-          y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0),
-        };
-      });
+      return items.map((item, position) => ({
+        x: g.center - (item === pointed ? g.slideBy : 0),
+        y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0),
+      }));
     }
 
     // the corners of a sheet on the stage (left, top, right, bottom for the turn of -45 degrees)
-    const corners = ({ pose, x, y }) => {
+    const corners = ({ x, y }) => {
       const a = geometry.side / 2;
       return [
         [-a, -a],
@@ -679,8 +653,8 @@
         [a, a],
         [-a, a],
       ].map(([u, v]) => [
-        x + pose.scale * (u * Math.cos(TURN) - v * Math.sin(TURN)),
-        y + pose.scale * pose.tilt * (u * Math.sin(TURN) + v * Math.cos(TURN)),
+        x + (u * Math.cos(TURN) - v * Math.sin(TURN)),
+        y + TILT * (u * Math.sin(TURN) + v * Math.cos(TURN)),
       ]);
     };
     const rightCorner = (place) => corners(place).reduce((a, b) => (b[0] > a[0] ? b : a));
@@ -699,21 +673,18 @@
       return true;
     };
 
-    // the order of the sheets on top of each other: the lifted sheet on top, else as stacked
-    const zIndex = (item, active) =>
-      active !== null && !geometry.slideBy && item === sheetItems()[active]
-        ? items.length + 1
-        : items.length - items.indexOf(item);
+    // the order of the sheets on top of each other, as stacked: a sheet slid out keeps its place
+    const zIndex = (item) => items.length - items.indexOf(item);
 
     // the item under a point of the stage, where the sheets are going (not where they are while
     // they move), the one on top first. While a sheet slides out, the sheets count where they lie
     // at rest, and the one slid out also where it shows: else the sheet would slide away from under
     // the pointer, hand it to the sheet below, and come back for it, over and over.
     function itemAt(point) {
-      const sliding = geometry.slideBy && state.active !== null;
-      const places = layout(sliding ? null : state.active);
+      const sliding = state.active !== null;
+      const places = layout(null);
       const order = items.map((_, position) => position);
-      order.sort((a, b) => zIndex(items[b], state.active) - zIndex(items[a], state.active));
+      order.sort((a, b) => zIndex(items[b]) - zIndex(items[a]));
       if (sliding) {
         const out = items.indexOf(sheetItems()[state.active]);
         const above = order.slice(0, order.indexOf(out));
@@ -874,29 +845,26 @@
       root.classList.remove("orders-demo-instant");
     }
 
-    // move every sheet and row to its place, for a lifted sheet (or null at rest)
+    // move every sheet and row to its place, for a sheet slid out (or null at rest)
     function place(active) {
       const g = geometry;
       stage.style.height = `${g.height}px`;
       root.classList.toggle("orders-demo-narrow", g.narrow);
-      const lifted = typeof active === "number";
+      const out = typeof active === "number";
       const places = layout(active);
       const rowY = []; // the height of every sheet's row, for the row of the blank sheets
       items.forEach((item, position) => {
-        const { pose, x, y } = places[position];
+        const { x, y } = places[position];
         const node = item.node;
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
-        node.style.zIndex = zIndex(item, lifted ? active : null);
-        node.style.transform =
-          `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scale(${pose.scale}) ` +
-          `scaleY(${pose.tilt}) rotate(${(TURN * 180) / Math.PI}deg)`;
+        node.style.zIndex = zIndex(item);
+        node.style.transform = `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scaleY(${TILT}) rotate(${(TURN * 180) / Math.PI}deg)`;
         // the edge below the face, in the face's own coordinates: straight down on the stage
-        const depth = (item.sheet ? THICKNESS : THICKNESS / 2) / (pose.scale * pose.tilt);
+        const depth = (item.sheet ? THICKNESS : THICKNESS / 2) / TILT;
         node.style.setProperty("--orders-edge-x", `${roundTo(Math.sin(TURN) * depth, 2)}px`);
         node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
-        node.classList.toggle("orders-demo-lifted", lifted && item.index === active);
-        node.classList.toggle("orders-demo-receded", lifted && item.index !== active);
+        node.classList.toggle("orders-demo-receded", out && item.index !== active);
         node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
 
         if (!item.sheet) return;
@@ -906,9 +874,8 @@
         row.style.left = `${g.ladderLeft}px`;
         row.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
         row.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
-        row.classList.toggle("orders-demo-active", lifted && item.index === active);
-        row.classList.toggle("orders-demo-compact", lifted && item.index !== active && !g.slideBy);
-        row.setAttribute("aria-pressed", String(lifted && item.index === active));
+        row.classList.toggle("orders-demo-active", out && item.index === active);
+        row.setAttribute("aria-pressed", String(out && item.index === active));
       });
 
       // the slider: its stops at the middles of the sheets at rest (without a blank sheet's peek), its
@@ -926,7 +893,7 @@
         tick.style.transform = `translateY(${roundTo(stops[p + 1].y, 2)}px)`;
       });
       const at = stops.findIndex(({ item }) =>
-        item === null ? !lifted && state.blank === null : lifted ? item.index === active : !item.sheet && item.order === state.blank,
+        item === null ? !out && state.blank === null : out ? item.index === active : !item.sheet && item.order === state.blank,
       );
       // placed by translate, which the handle's growing on hover does not scale, unlike a transform
       thumb.style.translate = `0 ${roundTo(stops[at].y, 2)}px`;
@@ -936,16 +903,13 @@
       thumb.setAttribute("aria-valuenow", String(at));
       thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
 
-      // the row of the blank sheets: beside the one pointed at, or the middle one; sliding, beside the
-      // middle one, where it lies at rest
+      // the row of the blank sheets: beside the middle one, where it lies at rest
       if (blankRow) {
         const blanks = blankItems();
-        const middle = blanks[Math.floor((blanks.length - 1) / 2)];
-        const target = g.slideBy ? middle : (blanks.find((item) => item.order === state.blank) ?? middle);
+        const target = blanks[Math.floor((blanks.length - 1) / 2)];
         const right = rightCorner(places[items.indexOf(target)]);
-        if (g.slideBy && target.order === state.blank) right[1] -= PEEK * g.side;
+        if (target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
-        blankRow.classList.toggle("orders-demo-compact", lifted && !g.slideBy);
         // beside the blank sheet, but clear of the rows above and below it, which are taller where
         // the blank sheets lie close together (on narrow screens)
         const [above, below] = [rows.length - 2, rows.length - 1];
@@ -1036,6 +1000,9 @@
       // the estimation tax: where even the full decomposition is estimated (from a proxy of the
       // model, not from all 2^n coalitions), the R^2 it falls short of 1, hatched across the plot
       const full = fits.at(-1)[1];
+      // the note on the full decomposition: above its point, or, over the band, on the line of the
+      // band's label, at the other end
+      let note = { x: f(x(n) + 4), y: f(y(full) - 15) };
       if (full < EXACT) {
         const id = `orders-tax-${plotId}`;
         const hatch = add(add(plot, "defs", {}), "pattern", {
@@ -1052,16 +1019,9 @@
         add(tax, "rect", { ...band, fill: `url(#${id})` });
         // its label inside the band, or above the plot where the band is too thin for it
         const inside = band.height >= 15;
-        add(
-          tax,
-          "text",
-          {
-            class: "orders-demo-plot-axis orders-demo-plot-tax-label",
-            x: f(x0 + (inside ? 6 : 0)),
-            y: inside ? f((y(1) + y(full)) / 2) : f(y(1) - 8),
-          },
-          "estimation tax",
-        );
+        const line = inside ? f((y(1) + y(full)) / 2) : f(y(1) - 8);
+        add(tax, "text", { class: "orders-demo-plot-axis orders-demo-plot-tax-label", x: f(x0 + (inside ? 6 : 0)), y: line }, "estimation tax");
+        note = { x: f(x1 - (inside ? 6 : 0)), y: line };
       }
 
       const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
@@ -1087,8 +1047,8 @@
         });
       }
 
-      // the last order is the full decomposition: a note above its point
-      add(plot, "text", { class: "orders-demo-plot-axis", x: f(x(n) + 4), y: f(y(fits.at(-1)[1]) - 15), "text-anchor": "end" }, "full decomposition");
+      // the last order is the full decomposition: a note by its point
+      add(plot, "text", { class: "orders-demo-plot-axis orders-demo-plot-note", ...note, "text-anchor": "end" }, "full decomposition");
 
       // the marker: a guide down to the axis and a ring on the line, with the order's R^2
       const guide = add(plot, "g", { class: "orders-demo-plot-guide" });
@@ -1136,7 +1096,7 @@
       mark();
     }
 
-    // the ring at the order pointed at (a lifted sheet's, or a blank sheet's), hidden at rest
+    // the ring at the order pointed at (a sheet's slid out, or a blank sheet's), hidden at rest
     function mark() {
       if (!marker) return;
       const example = current();
@@ -1261,11 +1221,6 @@
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
-    // the demo follows its data-lift attribute: a sheet slides out (by default), or lifts out
-    new MutationObserver(() => {
-      geometry = measure();
-      place(state.active);
-    }).observe(root, { attributes: true, attributeFilter: ["data-lift"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
@@ -1297,7 +1252,7 @@
     begin();
   } else {
     const loader = document.createElement("script");
-    loader.src = `${roots[0].dataset.root}data.js`;
+    loader.src = `${roots[0].dataset.root}data.js?v=${roots[0].dataset.version ?? ""}`; // past caches
     loader.onload = begin;
     loader.onerror = () => roots.forEach(showFallback);
     document.head.appendChild(loader);

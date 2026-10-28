@@ -17,15 +17,21 @@ embeds the FIxLIP demo)::
        :fallback: images/hero_siglip2.png
        :alt: What the fallback image shows.
 
-It writes the demo's container, ``<div class="<name>-demo" data-root="...">``, whose ``data-root``
-is the URL of the demo's assets relative to the page, and adds ``demo.css`` and ``demo.js`` to the
-page. Without JavaScript, the container shows the fallback image, a file of the built ``_static``
-folder.
+It writes the demo's container, ``<div class="<name>-demo" data-root="..." data-version="...">``,
+whose ``data-root`` is the URL of the demo's assets relative to the page and ``data-version`` a
+checksum of its ``data.js`` (for the script to load the data by, past browsers' caches), and adds
+``demo.css`` and ``demo.js`` to the page. Without JavaScript, the container shows the fallback image,
+a file of the built ``_static`` folder. Outside HTML, a demo is left out.
+
+The assets are copied before the pages are written, so that Sphinx adds its checksums to the links
+of ``demo.css`` and ``demo.js``, and they are dependencies of the pages that embed the demo, so that a
+change to them writes these pages again.
 """
 
 from __future__ import annotations
 
 import shutil
+import zlib
 from html import escape
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -41,6 +47,7 @@ if TYPE_CHECKING:
     from sphinx.writers.html5 import HTML5Translator
 
 _ASSETS = ("demo.js", "demo.css")  # the files that every demo's assets folder has
+_DATA = "data.js"  # the demo's data, which its script loads, if it has any
 
 
 class DemoNode(nodes.General, nodes.Element):
@@ -64,7 +71,12 @@ class DemoDirective(SphinxDirective):
         if missing := [file for file in _ASSETS if not (assets / file).is_file()]:
             msg = f"the demo {name!r} has no {', '.join(missing)} in demos/{name}/assets"
             raise self.error(msg)
-        node = DemoNode(demo=name, fallback=self.options.get("fallback"))
+        for file in (*_ASSETS, _DATA):
+            if (assets / file).is_file():
+                self.env.note_dependency(str(assets / file))
+        data = assets / _DATA
+        version = f"{zlib.crc32(data.read_bytes()):08x}" if data.is_file() else ""
+        node = DemoNode(demo=name, fallback=self.options.get("fallback"), version=version)
         node["alt"] = self.options.get("alt", "")
         if "anchor" in self.options:
             node["ids"].append(self.options["anchor"])
@@ -74,9 +86,8 @@ class DemoDirective(SphinxDirective):
 def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     root = relative_uri(page, f"_static/demos/{node['demo']}/")
-    self.body.append(
-        self.starttag(node, "div", CLASS=f"{node['demo']}-demo", **{"data-root": root})
-    )
+    attributes = {"data-root": root, "data-version": node["version"]}
+    self.body.append(self.starttag(node, "div", CLASS=f"{node['demo']}-demo", **attributes))
     if node["fallback"]:
         src = relative_uri(page, f"_static/{node['fallback']}")
         self.body.append(
@@ -87,6 +98,11 @@ def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
 
 def _depart_demo(self: HTML5Translator, node: DemoNode) -> None:  # noqa: ARG001
     self.body.append("</div>\n")
+
+
+def _skip_demo(self: nodes.NodeVisitor, node: DemoNode) -> None:  # noqa: ARG001
+    """Leave a demo out of a build that is not HTML (text, LaTeX, ...)."""
+    raise nodes.SkipNode
 
 
 def _add_assets(
@@ -105,9 +121,9 @@ def _add_assets(
         app.add_js_file(f"demos/{name}/demo.js", loading_method="defer")
 
 
-def _copy_assets(app: Sphinx, exception: Exception | None) -> None:
-    """Copy every demo's assets to ``_static/demos/<name>/`` of the built docs."""
-    if exception is not None or app.builder.format != "html":
+def _copy_assets(app: Sphinx, env: object) -> None:  # noqa: ARG001
+    """Copy every demo's assets to ``_static/demos/<name>/``, before the pages are written."""
+    if app.builder.format != "html":
         return
     for assets in sorted((Path(app.srcdir) / "demos").glob("*/assets")):
         target = Path(app.outdir) / "_static" / "demos" / assets.parent.name
@@ -116,8 +132,16 @@ def _copy_assets(app: Sphinx, exception: Exception | None) -> None:
 
 def setup(app: Sphinx) -> ExtensionMetadata:
     """Register the directive, its node and the assets."""
-    app.add_node(DemoNode, html=(_visit_demo, _depart_demo))
+    skip = (_skip_demo, None)
+    app.add_node(
+        DemoNode,
+        html=(_visit_demo, _depart_demo),
+        latex=skip,
+        text=skip,
+        man=skip,
+        texinfo=skip,
+    )
     app.add_directive("shapiq-demo", DemoDirective)
     app.connect("html-page-context", _add_assets)
-    app.connect("build-finished", _copy_assets)
+    app.connect("env-updated", _copy_assets)
     return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}

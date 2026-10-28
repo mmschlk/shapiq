@@ -6,22 +6,26 @@
   clear: both;
   margin: 1.5rem 0 1rem;
   container-type: inline-size; /* the layout follows the demo's width, not the window's */
-  /* the sheets, their lines and their edges; the docs' tokens (tokens.css) and Furo's colors */
+  /* the docs' tokens (tokens.css, Furo), with fallbacks for a page without them */
   --orders-ink: var(--color-foreground-primary, #1b1e27);
   --orders-muted: var(--color-foreground-secondary, #5b6275);
   --orders-sheet: var(--shapiq-surface, #ffffff);
   --orders-page: var(--color-background-primary, #ffffff);
   --orders-raised: var(--shapiq-surface-raised, #f7f8fc);
   --orders-line: var(--shapiq-border, #e2e6f3);
+  --orders-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --orders-duration: var(--shapiq-duration, 220ms);
+  --orders-glide: cubic-bezier(0.45, 0, 0.15, 1); /* for what moves a distance: the pill */
+  --orders-control: 2.35rem; /* the height of the switch */
+  /* the sheets and their rows, moving to their places */
+  --orders-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --orders-move: 640ms;
   --orders-edge: #ccd3e6;
   --orders-shade: rgba(20, 28, 60, 0.14);
   /* the black box stays black in both themes; on a dark page, its edges show */
   --orders-box-edge: #ffffff;
   /* the estimation tax in the plot: the fit an estimated full decomposition falls short of */
   --orders-tax: #c2700a;
-  --orders-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --orders-duration: 640ms;
-  --orders-switch: 360ms; /* the pill sliding to the example chosen */
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -40,24 +44,22 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .orders-demo {
-    --orders-duration: 0ms;
-    --orders-switch: 0ms;
-  }
-}
-
 /* choosing an example: the stack, its fits and the plot fade out (demo.js draws the example chosen
    when they have), and in again with it */
 .orders-demo-stack,
 .orders-demo-ladder,
 .orders-demo-plot-svg {
-  transition: opacity 340ms ease-out;
+  transition: opacity 420ms var(--orders-ease);
 }
 
 .orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg) {
   opacity: 0;
   transition-duration: 160ms;
+}
+
+/* what the script hides stays hidden, whatever its display */
+.orders-demo [hidden] {
+  display: none !important;
 }
 
 /* a new example takes its places at once, without moving there */
@@ -108,32 +110,32 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* on narrow screens, the examples without their models */
-@container (max-width: 34rem) {
-  .orders-demo-option-detail {
-    display: none;
-  }
-
+@container (max-width: 40rem) {
   .orders-demo-option {
-    padding-inline: 0.75rem;
+    padding-inline: 0.7rem;
   }
 }
 
 .orders-demo-option {
+  box-sizing: border-box;
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.4rem;
-  padding: 0.35rem 0.8rem;
+  height: calc(var(--orders-control) - 8px); /* the switch, one row high, as high as a control */
+  padding: 0 0.85rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--orders-muted);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
   transition:
-    color var(--shapiq-duration, 220ms),
-    transform 140ms var(--orders-ease);
+    color var(--orders-duration) var(--orders-ease),
+    transform 120ms var(--orders-ease);
 }
 
 .orders-demo-option:hover {
@@ -155,22 +157,16 @@ body[data-theme="dark"] .orders-demo {
   border-radius: inherit;
   background: var(--orders-ink);
   pointer-events: none;
-  transition: clip-path var(--orders-switch) var(--orders-ease);
+  transition: clip-path 380ms var(--orders-glide);
 }
 
 .orders-demo-pill .orders-demo-option {
   color: var(--orders-sheet);
 }
 
-.orders-demo-option-detail {
-  font-size: 0.78rem;
-  font-weight: 500;
-  opacity: 0.75;
-}
-
 .orders-demo-option:focus-visible,
 .orders-demo-row:focus-visible {
-  outline: 2px dashed var(--orders-ink);
+  outline: 2px solid var(--orders-ink);
   outline-offset: 2px;
 }
 
@@ -200,19 +196,18 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-model-enter {
-  animation: orders-demo-model-enter 520ms var(--orders-ease);
+  animation: orders-demo-model-enter 420ms var(--orders-ease) both;
 }
 
 @keyframes orders-demo-model-enter {
   from {
     opacity: 0;
-    transform: translateX(-0.35rem);
+    transform: translateY(4px);
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .orders-demo-model-enter {
-    animation: none;
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -283,7 +278,6 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-option-icon {
   width: 1rem;
   height: 1rem;
-  align-self: center;
   stroke-width: 2.2;
 }
 
@@ -306,8 +300,8 @@ body[data-theme="dark"] .orders-demo {
     calc(var(--orders-edge-x, 0) * 2.5) calc(var(--orders-edge-y, 4px) * 2.5) 18px 0 var(--orders-shade);
   cursor: pointer;
   transition:
-    transform var(--orders-duration) var(--orders-ease),
-    box-shadow var(--orders-duration) var(--orders-ease);
+    transform var(--orders-move) var(--orders-settle),
+    box-shadow var(--orders-move) var(--orders-settle);
   will-change: transform;
 }
 
@@ -316,10 +310,10 @@ body[data-theme="dark"] .orders-demo {
   width: 100%;
   height: 100%;
   overflow: visible;
-  transition: opacity var(--orders-duration) var(--orders-ease);
+  transition: opacity var(--orders-move) var(--orders-settle);
 }
 
-/* while a sheet is lifted, the others step back */
+/* while a sheet is slid out, the others step back */
 .orders-demo-receded .orders-demo-face {
   opacity: 0.45;
 }
@@ -546,10 +540,10 @@ body[data-theme="dark"] .orders-demo {
     0 1px 4px var(--orders-shade);
   cursor: grab;
   transition:
-    translate 320ms var(--orders-ease),
-    scale var(--shapiq-duration, 220ms),
-    background var(--shapiq-duration, 220ms),
-    box-shadow var(--shapiq-duration, 220ms);
+    translate 320ms var(--orders-settle),
+    scale var(--orders-duration) var(--orders-ease),
+    background var(--orders-duration) var(--orders-ease),
+    box-shadow var(--orders-duration) var(--orders-ease);
 }
 
 /* at rest, above the top sheet, the handle is hollow */
@@ -565,7 +559,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-thumb:focus-visible {
-  outline: 2px dashed var(--orders-ink);
+  outline: 2px solid var(--orders-ink);
   outline-offset: 3px;
 }
 
@@ -577,12 +571,6 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-dragging .orders-demo-thumb {
   transition: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .orders-demo-thumb {
-    transition: none;
-  }
 }
 
 /* the ladder: a row per sheet, beside its right corner, with the sheet's fit */
@@ -609,8 +597,8 @@ body[data-theme="dark"] .orders-demo {
   pointer-events: auto;
   cursor: pointer;
   transition:
-    transform var(--orders-duration) var(--orders-ease),
-    color var(--shapiq-duration, 220ms);
+    transform var(--orders-move) var(--orders-settle),
+    color var(--orders-duration) var(--orders-ease);
 }
 
 /* the line from the sheet's right corner to its row */
@@ -621,7 +609,7 @@ body[data-theme="dark"] .orders-demo {
   width: var(--orders-lead, 0);
   border-top: 1px dashed var(--orders-edge);
   content: "";
-  transition: width var(--orders-duration) var(--orders-ease);
+  transition: width var(--orders-move) var(--orders-settle);
 }
 
 .orders-demo-row-title {
@@ -660,7 +648,7 @@ body[data-theme="dark"] .orders-demo {
   border-radius: inherit;
   background: var(--orders-ink);
   opacity: 0.7;
-  transition: opacity var(--shapiq-duration, 220ms);
+  transition: opacity var(--orders-duration) var(--orders-ease);
 }
 
 .orders-demo-score {
@@ -709,31 +697,10 @@ body[data-theme="dark"] .orders-demo {
   cursor: default;
 }
 
-.orders-demo-compact.orders-demo-blank-row .orders-demo-row-name {
-  display: inline;
-}
-
 .orders-demo-blank-row .orders-demo-row-title strong {
   min-width: 0.8em;
   font-style: normal;
   text-align: center;
-}
-
-/* while a sheet is lifted, the rows of the others have room for one line */
-.orders-demo-compact .orders-demo-row-name,
-.orders-demo-compact .orders-demo-verdict {
-  display: none;
-}
-
-.orders-demo-compact .orders-demo-row-title {
-  min-width: 3.6em;
-}
-
-.orders-demo-compact {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  column-gap: 0.6rem;
-  font-size: 0.8rem;
 }
 
 /* on narrow screens, the rows have room for the tag and the fit only */
@@ -833,6 +800,14 @@ body[data-theme="dark"] .orders-demo {
   stroke-linejoin: round;
 }
 
+/* the note on the full decomposition, clear of the band's hatching */
+.orders-demo-plot-note {
+  paint-order: stroke;
+  stroke: var(--orders-page);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
 /* the axes' labels: the order under the axis, the faithfulness along it */
 .orders-demo-plot-label {
   fill: var(--orders-ink);
@@ -894,7 +869,7 @@ body[data-theme="dark"] .orders-demo {
   fill: var(--orders-ink);
   stroke: var(--orders-sheet);
   stroke-width: 1.5;
-  transition: r var(--shapiq-duration, 220ms);
+  transition: r var(--orders-duration) var(--orders-ease);
 }
 
 .orders-demo-plot-between {
@@ -909,8 +884,8 @@ body[data-theme="dark"] .orders-demo {
   opacity: 0;
   pointer-events: none;
   transition:
-    transform 260ms var(--orders-ease),
-    opacity var(--shapiq-duration, 220ms);
+    transform 260ms var(--orders-settle),
+    opacity var(--orders-duration) var(--orders-ease);
 }
 
 .orders-demo-plot-pointing .orders-demo-plot-marker,
@@ -955,9 +930,9 @@ body[data-theme="dark"] .orders-demo {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .orders-demo-plot-marker,
-  .orders-demo-plot-guide {
-    transition: none;
+  .orders-demo * {
+    transition: none !important;
+    animation: none !important;
   }
 }
 
