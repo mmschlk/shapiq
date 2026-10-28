@@ -6,15 +6,18 @@ the photo with only the coalition's patches and the caption with only its tokens
 FIxLIP demo, imported from its scripts (``../../fixlip/compute/explain.py``).
 
 SigLIP 2 is a black box: unlike trees or graph neural networks, it has no structure that would give
-its interactions exactly. ProxySHAP fits an XGBoost proxy to coalitions of the game, every player
-present with probability 1/2 (as FIxLIP samples them), and reads the proxy's interactions off its
-trees exactly. Without the residual adjustment, k-SII of the proxy's depth is the full
-decomposition of the proxy: its trees split on at most that many players, so no larger group has a
-value, and every lower order of k-SII follows from it. The depth, 6, is the best of 3 to 8 in a
-5-fold cross-validation on the coalitions.
+its interactions exactly. ProxySHAP fits an XGBoost proxy to coalitions of the game drawn from the
+Shapley distribution (``faithfulness.py``), the distribution FSII is faithful to, and reads the
+proxy's interactions off its trees exactly. Its sampler evaluates the empty and the full coalition
+in any case (their weights are ignored), all coalitions of a size it would draw more often than the
+size has coalitions (here the 74 of one player and the 74 of 73 players), and draws the others by
+the weights of their sizes, each with its complement. Without the residual adjustment, FSII of the
+proxy's depth is the full decomposition of the proxy: its trees split on at most that many players,
+so no larger group has a value, and every lower order of FSII follows from it. The depth, 6, is the
+best of 3 to 8 in a 5-fold cross-validation on the coalitions.
 
-Every order is scored by its R^2 on coalitions it was not fit to, every player present with
-probability 1/2 (as for the molecule and the houses), against the model itself: the full
+Every order is scored by its R^2 under the Shapley distribution (as for the molecule and the
+houses), on 512 coalitions drawn from it apart from the proxy's, against the model itself: the full
 decomposition reproduces the proxy exactly, and the model as well as the proxy does.
 
 Usage::
@@ -30,7 +33,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 import tomllib
@@ -38,6 +40,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from faithfulness import fsii, predictions, r2, sample, size_weights  # in this folder
 from xgboost import XGBRegressor
 
 import shapiq
@@ -50,7 +53,7 @@ import explain as fixlip  # noqa: E402  (the FIxLIP demo's game)
 
 PHOTO, MODEL = "elephant", "siglip2"
 BUDGET = 10_000  # the coalitions the proxy is fit to
-N_TEST = 512  # the coalitions every order is scored on
+N_TEST = 512  # the coalitions every order is scored on, drawn apart from the proxy's
 DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
 PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
 
@@ -106,18 +109,8 @@ def build_game(results: Path) -> tuple[shapiq.Game, list[str]]:
     return game, [token["text"] for token in tokens]
 
 
-def predictions(values: dict[tuple[int, ...], float], coalitions: np.ndarray) -> np.ndarray:
-    """Return the sum of the values of every coalition's subsets: the explanation's prediction."""
-    players = [interaction for interaction in values if interaction]
-    members = np.zeros((len(players), coalitions.shape[1]))
-    for row, interaction in enumerate(players):
-        members[row, list(interaction)] = 1
-    inside = coalitions.astype(float) @ members.T == members.sum(axis=1)
-    return inside @ np.array([values[interaction] for interaction in players])
-
-
 def main() -> None:
-    """Evaluate the game, fit the proxy, and write k-SII of every order: ``results/fixlip.json``."""
+    """Evaluate the game, fit the proxy, and write FSII of every order: ``results/fixlip.json``."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--results", type=Path, default=HERE / "results")
     args = parser.parse_args()
@@ -127,17 +120,14 @@ def main() -> None:
     game, tokens = build_game(args.results)
     n = game.n_players
     cached = CachedGame(game, args.results / "fixlip_coalitions.npz")
-    # every coalition as likely as any other (a size as often as it has coalitions): every player
-    # present with probability 1/2
-    p_half = np.array([math.comb(n, size) for size in range(n + 1)], dtype=float)
 
-    # the full decomposition of the proxy: k-SII of its highest order, without adjustment
+    # the full decomposition of the proxy: FSII of its highest order, without adjustment
     start = time.time()
     approximator = shapiq.approximator.ProxySHAP(
         n=n,
-        index="k-SII",
+        index="FSII",
         max_order=DEPTH,
-        sampling_weights=p_half,
+        sampling_weights=size_weights(n),  # the Shapley distribution's sizes
         proxy_model=XGBRegressor(**PROXY, random_state=0, n_jobs=4),
         adjustment=False,
         random_state=0,
@@ -155,38 +145,36 @@ def main() -> None:
     )
     converter = MoebiusConverter(moebius)
 
-    test = np.random.default_rng(1).random((N_TEST, n)) < 0.5
+    test = sample(n, N_TEST, seed=1)
     y = cached(test)
     orders = {}
     for order in range(1, DEPTH + 1):
-        explanation = converter("k-SII", order)
-        values = {
-            key: float(explanation[key])
-            for key in explanation.interaction_lookup
-            if key and abs(explanation[key]) > 1e-9
-        }
-        residual = y - predictions(values, test)
-        r2 = float(1 - np.sum(residual**2) / np.sum((y - y.mean()) ** 2))
-        strongest = sorted(values.items(), key=lambda item: (len(item[0]), -abs(item[1])))
-        orders[order] = {"r2": r2, "values": [[list(key), value] for key, value in strongest]}
-        print(f"order {order}: {len(values)} values, R^2 {r2:.3f}", flush=True)
+        values = fsii(converter, order)
+        fit = r2(y, predictions(values, test))
+        strongest = sorted(
+            ((key, value) for key, value in values.items() if key),
+            key=lambda item: (len(item[0]), -abs(item[1])),
+        )
+        orders[order] = {"r2": fit, "values": [[list(key), value] for key, value in strongest]}
+        print(f"order {order}: {len(strongest)} values, R^2 {fit:.3f}", flush=True)
 
     # the lower orders from the full decomposition are ProxySHAP's own at that order
     pairs = shapiq.approximator.ProxySHAP(
         n=n,
-        index="k-SII",
+        index="FSII",
         max_order=2,
-        sampling_weights=p_half,
+        sampling_weights=size_weights(n),
         proxy_model=XGBRegressor(**PROXY, random_state=0, n_jobs=4),
         adjustment=False,
         random_state=0,
     ).approximate(budget=BUDGET, game=cached)
     difference = max(
-        abs(pairs[key] - converter("k-SII", 2)[key]) for key in pairs.interaction_lookup
+        abs(pairs[key] - converter("FSII", 2)[key]) for key in pairs.interaction_lookup
     )
     print(f"largest difference to ProxySHAP of order 2: {difference:.1e}")
 
     result = {
+        "index": "FSII",
         "grid": 8,
         "tokens": tokens,
         "largest_order": DEPTH,
