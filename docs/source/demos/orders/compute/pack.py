@@ -1,7 +1,8 @@
 """Write the orders demo's data, ``../assets/data.js``, from the results of the other scripts.
 
 Reads the explanations of the molecule (molecule.py), of the houses of California housing
-(housing.py), and of how SigLIP 2 matches the FIxLIP demo's elephant and its caption (fixlip.py). It keeps
+(housing.py), of the same house by TabPFN (house_tabpfn.py), and of how SigLIP 2 matches the FIxLIP
+demo's elephant and its caption (fixlip.py). It keeps
 what the demo draws on its sheets, rounded: the orders 1 to 4 and the full decomposition (k-SII of
 order n, the number of players, which equals the Möbius transform; for the houses, of order 5, the
 trees' depth, which equals it already and is exact), every main effect, and the
@@ -43,6 +44,12 @@ MODELS = {
     "graph": ["graph", "Graph neural network", "GCN with 2 layers", "exact with GraphSHAP-IQ"],
     "tree": ["tree", "Tree ensemble", "XGBoost, 300 trees of depth 5", "exact with TreeExplainer"],
     "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "ProxySHAP"],
+    "tabpfn": [
+        "box",
+        "Black box",
+        "TabPFN, a tabular foundation model",
+        "exact with TabPFNImputer",
+    ],
 }
 
 
@@ -197,9 +204,10 @@ def main() -> None:
     def load(name: str) -> dict[str, Any]:
         return json.loads((args.results / f"{name}.json").read_text(encoding="utf-8"))
 
-    molecule, house, houses, fixlip = (
+    molecule, house, tabpfn, houses, fixlip = (
         load("molecule"),
         load("house"),
+        load("house_tabpfn"),
         load("houses"),
         load("fixlip"),
     )
@@ -243,6 +251,24 @@ def main() -> None:
                 # the trees' depth: k-SII of that order is already the full decomposition, exact
                 "sheets": sheets(house, strongest=None, full=house["largest_order"]),
                 "fits": fits(house, full=house["largest_order"]),
+            },
+            {
+                "id": "tabpfn",
+                "kind": "tree",
+                "label": "One house, TabPFN",
+                "detail": "TabPFN",
+                "model": model("tabpfn"),
+                "features": TREE_NAMES,
+                "values": house_values(tabpfn["x"]),
+                "layout": TREE_LAYOUT,
+                "prediction": round(tabpfn["prediction"], 4),
+                "baseline": round(tabpfn["baseline"], 4),
+                "accuracy": round(tabpfn["test_r2"], 3),
+                "context": tabpfn["context"],
+                "largest": tabpfn["largest_order"],
+                # no depth: k-SII of order n, all 8 features, is the first that is exact
+                "sheets": sheets(tabpfn, strongest=None),
+                "fits": fits(tabpfn),
             },
             {
                 "id": "houses",

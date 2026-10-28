@@ -10,7 +10,9 @@
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
 // shapiq's TreeExplainer for an XGBoost model of depth 5 (the 150 houses as a heatmap, a column
-// each); and how SigLIP 2, a black box, matches the photo and caption of the FIxLIP demo, explained
+// each); the same house valued by TabPFN, a black box, explained exactly over all subsets of its
+// features with shapiq's TabPFNImputer; and how SigLIP 2, a black box, matches the photo and
+// caption of the FIxLIP demo, explained
 // by ProxySHAP through an XGBoost proxy, without adjustment. The full decomposition is k-SII of
 // order n, the number of players; the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
@@ -567,6 +569,38 @@
       }
       const texts = { 3: "Groups of three: the location with the occupancy, the age, the income or the rooms. ", 4: "Groups of four add hardly anything: " };
       return [[`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values. ${texts[sheet.order] ?? ""}`, fit, "."]];
+    },
+    tabpfn: (example, { sheet, blank }) => {
+      const n = example.features.length;
+      if (blank) {
+        const [order, r2, values] = blank;
+        return [[`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} features. TabPFN has no depth that would cap its interactions: only the full decomposition, of all ${n} features, is exact. `, fitted(r2), "."]];
+      }
+      if (!sheet) {
+        return [
+          ["TabPFN, a transformer pretrained on synthetic tables, values the same house at ", ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). It is a black box: it predicts by reading ${count(example.context)} training houses together with the house, and nothing in it limits how many features act together. Every sheet explains the prediction as a tree, as for XGBoost.`],
+        ];
+      }
+      const fit = fitted(sheet.r2);
+      const [income, rooms, latitude, longitude] = [0, 2, 6, 7];
+      if (sheet.order === 1) {
+        return [
+          [`Shapley values: latitude lowers the price (${dollars(sheet.first[latitude])}) and the rooms raise it (${dollars(sheet.first[rooms])}), but the ${n} numbers reproduce TabPFN on subsets of the features only with `, fit, ", hardly better than a constant."],
+        ];
+      }
+      if (sheet.order === 2) {
+        const location = groupValue(sheet, [latitude, longitude]);
+        const space = groupValue(sheet, [income, rooms]);
+        return [
+          [`Pairs of features: latitude with longitude (${dollars(location)}), as for XGBoost, and the income with the rooms (${dollars(space)}), which stand in for each other. With them, the fit rises to `, fit, "."],
+        ];
+      }
+      if (sheet.full) {
+        return [
+          [`The full decomposition of all ${n} features: ${count(sheet.count)} values, a group of every size up to all ${n}. Unlike the trees of depth 5, TabPFN needs every order to be exact. Computed from all ${2 ** n} subsets of the features with shapiq's TabPFNImputer, which removes an absent feature from TabPFN's context instead of imputing it: `, fit, "."],
+        ];
+      }
+      return [[`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values. Larger groups still change the price: `, fit, "."]];
     },
     houses: (example, { sheet, blank }) => {
       const n = example.features.length;

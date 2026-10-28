@@ -60,6 +60,16 @@ sheets, the stack ends at 5-SII, exact. Among the test
 houses near downtown Los Angeles, this is the one whose Shapley values fit closest to
 :math:`R^2 = 0.3`; many fit worse.
 
+**One house, TabPFN**: the same house, valued by TabPFN :cite:p:`Hollmann.2025`, a transformer
+pretrained on synthetic tables, which predicts by reading 2,000 training houses together with the
+house (on the test houses, :math:`R^2 = 0.85`, as the trees). TabPFN is a black box, and nothing in
+it limits how many features act together: its full decomposition has a value for groups of every
+size, up to all 8 features, and only 8-SII is exact. shapiq's
+:class:`~shapiq.imputer.TabPFNImputer` removes an absent feature from TabPFN's context instead of
+imputing it :cite:p:`Rundel.2024`, and with 8 features, all 256 subsets of them are evaluated. The
+Shapley values fit TabPFN with :math:`R^2 = 0.05`; pairs, latitude with longitude and the income
+with the rooms, lift the fit to 0.82, and only the full decomposition fits exactly.
+
 **All houses**: 150 test houses, explained in the same way, as a heatmap: a column per house, sorted
 by the model's prediction, and a row per feature or group of features. On average, the Shapley
 values fit with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73; with pairs
@@ -135,6 +145,24 @@ With ``index="Moebius"`` and ``max_order=8``, the explainer computes the full de
 which the demo's scripts convert every order of k-SII. On the test houses, the model reaches
 :math:`R^2 = 0.85`.
 
+**One house, TabPFN.** A black box with 8 features has only :math:`2^8 = 256` subsets of them:
+:class:`~shapiq.ExactComputer` evaluates the game on all of them and computes the full
+decomposition exactly. TabPFN makes one pass, with the features in their order, so that the game
+is the same on every run:
+
+.. code-block:: python
+
+   from tabpfn import TabPFNRegressor
+
+   import shapiq
+
+   # x_context, y_context: 2,000 training houses; x_test: the test houses (for the mean prediction)
+   model = TabPFNRegressor(
+       n_estimators=1, inference_config={"FEATURE_SHIFT_METHOD": None, "FINGERPRINT_FEATURE": False}
+   ).fit(x_context, y_context)
+   game = shapiq.TabPFNImputer(model, x_context, y_context, x_test=x_test).fit(house)
+   full = shapiq.ExactComputer(game)("Moebius")  # the full decomposition, from all 256 subsets
+
 **Describing images.** For a black box, :class:`~shapiq.approximator.ProxySHAP` explains a
 proxy of the model instead. Without its residual adjustment, k-SII of the proxy's depth is the
 proxy's full decomposition, and every lower order follows from it:
@@ -172,5 +200,6 @@ with a README on how to run them:
 
    python molecule.py  # trains the GCN and explains the molecule at every order
    python housing.py   # trains the XGBoost model and explains the houses at every order
+   python house_tabpfn.py  # explains the house with TabPFN, from all 256 subsets of its features
    python fixlip.py    # evaluates SigLIP 2 on 10,512 coalitions and explains it with ProxySHAP
    python pack.py      # the demo's data, ../assets/data.js

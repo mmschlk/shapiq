@@ -8,6 +8,7 @@ values to the full decomposition. They are run by hand, once; the docs only show
 |---|---|
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2: `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles and 150 random houses exactly (interventional), at every order: `results/house.json`, `results/houses.json`. |
+| `house_tabpfn.py` | Explains the same house with TabPFN, a black box, exactly over all 256 subsets of its features with shapiq's `TabPFNImputer` (remove and contextualize), at every order: `results/house_tabpfn.json`. TabPFN makes one pass without randomness, so that the game is the same on every run. |
 | `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment) from 10,000 coalitions, every player present with probability 1/2 as in FIxLIP, at every order, scored on 512 held-out coalitions: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
 | `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 150 houses, the strongest rows of their heatmap), and the R^2 of every order. |
 
@@ -19,10 +20,11 @@ the dependencies of the FIxLIP demo's scripts (for SigLIP 2, which `fixlip.py` i
 `../../fixlip/compute`):
 
 ```bash
-pip install -e "../../../../..[graph,tree,games]" rdkit xgboost scikit-learn
+pip install -e "../../../../..[graph,tree,games]" rdkit xgboost scikit-learn tabpfn
 
 python molecule.py  # downloads Mutagenicity; trains the GCN in about four minutes on four CPU cores
 python housing.py   # downloads California housing; explains 4,128 houses in about three minutes
+python house_tabpfn.py  # downloads TabPFN's weights; evaluates the house's 256 subsets in four minutes
 python fixlip.py    # downloads SigLIP 2; evaluates 10,512 coalitions in about ten minutes
 python pack.py
 ```

@@ -6,8 +6,20 @@ Los Angeles, the one whose Shapley values of the XGBoost model of depth 5 fit cl
 R^2 = 0.3). The model is TabPFN, a transformer pretrained on synthetic tables, which predicts by
 in-context learning: it is not trained on the houses, but reads training houses (its context)
 together with the house it predicts. Its context is 2,000 training houses drawn at random (with a
-fixed seed), not all 16,512: on four CPU cores, TabPFN takes about six seconds per prediction with
-this context.
+fixed seed), not all 16,512: on four CPU cores, TabPFN takes about a second per prediction with this
+context.
+
+By default, TabPFN averages an ensemble of 8 passes of the model, each with the features in a random
+order (one pass is not invariant to their order) and with an extra feature hashing every house, both
+drawn anew for every set of features. For this house, the ensemble's random orders move the value of
+a coalition by about 0.02 (its standard deviation over seeds): small next to the spread of the
+game's values (0.31), but k-SII of the orders 4 to 7 sum the Möbius values of all larger
+coalitions, where this noise piles up, and fit the game worse than k-SII of order 3. Here, TabPFN
+makes one pass, with the features in the dataset's order and without the hashed feature: the game
+is deterministic, the same for every seed, so the orders show the model's own output and not its
+ensemble's random draws. It still depends on the order of the features (reversed, it moves the
+values of coalitions by about 0.08, the strongest values hardly). This TabPFN also predicts the
+test houses better than the ensemble (R^2 = 0.846 against 0.818), in an eighth of the time.
 
 TabPFN is a black box: unlike trees, it has no structure that would give its interactions exactly,
 and no depth that would limit their order. But a house has only 8 features, so the game has only
@@ -29,8 +41,8 @@ Usage::
     python house_tabpfn.py
 
 The dataset is downloaded by scikit-learn to ``results/sklearn/``, TabPFN's weights from Hugging
-Face on the first run. TabPFN's predictions of all 4,128 test houses (for its R^2 on them) take
-about a minute on four CPU cores, its predictions of the 255 coalitions of the house about 25
+Face on the first run. TabPFN's predictions of all 4,128 test houses (for its R^2 on them) take a
+few seconds on four CPU cores, its predictions of the 255 coalitions of the house about four
 minutes.
 """
 
@@ -58,10 +70,15 @@ N_CONTEXT = 2000  # the training houses in TabPFN's context
 
 
 def tabpfn(x_context: np.ndarray, y_context: np.ndarray) -> TabPFNRegressor:
-    """Return TabPFN with the houses of its context: the model to explain."""
+    """Return TabPFN with the houses of its context: the model to explain, without randomness."""
     model = TabPFNRegressor.create_default_for_version(
         ModelVersion.V2,  # the weights that download without a license key
         device="cpu",
+        n_estimators=1,  # one pass of the model, not an ensemble of passes
+        inference_config={
+            "FEATURE_SHIFT_METHOD": None,  # the features in their order, not shuffled
+            "FINGERPRINT_FEATURE": False,  # no extra feature hashing every house
+        },
         random_state=0,
         ignore_pretraining_limits=True,  # a context of more than 1,000 houses on a CPU
     )
