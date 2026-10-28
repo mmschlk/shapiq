@@ -14,9 +14,11 @@ coalitions (here the 74 of one player and the 74 of 73 players), and draws the o
 weights of their sizes, each with its complement. Without the residual adjustment, the explanation
 is the proxy's: its full decomposition, the Möbius transform, read off its trees exactly with
 shapiq's interventional tree explainer, as ProxySHAP reads them (ProxySHAP reads FSII of the
-proxy's depth, the same values, which at depth 8 do not fit in a laptop's memory that way). The
-trees split on at most 8 players, so no larger group has a value, and every lower order of FSII
-follows from it. The explanation keeps the proxy's own value of the empty coalition, -0.009, where
+proxy's depth, the same values, but with the game's value of the empty coalition). The trees split
+on at most 6 players, so no larger group has a value, and every lower order of FSII follows from
+it. The depth, 6, is the best of 4 to 12 in a 5-fold cross-validation on the proxy's coalitions,
+by R^2 beyond size (0.917; 0.917 at depth 7, 0.914 at 8, 0.908 at 4 and at 10). The explanation
+keeps the proxy's own value of the empty coalition, -0.008, where
 ProxySHAP gives the game's, 0 (the empty coalition shares its leaves with coalitions of one or two
 players, whose values are about -0.007): so every order is FSII of the proxy, and the full
 decomposition is the proxy itself. With the game's value, every order would be off the proxy by
@@ -27,10 +29,9 @@ and the houses), on 512 coalitions drawn from it independently of the proxy's (a
 73 players is one the proxy has seen: it saw all of them), against the model itself. The mean value
 of every size, which R^2 beyond size measures against, comes from all coalitions of the run, the
 proxy's and the held-out ones: the held-out ones alone are too few for 73 sizes. FSII of a higher
-order fits the proxy at least as well, but SigLIP 2 not necessarily: of the depths 4 to 12, the R^2
-of depth 8 comes closest to rising with every order (it falls once, by 0.00004 from order 5 to 6;
-the other depths by up to 0.0008, but depth 4, which rises throughout and fits less well, 0.889),
-with a proxy that fits SigLIP 2 about as well as any (0.915; 0.909 at depth 6, 0.916 at depth 9).
+order fits the proxy at least as well, but SigLIP 2 not necessarily: from order 4 on, the fit stays
+at 0.91 within 0.001, as close as 512 coalitions can tell, and falls short of 1 by what the proxy
+misses of SigLIP 2, the estimation tax of the demo.
 
 Usage::
 
@@ -67,7 +68,7 @@ import explain as fixlip  # noqa: E402  (the FIxLIP demo's game)
 PHOTO, MODEL = "elephant", "siglip2"
 BUDGET = 10_000  # the coalitions the proxy is fit to
 N_TEST = 512  # the coalitions every order is scored on, drawn independently of the proxy's
-DEPTH = 8  # the proxy's depth, its highest order of interaction
+DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
 SHEETS = (1, 2, 3, 4, DEPTH)  # the orders the demo draws, whose values the results keep
 PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
 
@@ -152,8 +153,8 @@ def main() -> None:
     )
     approximator.approximate(budget=BUDGET, game=cached)
     # its full decomposition: its Moebius transform, read off its trees exactly, as ProxySHAP reads
-    # them (ProxySHAP reads FSII of the proxy's depth, the same values, but at depth 8 not in the
-    # memory of a laptop), with the proxy's own value of the empty coalition
+    # them (ProxySHAP reads FSII of the proxy's depth, the same values, but gives the empty group the
+    # game's value of the empty coalition), with the proxy's own value of the empty coalition
     full = InterventionalTreeSHAPIQ(
         approximator.proxy_model, data=np.zeros((1, n)), index="Moebius", max_order=DEPTH
     ).explain_function(np.ones((1, n)))

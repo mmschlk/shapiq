@@ -14,8 +14,8 @@ the explanation's errors against the spread of the game's values among coalition
 not against the spread of all of them: how much of what the number of players alone does not
 predict the explanation reproduces (`faithfulness.py`). FSII of a higher order fits the game at
 least as well under it: for the examples explained exactly, the R^2 does not fall with the order. SigLIP 2 is explained through a proxy, to which FSII is faithful, and scored against the
-model itself: its R^2 rises to 0.91 at order 4 and stays there, up to 0.915 for the full
-decomposition, which falls short of 1 by the estimation tax the demo shades.
+model itself: its R^2 rises to 0.91 at order 4 and stays there, up to the full decomposition,
+which falls short of 1 by the estimation tax the demo shades.
 
 | File | What it does |
 |---|---|
@@ -23,7 +23,7 @@ decomposition, which falls short of 1 by the estimation tax the demo shades.
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2 on 10,000 coalitions drawn from the Shapley distribution (their values from the exact Möbius transform): `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles (test house 837) and 150 random houses exactly (interventional), at every order, with each order's R^2 exactly over all 254 coalitions but the empty and the full one, weighted by the Shapley distribution: `results/house.json`, `results/houses.json`. |
 | `house_tabpfn.py` | Explains the same house with TabPFN, a black box, exactly over all 256 subsets of its features with shapiq's `TabPFNImputer` (remove and contextualize), at every order, with the R^2 of `housing.py`: `results/house_tabpfn.json`. TabPFN makes one pass without randomness, so that the game is the same on every run. |
-| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 8, no adjustment, read off its trees as a Möbius transform) from 10,000 coalitions drawn from the Shapley distribution, at every order, scored on 512 more drawn from it: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
+| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment, read off its trees as a Möbius transform) from 10,000 coalitions drawn from the Shapley distribution, at every order, scored on 512 more drawn from it: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
 | `pack.py` | Writes the demo's data, `../assets/data.js`: the index (FSII), the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 150 houses, the strongest rows of their heatmap), and the R^2 of every order. |
 
 ## Run
@@ -53,7 +53,7 @@ woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the
-proxy. The proxy's depth, 8, is the one of 4 to 12 whose R^2 comes closest to rising with every
-order on the held-out coalitions (see the script); the explanation keeps the proxy's own value of
-the empty coalition, -0.009, where ProxySHAP gives the game's, 0. With the game's value, every order
+proxy. The proxy's depth, 6, is the best of 4 to 12 in a 5-fold cross-validation on the 10,000
+coalitions by R^2 beyond size (0.917), which is not part of the script; the explanation keeps the
+proxy's own value of the empty coalition, -0.008, where ProxySHAP gives the game's, 0. With the game's value, every order
 would be off the proxy by this constant, and the R^2 would peak at order 3 and fall after it.
