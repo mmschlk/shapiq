@@ -1,12 +1,12 @@
 """Explain an XGBoost model of California housing at every order: ``results/house(s).json``.
 
-The model is an XGBoost regressor of depth 7 (300 trees) trained on 80 % of the California housing
+The model is an XGBoost regressor of depth 5 (300 trees) trained on 80 % of the California housing
 dataset of scikit-learn. Its players are the 8 features of a house. An absent feature takes its
 values from 100 training houses (interventional explanations, as in background SHAP), and
 ``shapiq.TreeExplainer`` computes the Möbius transform of this game exactly from the trees, with
-the Woodelf algorithm for many houses at once. Every path of a tree of depth 7 splits on at most 7
-features, so the Möbius transform has no interaction of all 8 features: k-SII of order 7 is already
-the full decomposition (k-SII of order n = 8).
+the Woodelf algorithm for many houses at once. Every path of a tree of depth 5 splits on at most 5
+features, so the Möbius transform has no interaction of more than 5 features: k-SII of order 5 is
+already the full decomposition (k-SII of order n = 8), and exact.
 
 ``shapiq`` converts the Möbius transform of every house into k-SII of every order, and scores every
 order by its R^2 on all 2^8 coalitions of the house's game (every feature present with probability
@@ -44,7 +44,7 @@ import shapiq
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 
 HERE = Path(__file__).resolve().parent
-DEPTH = 7
+DEPTH = 5  # the highest order of interaction: k-SII of order 5 is exact
 N_BACKGROUND = 100  # the training houses whose values absent features take
 N_HOUSES = 150  # the houses of the heatmap
 LOS_ANGELES = (34.05, -118.25)  # downtown, as latitude and longitude

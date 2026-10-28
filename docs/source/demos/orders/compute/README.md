@@ -7,7 +7,7 @@ values to the full decomposition. They are run by hand, once; the docs only show
 | File | What it does |
 |---|---|
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2: `results/molecule.json`. |
-| `housing.py` | Trains an XGBoost model of depth 7 on California housing and explains one house in Los Angeles and 150 random houses exactly (interventional), at every order: `results/house.json`, `results/houses.json`. |
+| `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles and 150 random houses exactly (interventional), at every order: `results/house.json`, `results/houses.json`. |
 | `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment) from 10,000 coalitions, every player present with probability 1/2 as in FIxLIP, at every order, scored on 512 held-out coalitions: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
 | `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 150 houses, the strongest rows of their heatmap), and the R^2 of every order. |
 
@@ -33,7 +33,7 @@ intermediate results (`results/`) are not part of the repository.
 The data of the docs was computed with Python 3.12, shapiq from the repository (after release
 1.8.0), torch 2.14, torch_geometric 2.8, RDKit 2026.09, XGBoost 3.4, scikit-learn 1.9 and
 woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly; GraphSHAP-IQ needs
-7,693 evaluations of it. The XGBoost model reaches R^2 = 0.852 on the test houses.
+7,693 evaluations of it. The XGBoost model reaches R^2 = 0.848 on the test houses.
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the

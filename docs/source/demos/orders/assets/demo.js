@@ -9,7 +9,7 @@
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
-// shapiq's TreeExplainer for an XGBoost model of depth 7 (the 150 houses as a heatmap, a column
+// shapiq's TreeExplainer for an XGBoost model of depth 5 (the 150 houses as a heatmap, a column
 // each); and how SigLIP 2, a black box, matches the photo and caption of the FIxLIP demo, explained
 // by ProxySHAP through an XGBoost proxy, without adjustment. The full decomposition is k-SII of
 // order n, the number of players; the orders above the highest one with an interaction (the trees'
@@ -462,8 +462,11 @@
     return { face: tag, tag, name: "Shapley interactions" };
   };
   // R^2 as text: two decimals, three close to 1, and 1.00 only where the fit is exact
+  // an explanation that reproduces the model exactly (the data rounds R^2 to six decimals): only
+  // that reads 1.00 and exact, and anything short of it at most > 0.999
+  const EXACT = 1 - 5e-7;
   const fit2 = (r2) => {
-    if (r2 >= 0.999995) return "1.00";
+    if (r2 >= EXACT) return "1.00";
     if (r2 < 0.995) return r2.toFixed(2);
     return r2 >= 0.9995 ? "> 0.999" : r2.toFixed(3);
   };
@@ -474,7 +477,7 @@
   // how well an explanation fits: exact, very good from R^2 = 0.95, good from 0.8, workable from
   // 0.6, else poor
   const verdict = (r2) => {
-    if (r2 >= 0.999995) return "exact";
+    if (r2 >= EXACT) return "exact";
     if (r2 >= 0.95) return "very good";
     if (r2 >= 0.8) return "good";
     if (r2 >= 0.6) return "workable";
@@ -538,7 +541,7 @@
       }
       if (!sheet) {
         return [
-          ["An XGBoost model of depth 7 values this house in Los Angeles at ", ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). Every sheet explains this prediction as a tree that grows one level per order: the features on top, and every group of features as many levels down as it has features, joined to them.`],
+          [`An XGBoost model of depth ${example.largest} values this house in Los Angeles at `, ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). Every sheet explains this prediction as a tree that grows one level per order: the features on top, and every group of features as many levels down as it has features, joined to them.`],
         ];
       }
       const fit = fitted(sheet.r2);
@@ -559,7 +562,7 @@
           [`The full decomposition of all ${n} features: ${count(sheet.count)} values, in a tree as deep as the model's trees. None of their paths splits on more than ${example.largest} features, so no group of all ${n} has a value, and Shapley interactions of order ${example.largest} are already exact. Computed by shapiq's TreeExplainer, they are the model itself, written as a sum: `, fit, "."],
         ];
       }
-      const texts = { 3: "Groups of three: the income with the location. ", 4: "Groups of four add hardly anything: " };
+      const texts = { 3: "Groups of three: the location with the occupancy, the age, the income or the rooms. ", 4: "Groups of four add hardly anything: " };
       return [[`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values. ${texts[sheet.order] ?? ""}`, fit, "."]];
     },
     houses: (example, { sheet, blank }) => {
@@ -811,11 +814,24 @@
         : items.length - items.indexOf(item);
 
     // the item under a point of the stage, where the sheets are going (not where they are while
-    // they move), the one on top first
+    // they move), the one on top first. While a sheet slides out, the sheets count where they lie
+    // at rest, and the one slid out also where it shows: else the sheet would slide away from under
+    // the pointer, hand it to the sheet below, and come back for it, over and over.
     function itemAt(point) {
-      const places = layout(state.active);
+      const sliding = geometry.slideBy && state.active !== null;
+      const places = layout(sliding ? null : state.active);
       const order = items.map((_, position) => position);
       order.sort((a, b) => zIndex(items[b], state.active) - zIndex(items[a], state.active));
+      if (sliding) {
+        const out = items.indexOf(sheetItems()[state.active]);
+        const above = order.slice(0, order.indexOf(out));
+        if (
+          inside(point, corners(layout(state.active)[out])) &&
+          !above.some((p) => inside(point, corners(places[p])))
+        ) {
+          return items[out];
+        }
+      }
       const position = order.find((p) => inside(point, corners(places[p])));
       return position === undefined ? null : items[position];
     }

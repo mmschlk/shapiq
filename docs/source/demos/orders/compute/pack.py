@@ -3,7 +3,7 @@
 Reads the explanations of the molecule (molecule.py), of the houses of California housing
 (housing.py), and of how SigLIP 2 matches the FIxLIP demo's elephant and its caption (fixlip.py). It keeps
 what the demo draws on its sheets, rounded: the orders 1 to 4 and the full decomposition (k-SII of
-order n, the number of players, which equals the Möbius transform; for the houses, of order 7, the
+order n, the number of players, which equals the Möbius transform; for the houses, of order 5, the
 trees' depth, which equals it already and is exact), every main effect, and the
 300 strongest interactions of each order (of the molecule, with the centers of its groups where
 shapiq's SI graph plot places them); for the houses, the strongest rows of their heatmap. And the
@@ -41,7 +41,7 @@ TREE_LAYOUT = [1, 3, 0, 6, 7, 5, 2, 4]
 # the models, as the demo's badge shows them: its icon, name, details, and how it was explained
 MODELS = {
     "graph": ["graph", "Graph neural network", "GCN with 2 layers", "exact with GraphSHAP-IQ"],
-    "tree": ["tree", "Tree ensemble", "XGBoost, 300 trees of depth 7", "exact with TreeExplainer"],
+    "tree": ["tree", "Tree ensemble", "XGBoost, 300 trees of depth 5", "exact with TreeExplainer"],
     "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "ProxySHAP"],
 }
 

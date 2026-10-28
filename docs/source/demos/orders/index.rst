@@ -19,10 +19,10 @@ What you see
 **The sheets.** Every sheet explains the same prediction. The top one holds the **Shapley values**:
 one number per player, its main effect. Every sheet below holds the **Shapley interactions** of one
 order more, k-SII :cite:p:`Bordt.2023`: the effects of the players and of all groups of up to
-:math:`k` of them. Blank sheets stand for the orders after order 4, and the bottom sheet holds the
-**full decomposition**: k-SII of order :math:`n`, the number of players, which gives every group of
-players its own value, the Möbius transform :cite:p:`Grabisch.1999`; for trees of depth 7, k-SII of
-order 7, which already is. Red raises the prediction,
+:math:`k` of them. Blank sheets stand for the orders between order 4 and the bottom sheet, which
+holds the **full decomposition**: k-SII of order :math:`n`, the number of players, which gives every
+group of players its own value, the Möbius transform :cite:p:`Grabisch.1999`; for trees of depth 5,
+k-SII of order 5, which already is. Red raises the prediction,
 blue lowers it; the larger and the more opaque, the stronger. Point at a sheet (or tap it) to lift
 it out of the stack. Above the stack, an icon shows the kind of model: a tree for tree ensembles, a
 graph for graph neural networks, and a black box for any other model.
@@ -34,7 +34,7 @@ Shapley values miss everything that players do only together. Every order recove
 the full decomposition is the model itself, written as a sum over groups of players:
 :math:`R^2 = 1`. Many models have no interactions above some order: the trees of a given depth, the
 receptive fields of a graph neural network. From that order on, k-SII equals the full
-decomposition: the houses' stacks end there, at order 7, where the fit is exact, and the plot of
+decomposition: the houses' stacks end there, at order 5, where the fit is exact, and the plot of
 the molecule breaks its axis before :math:`n = 30`. Point along the plot to bring out the sheet of
 an order.
 
@@ -46,22 +46,23 @@ interactions of order 2 the bonds of the nitro groups, and those of order 4 ever
 its carbon, and pieces of the carbon rings. With them, the explanation fits the model almost
 exactly. No group of more than 10 atoms has a value: the GCN's receptive fields hold at most 10.
 
-**One house** in Los Angeles, valued by an XGBoost model of depth 7. Its players are the 8
+**One house** in Los Angeles, valued by an XGBoost model of depth 5. Its players are the 8
 features of the house; an absent feature takes its values from 100 training houses (interventional
 explanations). The Shapley values split the location into a negative longitude and a positive
-latitude and fit the model with :math:`R^2 = 0.30`. Latitude and longitude only together locate the
+latitude and fit the model with :math:`R^2 = 0.31`. Latitude and longitude only together locate the
 house: with their interaction, the explanation of order 2 fits with :math:`R^2 = 0.995`. Every sheet
 draws the explanation as a tree that grows one level per order: the features on top, and every group
 of :math:`k` features at level :math:`k`, joined to its features. The full decomposition is a tree
-of depth 7, as deep as the model's trees, whose paths split on at most 7 features. Among the test
+of depth 5, as deep as the model's trees, whose paths split on at most 5 features: no filler
+sheets, the stack ends at 5-SII, exact. Among the test
 houses near downtown Los Angeles, this is the one whose Shapley values fit closest to
 :math:`R^2 = 0.3`; many fit worse.
 
 **150 houses**, explained in the same way, as a heatmap: a column per house, sorted by the
 model's prediction, and a row per feature or group of features. On average, the Shapley values fit
-with :math:`R^2 = 0.77`, and those of a quarter of all test houses below 0.66; with pairs of
-features, led by the interaction of latitude and longitude, the fit rises to 0.99. The trees have
-depth 7, so no group of all 8 features has a value, and 7-SII is exact.
+with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73; with pairs of
+features, led by the interaction of latitude and longitude, the fit rises to 0.996. The trees have
+depth 5, so no group of more than 5 features has a value, and 5-SII is exact.
 
 **The photo and caption** are those of the :doc:`FIxLIP demo <../fixlip/index>`: SigLIP 2
 :cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's 64
@@ -117,7 +118,7 @@ when ``shapiq[tree]`` is installed:
 
    X, y = fetch_california_housing(return_X_y=True)
    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-   model = XGBRegressor(n_estimators=300, max_depth=7, learning_rate=0.1, random_state=0)
+   model = XGBRegressor(n_estimators=300, max_depth=5, learning_rate=0.1, random_state=0)
    model.fit(X_train, y_train)
 
    # an absent feature takes its values from 100 training houses
