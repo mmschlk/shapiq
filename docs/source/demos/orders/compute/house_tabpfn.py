@@ -6,7 +6,7 @@ Los Angeles, the one whose Shapley values of the XGBoost model of depth 5 fit cl
 R^2 = 0.3). The model is TabPFN, a transformer pretrained on synthetic tables, which predicts by
 in-context learning: it is not trained on the houses, but reads training houses (its context)
 together with the house it predicts. Its context is 2,000 training houses drawn at random (with a
-fixed seed), not all 16,512: on four CPU cores, TabPFN takes about five seconds per prediction with
+fixed seed), not all 16,512: on four CPU cores, TabPFN takes about six seconds per prediction with
 this context.
 
 TabPFN is a black box: unlike trees, it has no structure that would give its interactions exactly,
@@ -30,7 +30,7 @@ Usage::
 
 The dataset is downloaded by scikit-learn to ``results/sklearn/``, TabPFN's weights from Hugging
 Face on the first run. TabPFN's predictions of all 4,128 test houses (for its R^2 on them) take
-about a minute on four CPU cores, its predictions of the 255 coalitions of the house about 20
+about a minute on four CPU cores, its predictions of the 255 coalitions of the house about 25
 minutes.
 """
 
