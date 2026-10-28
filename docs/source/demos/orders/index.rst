@@ -60,22 +60,22 @@ sheets, the stack ends at 5-SII, exact. Among the test
 houses near downtown Los Angeles, this is the one whose Shapley values fit closest to
 :math:`R^2 = 0.3`; many fit worse.
 
-**150 houses**, explained in the same way, as a heatmap: a column per house, sorted by the
-model's prediction, and a row per feature or group of features. On average, the Shapley values fit
-with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73; with pairs of
-features, led by the interaction of latitude and longitude, the fit rises to 0.996. The trees have
-depth 5, so no group of more than 5 features has a value, and 5-SII is exact.
+**All houses**: 150 test houses, explained in the same way, as a heatmap: a column per house, sorted
+by the model's prediction, and a row per feature or group of features. On average, the Shapley
+values fit with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73; with pairs
+of features, led by the interaction of latitude and longitude, the fit rises to 0.996. The trees
+have depth 5, so no group of more than 5 features has a value, and 5-SII is exact.
 
-**The photo and caption** are those of the :doc:`FIxLIP demo <../fixlip/index>`: SigLIP 2
-:cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's 64
-patches and the caption's 10 tokens, as in FIxLIP :cite:p:`Baniecki.2025`. SigLIP 2 is a black box:
-nothing in it gives its interactions exactly. :class:`~shapiq.approximator.ProxySHAP`
-:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 10,000 coalitions of the game, every
-player present with probability 1/2 as in FIxLIP, and, without its residual adjustment, reads the
-proxy's full decomposition off its trees exactly; every order of k-SII follows from it. The Shapley
-values fit SigLIP 2 with :math:`R^2 = 0.54`; pairs, which link "bird" and "white" to the egret's
-patch, lift the fit to 0.93, and groups of three to 0.95. The full decomposition reproduces the
-proxy exactly, and SigLIP 2 as well as the proxy does: :math:`R^2 = 0.96` on held-out coalitions.
+**Describing images**: the photo and caption are those of the :doc:`FIxLIP demo <../fixlip/index>`:
+SigLIP 2 :cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's
+64 patches and the caption's 10 tokens, as in FIxLIP :cite:p:`Baniecki.2025`. SigLIP 2 is a black
+box: nothing in it gives its interactions exactly. :class:`~shapiq.approximator.ProxySHAP`
+:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 10,000 coalitions of the game, every player
+present with probability 1/2 as in FIxLIP, and, without its residual adjustment, reads the proxy's
+full decomposition off its trees exactly; every order of k-SII follows from it. The Shapley values
+fit SigLIP 2 with :math:`R^2 = 0.54`; pairs, which link "bird" and "white" to the egret's patch,
+lift the fit to 0.93, and groups of three to 0.95. The full decomposition reproduces the proxy
+exactly, and SigLIP 2 as well as the proxy does: :math:`R^2 = 0.96` on held-out coalitions.
 
 How it was computed
 -------------------
@@ -135,7 +135,7 @@ With ``index="Moebius"`` and ``max_order=8``, the explainer computes the full de
 which the demo's scripts convert every order of k-SII. On the test houses, the model reaches
 :math:`R^2 = 0.85`.
 
-**The photo and caption.** For a black box, :class:`~shapiq.approximator.ProxySHAP` explains a
+**Describing images.** For a black box, :class:`~shapiq.approximator.ProxySHAP` explains a
 proxy of the model instead. Without its residual adjustment, k-SII of the proxy's depth is the
 proxy's full decomposition, and every lower order follows from it:
 

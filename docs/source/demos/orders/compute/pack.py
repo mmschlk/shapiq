@@ -247,7 +247,7 @@ def main() -> None:
             {
                 "id": "houses",
                 "kind": "heatmap",
-                "label": "150 houses",
+                "label": "All houses",
                 "detail": "XGBoost",
                 "model": model("tree"),
                 "features": SHORT,
@@ -257,7 +257,7 @@ def main() -> None:
             {
                 "id": "fixlip",
                 "kind": "image-text",
-                "label": "Photo and caption",
+                "label": "Describing Images",
                 "detail": "SigLIP 2",
                 "model": {
                     **model("black box"),

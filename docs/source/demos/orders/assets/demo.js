@@ -56,11 +56,11 @@
   // the blank sheets of an example: as many for every example (where it skips as many orders), so
   // that every stack looks as deep
   const BLANKS = 6;
-  // the sheet pointed at slides out of the stack, as it lies and keeping its place in the stack (the
-  // sheets above it still lie over it), and the others stay where they are (unless data-lift="lift"
-  // on the demo lifts it out): how far it slides, in units of its width, and down
+  // the sheet pointed at slides out of the stack to the side, as it lies and keeping its place in
+  // the stack (the sheets above it still lie over it), and the others and the rows of the ladder
+  // stay where they are (unless data-lift="lift" on the demo lifts it out): how far it slides, in
+  // units of its width
   const SLIDE = 0.32;
-  const DROP = 0.03; // in units of a sheet's side
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
   const PLOT = { height: 176, left: 42, right: 14, top: 14, bottom: 40 }; // pixels
 
@@ -457,8 +457,10 @@
 
   // the name of a sheet: on its face, as its row's tag, and in words
   const sheetName = (sheet) => {
-    if (sheet.full) return { face: "Full decomposition", tag: `${sheet.order}-SII`, name: "Full decomposition" };
-    if (sheet.order === 1) return { face: "SV", tag: "SV", name: "Shapley values" };
+    if (sheet.full) {
+      return { face: `Full decomposition (${sheet.order}-SII)`, tag: `${sheet.order}-SII`, name: "Full decomposition" };
+    }
+    if (sheet.order === 1) return { face: "Shapley values (SV)", tag: "SV", name: "Shapley values" };
     const tag = `${sheet.order}-SII`;
     return { face: tag, tag, name: "Shapley interactions" };
   };
@@ -752,7 +754,7 @@
         slideBy,
         ladderLeft: width - ladderWidth,
         center: room / 2 + slideBy / 2,
-        height: Math.ceil((slide ? rest + DROP * side : Math.max(open, rest)) + 2 * THICKNESS + 16),
+        height: Math.ceil((slide ? rest : Math.max(open, rest)) + 2 * THICKNESS + 16),
         poseHeight: height,
       };
     }
@@ -783,7 +785,7 @@
         return {
           pose: poses[position],
           x: g.center - (out ? g.slideBy : 0),
-          y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0) + (out ? DROP * g.side : 0),
+          y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0),
         };
       });
     }
@@ -1044,11 +1046,14 @@
       rail.style.transform = `translate(${roundTo(Math.max(18, corners(rest[0])[0][0] - 12), 2)}px, ${roundTo(top, 2)}px)`;
       rail.style.height = `${roundTo(bottom - top, 2)}px`;
 
-      // the row of the blank sheets: beside the one pointed at, or the middle one
+      // the row of the blank sheets: beside the one pointed at, or the middle one; sliding, beside the
+      // middle one, where it lies at rest
       if (blankRow) {
         const blanks = blankItems();
-        const target = blanks.find((item) => item.order === state.blank) ?? blanks[Math.floor((blanks.length - 1) / 2)];
+        const middle = blanks[Math.floor((blanks.length - 1) / 2)];
+        const target = g.slideBy ? middle : (blanks.find((item) => item.order === state.blank) ?? middle);
         const right = rightCorner(places[items.indexOf(target)]);
+        if (g.slideBy && target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
         blankRow.classList.toggle("orders-demo-compact", lifted && !g.slideBy);
         // beside the blank sheet, but clear of the rows above and below it, which are taller where
