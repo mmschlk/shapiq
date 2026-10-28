@@ -920,6 +920,14 @@ body[data-theme="dark"] .orders-demo {
   stroke-linejoin: round;
 }
 
+/* under the R^2, on narrow screens, its verdict */
+.orders-demo-plot-verdict {
+  fill: var(--orders-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
 .orders-demo-plot-guide line {
   stroke: var(--orders-ink);
   stroke-width: 1;

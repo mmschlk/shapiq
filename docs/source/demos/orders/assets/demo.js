@@ -60,7 +60,7 @@
   const RAIL_LINE = 28;
   const RAIL_REST = 24;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
-  const PLOT = { height: 196, left: 58, right: 14, top: 24, bottom: 54 }; // pixels
+  const PLOT = { height: 172, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 94
 
   const roundTo = (value, digits) => Number(value.toFixed(digits));
   const el = (tag, className, text) => {
@@ -1058,7 +1058,9 @@
       add(ring, "circle", { r: 7 });
       add(ring, "circle", { class: "orders-demo-plot-core", r: 3 });
       const label = add(ring, "text", { class: "orders-demo-plot-label", "text-anchor": "middle" });
-      marker = { guide, ring, label, x, y, last: n, middle: (y0 + y1) / 2 };
+      const score = add(label, "tspan");
+      const rating = add(label, "tspan", { class: "orders-demo-plot-verdict" });
+      marker = { guide, ring, label, score, rating, x, y, last: n, middle: (y0 + y1) / 2, bottom: y0 };
 
       // a cover over the plot: the order nearest to the pointer
       const cover = add(plot, "rect", { class: "orders-demo-plot-cover", x: x0 - 12, y: 0, width: x1 - x0 + 24, height: h });
@@ -1112,13 +1114,21 @@
       marker.ring.style.transform = `translate(${cx}px, ${cy}px)`;
       marker.guide.style.transform = `translateX(${cx}px)`;
       // the value right of the ring (where the line rises away from it), below the ring where the
-      // line runs high; left of it at the last order
-      marker.label.textContent = `R² ${fit2(r2)}`;
+      // line runs high; left of it at the last order. On narrow screens, which have no ladder, the
+      // verdict in a line under it
+      marker.score.textContent = `R² ${fit2(r2)}`;
+      marker.rating.textContent = geometry.narrow ? verdict(r2) : "";
       const below = marker.y(r2) < marker.middle;
       const last = order === marker.last;
+      const lines = geometry.narrow ? 2 : 1;
+      const x = last ? 6 : below ? -4 : 12;
+      let y = below ? 22 : 0;
+      y -= Math.max(0, cy + y + (lines - 1) * 13 + 7 - marker.bottom); // low on the plot: above the axis
       marker.label.setAttribute("text-anchor", last ? "end" : "start");
-      marker.label.setAttribute("x", last ? 6 : below ? -4 : 12);
-      marker.label.setAttribute("y", below ? 22 : 0);
+      for (const [line, span] of [marker.score, marker.rating].entries()) {
+        span.setAttribute("x", x);
+        span.setAttribute("y", y + line * 13);
+      }
     }
 
     // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
