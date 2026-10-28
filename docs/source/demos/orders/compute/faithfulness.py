@@ -1,4 +1,4 @@
-"""FSII of every order, and its fit to the game under the Shapley distribution: shared by the scripts.
+"""FSII of every order and its R^2 under the Shapley distribution, for the scripts of this folder.
 
 Every order of the demo is FSII, the Faithful Shapley Interactions (Tsai et al., 2023): of all
 explanations with values for groups of up to k players, the one that fits the game best in a
@@ -13,9 +13,9 @@ a size s from 1 to n - 1 with probability proportional to 1 / (s (n - s)), and e
 that size equally likely. The empty and the full coalition have no weight: the constraints fix the
 explanation there. The scripts score every order by its R^2 under this distribution, the weighted
 least squares FSII minimizes: exactly over all coalitions for 8 players, and on coalitions drawn
-from it for more. FSII of order k + 1 may give its groups of up to k players any values, those of
-FSII of order k among them, so it fits at least as well: the R^2 does not fall with the order, and
-reaches 1 with the full decomposition.
+from it for more. FSII of order k + 1 could keep the values of FSII of order k and give every group
+of k + 1 players 0, so it fits at least as well: the R^2 does not fall with the order (on drawn
+coalitions, up to the chance of the draw), and reaches 1 with the full decomposition.
 
 The explanation predicts a coalition's value as the sum of the values of its subsets, the empty
 one's (the game's value of the empty coalition) included: no constant is fit to the coalitions.

@@ -2,15 +2,16 @@
 
 Reads the explanations of the molecule (molecule.py), of the houses of California housing
 (housing.py), of the same house by TabPFN (house_tabpfn.py), and of how SigLIP 2 matches the FIxLIP
-demo's elephant and its caption (fixlip.py). It keeps
-what the demo draws on its sheets, rounded: the orders 1 to 4 and the full decomposition (k-SII of
-order n, the number of players, which equals the Möbius transform; for the houses, of order 5, the
-trees' depth, which equals it already and is exact), every main effect, and the
-300 strongest interactions of each order (of the molecule, with the centers of its groups where
-shapiq's SI graph plot places them); for the houses, the strongest rows of their heatmap. And the
-R^2 and the number of values of every order up to the highest with an interaction, and of order n,
-for the plot of the fit by order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a
-script loads from disk too, where the browser would not fetch a JSON file).
+demo's elephant and its caption (fixlip.py). Every order is FSII, which the data names as its
+``index`` for the demo's labels. It keeps what the demo draws on its sheets, rounded: the orders 1
+to 4 and the full decomposition (FSII of order n, the number of players, which equals the Möbius
+transform; for the houses, of order 5, the trees' depth, which equals it already and is exact),
+every main effect, and the 300 strongest interactions of each order (of the molecule, with the
+centers of its groups where shapiq's SI graph plot places them); for the houses, the strongest rows
+of their heatmap. And the R^2 (under the Shapley distribution) and the number of values of every
+order up to the highest with an interaction, and of order n, for the plot of the fit by order. It
+writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from disk too, where the
+browser would not fetch a JSON file).
 
 Usage::
 
@@ -54,7 +55,7 @@ MODELS = {
 
 
 def explanation(result: dict[str, Any], order: int) -> dict[str, Any]:
-    """Return the explanation of an order: k-SII of order n is the one of the highest order."""
+    """Return the explanation of an order: FSII of order n is the one of the highest order."""
     return result["orders"][str(min(order, result["largest_order"]))]
 
 
@@ -216,8 +217,10 @@ def main() -> None:
     for sheet in molecule_sheets:
         place_groups(sheet, molecule["coords"])
     fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
+    (index,) = {result["index"] for result in (molecule, house, tabpfn, houses, fixlip)}
 
     data = {
+        "index": index,  # of every order of every example, for the demo's labels
         "examples": [
             {
                 "id": "molecule",
@@ -248,7 +251,7 @@ def main() -> None:
                 "baseline": round(house["baseline"], 4),
                 "accuracy": round(house["test_r2"], 3),
                 "largest": house["largest_order"],
-                # the trees' depth: k-SII of that order is already the full decomposition, exact
+                # the trees' depth: FSII of that order is already the full decomposition, exact
                 "sheets": sheets(house, strongest=None, full=house["largest_order"]),
                 "fits": fits(house, full=house["largest_order"]),
             },
@@ -266,7 +269,7 @@ def main() -> None:
                 "accuracy": round(tabpfn["test_r2"], 3),
                 "context": tabpfn["context"],
                 "largest": tabpfn["largest_order"],
-                # no depth: k-SII of order n, all 8 features, is the first that is exact
+                # no depth: FSII of order n, all 8 features, is the first that is exact
                 "sheets": sheets(tabpfn, strongest=None),
                 "fits": fits(tabpfn),
             },
