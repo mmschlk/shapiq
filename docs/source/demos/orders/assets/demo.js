@@ -460,7 +460,7 @@
     });
   }
 
-  // -- the sheets' names and the captions of the examples ---------------------------------------------
+  // -- the sheets' names and fits -----------------------------------------------------------------------
 
   // the name of a sheet: on its face, as its row's tag, and in words
   const sheetName = (sheet) => {
@@ -480,10 +480,6 @@
     if (r2 < 0.995) return r2.toFixed(2);
     return r2 >= 0.9995 ? "> 0.999" : r2.toFixed(3);
   };
-  const fitted = (r2) => {
-    const text = fit2(r2);
-    return ["R² ", text.startsWith(">") ? text : `= ${text}`];
-  };
   // how well an explanation fits: exact, very good from R^2 = 0.95, good from 0.8, workable from
   // 0.6, else poor
   const verdict = (r2) => {
@@ -493,181 +489,8 @@
     if (r2 >= 0.6) return "workable";
     return "poor";
   };
-  const count = (n) => n.toLocaleString("en-US");
   // a house's value in $100,000, as a change in thousands of dollars
   const dollars = (value) => `${value < 0 ? "−" : "+"}$${Math.round(Math.abs(value) * 100)}k`;
-  const groupValue = (sheet, players) =>
-    sheet.groups.find(([group]) => group.join() === players.join())?.[1] ?? 0;
-
-  // what the caption says, at rest (nothing pointed at), for every sheet, and for every order between
-  // the sheets (a blank sheet: its order, R^2 and number of values); the numbers are the data's
-  const CAPTIONS = {
-    molecule: (example, { sheet, blank }) => {
-      const n = example.sheets.at(-1).order;
-      if (blank) {
-        const [order, r2, values] = blank;
-        if (order >= example.largest) {
-          return [
-            [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The network's largest receptive field holds ${example.largest} atoms, so no larger group has a value: from order ${example.largest} to ${n}, the explanation is the full decomposition, `, fitted(r2), "."],
-          ];
-        }
-        return [
-          [`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} atoms. The orders between 4 and the full decomposition add thousands of values but change the fit little: `, fitted(r2), "."],
-        ];
-      }
-      if (!sheet) {
-        const p = `${Math.round(example.probability * 1000) / 10}%`;
-        return [
-          ["A graph neural network predicts that this molecule is mutagenic (", ["probability ", p], "), and every sheet explains this prediction. "],
-          ["The Shapley values on top credit every atom alone; each order below adds the interactions of larger groups of atoms, down to the full decomposition, which adds up to the model exactly."],
-        ];
-      }
-      const fit = fitted(sheet.r2);
-      if (sheet.order === 1) {
-        return [
-          ["Shapley values: one number per atom. The nitrogen atoms of the three nitro groups get the most credit, but the 30 numbers reproduce the model's output on random parts of the molecule only with ", fit, "."],
-        ];
-      }
-      if (sheet.full) {
-        return [
-          [`The full decomposition of all ${n} atoms: every group of atoms that the network's two layers see together, ${count(sheet.count)} values of up to ${example.largest} atoms (larger groups have none), computed exactly by GraphSHAP-IQ with ${count(example.budget)} calls of the model instead of 2³⁰. It is the model itself, written as a sum: `, fit, "."],
-        ];
-      }
-      const texts = {
-        2: "The credit moves from the nitrogen atoms to the bonds of their nitro groups, but pairs of atoms are not enough yet: ",
-        3: "Groups of three atoms add little: ",
-        4: "Groups of four atoms: each nitro group with its carbon, and pieces of the carbon rings. With them, the explanation reproduces the model almost exactly: ",
-      };
-      return [
-        [`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values of up to ${sheet.order} atoms. ${texts[sheet.order] ?? ""}`, fit, "."],
-      ];
-    },
-    house: (example, { sheet, blank }) => {
-      const n = example.features.length;
-      const depth = `The trees have depth ${example.largest}: no path splits on more than ${example.largest} features, so from order ${example.largest} on, the explanation is the full decomposition`;
-      if (blank) {
-        const [order, r2, values] = blank;
-        return [[`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} features. ${depth}. `, fitted(r2), "."]];
-      }
-      if (!sheet) {
-        return [
-          [`An XGBoost model of depth ${example.largest} values this house in Los Angeles at `, ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). Every sheet explains this prediction as a tree that grows one level per order: the features on top, and every group of features as many levels down as it has features, joined to them.`],
-        ];
-      }
-      const fit = fitted(sheet.r2);
-      const [latitude, longitude] = [6, 7];
-      if (sheet.order === 1) {
-        return [
-          [`Shapley values: one number per feature. Longitude lowers the price (${dollars(sheet.first[longitude])}) and latitude raises it (${dollars(sheet.first[latitude])}), but the ${n} numbers reproduce the model's output on random subsets of the features only with `, fit, ", a poor fit."],
-        ];
-      }
-      if (sheet.order === 2) {
-        const location = groupValue(sheet, [latitude, longitude]);
-        return [
-          [`Pairs of features: latitude and longitude only together locate the house, and their interaction changes its price by ${dollars(location)}. With it, the explanation fits: `, fit, "."],
-        ];
-      }
-      if (sheet.full) {
-        return [
-          [`The full decomposition of all ${n} features: ${count(sheet.count)} values, in a tree as deep as the model's trees. None of their paths splits on more than ${example.largest} features, so no group of all ${n} has a value, and Shapley interactions of order ${example.largest} are already exact. Computed by shapiq's TreeExplainer, they are the model itself, written as a sum: `, fit, "."],
-        ];
-      }
-      const texts = { 3: "Groups of three: the location with the occupancy, the age, the income or the rooms. ", 4: "Groups of four add hardly anything: " };
-      return [[`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values. ${texts[sheet.order] ?? ""}`, fit, "."]];
-    },
-    tabpfn: (example, { sheet, blank }) => {
-      const n = example.features.length;
-      if (blank) {
-        const [order, r2, values] = blank;
-        return [[`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} features. TabPFN has no depth that would cap its interactions: only the full decomposition, of all ${n} features, is exact. `, fitted(r2), "."]];
-      }
-      if (!sheet) {
-        return [
-          ["TabPFN, a transformer pretrained on synthetic tables, values the same house at ", ["", dollars(example.prediction).slice(1)], ` (the average house: ${dollars(example.baseline).slice(1)}). It is a black box: it predicts by reading ${count(example.context)} training houses together with the house, and nothing in it limits how many features act together. Every sheet explains the prediction as a tree, as for XGBoost.`],
-        ];
-      }
-      const fit = fitted(sheet.r2);
-      const [income, rooms, latitude, longitude] = [0, 2, 6, 7];
-      if (sheet.order === 1) {
-        return [
-          [`Shapley values: latitude lowers the price (${dollars(sheet.first[latitude])}) and the rooms raise it (${dollars(sheet.first[rooms])}), but the ${n} numbers reproduce TabPFN on subsets of the features only with `, fit, ", hardly better than a constant."],
-        ];
-      }
-      if (sheet.order === 2) {
-        const location = groupValue(sheet, [latitude, longitude]);
-        const space = groupValue(sheet, [income, rooms]);
-        return [
-          [`Pairs of features: latitude with longitude (${dollars(location)}), as for XGBoost, and the income with the rooms (${dollars(space)}), which stand in for each other. With them, the fit rises to `, fit, "."],
-        ];
-      }
-      if (sheet.full) {
-        return [
-          [`The full decomposition of all ${n} features: ${count(sheet.count)} values, a group of every size up to all ${n}. Unlike the trees of depth 5, TabPFN needs every order to be exact. Computed from all ${2 ** n} subsets of the features with shapiq's TabPFNImputer, which removes an absent feature from TabPFN's context instead of imputing it: `, fit, "."],
-        ];
-      }
-      return [[`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values. Larger groups still change the price: `, fit, "."]];
-    },
-    houses: (example, { sheet, blank }) => {
-      const n = example.features.length;
-      const columns = example.predictions.length;
-      if (blank) {
-        const [order, r2] = blank;
-        return [[`Order ${order}, on average over the ${columns} houses: `, fitted(r2), `. The trees have depth ${example.largest}, so from order ${example.largest} on, every house's explanation is its full decomposition.`]];
-      }
-      if (!sheet) {
-        return [
-          [`Explanations of ${columns} houses, a column each, sorted by the model's prediction (top). Every row is a feature or a group of features, red where it raises a house's value and blue where it lowers it.`],
-        ];
-      }
-      const fit = fitted(sheet.r2);
-      if (sheet.order === 1) {
-        return [
-          [`Shapley values of ${columns} houses: latitude and longitude matter most. On average, they reproduce the model's output for a house with `, fit, `, and for a quarter of all test houses with R² below ${example.quartiles[0].toFixed(2)}.`],
-        ];
-      }
-      if (sheet.order === 2) {
-        return [["Pairs: the interaction of latitude and longitude, the location, is the third strongest row. On average, ", fit, "."]];
-      }
-      if (sheet.full) {
-        return [
-          [`The full decomposition of every house, of all ${n} features: groups of up to ${example.largest} features, the trees' depth, so that Shapley interactions of order ${example.largest} are already exact. It is the model itself, written as a sum: `, fit, "."],
-        ];
-      }
-      const texts = { 3: "Groups of three join the income and the occupancy to the location. On average, ", 4: "Groups of four add hardly anything. On average, " };
-      return [[texts[sheet.order] ?? "", fit, "."]];
-    },
-    fixlip: (example, { sheet, blank }) => {
-      const n = example.sheets.at(-1).order;
-      const proxy = example.model.method;
-      if (blank) {
-        const [order, r2, values] = blank;
-        if (order >= example.largest) {
-          return [
-            [`Shapley interactions of order ${order}: ${count(values)} values. The proxy's trees have depth ${example.largest}, so no larger group has a value: from order ${example.largest} to ${n}, the explanation is the proxy's full decomposition, `, fitted(r2), "."],
-          ];
-        }
-        return [[`Shapley interactions of order ${order}: ${count(values)} values of up to ${order} patches and words, `, fitted(r2), "."]];
-      }
-      if (!sheet) {
-        return [
-          [`SigLIP 2, a black box, finds the photo and its caption similar: cosine similarity ${example.similarity.toFixed(2)}. Every sheet explains it, from the patches and words alone (top) to the full decomposition (bottom), read by ${proxy} off an XGBoost proxy of the model.`],
-        ];
-      }
-      const fit = fitted(sheet.r2);
-      const texts = {
-        1: ["Shapley values credit every patch and word alone: “elephant” the most, then the egret's patch and “bird”. They reproduce the model on random coalitions only with ", fit, ", a poor fit."],
-        2: ["Pairs link words to the regions they name: the egret's patch with “bird” and “white”, the elephant's head with “elephant”; alone, “white” now lowers the similarity. The fit jumps to ", fit, "."],
-        3: ["Groups of three read phrases, “standing next to” and “small … elephant … bird”, or join the egret's two patches with “bird”: ", fit, "."],
-        4: [`Shapley interactions of order 4: ${count(sheet.count)} values, the strongest the phrase “elephant standing next to”. They add little: `, fit, "."],
-      };
-      if (sheet.full) {
-        return [
-          [`The full decomposition of all ${n} patches and words, of ProxySHAP's proxy: its trees have depth ${example.largest}, so no group of more has a value. It reproduces SigLIP 2 on held-out coalitions with `, fit, ": what is left is what the proxy misses, not a missing order."],
-        ];
-      }
-      return [texts[sheet.order]];
-    },
-  };
 
   // the fit of an order (order, R^2, number of values): the plot's, or, above the highest order
   // with an interaction, the full decomposition's, which every such order equals
@@ -754,9 +577,7 @@
     plot.setAttribute("class", "orders-demo-plot-svg");
     plot.setAttribute("role", "img");
     plotBox.append(plotTitle, plot);
-    const caption = el("p", "orders-demo-caption");
-    caption.setAttribute("aria-live", "polite");
-    footer.append(plotBox, caption);
+    footer.append(plotBox);
     root.append(bar, stage, footer);
     root.classList.add("orders-demo-ready");
 
@@ -913,8 +734,8 @@
       }
     }
 
-    // choose an example: the pill slides to it while the stack, its fits, the plot and the caption
-    // fade out, and the example fades in, at rest; without motion, it shows at once
+    // choose an example: the pill slides to it while the stack, its fits and the plot fade out, and
+    // the example fades in, at rest; without motion, it shows at once
     let chosen = 0; // the examples chosen so far: only the last one chosen is drawn
     function choose(example) {
       if (state.example === example.id) return;
@@ -928,7 +749,7 @@
       }
       root.classList.add("orders-demo-fading");
       // the fade out starts now, and the example is drawn when it ends (at once, if all is faded)
-      const fades = [stack, ladder, plot, caption].flatMap((node) => {
+      const fades = [stack, ladder, plot].flatMap((node) => {
         getComputedStyle(node).opacity;
         return node.getAnimations();
       });
@@ -1038,7 +859,6 @@
       place(state.active);
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
-      describe();
     }
 
     // move every sheet and row to its place, for a lifted sheet (or null at rest)
@@ -1292,30 +1112,11 @@
       marker.label.setAttribute("y", below ? 22 : 0);
     }
 
-    function describe() {
-      const example = current();
-      const sheet = state.active === null ? null : example.sheets[state.active];
-      const blank = state.blank === null ? null : fitOf(example, state.blank);
-      caption.replaceChildren();
-      for (const sentence of CAPTIONS[example.id](example, { sheet, blank })) {
-        for (const part of sentence) {
-          if (Array.isArray(part)) {
-            const strong = el("strong", "");
-            strong.append(part[0], el("span", "orders-demo-number", part[1]));
-            caption.append(strong);
-          } else {
-            caption.append(part);
-          }
-        }
-      }
-    }
-
     // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
     function point(active, blank) {
       if (state.active === active && state.blank === blank) return;
       Object.assign(state, { active, blank });
       place(active);
-      describe();
       mark();
     }
 

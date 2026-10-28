@@ -43,16 +43,15 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-/* choosing an example: the stack, its fits, the plot and the caption fade out (demo.js draws the
-   example chosen when they have), and in again with it */
+/* choosing an example: the stack, its fits and the plot fade out (demo.js draws the example chosen
+   when they have), and in again with it */
 .orders-demo-stack,
 .orders-demo-ladder,
-.orders-demo-plot-svg,
-.orders-demo-caption {
+.orders-demo-plot-svg {
   transition: opacity 340ms ease-out;
 }
 
-.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg, .orders-demo-caption) {
+.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg) {
   opacity: 0;
   transition-duration: 160ms;
 }
@@ -739,29 +738,25 @@ body[data-theme="dark"] .orders-demo {
   min-width: 1.5rem;
 }
 
-/* -- below the stack: the plot of the fit by order, and the caption of what is pointed at ------- */
+/* -- below the stack: the plot of the fit by order ---------------------------------------------- */
 
+/* under the stack, the plot of the fit by order, in the middle */
 .orders-demo-footer {
-  display: grid;
-  grid-template-columns: minmax(15rem, 22rem) minmax(0, 1fr);
-  gap: 0.75rem 1.75rem;
-  align-items: center;
+  display: flex;
+  justify-content: center;
   margin-top: 0.75rem;
 }
 
-@container (max-width: 34rem) {
-  .orders-demo-footer {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 .orders-demo-plot {
+  width: 100%;
+  max-width: 34rem;
   min-width: 0;
   margin: 0;
 }
 
 .orders-demo-plot-title {
   margin: 0 0 0.15rem;
+  text-align: center;
   color: var(--orders-ink);
   font-size: 0.8rem;
   font-weight: 700;
@@ -911,17 +906,3 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-.orders-demo-caption {
-  min-height: 6.2em; /* four lines: the captions of the sheets differ in length */
-  margin: 0;
-  color: var(--orders-muted);
-  font-size: 0.9rem;
-  line-height: 1.55;
-  text-wrap: pretty;
-}
-
-.orders-demo-caption strong {
-  color: var(--orders-ink);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
