@@ -8,10 +8,10 @@ to 4 and the full decomposition (FSII of order n, the number of players, which e
 transform; for the houses, of order 5, the trees' depth, which equals it already and is exact),
 every main effect, and the 300 strongest interactions of each order (of the molecule, with the
 centers of its groups where shapiq's SI graph plot places them); for the houses, the strongest rows
-of their heatmap. And the R^2 (under the Shapley distribution) and the number of values of every
-order up to the highest with an interaction, and of order n, for the plot of the fit by order. It
-writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from disk too, where the
-browser would not fetch a JSON file).
+of their heatmap. And the R^2 (beyond size, under the Shapley distribution) and the number of
+values of every order up to the highest with an interaction, and of order n, for the plot of the
+fit by order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from
+disk too, where the browser would not fetch a JSON file).
 
 Usage::
 

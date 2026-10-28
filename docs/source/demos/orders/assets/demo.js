@@ -4,9 +4,10 @@
 // says), up to order 4. Below them, blank sheets stand for the orders that follow, up to the bottom
 // sheet: the full decomposition, the interactions of all orders, which add up to the model itself.
 // Beside every sheet is its R^2, its faithfulness: how much of the model's output on random
-// coalitions (drawn from the distribution of the Shapley values) the explanation reproduces; below
-// the stack a plot of the R^2 of every order: it rises from the Shapley values to the full
-// decomposition, which reproduces the model exactly.
+// coalitions (drawn from the distribution of the Shapley values) the explanation reproduces beyond
+// what their sizes alone predict; below the stack a plot of the R^2 of every order: it rises from
+// the Shapley values to the full decomposition, which reproduces the model exactly, unless it is
+// estimated: what it falls short of 1 is then shaded, the estimation tax.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by

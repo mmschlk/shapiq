@@ -77,7 +77,7 @@ draws the explanation as a tree that grows one level per order: the features on 
 of :math:`k` features at level :math:`k`, joined to its features. The full decomposition is a tree
 of depth 5, as deep as the model's trees, whose paths split on at most 5 features: no filler sheets,
 the stack ends at 5-FSII, exact. Of the 494 test houses near downtown Los Angeles, the Shapley
-values of this one fit worse than those of 96 %.
+values of this one fit worse than those of 94 %.
 
 **One house, TabPFN**: the same house, valued by TabPFN :cite:p:`Hollmann.2025`, a transformer
 pretrained on synthetic tables, which predicts by reading 2,000 training houses together with the
@@ -86,8 +86,9 @@ it limits how many features act together: its full decomposition has a value for
 size, up to all 8 features, and only 8-FSII is exact. shapiq's
 :class:`~shapiq.imputer.TabPFNImputer` removes an absent feature from TabPFN's context instead of
 imputing it :cite:p:`Rundel.2024`, and with 8 features, all 256 subsets of them are evaluated. The
-Shapley values fit TabPFN with :math:`R^2 = 0.25`; pairs, latitude with longitude and the income
-with the rooms, lift the fit to 0.88, and every order more a little further, up to the full
+Shapley values fit TabPFN with :math:`R^2 = 0.06`, barely more than the number of features alone:
+TabPFN weighs this house's features together. Pairs, latitude with longitude and the income with
+the rooms, lift the fit to 0.84, and every order more a little further, 0.95, 0.98, up to the full
 decomposition, which fits exactly.
 
 **All houses**: 150 test houses, explained in the same way, as a heatmap: a column per house, sorted
@@ -103,10 +104,13 @@ box: nothing in it gives its interactions exactly. :class:`~shapiq.approximator.
 :cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 10,000 coalitions of the game, drawn from
 the distribution of the Shapley values, and, without its residual adjustment, reads the proxy's full
 decomposition off its trees exactly; every order of FSII follows from it. The Shapley values fit
-SigLIP 2 with :math:`R^2 = 0.91`; pairs, which link "bird" and "white" to the egret's patch, lift
-the fit to 0.96, and groups of three to 0.97. From there, the fit stays at 0.97: the explanation is
-the proxy's, and reproduces SigLIP 2 on held-out coalitions nearly as well as the proxy does (0.98),
-not exactly.
+SigLIP 2 with :math:`R^2 = 0.48`; pairs, which link "bird" and "white" to the egret's patch, lift
+the fit to 0.78, and groups of three to 0.82. From there, the fit stays at 0.81: every order is the
+proxy's, and what its higher orders learned from the 10,000 coalitions adds nothing on held-out
+ones. Even the full decomposition falls short of 1 by 0.19, the estimation tax, which only all
+:math:`2^{74}` coalitions of the game would spare: about half of it is the proxy's own error (the
+proxy fits SigLIP 2 with 0.91), and half a constant, as ProxySHAP gives the empty group the game's
+value of the empty coalition, 0, where the proxy predicts −0.008.
 
 How it was computed
 -------------------

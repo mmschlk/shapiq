@@ -17,8 +17,8 @@ coalition's value, the explanation's baseline, is the model's mean prediction of
 houses, part of the game and of the explanation alike. Two files:
 
 - ``results/house.json``: one house in Los Angeles, test house 837, where latitude and longitude
-  interact strongly: its Shapley values fit worse than those of 96 % of the test houses within
-  0.15 degrees of downtown Los Angeles (R^2 = 0.39);
+  interact strongly: its Shapley values fit worse than those of 94 % of the test houses within
+  0.15 degrees of downtown Los Angeles (R^2 = 0.36);
 - ``results/houses.json``: 150 random test houses, for a heatmap of their explanations, with the
   mean R^2 of every order, and the R^2 of the Shapley values of all test houses.
 

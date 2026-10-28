@@ -16,13 +16,16 @@ proxy's depth is the full decomposition of the proxy: its trees split on at most
 so no larger group has a value, and every lower order of FSII follows from it. The depth, 6, is the
 best of 3 to 8 in a 5-fold cross-validation on the coalitions.
 
-Every order is scored by its R^2 under the Shapley distribution (as for the molecule and the
-houses), on 512 coalitions drawn from it independently of the proxy's (a coalition of 1 or 73
-players is one the proxy has seen: it saw all of them), against the model itself. The game is
+Every order is scored by its R^2 beyond size under the Shapley distribution (as for the molecule
+and the houses), on 512 coalitions drawn from it independently of the proxy's (a coalition of 1 or
+73 players is one the proxy has seen: it saw all of them), against the model itself. The mean value
+of every size, which R^2 beyond size measures against, comes from all coalitions of the run, the
+proxy's and the held-out ones: the held-out ones alone are too few for 73 sizes. The game is
 centered, and ProxySHAP gives the empty group the game's value of the empty coalition, 0, where the
 proxy predicts -0.008 (the empty coalition shares its leaves with coalitions of one or two players,
-whose values are about -0.007): the full decomposition reproduces the proxy up to this constant,
-and fits the model less well than the proxy itself (R^2 = 0.967 against 0.984).
+whose values are about -0.007): the full decomposition reproduces the proxy up to this constant.
+Beyond size, the constant counts: the full decomposition fits the model with R^2 = 0.814, the
+proxy itself with 0.909 (plain R^2: 0.967 against 0.984).
 
 Usage::
 

@@ -14,7 +14,8 @@ the explanation's errors against the spread of the game's values among coalition
 not against the spread of all of them: how much of what the number of players alone does not
 predict the explanation reproduces (`faithfulness.py`). FSII of a higher order fits the game at
 least as well under it: for the examples explained exactly, the R^2 does not fall with the order. SigLIP 2 is explained through a proxy, to which FSII is faithful, and scored against the
-model itself: its R^2 peaks at order 3 (0.969) and ends at 0.967 for the full decomposition.
+model itself: its R^2 peaks at order 3 (0.822) and ends at 0.814 for the full decomposition, which
+falls short of 1 by the estimation tax the demo shades.
 
 | File | What it does |
 |---|---|
@@ -53,7 +54,8 @@ woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the
 proxy. The proxy's depth, 6, is the best of 3 to 8 in a 5-fold cross-validation on the 10,000
-coalitions (R^2 = 0.9829; 0.9777 at depth 3, 0.9824 at depth 5, 0.9828 at depth 7), which is not
+coalitions (plain R^2 = 0.9829; 0.9777 at depth 3, 0.9824 at depth 5, 0.9828 at depth 7), which is not
 part of the script. ProxySHAP gives the empty group the game's value of the empty coalition, 0,
 where the proxy predicts -0.008: every order is off the proxy by this constant, and the full
-decomposition fits SigLIP 2 less well than the proxy itself (R^2 = 0.967 against 0.984).
+decomposition fits SigLIP 2 less well than the proxy itself (R^2 beyond size 0.814 against 0.909;
+plain R^2 0.967 against 0.984).
