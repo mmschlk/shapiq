@@ -598,9 +598,10 @@
     function measure() {
       const width = stage.clientWidth;
       const narrow = width < 560;
-      // the rows of the ladder: on wide screens, room for a bar, the R^2 and the verdict, all as wide
-      const ladderWidth = narrow ? Math.max(92, width * 0.3) : Math.min(256, width * 0.32);
-      const gap = narrow ? 8 : 28;
+      // the rows of the ladder: room for a bar, the R^2 and the verdict, all as wide; on narrow
+      // screens no ladder, and its room goes to the sheets (the plot below has their fits)
+      const ladderWidth = narrow ? 0 : Math.min(256, width * 0.32);
+      const gap = narrow ? 0 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const room = width - ladderWidth - gap - RAIL;
       // the room holds the stack and the sheet slid out of it

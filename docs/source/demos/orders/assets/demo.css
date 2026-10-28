@@ -77,7 +77,7 @@ body[data-theme="dark"] .orders-demo {
 
 @media (scripting: enabled) and (max-width: 45em) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 48rem;
+    min-height: 44rem;
   }
 }
 
@@ -701,6 +701,11 @@ body[data-theme="dark"] .orders-demo {
   min-width: 0.8em;
   font-style: normal;
   text-align: center;
+}
+
+/* on narrow screens, no ladder: the sheets take its room */
+.orders-demo-narrow .orders-demo-ladder {
+  display: none;
 }
 
 /* on narrow screens, the rows have room for the tag and the fit only */
