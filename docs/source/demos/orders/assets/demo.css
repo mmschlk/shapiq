@@ -6,6 +6,7 @@
   clear: both;
   margin: 1.5rem 0 1rem;
   container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  isolation: isolate; /* the sheets' and the slider's z-index stay inside the demo, under the page's */
   /* the docs' tokens (tokens.css, Furo), with fallbacks for a page without them */
   --orders-ink: var(--color-foreground-primary, #1b1e27);
   --orders-muted: var(--color-foreground-secondary, #5b6275);
@@ -57,11 +58,6 @@ body[data-theme="dark"] .orders-demo {
   transition-duration: 160ms;
 }
 
-/* what the script hides stays hidden, whatever its display */
-.orders-demo [hidden] {
-  display: none !important;
-}
-
 /* a new example takes its places at once, without moving there */
 .orders-demo-instant :is(.orders-demo-sheet, .orders-demo-row, .orders-demo-face, .orders-demo-meter-fill),
 .orders-demo-instant .orders-demo-row::before {
@@ -109,13 +105,6 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-raised);
 }
 
-/* on narrow screens, the examples without their models */
-@container (max-width: 40rem) {
-  .orders-demo-option {
-    padding-inline: 0.7rem;
-  }
-}
-
 .orders-demo-option {
   box-sizing: border-box;
   display: inline-flex;
@@ -136,6 +125,13 @@ body[data-theme="dark"] .orders-demo {
   transition:
     color var(--orders-duration) var(--orders-ease),
     transform 120ms var(--orders-ease);
+}
+
+/* on narrow screens, the options closer together */
+@container (max-width: 40rem) {
+  .orders-demo-option {
+    padding-inline: 0.7rem;
+  }
 }
 
 .orders-demo-option:hover {
@@ -251,7 +247,6 @@ body[data-theme="dark"] .orders-demo {
   stroke-linejoin: round;
 }
 
-.orders-demo-icon-leaf,
 .orders-demo-icon-node {
   fill: var(--orders-page);
 }
@@ -671,7 +666,7 @@ body[data-theme="dark"] .orders-demo {
   letter-spacing: 0.02em;
 }
 
-/* after the R^2, with its comma: where the verdict is hidden, so is the comma */
+/* after the R^2, with its comma */
 .orders-demo-verdict::before {
   content: ", ";
 }
@@ -706,32 +701,6 @@ body[data-theme="dark"] .orders-demo {
 /* on narrow screens, no ladder: the sheets take its room */
 .orders-demo-narrow .orders-demo-ladder {
   display: none;
-}
-
-/* on narrow screens, the rows have room for the tag and the fit only */
-.orders-demo-narrow .orders-demo-row {
-  font-size: 0.75rem;
-  padding-left: 0.35rem;
-}
-
-.orders-demo-narrow .orders-demo-row-name,
-.orders-demo-narrow .orders-demo-verdict,
-.orders-demo-narrow .orders-demo-r2::before {
-  display: none;
-}
-
-.orders-demo-narrow .orders-demo-blank-row .orders-demo-row-name {
-  display: inline;
-}
-
-.orders-demo-narrow .orders-demo-meter {
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 1.5rem;
-}
-
-.orders-demo-narrow .orders-demo-score {
-  min-width: 2.9rem;
 }
 
 /* -- below the stack: the plot of the fit by order ---------------------------------------------- */
@@ -816,8 +785,8 @@ body[data-theme="dark"] .orders-demo {
 /* the axes' labels: the order under the axis, the faithfulness along it */
 .orders-demo-plot-label {
   fill: var(--orders-ink);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 700;
   dominant-baseline: central;
 }
 
@@ -874,7 +843,6 @@ body[data-theme="dark"] .orders-demo {
   fill: var(--orders-ink);
   stroke: var(--orders-sheet);
   stroke-width: 1.5;
-  transition: r var(--orders-duration) var(--orders-ease);
 }
 
 .orders-demo-plot-between {
@@ -909,13 +877,14 @@ body[data-theme="dark"] .orders-demo {
   stroke: none;
 }
 
-.orders-demo-plot-label {
+/* the R^2 of the order pointed at, by its ring */
+.orders-demo-plot-value {
   fill: var(--orders-ink);
   font-size: 11.5px;
   font-weight: 700;
   dominant-baseline: central;
   paint-order: stroke;
-  stroke: var(--orders-sheet);
+  stroke: var(--orders-page);
   stroke-width: 4px;
   stroke-linejoin: round;
 }

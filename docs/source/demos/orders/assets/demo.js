@@ -29,8 +29,8 @@
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
 // find the sheet under the pointer and to lead every row of the ladder to its sheet.
 //
-// Without JavaScript, the static figure in the <noscript> shows; when the data does not load, the
-// script shows that figure itself.
+// Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
+// demo cannot start, the script shows that figure itself.
 (() => {
   const roots = [...document.querySelectorAll(".orders-demo")];
   if (!roots.length) return;
@@ -748,6 +748,7 @@
     function render() {
       const example = current();
       instance += 1;
+      Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
@@ -775,7 +776,7 @@
         if (example.kind === "graph") moleculeFace(svg, example, sheet);
         else if (example.kind === "tree") treeFace(svg, example, sheet);
         else if (example.kind === "heatmap") heatmapFace(svg, example, sheet);
-        else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${instance}-${i}`);
+        else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${instance}-${i}`);
         // the name along the bottom edge, from the bottom corner: the part of a sheet that shows
         add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, sheetName(sheet).face);
         items.push({ order: sheet.order, sheet, index: i, node });
@@ -801,7 +802,7 @@
         const score = el("span", "orders-demo-score");
         score.append(
           el("span", "orders-demo-r2", fit2(sheet.r2)),
-          el("span", `orders-demo-verdict orders-demo-verdict-${verdict(sheet.r2).replace(" ", "-")}`, verdict(sheet.r2)),
+          el("span", "orders-demo-verdict", verdict(sheet.r2)),
         );
         fitBox.append(meter, score);
         row.append(title, fitBox);
@@ -841,7 +842,7 @@
       drawPlot();
       // a new example shows at rest at once: its sheets and rows take their places without moving
       root.classList.add("orders-demo-instant");
-      place(state.active);
+      place(null);
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
     }
@@ -876,7 +877,7 @@
         row.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
         row.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
         row.classList.toggle("orders-demo-active", out && item.index === active);
-        row.setAttribute("aria-pressed", String(out && item.index === active));
+        row.setAttribute("aria-pressed", String(state.pinned && out && item.index === active));
       });
 
       // the slider: its stops at the middles of the sheets at rest (without a blank sheet's peek), its
@@ -893,8 +894,11 @@
       [...ticks.children].forEach((tick, p) => {
         tick.style.transform = `translateY(${roundTo(stops[p + 1].y, 2)}px)`;
       });
-      const at = stops.findIndex(({ item }) =>
-        item === null ? !out && state.blank === null : out ? item.index === active : !item.sheet && item.order === state.blank,
+      const at = Math.max(
+        0,
+        stops.findIndex(({ item }) =>
+          item === null ? !out && state.blank === null : out ? item.index === active : !item.sheet && item.order === state.blank,
+        ),
       );
       // placed by translate, which the handle's growing on hover does not scale, unlike a transform
       thumb.style.translate = `0 ${roundTo(stops[at].y, 2)}px`;
@@ -911,8 +915,7 @@
         const right = rightCorner(places[items.indexOf(target)]);
         if (target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
-        // beside the blank sheet, but clear of the rows above and below it, which are taller where
-        // the blank sheets lie close together (on narrow screens)
+        // beside the blank sheet, but clear of the rows above and below it
         const [above, below] = [rows.length - 2, rows.length - 1];
         const half = (row) => row.offsetHeight / 2;
         const y = Math.min(
@@ -1044,7 +1047,6 @@
           cx: roundTo(x(order), 1),
           cy: roundTo(y(r2), 1),
           r: sheetOrders.has(order) ? 3 : 2.4,
-          "data-order": order,
         });
       }
 
@@ -1057,7 +1059,7 @@
       const ring = add(plot, "g", { class: "orders-demo-plot-marker" });
       add(ring, "circle", { r: 7 });
       add(ring, "circle", { class: "orders-demo-plot-core", r: 3 });
-      const label = add(ring, "text", { class: "orders-demo-plot-label", "text-anchor": "middle" });
+      const label = add(ring, "text", { class: "orders-demo-plot-value", "text-anchor": "middle" });
       const score = add(label, "tspan");
       const rating = add(label, "tspan", { class: "orders-demo-plot-verdict" });
       marker = { guide, ring, label, score, rating, x, y, last: n, middle: (y0 + y1) / 2, bottom: y0 };
@@ -1077,8 +1079,8 @@
         }
       });
       cover.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "mouse") return;
-        touched = true;
+        touched = event.pointerType !== "mouse";
+        if (!touched) return;
         cover.setPointerCapture(event.pointerId);
         state.pinned = true;
         pointAtOrder(nearest(event));
@@ -1105,9 +1107,6 @@
       const example = current();
       const order = state.active !== null ? example.sheets[state.active].order : state.blank;
       plot.classList.toggle("orders-demo-plot-pointing", order !== null);
-      for (const dot of plot.querySelectorAll(".orders-demo-plot-dot")) {
-        dot.classList.toggle("orders-demo-plot-dot-active", Number(dot.dataset.order) === order);
-      }
       if (order === null) return;
       const r2 = fitOf(example, order)[1];
       const [cx, cy] = [roundTo(marker.x(order), 1), roundTo(marker.y(r2), 1)];
@@ -1133,6 +1132,8 @@
 
     // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
     function point(active, blank) {
+      // during a switch, the sheets, rows and plot on screen are still the old example's
+      if (root.classList.contains("orders-demo-fading")) return;
       if (state.active === active && state.blank === blank) return;
       Object.assign(state, { active, blank });
       place(active);
@@ -1163,6 +1164,7 @@
       return stops.reduce((best, stop) => (Math.abs(stop.y - y) < Math.abs(best.y - y) ? stop : best), stops[0]);
     };
     rail.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
       event.preventDefault();
       rail.setPointerCapture(event.pointerId);
       rail.classList.add("orders-demo-dragging");
@@ -1228,6 +1230,7 @@
         width = stage.clientWidth;
         geometry = measure();
         place(state.active);
+        mark();
       }
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
@@ -1242,12 +1245,13 @@
 
   // -- loading ----------------------------------------------------------------------------------------
 
+  // the static figure of every demo, kept before the demo replaces it (with scripts on, a
+  // <noscript>'s content is its HTML as text)
+  const fallbacks = new Map(roots.map((root) => [root, root.querySelector("noscript")?.textContent ?? ""]));
   const showFallback = (root) => {
-    // with scripts on, a <noscript>'s content is its HTML as text
-    const fallback = root.querySelector("noscript")?.textContent ?? "";
-    root.classList.remove("orders-demo-ready");
+    root.classList.remove("orders-demo-ready", "orders-demo-fading");
     root.classList.add("orders-demo-failed");
-    root.innerHTML = fallback;
+    root.innerHTML = fallbacks.get(root);
   };
   const begin = () => {
     for (const root of roots) {

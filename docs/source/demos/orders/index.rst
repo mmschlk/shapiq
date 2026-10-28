@@ -48,8 +48,8 @@ of the same size,
 with :math:`w` the distribution, :math:`v` the model, :math:`\hat{v}` the explanation, and
 :math:`\bar{v}_s` the model's mean output on the coalitions of size :math:`s`. At 0, the explanation
 tells no more than the number of players; at 1, it reproduces the model exactly. Under this
-distribution, FSII of every order is the best fit of its order, so the fit never falls from one
-order to the next. The Shapley values give every player its share; what they miss is what players
+distribution, FSII of every order is the best fit of its order to the model it explains, so for a
+model explained exactly, the fit never falls from one order to the next. The Shapley values give every player its share; what they miss is what players
 do only together. Every order recovers more of it, and the full decomposition is the model itself,
 written as a sum over groups of players: :math:`R^2 = 1`. Unless it is estimated: for a black box of
 many players, the full decomposition, too, is fit to a sample of the coalitions, and what its fit
@@ -177,14 +177,21 @@ is the same on every run:
 .. code-block:: python
 
    from tabpfn import TabPFNRegressor
+   from tabpfn.constants import ModelVersion
 
    import shapiq
 
    # x_context, y_context: 2,000 training houses; x_test: the test houses (for the mean prediction)
-   model = TabPFNRegressor(
-       n_estimators=1, inference_config={"FEATURE_SHIFT_METHOD": None, "FINGERPRINT_FEATURE": False}
+   model = TabPFNRegressor.create_default_for_version(
+       ModelVersion.V2,
+       n_estimators=1,
+       inference_config={"FEATURE_SHIFT_METHOD": None, "FINGERPRINT_FEATURE": False},
+       random_state=0,
+       ignore_pretraining_limits=True,  # a context of more than 1,000 houses on a CPU
    ).fit(x_context, y_context)
-   game = shapiq.TabPFNImputer(model, x_context, y_context, x_test=x_test).fit(house)
+   game = shapiq.TabPFNImputer(
+       model, x_context, y_context, x_test=x_test, predict_function=lambda model, x: model.predict(x)
+   ).fit(house)
    full = shapiq.ExactComputer(game)("Moebius")  # the full decomposition, from all 256 subsets
 
 **Describing images.** For a black box, :class:`~shapiq.approximator.ProxySHAP` explains a

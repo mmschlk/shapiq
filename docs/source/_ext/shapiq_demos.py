@@ -86,7 +86,7 @@ class DemoDirective(SphinxDirective):
 def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     root = relative_uri(page, f"_static/demos/{node['demo']}/")
-    attributes = {"data-root": root, "data-version": node["version"]}
+    attributes = {"data-root": root, "data-version": node.get("version", "")}
     self.body.append(self.starttag(node, "div", CLASS=f"{node['demo']}-demo", **attributes))
     if node["fallback"]:
         src = relative_uri(page, f"_static/{node['fallback']}")
@@ -144,4 +144,9 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     app.add_directive("shapiq-demo", DemoDirective)
     app.connect("html-page-context", _add_assets)
     app.connect("env-updated", _copy_assets)
-    return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}
+    return {
+        "version": "1.0",
+        "env_version": 2,  # the nodes carry a version: environments of earlier builds are read again
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
+    }
