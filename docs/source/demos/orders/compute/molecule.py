@@ -10,15 +10,19 @@ molecule, and GraphSHAP-IQ computes its Möbius transform exactly from the subse
 fields: 7,693 evaluations instead of 2^30.
 
 The players are the atoms; an absent atom keeps its bonds, and its features are zeros. The value of
-a coalition is the logit of the class "mutagen". From the Möbius transform, ``shapiq`` converts the
-explanation into k-SII of every order: the Shapley values (order 1), the Shapley interactions of
-order 2, 3, ..., and the full decomposition, the Möbius transform itself (k-SII of the highest
-order). Every order is scored by its R^2 on 2,048 coalitions, every atom present with probability
-1/2 (as the FIxLIP demo scores its explanations): how much of the model's output on those
-coalitions the explanation reproduces.
-The explanation predicts a coalition's value as the sum of the values of its subsets; k-SII is
-efficient, so this prediction needs no constant of its own (for the coalition of all atoms, it is
-the model's output).
+a coalition is the logit of the class "mutagen", centered: the logit of the empty coalition is
+subtracted. From the Möbius transform, ``shapiq`` converts the explanation into FSII of every
+order: the Shapley values (order 1), the Faithful Shapley Interactions of order 2, 3, ..., and the
+full decomposition, the Möbius transform itself (FSII of the highest order). Every order is scored
+by its R^2 under the Shapley distribution (``faithfulness.py``), the distribution FSII is faithful
+to, on 10,000 coalitions drawn from it: how much of the model's output on those coalitions the
+explanation reproduces. The Möbius transform is exact, so the model's output on a coalition is the
+sum of the Möbius values of its subsets, and the coalitions cost no evaluation of the model (on
+512 of them, the script checks it against the model).
+The explanation predicts a coalition's value as the sum of the values of its subsets, the empty
+one's included: FSII's value of the empty group is the game's value of the empty coalition, 0, so
+this prediction needs no constant of its own (for the coalition of all atoms, it is the model's
+output).
 
 Usage::
 
@@ -47,6 +51,7 @@ from torch_geometric.datasets import TUDataset
 from torch_geometric.loader import DataLoader
 from torch_geometric.nn import GCNConv, global_add_pool
 
+from faithfulness import fsii, predictions, r2, sample  # in this folder
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.graph import GraphSHAPIQ
 from shapiq_games import GraphGame
@@ -55,7 +60,7 @@ HERE = Path(__file__).resolve().parent
 GRAPH = 71  # the molecule of GraphSHAP-IQ's Figure 1
 MUTAGEN = 0  # the class of mutagenic molecules in Mutagenicity
 ATOMS = ["C", "O", "Cl", "H", "N", "F", "Br", "S", "P", "I", "Na", "K", "Li", "Ca"]  # node labels
-N_TEST = 2048  # the coalitions every order is scored on
+N_TEST = 10_000  # the coalitions every order is scored on, from the Shapley distribution
 
 
 class GCN(torch.nn.Module):
@@ -163,21 +168,6 @@ def layout(atoms: list[str], bonds: list[tuple[int, int]]) -> np.ndarray:
     return coords / coords.max()
 
 
-def r2(y: np.ndarray, y_hat: np.ndarray) -> float:
-    """Return the R^2 of a prediction."""
-    return float(1 - np.sum((y - y_hat) ** 2) / np.sum((y - y.mean()) ** 2))
-
-
-def surrogate(values: dict[tuple[int, ...], float], coalitions: np.ndarray) -> np.ndarray:
-    """Return the sum of the values of every coalition's subsets: the explanation's prediction."""
-    players = [interaction for interaction in values if interaction]
-    members = np.zeros((len(players), coalitions.shape[1]))
-    for row, interaction in enumerate(players):
-        members[row, list(interaction)] = 1
-    inside = coalitions.astype(float) @ members.T == members.sum(axis=1)
-    return inside @ np.array([values[interaction] for interaction in players])
-
-
 def main() -> None:
     """Train the GCN, explain the molecule at every order, and write ``results/molecule.json``."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -204,24 +194,27 @@ def main() -> None:
     largest = max(len(interaction) for interaction in moebius.interaction_lookup)
     converter = MoebiusConverter(moebius)
 
-    coalitions = np.random.default_rng(1).random((N_TEST, game.n_players)) < 0.5
-    y = game(coalitions)
+    # the game's values from the exact Möbius transform, checked against the model on 512 of them
+    coalitions = sample(game.n_players, N_TEST, seed=1)
+    y = predictions({key: moebius[key] for key in moebius.interaction_lookup}, coalitions)
+    difference = np.max(np.abs(y[:512] - game(coalitions[:512])))
+    print(f"largest difference of the Möbius transform to the model: {difference:.1e}", flush=True)
+    assert difference < 1e-4  # noqa: S101  (GraphSHAP-IQ is exact, up to float32)
     orders = {}
     for order in range(1, largest + 1):
-        explanation = converter("k-SII", order)
-        values = {
-            interaction: float(explanation[interaction])
-            for interaction in explanation.interaction_lookup
-            if interaction and abs(explanation[interaction]) > 1e-9
-        }
-        strongest = sorted(values.items(), key=lambda item: (len(item[0]), -abs(item[1])))
+        values = fsii(converter, order)
+        strongest = sorted(
+            ((key, value) for key, value in values.items() if key),
+            key=lambda item: (len(item[0]), -abs(item[1])),
+        )
         orders[order] = {
-            "r2": r2(y, surrogate(values, coalitions)),
+            "r2": r2(y, predictions(values, coalitions)),
             "values": [[list(interaction), value] for interaction, value in strongest],
         }
-        print(f"order {order}: {len(values)} values, R^2 {orders[order]['r2']:.3f}", flush=True)
+        print(f"order {order}: {len(strongest)} values, R^2 {orders[order]['r2']:.4f}", flush=True)
 
     result = {
+        "index": "FSII",
         "graph": GRAPH,
         "atoms": atoms,
         "bonds": bonds,
