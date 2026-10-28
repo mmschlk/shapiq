@@ -17,8 +17,8 @@ full decomposition, the Möbius transform itself (FSII of the highest order). Ev
 by its R^2 under the Shapley distribution (``faithfulness.py``), the distribution FSII is faithful
 to, on 10,000 coalitions drawn from it: how much of the model's output on those coalitions the
 explanation reproduces. The Möbius transform is exact, so the model's output on a coalition is the
-sum of the Möbius values of its subsets, and the coalitions cost no evaluation of the model (on
-512 of them, the script checks it against the model).
+sum of the Möbius values of its subsets: the coalitions need no evaluation of the model, but for
+512 of them, on which the script checks the sums against the model.
 The explanation predicts a coalition's value as the sum of the values of its subsets, the empty
 one's included: FSII's value of the empty group is the game's value of the empty coalition, 0, so
 this prediction needs no constant of its own (for the coalition of all atoms, it is the model's
@@ -30,8 +30,8 @@ Usage::
 
 The dataset is downloaded to ``results/tudataset/``, the trained model saved to
 ``results/gcn.pt`` (and not trained again), and the explanation written to
-``results/molecule.json``. Training takes about four minutes on four CPU cores, the explanation a
-few seconds.
+``results/molecule.json``. Training takes about four minutes on four CPU cores, the explanation and
+the R^2 of every order about 20 seconds.
 """
 
 from __future__ import annotations
@@ -45,13 +45,13 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn.functional as F  # noqa: N812
+from faithfulness import fsii, predictions, r2, sample  # in this folder
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from torch_geometric.datasets import TUDataset
 from torch_geometric.loader import DataLoader
 from torch_geometric.nn import GCNConv, global_add_pool
 
-from faithfulness import fsii, predictions, r2, sample  # in this folder
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.graph import GraphSHAPIQ
 from shapiq_games import GraphGame

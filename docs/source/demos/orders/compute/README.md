@@ -9,8 +9,10 @@ Every order is FSII, the Faithful Shapley Interactions (Tsai et al., 2023), whic
 values, FSII of the highest order the Möbius transform. Every order is scored by its R^2 under the
 Shapley distribution, the one FSII is faithful to: a coalition size s from 1 to n - 1 with
 probability proportional to 1 / (s (n - s)), the coalitions of a size equally likely, and no weight
-on the empty and the full coalition, which FSII reproduces exactly. Under it, the R^2 does not fall
-with the order.
+on the empty and the full coalition, which FSII reproduces exactly. FSII of a higher order fits the
+game at least as well under it: for the examples explained exactly, the R^2 does not fall with the
+order. SigLIP 2 is explained through a proxy, to which FSII is faithful, and scored against the
+model itself: its R^2 peaks at order 3 (0.969) and ends at 0.967 for the full decomposition.
 
 | File | What it does |
 |---|---|
@@ -32,14 +34,14 @@ the dependencies of the FIxLIP demo's scripts (for SigLIP 2, which `fixlip.py` i
 pip install -e "../../../../..[graph,tree,games]" rdkit xgboost scikit-learn tabpfn
 
 python molecule.py  # downloads Mutagenicity; trains the GCN in about four minutes on four CPU cores
-python housing.py   # downloads California housing; explains 4,128 houses in about three minutes
+python housing.py   # downloads California housing; explains 4,128 houses in under a minute
 python house_tabpfn.py  # downloads TabPFN's weights; evaluates the house's 256 subsets in four minutes
-python fixlip.py    # downloads SigLIP 2; evaluates 10,512 coalitions in about ten minutes
+python fixlip.py    # downloads SigLIP 2; evaluates 10,512 coalitions in about nine minutes
 python pack.py
 ```
 
-`molecule.py` saves the trained GCN to `results/gcn.pt` and does not train it again. The
-intermediate results (`results/`) are not part of the repository.
+`molecule.py` saves the trained GCN to `results/gcn.pt` and does not train it again; with it, a run
+takes about 20 seconds. The intermediate results (`results/`) are not part of the repository.
 
 The data of the docs was computed with Python 3.12, shapiq from the repository (after release
 1.8.0), torch 2.14, torch_geometric 2.8, RDKit 2026.09, XGBoost 3.4, scikit-learn 1.9 and
@@ -48,5 +50,8 @@ woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the
-proxy; it picked the proxy's depth, 6, as the best of 3 to 8 in a 5-fold cross-validation on the
-10,000 coalitions.
+proxy. The proxy's depth, 6, is the best of 3 to 8 in a 5-fold cross-validation on the 10,000
+coalitions (R^2 = 0.9829; 0.9777 at depth 3, 0.9824 at depth 5, 0.9828 at depth 7), which is not
+part of the script. ProxySHAP gives the empty group the game's value of the empty coalition, 0,
+where the proxy predicts -0.008: every order is off the proxy by this constant, and the full
+decomposition fits SigLIP 2 less well than the proxy itself (R^2 = 0.967 against 0.984).

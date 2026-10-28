@@ -42,8 +42,8 @@ Usage::
     python house_tabpfn.py
 
 The dataset is downloaded by scikit-learn to ``results/sklearn/``, TabPFN's weights from Hugging
-Face on the first run. TabPFN's predictions of all 4,128 test houses (for its R^2 on them) take a
-few seconds on four CPU cores, its predictions of the 255 coalitions of the house about four
+Face on the first run. TabPFN's predictions of all 4,128 test houses (for its R^2 on them) take
+about ten seconds on four CPU cores, its predictions of the 255 coalitions of the house about four
 minutes.
 """
 

@@ -33,6 +33,9 @@ ORDERS = (1, 2, 3, 4)  # the sheets, above the one of order n (the full decompos
 # the interactions (of two or more players) drawn on a sheet, most of them weak: a haze around
 # the strongest
 STRONGEST = 300
+# R^2 to nine decimals: enough to tell the exact full decomposition (R^2 = 1) from an order that
+# only nearly is (the house's order 4 misses by 3e-7)
+R2_DIGITS = 9
 COMPACTNESS = 1e10  # how hard a group's center is pulled to its atoms: si_graph_plot's default
 ROWS = 14  # the rows of a sheet of the heatmap
 SHORT = ["Income", "Age", "Rooms", "Bedrooms", "Population", "Occupancy", "Lat", "Long"]
@@ -89,7 +92,7 @@ def sheets(
             {
                 "order": order,
                 "full": order == full,
-                "r2": round(explanation(result, order)["r2"], 6),
+                "r2": round(explanation(result, order)["r2"], R2_DIGITS),
                 "first": [round(value, 5) for value in first],
                 "groups": [[players, round(value, 5)] for players, value in groups[:strongest]],
                 "count": len(values),
@@ -134,7 +137,7 @@ def fits(result: dict[str, Any], full: int | None = None) -> list[list[float]]:
     return [
         [
             order,
-            round(explanation(result, order)["r2"], 6),
+            round(explanation(result, order)["r2"], R2_DIGITS),
             len(explanation(result, order)["values"]),
         ]
         for order in orders
@@ -159,7 +162,7 @@ def heatmap(result: dict[str, Any], full: int) -> dict[str, Any]:
             {
                 "order": order,
                 "full": order == full,
-                "r2": round(explanation(result, order)["r2"], 6),
+                "r2": round(explanation(result, order)["r2"], R2_DIGITS),
                 "count": len(values),
                 "scale": round(scale, 4),
                 "rows": [
@@ -300,7 +303,7 @@ def main() -> None:
                 "sheets": sheets(fixlip),
                 "fits": fits(fixlip),
             },
-        ]
+        ],
     }
     text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     (args.assets / "data.js").write_text(

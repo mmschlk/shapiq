@@ -29,8 +29,8 @@ Usage::
     python fixlip.py
 
 The game's evaluations are kept in ``results/fixlip_coalitions.npz``: the model is evaluated once
-per coalition (10,000 and 512 held out, about ten minutes on four CPU cores), and a run again only
-fits the proxy.
+per coalition (10,000 for the proxy and 512 to score it, a run of about nine minutes on four CPU
+cores), and a run again only fits the proxy.
 """
 
 from __future__ import annotations

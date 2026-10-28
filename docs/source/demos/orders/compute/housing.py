@@ -26,8 +26,8 @@ Usage::
     python housing.py
 
 The dataset is downloaded by scikit-learn to ``results/sklearn/``. The explanations of all 4,128
-test houses take about 20 seconds on four CPU cores, their FSII of every order and R^2 about three
-minutes.
+test houses take a few seconds on four CPU cores, their FSII of every order and R^2 about 40
+seconds.
 """
 
 from __future__ import annotations

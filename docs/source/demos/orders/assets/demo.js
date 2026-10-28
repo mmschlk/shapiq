@@ -1,20 +1,21 @@
 // The orders demo (demos/orders): one prediction, explained at every order of interaction, as a
 // stack of sheets. The top sheet holds the Shapley values (order 1); every sheet below adds the
-// interactions of one more order (k-SII), up to order 4. Below them, blank sheets stand for the
-// orders that follow, up to the bottom sheet: the full decomposition, the interactions of all
-// orders, which add up to the model itself. Beside every sheet is its R^2, how much of the model's
-// output on random coalitions the explanation reproduces, and below the stack a plot of the R^2 of
-// every order: it rises from the Shapley values to the full decomposition, which reproduces the
-// model exactly.
+// interactions of one more order (FSII, the Faithful Shapley Interactions, or k-SII, as the data
+// says), up to order 4. Below them, blank sheets stand for the orders that follow, up to the bottom
+// sheet: the full decomposition, the interactions of all orders, which add up to the model itself.
+// Beside every sheet is its R^2, its faithfulness: how much of the model's output on random
+// coalitions (drawn from the distribution of the Shapley values) the explanation reproduces; below
+// the stack a plot of the R^2 of every order: it rises from the Shapley values to the full
+// decomposition, which reproduces the model exactly.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
 // shapiq's TreeExplainer for an XGBoost model of depth 5 (the 150 houses as a heatmap, a column
 // each); the same house valued by TabPFN, a black box, explained exactly over all subsets of its
 // features with shapiq's TabPFNImputer; and how SigLIP 2, a black box, matches the photo and
-// caption of the FIxLIP demo, explained
-// by ProxySHAP through an XGBoost proxy, without adjustment. The full decomposition is k-SII of
-// order n, the number of players; the orders above the highest one with an interaction (the trees'
+// caption of the FIxLIP demo, explained by ProxySHAP through an XGBoost proxy, without adjustment.
+// The full decomposition is the interactions of order n, the number of players (or of the trees'
+// depth, which already are); the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
 // precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, a
 // tap that pins it, or the slider beside the stack) slides it out to the side of the
@@ -465,16 +466,16 @@
   // the name of a sheet: on its face, as its row's tag, and in words
   const sheetName = (sheet) => {
     if (sheet.full) {
-      return { face: `Full decomposition (${sheet.order}-SII)`, tag: `${sheet.order}-SII`, name: "Full decomposition" };
+      return { face: `Full decomposition (${sheet.order}-${INDEX})`, tag: `${sheet.order}-${INDEX}`, name: "Full decomposition" };
     }
     if (sheet.order === 1) return { face: "Shapley values (SV)", tag: "SV", name: "Shapley values" };
-    const tag = `${sheet.order}-SII`;
+    const tag = `${sheet.order}-${INDEX}`;
     return { face: tag, tag, name: "Shapley interactions" };
   };
   // R^2 as text: two decimals, three close to 1, and 1.00 only where the fit is exact
-  // an explanation that reproduces the model exactly (the data rounds R^2 to six decimals): only
+  // an explanation that reproduces the model exactly (the data rounds R^2 to nine decimals): only
   // that reads 1.00 and exact, and anything short of it at most > 0.999
-  const EXACT = 1 - 5e-7;
+  const EXACT = 1 - 5e-10;
   const fit2 = (r2) => {
     if (r2 >= EXACT) return "1.00";
     if (r2 < 0.995) return r2.toFixed(2);
@@ -510,7 +511,11 @@
 
   // -- the demo -------------------------------------------------------------------------------------
 
+  // the explanations' index, as the sheets' tags name it: FSII (2-FSII), or k-SII (2-SII)
+  let INDEX = "SII";
+
   function start(root, data) {
+    INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
     // what is pointed at: a lifted sheet (its index), or the blank sheet of an order between
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
