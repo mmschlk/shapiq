@@ -573,6 +573,8 @@
     const footer = el("div", "orders-demo-footer");
     const plotBox = el("figure", "orders-demo-plot");
     const plotTitle = el("figcaption", "orders-demo-plot-title", "Faithfulness by order");
+    // the title over the plot's area, not over its ticks: with the plot's margins
+    plotTitle.style.padding = `0 ${PLOT.right}px 0 ${PLOT.left}px`;
     const plot = document.createElementNS(SVG, "svg");
     plot.setAttribute("class", "orders-demo-plot-svg");
     plot.setAttribute("role", "img");
