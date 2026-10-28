@@ -1095,7 +1095,8 @@
       const at = stops.findIndex(({ item }) =>
         item === null ? !lifted && state.blank === null : lifted ? item.index === active : !item.sheet && item.order === state.blank,
       );
-      thumb.style.transform = `translateY(${roundTo(stops[at].y, 2)}px)`;
+      // placed by translate, which the handle's growing on hover does not scale, unlike a transform
+      thumb.style.translate = `0 ${roundTo(stops[at].y, 2)}px`;
       thumb.classList.toggle("orders-demo-thumb-rest", at === 0);
       thumb.setAttribute("aria-valuemin", "0");
       thumb.setAttribute("aria-valuemax", String(stops.length - 1));
@@ -1345,6 +1346,8 @@
       event.preventDefault();
       rail.setPointerCapture(event.pointerId);
       rail.classList.add("orders-demo-dragging");
+      // the arrow keys go on from there, without the ring that shows keyboard focus
+      thumb.focus({ preventScroll: true, focusVisible: false });
       slideTo(stopAt(event.clientY));
     });
     rail.addEventListener("pointermove", (event) => {

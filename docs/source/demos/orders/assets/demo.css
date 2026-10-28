@@ -537,7 +537,8 @@ body[data-theme="dark"] .orders-demo {
     0 1px 4px var(--orders-shade);
   cursor: grab;
   transition:
-    transform 320ms var(--orders-ease),
+    translate 320ms var(--orders-ease),
+    scale var(--shapiq-duration, 220ms),
     background var(--shapiq-duration, 220ms),
     box-shadow var(--shapiq-duration, 220ms);
 }
