@@ -44,7 +44,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from faithfulness import fsii, predictions, r2, sample, size_weights  # in this folder
+from faithfulness import fsii, predictions, r2, sample, size_means, size_weights  # in this folder
 from xgboost import XGBRegressor
 
 import shapiq
@@ -69,6 +69,7 @@ class CachedGame:
         """Load the evaluations of earlier runs."""
         self.game, self.path = game, path
         self.values: dict[bytes, float] = {}
+        self.asked: dict[bytes, float] = {}  # the coalitions of this run, with their values
         if path.exists():
             stored = np.load(path)
             for coalition, value in zip(stored["coalitions"], stored["values"], strict=True):
@@ -91,6 +92,8 @@ class CachedGame:
             np.savez_compressed(
                 self.path, coalitions=rows, values=np.array([self.values[k] for k in keys])
             )
+        for row in coalitions:
+            self.asked[row.tobytes()] = self.values[row.tobytes()]
         return np.array([self.values[row.tobytes()] for row in coalitions])
 
 
@@ -151,10 +154,15 @@ def main() -> None:
 
     test = sample(n, N_TEST, seed=1)
     y = cached(test)
+    # the mean value of every size, the yardstick of R^2 beyond size: from all coalitions of this run,
+    # the proxy's and the held-out ones, all drawn alike within a size (the held-out ones alone are
+    # too few for 73 sizes)
+    asked = np.array([np.frombuffer(key, dtype=bool) for key in cached.asked])
+    means = size_means(np.array(list(cached.asked.values())), asked.sum(axis=1))
     orders = {}
     for order in range(1, DEPTH + 1):
         values = fsii(converter, order)
-        fit = r2(y, predictions(values, test))
+        fit = r2(y, predictions(values, test), test.sum(axis=1), means=means)
         strongest = sorted(
             ((key, value) for key, value in values.items() if key),
             key=lambda item: (len(item[0]), -abs(item[1])),

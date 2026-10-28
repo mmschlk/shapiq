@@ -31,9 +31,10 @@ of the coalition alone. The empty coalition has no feature to predict from: its 
 mean prediction of the test houses (the imputer's empty prediction), the explanation's baseline.
 
 As for the XGBoost model, ``shapiq`` converts the Möbius transform into FSII of every order, and
-scores every order by its R^2 under the Shapley distribution (``faithfulness.py``), exactly: on all
-254 coalitions of the game but the empty and the full one, each weighted by its probability. It is
-how much of TabPFN's output on those coalitions the explanation reproduces. One file,
+scores every order by its R^2 beyond size under the Shapley distribution (``faithfulness.py``),
+exactly: on all 254 coalitions of the game but the empty and the full one, each weighted by its
+probability. It is how much of TabPFN's output on those coalitions the explanation reproduces beyond
+what their sizes alone predict. One file,
 ``results/house_tabpfn.json``, in the format of ``results/house.json``, with the number of training
 houses in TabPFN's context.
 

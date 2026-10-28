@@ -14,9 +14,9 @@ a coalition is the logit of the class "mutagen", centered: the logit of the empt
 subtracted. From the Möbius transform, ``shapiq`` converts the explanation into FSII of every
 order: the Shapley values (order 1), the Faithful Shapley Interactions of order 2, 3, ..., and the
 full decomposition, the Möbius transform itself (FSII of the highest order). Every order is scored
-by its R^2 under the Shapley distribution (``faithfulness.py``), the distribution FSII is faithful
-to, on 10,000 coalitions drawn from it: how much of the model's output on those coalitions the
-explanation reproduces. The Möbius transform is exact, so the model's output on a coalition is the
+by its R^2 beyond size under the Shapley distribution (``faithfulness.py``), the distribution FSII
+is faithful to, on 10,000 coalitions drawn from it: how much of the model's output on those
+coalitions the explanation reproduces beyond what their sizes alone predict. The Möbius transform is exact, so the model's output on a coalition is the
 sum of the Möbius values of its subsets: the coalitions need no evaluation of the model, but for
 512 of them, on which the script checks the sums against the model.
 The explanation predicts a coalition's value as the sum of the values of its subsets, the empty
@@ -208,7 +208,7 @@ def main() -> None:
             key=lambda item: (len(item[0]), -abs(item[1])),
         )
         orders[order] = {
-            "r2": r2(y, predictions(values, coalitions)),
+            "r2": r2(y, predictions(values, coalitions), coalitions.sum(axis=1)),
             "values": [[list(interaction), value] for interaction, value in strongest],
         }
         print(f"order {order}: {len(strongest)} values, R^2 {orders[order]['r2']:.4f}", flush=True)

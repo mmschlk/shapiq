@@ -513,6 +513,7 @@
 
   // the explanations' index, as the sheets' tags name it: FSII (2-FSII), or k-SII (2-SII)
   let INDEX = "SII";
+  let plots = 0; // the demos' plots on the page, for ids of their own
 
   function start(root, data) {
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
@@ -520,6 +521,7 @@
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
     let instance = 0;
+    const plotId = ++plots;
 
     root.replaceChildren();
     const bar = el("div", "orders-demo-bar");
@@ -974,7 +976,8 @@
       plot.setAttribute("height", h);
       plot.setAttribute(
         "aria-label",
-        `R² by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition`,
+        `R² by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition` +
+          (example.fits.at(-1)[1] < EXACT ? ", estimated: what its R² falls short of 1 is the estimation tax" : ""),
       );
       plot.replaceChildren();
       const fits = example.fits;
@@ -1028,6 +1031,37 @@
       const arrow = add(plot, "g", { class: "orders-demo-plot-complexity" });
       add(arrow, "path", { d: `M${f(x0)},${arrowY}H${f(x1)}M${f(x1 - 5)},${arrowY - 3.5}L${f(x1)},${arrowY}L${f(x1 - 5)},${arrowY + 3.5}` });
       add(arrow, "text", { class: "orders-demo-plot-axis", x: f((x0 + x1) / 2), y: arrowY, "text-anchor": "middle" }, "more complex");
+
+      // the estimation tax: where even the full decomposition is estimated (from a proxy of the
+      // model, not from all 2^n coalitions), the R^2 it falls short of 1, hatched across the plot
+      const full = fits.at(-1)[1];
+      if (full < EXACT) {
+        const id = `orders-tax-${plotId}`;
+        const hatch = add(add(plot, "defs", {}), "pattern", {
+          id,
+          width: 5,
+          height: 5,
+          patternUnits: "userSpaceOnUse",
+          patternTransform: "rotate(45)",
+        });
+        add(hatch, "line", { class: "orders-demo-plot-tax-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
+        const tax = add(plot, "g", { class: "orders-demo-plot-tax" });
+        const band = { x: f(x0), y: f(y(1)), width: f(x1 - x0), height: f(y(full) - y(1)) };
+        add(tax, "rect", { ...band, class: "orders-demo-plot-tax-fill" });
+        add(tax, "rect", { ...band, fill: `url(#${id})` });
+        // its label inside the band, or above the plot where the band is too thin for it
+        const inside = band.height >= 15;
+        add(
+          tax,
+          "text",
+          {
+            class: "orders-demo-plot-axis orders-demo-plot-tax-label",
+            x: f(x0 + (inside ? 6 : 0)),
+            y: inside ? f((y(1) + y(full)) / 2) : f(y(1) - 8),
+          },
+          "estimation tax",
+        );
+      }
 
       const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
       add(plot, "path", { class: "orders-demo-plot-area", d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z` });

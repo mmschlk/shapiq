@@ -11,7 +11,7 @@ explained exactly with ``shapiq``.
 
 .. shapiq-demo:: orders
    :fallback: images/hero_orders.png
-   :alt: Sheets stacked on top of each other, each a molecule explained at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank sheets for the orders 5 to 29, and the full decomposition of all 30 atoms at the bottom. Beside every sheet, its fit to the model rises from R² = 0.98 to 1.
+   :alt: Sheets stacked on top of each other, each a molecule explained at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank sheets for the orders 5 to 29, and the full decomposition of all 30 atoms at the bottom. Beside every sheet, its fit to the model rises from R² = 0.36 to 1.
 
 What you see
 ------------
@@ -33,32 +33,46 @@ other model.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
 the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output
-on random coalitions this prediction reproduces, its faithfulness, with the coalitions drawn from
+on random coalitions this prediction reproduces, its faithfulness. The coalitions are drawn from
 the distribution of the Shapley values: a size :math:`s` from 1 to :math:`n - 1` with probability
 proportional to :math:`1 / (s (n - s))`, and every coalition of that size alike, the weights of
-KernelSHAP. Under it, FSII of every order is the best fit of its order, so the fit never falls from
-one order to the next. Most of its coalitions lack only a few players or hold only a few, where the
-Shapley values fit well; what they miss is what players do only together. Every order recovers more
-of it, and the full decomposition is the model itself, written as a sum over groups of players:
-:math:`R^2 = 1`. Many models have no interactions above some order: the trees of a given depth, the
-receptive fields of a graph neural network. From that order on, FSII equals the full decomposition:
-the houses' stacks end there, at order 5, where the fit is exact, and the plot of the molecule
-breaks its axis before :math:`n = 30`. Point along the plot to bring out the sheet of an order.
+KernelSHAP. Much of what the model does with them follows from how many players they hold, not from
+which (for the molecule, 98 % of the spread of its output), so :math:`R^2` measures the fit beyond
+size: it weighs the explanation's errors against the spread of the model's output among coalitions
+of the same size,
+
+.. math::
+
+   R^2 = 1 - \frac{\sum_S w(S) \, \big(v(S) - \hat{v}(S)\big)^2}{\sum_S w(S) \, \big(v(S) - \bar{v}_{|S|}\big)^2},
+
+with :math:`w` the distribution, :math:`v` the model, :math:`\hat{v}` the explanation, and
+:math:`\bar{v}_s` the model's mean output on the coalitions of size :math:`s`. At 0, the explanation
+tells no more than the number of players; at 1, it reproduces the model exactly. Under this
+distribution, FSII of every order is the best fit of its order, so the fit never falls from one
+order to the next. The Shapley values give every player its share; what they miss is what players
+do only together. Every order recovers more of it, and the full decomposition is the model itself,
+written as a sum over groups of players: :math:`R^2 = 1`. Unless it is estimated: for a black box of
+many players, the full decomposition, too, is fit to a sample of the coalitions, and what its fit
+falls short of 1, shaded in the plot, is the **estimation tax**. Many models have no interactions
+above some order: the trees of a given depth, the receptive fields of a graph neural network. From
+that order on, FSII equals the full decomposition: the houses' stacks end there, at order 5, where
+the fit is exact, and the plot of the molecule breaks its axis before :math:`n = 30`. Point along
+the plot to bring out the sheet of an order.
 
 **The molecule** is graph 71 of the Mutagenicity dataset of the TUDataset collection
 :cite:p:`Morris.2020`, 30 atoms with three nitro groups (NO\ :sub:`2`), which a graph convolutional
 network (GCN) classifies as mutagenic. Its players are the atoms; an absent atom keeps its bonds,
-and its features are zeros. The Shapley values credit the nitrogen atoms and already fit the GCN
-well, :math:`R^2 = 0.98`; the interactions of order 2 add the bonds of the nitro groups, and those
-of order 4 pieces of the carbon rings and every nitro group with its carbon. With them, the
-explanation fits the model almost exactly. No group of more than 10 atoms has a value: the GCN's
-receptive fields hold at most 10.
+and its features are zeros. The Shapley values credit the nitrogen atoms and fit the GCN with
+:math:`R^2 = 0.36`; the interactions of order 2 add the bonds of the nitro groups,
+:math:`R^2 = 0.88`, and those of order 4 pieces of the carbon rings and every nitro group with its
+carbon, :math:`R^2 = 0.998`: the explanation fits the model almost exactly. No group of more than
+10 atoms has a value: the GCN's receptive fields hold at most 10.
 
 **One house** in Los Angeles, valued by an XGBoost model of depth 5. Its players are the 8 features
 of the house; an absent feature takes its values from 100 training houses (interventional
 explanations). The Shapley values split the location into a negative longitude and a positive
-latitude and fit the model with :math:`R^2 = 0.39`. Latitude and longitude only together locate the
-house: with their interaction, the explanation of order 2 fits with :math:`R^2 = 0.996`. Every sheet
+latitude and fit the model with :math:`R^2 = 0.36`. Latitude and longitude only together locate the
+house: with their interaction, the explanation of order 2 fits with :math:`R^2 = 0.995`. Every sheet
 draws the explanation as a tree that grows one level per order: the features on top, and every group
 of :math:`k` features at level :math:`k`, joined to its features. The full decomposition is a tree
 of depth 5, as deep as the model's trees, whose paths split on at most 5 features: no filler sheets,
@@ -78,8 +92,8 @@ decomposition, which fits exactly.
 
 **All houses**: 150 test houses, explained in the same way, as a heatmap: a column per house, sorted
 by the model's prediction, and a row per feature or group of features. On average, the Shapley
-values fit with :math:`R^2 = 0.86`, and those of a quarter of all test houses below 0.77; with pairs
-of features, led by the interaction of latitude and longitude, the fit rises to 0.997. The trees
+values fit with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73; with pairs
+of features, led by the interaction of latitude and longitude, the fit rises to 0.996. The trees
 have depth 5, so no group of more than 5 features has a value, and 5-FSII is exact.
 
 **Describing images**: the photo and caption are those of the :doc:`FIxLIP demo <../fixlip/index>`:

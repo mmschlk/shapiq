@@ -9,9 +9,10 @@ features, so the Möbius transform has no interaction of more than 5 features: F
 already the full decomposition (FSII of order n = 8), and exact.
 
 ``shapiq`` converts the Möbius transform of every house into FSII of every order, and scores every
-order by its R^2 under the Shapley distribution (``faithfulness.py``), exactly: on all 254
-coalitions of the house's game but the empty and the full one, each weighted by its probability.
-It is how much of the model's output on those coalitions the explanation reproduces. The empty
+order by its R^2 beyond size under the Shapley distribution (``faithfulness.py``), exactly: on
+all 254 coalitions of the house's game but the empty and the full one, each weighted by its
+probability. It is how much of the model's output on those coalitions the explanation reproduces
+beyond what their sizes alone predict. The empty
 coalition's value, the explanation's baseline, is the model's mean prediction of the 100 training
 houses, part of the game and of the explanation alike. Two files:
 
@@ -69,7 +70,7 @@ def explain(
     for order in range(1, largest + 1):
         values = fsii(converter, order)
         orders[order] = {
-            "r2": r2(game, predictions(values, coalitions), weights),
+            "r2": r2(game, predictions(values, coalitions), coalitions.sum(axis=1), weights),
             "values": {key: value for key, value in values.items() if key},
         }
     return orders

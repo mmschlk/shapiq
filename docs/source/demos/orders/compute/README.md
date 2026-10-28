@@ -6,17 +6,19 @@ values to the full decomposition. They are run by hand, once; the docs only show
 
 Every order is FSII, the Faithful Shapley Interactions (Tsai et al., 2023), which shapiq's
 `MoebiusConverter` computes from each example's Möbius transform: FSII of order 1 is the Shapley
-values, FSII of the highest order the Möbius transform. Every order is scored by its R^2 under the
-Shapley distribution, the one FSII is faithful to: a coalition size s from 1 to n - 1 with
-probability proportional to 1 / (s (n - s)), the coalitions of a size equally likely, and no weight
-on the empty and the full coalition, which FSII reproduces exactly. FSII of a higher order fits the
-game at least as well under it: for the examples explained exactly, the R^2 does not fall with the
-order. SigLIP 2 is explained through a proxy, to which FSII is faithful, and scored against the
+values, FSII of the highest order the Möbius transform. Every order is scored by its R^2 beyond size
+under the Shapley distribution, the one FSII is faithful to: a coalition size s from 1 to n - 1
+with probability proportional to 1 / (s (n - s)), the coalitions of a size equally likely, and no
+weight on the empty and the full coalition, which FSII reproduces exactly. R^2 beyond size weighs
+the explanation's errors against the spread of the game's values among coalitions of the same size,
+not against the spread of all of them: how much of what the number of players alone does not
+predict the explanation reproduces (`faithfulness.py`). FSII of a higher order fits the game at
+least as well under it: for the examples explained exactly, the R^2 does not fall with the order. SigLIP 2 is explained through a proxy, to which FSII is faithful, and scored against the
 model itself: its R^2 peaks at order 3 (0.969) and ends at 0.967 for the full decomposition.
 
 | File | What it does |
 |---|---|
-| `faithfulness.py` | What the other scripts share: the Shapley distribution (its sizes' probabilities, all its coalitions of 8 players with their probabilities, and coalitions drawn from it), an explanation's prediction of a coalition (the sum of its subsets' values, the empty one's included), the weighted R^2, and FSII of an order. |
+| `faithfulness.py` | What the other scripts share: the Shapley distribution (its sizes' probabilities, all its coalitions of 8 players with their probabilities, and coalitions drawn from it), an explanation's prediction of a coalition (the sum of its subsets' values, the empty one's included), the weighted R^2 beyond size, and FSII of an order. |
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2 on 10,000 coalitions drawn from the Shapley distribution (their values from the exact Möbius transform): `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles (test house 837) and 150 random houses exactly (interventional), at every order, with each order's R^2 exactly over all 254 coalitions but the empty and the full one, weighted by the Shapley distribution: `results/house.json`, `results/houses.json`. |
 | `house_tabpfn.py` | Explains the same house with TabPFN, a black box, exactly over all 256 subsets of its features with shapiq's `TabPFNImputer` (remove and contextualize), at every order, with the R^2 of `housing.py`: `results/house_tabpfn.json`. TabPFN makes one pass without randomness, so that the game is the same on every run. |

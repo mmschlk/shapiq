@@ -17,6 +17,8 @@
   --orders-shade: rgba(20, 28, 60, 0.14);
   /* the black box stays black in both themes; on a dark page, its edges show */
   --orders-box-edge: #ffffff;
+  /* the estimation tax in the plot: the fit an estimated full decomposition falls short of */
+  --orders-tax: #c2700a;
   --orders-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --orders-duration: 640ms;
   --orders-switch: 360ms; /* the pill sliding to the example chosen */
@@ -26,6 +28,7 @@ body[data-theme="dark"] .orders-demo {
   --orders-edge: #3b4152;
   --orders-shade: rgba(0, 0, 0, 0.45);
   --orders-box-edge: #9aa1b4;
+  --orders-tax: #f0a43a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,6 +36,7 @@ body[data-theme="dark"] .orders-demo {
     --orders-edge: #3b4152;
     --orders-shade: rgba(0, 0, 0, 0.45);
     --orders-box-edge: #9aa1b4;
+    --orders-tax: #f0a43a;
   }
 }
 
@@ -805,6 +809,28 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-plot-axis {
   font-size: 10.5px;
   font-style: italic;
+}
+
+/* the estimation tax: what an estimated full decomposition's fit falls short of 1, hatched */
+.orders-demo-plot-tax-fill {
+  fill: var(--orders-tax);
+  opacity: 0.08;
+}
+
+.orders-demo-plot-tax-hatch {
+  stroke: var(--orders-tax);
+  stroke-width: 1.2;
+  opacity: 0.5;
+}
+
+.orders-demo-plot-tax-label {
+  fill: var(--orders-tax);
+  font-style: normal;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--orders-page);
+  stroke-width: 4px;
+  stroke-linejoin: round;
 }
 
 /* the axes' labels: the order under the axis, the faithfulness along it */
