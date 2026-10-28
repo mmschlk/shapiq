@@ -1,6 +1,6 @@
 # Core Interfaces: Everything Is a Game
 
-**Earlier API sketch.** The evolving [game algebra specification](game-algebra.md) revises cast costs, values as zero-player games, reduction semantics, and deferred attribute access. This document and its notebook describe the initial skeleton; consult the algebra specification for the current discussion.
+**Historical API sketch.** Its universal partial signatures, automatic lifting, partial-shape tracking, and full-graph deferral requirements are superseded by [ADR 0005](../adr/0005-family-specific-partial-stages.md). The evolving [game algebra specification](game-algebra.md) describes the current functional core and revises cast costs and values as zero-player games. The notebook now demonstrates that current core rather than the historical interfaces below.
 
 This is the v2 API sketch. The glossary is in `CONTEXT.md`; [ADR 0004](../adr/0004-everything-is-a-game.md) records the architectural shift. Only the abstract contracts and capability protocols are defined in code. Constructors, named transformations, storage classes, views, and the lifting layer below are proposed interfaces.
 
@@ -35,7 +35,7 @@ Thus `g2({i})` is exactly the Shapley value, without a baseline offset. The sour
 | `Game[C, V]` | JAX-like batch with `players: Players[C]` and `__call__(coalition: C) -> V` |
 | `KAdditive` | Semantic capability declaring `additivity: int` as an upper bound |
 | `Additive` | K-additivity bound one, additionally guaranteeing zero empty value |
-| `PGame[Params, Out]` | Deferred callable with a positional/keyword parameter signature; `Out` is a game or another partial game |
+| `Partial[Params, Out]` | Deferred callable with a positional/keyword parameter signature and declared result; partial games eventually produce a game |
 | `PartialShape` | Known/unknown dimensions of the eventual game batch, or unknown rank |
 | `Transformation[A, B]` | Public transformation of concrete `A` to `B`, also lifted over partial inputs |
 
@@ -46,7 +46,7 @@ Thus `g2({i})` is exactly the Shapley value, without a baseline offset. The sour
 Partial games carry the same eventual batch perspective at every nesting level:
 
 ```text
-PGame.shape: PartialShape
+Partial.shape: PartialShape
 PartialShape = tuple[int | None, ...] | None
 
 (8, 3)       known rank and dimensions
@@ -69,7 +69,7 @@ The hierarchy has two independent dimensions:
 Semantic capabilities:       KAdditive <- Additive
 Core game abstraction:      Game[C, V]
 Future storage families:    Game + JaxAxisProtected + applicable capabilities
-Deferred construction:      PGame (separate from Game)
+Deferred construction:      Partial (separate from Game)
 ```
 
 `KAdditive` promises that Möbius coefficients above its declared order vanish. The bound is not necessarily tight. A k-additive representation may contain a constant coefficient; `Additive` additionally promises normalization, so singleton values directly determine every coalition value. These guarantees apply to suitable additive value spaces, not arbitrary `Value` objects.
@@ -79,6 +79,20 @@ Capability protocols describe mathematical promises, not proofs or layouts. An `
 Future concrete families can use singleton storage, dense interaction coefficients, sparse coefficients, or model-backed evaluation. Materialized array-backed families compose `Game` with `ndlike.protected_axis.jax.JaxAxisProtected`; player/interaction/value axes are protected and batch axes remain public. An additive game need not use one particular storage family. Likewise, a Shapley result does not need a special storage class solely because of how it was computed.
 
 Layouts are intentionally unspecified here. In particular, ndlike's current protected fields require equal batch shapes, while `Game.players` permits broadcasting. A representation must preserve that distinction when indexing/reshaping; a shared player set cannot simply be treated as an identically batched storage field.
+
+`FinitePlayers.players` is an optional shared `LatentPlayers[P]` catalog,
+independent of the player-set batch. Its read-only sequence interface supports
+iteration, membership, count, index, integer access, slicing, and 1D boolean
+filtering. Slices and filters return catalogs. This is a one-dimensional
+sequence abstraction over NumPy, JAX, or ndlike array-like backing, preserving
+the backing's logical indexing and representation. Lists and other non-array
+iterables always use 1D NumPy object storage; packed storage requires an explicit
+array-like input. Catalog equality and
+hashing are identity-based, so ndlike's default pytree implementation can retain
+the catalog as static auxiliary data while exposing IDs as dynamic children
+([ADR 0008](../adr/0008-opaque-player-metadata.md)).
+Existing backings and indexed players are not defensively copied or frozen;
+callers must not mutate shared storage, metadata, or returned views.
 
 ## Cheap Views Versus Transformations
 
@@ -102,7 +116,7 @@ Constant time is with respect to game/player/storage size; dispatcher bookkeepin
 
 ## Transformation Dispatch
 
-The installed flextype entry point is `flextype.flexdispatch`, implemented in `flextype.singledispatch`. Concrete handlers are ordinary `A -> B` callables; `B` may be a `Game` or a `PGame` introducing new parameters. Functions may expose configuration keywords; `Transformation[A, B]` describes their game argument once configuration is fixed.
+The installed flextype entry point is `flextype.flexdispatch`, implemented in `flextype.singledispatch`. Concrete handlers are ordinary `A -> B` callables; `B` may be a `Game` or a `Partial` introducing new parameters. Functions may expose configuration keywords; `Transformation[A, B]` describes their game argument once configuration is fixed.
 
 The proposed public transformation layer first recognizes partial inputs, propagates `output_shape`, and defers the operation. Once a concrete input is available, flextype can select a handler by game type. Model-backed families can then route by the wrapped model type, using a second dispatcher or `dispatch_on`. For example, a tree-specific handler computes the same Shapley-game semantics as the general handler. Public transformation callables expose the shape rule alongside dispatch; concrete numerical handlers do not each need to implement partial-game plumbing.
 
@@ -110,33 +124,33 @@ Dispatch does not automatically search the cast graph, and ordinary protocol att
 
 ## Partial Games and Deferred Flow
 
-A partial game is a family of game batches with missing construction parameters, not a game missing some coalition evaluations. It always exposes partial batch-shape information, even when players and dimensions are not yet fully known. Calling a `PGame` supplies parameters; calling its eventual `Game` evaluates coalitions.
+A partial game is a family of game batches with missing construction parameters, not a game missing some coalition evaluations. It always exposes partial batch-shape information, even when players and dimensions are not yet fully known. Calling a `Partial` supplies parameters; calling its eventual `Game` evaluates coalitions. `Partial` and its helpers are exported from `shapiq.partial`; there is no separate partial-game runtime class.
 
 ```python
 # Proposed transformation calls; no concrete implementations exist yet.
 p1 = remove_players(g1, k=2)  # missing: which two players?
-p2 = shapley_game(p1)        # same missing inputs; no game computation
-g2 = p2(removed=indices)     # supply them, then compute the reduced Shapley game
+p2 = shapley_game(p1)  # same missing inputs; no game computation
+g2 = p2(removed=indices)  # supply them, then compute the reduced Shapley game
 
 # A PDP-like transformation introduces a feature-value stage.
 pp = with_feature_value(p1, feature=feature_id)  # missing: removal, then value
-explained = shapley_game(pp)                   # lifts through both stages
-remaining = explained(removed=indices)         # still a PGame; no computation
-g3 = remaining(value=new_value)                # fully specified additive game
+explained = shapley_game(pp)  # lifts through both stages
+remaining = explained(removed=indices)  # still a Partial; no computation
+g3 = remaining(value=new_value)  # fully specified additive game
 ```
 
 Each transformation that changes players defines the remaining player identities, coalition mapping, and treatment of removed players. `k` specifies the removal count here; the parameter values select the actual members. Feature-value changes require an appropriate model-backed family and define their own PDP-like semantics. The example does not imply that any of these transformations commute.
 
-`PGame` uses a `ParamSpec` so named and keyword-only inputs are part of its signature. One call binds one declared stage; nested stages retain separate signatures even when parameter names coincide. Families of families can nest indefinitely: a further partial transformation adds a stage, and subsequent transformations lift through every existing stage. `ppgame` is an informal name for a nested `PGame`, not a distinct type or a special depth limit. There is no implicit merging of stages or arbitrary Python-callable currying.
+`Partial` uses a `ParamSpec` so named and keyword-only inputs are part of its signature. One call binds one declared stage; nested stages retain separate signatures even when parameter names coincide. Families of families can nest indefinitely: a further partial transformation adds a stage, and subsequent transformations lift through every existing stage. `ppgame` is an informal name for a nested game-producing `Partial`, not a distinct type or a special depth limit. There is no implicit merging of stages or arbitrary Python-callable currying.
 
 The public typing shape is:
 
 ```text
-T: A -> B                         B may itself be a PGame
-T: PGame[P, A] -> PGame[P, B]
-T: PGame[P, LiftedGame[A]] -> PGame[P, LiftedGame[B]]
+T: A -> B                         B may itself be a Partial
+T: Partial[P, A] -> Partial[P, B]
+T: Partial[P, LiftedGame[A]] -> Partial[P, LiftedGame[B]]
 
-LiftedGame[G] = G | PGame[..., LiftedGame[G]]
+LiftedGame[G] = G | Partial[..., LiftedGame[G]]
 ```
 
 The immediate parameter signature is retained. The recursive alias deliberately erases deeper parameter lists; runtime nesting must still preserve them. This is a typing compromise, not permission to collapse stages.
@@ -145,8 +159,8 @@ The denotational lifting law is `T(p)(args) = T(p(args))`, recursively through p
 
 **Deferral contract:** composing a graph and binding a nonterminal stage must not evaluate games, estimate coefficients, or materialize transformed games. Those computations run when all parameters needed by the final game have been supplied. Repeated full calls need not share computation; caching, graph optimization, and persistence are separate future decisions.
 
-A naive closure implementing the lifting law can compute too early when a later transformation returns a new `PGame`. The eventual shared lifting layer must carry deferred dependencies across such partial-producing transformations, and those transformations must expose remaining stages without running their upstream game computation. Wrapping arbitrary opaque callables cannot provide that guarantee automatically. The initial API states this requirement without selecting a graph-node representation, scheduler, or decorator implementation.
+A naive closure implementing the lifting law can compute too early when a later transformation returns a new `Partial`. The eventual shared lifting layer must carry deferred dependencies across such partial-producing transformations, and those transformations must expose remaining stages without running their upstream game computation. Wrapping arbitrary opaque callables cannot provide that guarantee automatically. The initial API states this requirement without selecting a graph-node representation, scheduler, or decorator implementation.
 
 ## Scope of the Skeleton
 
-The Python changes are limited to callable/capability/shape contracts and exports: `PGame`, `LiftedGame`, `PartialShape`, `Transformation`, `KAdditive`, and `Additive`. Concrete games, layouts, transformation algorithms, cast registrations, shape-inference implementations, and deferred execution follow separately. Sampling/state/history can be algorithm-local concerns when an approximation implementation needs them; they are not a mandatory public explainer lifecycle.
+The Python changes are limited to callable/capability/shape contracts and exports: `Partial`, `LiftedGame`, `PartialShape`, `Transformation`, `KAdditive`, and `Additive`. Concrete games, layouts, transformation algorithms, cast registrations, shape-inference implementations, and deferred execution follow separately. Sampling/state/history can be algorithm-local concerns when an approximation implementation needs them; they are not a mandatory public explainer lifecycle.

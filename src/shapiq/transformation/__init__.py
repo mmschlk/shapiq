@@ -1,5 +1,5 @@
-"""Game-to-game transformations and their partial-game lifting contract."""
+"""The callable contract for game transformations."""
 
-from .transformation import Transformation, lifted
+from .transformation import Transformation
 
-__all__ = ["Transformation", "lifted"]
+__all__ = ["Transformation"]

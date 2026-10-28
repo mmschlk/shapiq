@@ -68,91 +68,76 @@ shapley_game(x)                     # through the zero-player-game cast
 
 ## Partial Stages and Deferral
 
-`Partial[P, T]` describes a suspended stage with parameter signature `P` and result `T`. A partial game eventually produces a game batch; the same core supports partial players and values.
+`Partial[T]`, exported from `shapiq.partial`, is an abstract suspended stage with immediate result `T`. The same interface supports partial games, players, and values. [ADR 0005](../adr/0005-family-specific-partial-stages.md) records the family-specific interface and explicit traversal decision.
 
 ```python
-class Partial[**P, T]:
-    def bind(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
-    def map[U](self, f: Callable[[T], U]) -> Partial[P, U]: ...
+class Partial[T](ABC):
+    @abstractmethod
+    def __call__(self, *args: Any, **kwargs: Any) -> T: ...
+
+    @abstractmethod
+    def map[U](self, function: Callable[[T], U]) -> Partial[U]: ...
 ```
 
-Binding supplies one complete stage's inputs, executes that stage, and returns its result. Calling is shorthand for binding. Each reduction removes one pending-input requirement:
+Each concrete family implements its own call signature and repackages itself in `map`. The concrete return annotation replaces only the result parameter, preserving the family and any family-specific state. Mapping must not execute the stage or mutate the original.
 
 ```python
-ppg: Partial[ScaleParams, Partial[OffsetParams, Game]]
-pg = ppg(scale=2.0)          # Partial[OffsetParams, Game]
-g = pg(offset=3.0)           # Game
+class Offset[T](Partial[T]):
+    def __init__(self, function: Callable[[float], T]):
+        self.function = function
+
+    def __call__(self, *, offset: float) -> T:
+        return self.function(offset)
+
+    def map[U](self, function: Callable[[T], U]) -> Offset[U]:
+        return Offset(lambda offset: function(self(offset=offset)))
 ```
 
-A zero-parameter partial defers execution until `()`. Use `delay` around the computation to defer its cost; `defer` wraps an existing value.
+Calling supplies one family's inputs, executes exactly that stage, and returns its result. There is no required `bind` method. A zero-parameter family defers execution until `()`.
 
 ```python
-pg = delay(lambda: cast(g, MobiusGame))
-pv = pg.eval(S)              # deferred coalition evaluation
-value = pv()                # executes conversion and evaluation
-
-p = defer(g)                # already constructed game, suspended for composition
+family: Factors[Offset[Game]]
+remaining = family(factors=xs)  # Offset[Game]
+game = remaining(offset=3.0)    # Game
 ```
 
-## Mapping and Transparent Lifting
+## Mapping and Explicit Lifting
 
-`map` transforms one stage's result while preserving its parameters. Composition records work; reduction executes it. A callback's complete result becomes the mapped result, including any further partial stages.
+Transformations are ordinary unary callables described by `Transformation[A, B]`. They do not inspect result annotations or traverse partials automatically. Explicit nested `map` calls select the target and retain every surrounding family's concrete type and call signature:
+
+```python
+family: Factors[Offset[Game]]
+explained = family.map(lambda offset: offset.map(shapley_game))
+# Factors[Offset[ShapleyGame]]
+
+values = explained.map(lambda offset: offset.map(lambda game: game.eval(S)))
+result = values(factors=xs)(offset=3.0)
+```
+
+Mapping obeys deferred postcomposition. The callback's complete result is retained; new partial stages are never flattened:
 
 ```text
 p.map(f)(args) = f(p(args))
 
-p : Partial[P, A]
-f : A -> Partial[Q, B]
-p.map(f) : Partial[P, Partial[Q, B]]
+p : Offset[A]
+f : A -> Offset[B]
+p.map(f) : Offset[Offset[B]]
 ```
 
-`@lifted` extends an ordinary handler through arbitrary surrounding stages, stopping at its declared input type. For a handler `A -> B` and any finite partial stack `C[-]`:
-
-```text
-lifted(f) : C[A] -> C[B]
-```
-
-Concrete inputs run the handler directly; partial inputs preserve the surrounding stages until reduction. Core transformations and domain methods provide this behavior through their ordinary spelling:
+The target may itself be partial. Apply such a handler directly to that stage, or map explicitly over its surroundings:
 
 ```python
-@lifted
-def to_mobius(g: TableGame) -> MobiusGame:
-    return cast(g, MobiusGame)
+def replace_offset(stage: Offset[Game]) -> Offset[Game]:
+    ...
 
-to_mobius(g)                 # MobiusGame
-to_mobius(pg)                # same pending parameters, MobiusGame result
-shapley_game(ppg).eval(S)     # preserves both stages, eventually returns values
+changed = family.map(replace_offset)  # Factors[Offset[Game]]
 ```
 
-The target may itself be partial. The handler receives that target intact and its output is inserted intact:
+Each stage executes when called. This does not imply that all upstream computation waits for parameters introduced by later callbacks. Full-pipeline scheduling, caching, inspection, and generic projection methods are not part of this core.
 
-```text
-t : Partial[Q, Game] -> Partial[R, Game]
+## Concrete Shapes and Jaxtyping
 
-lifted(t)(pg)   = t(pg)
-lifted(t)(ppg)  = ppg.map(t)
-lifted(t)(pppg) = pppg.map(lambda pp: pp.map(t))
-```
-
-Each stage carries its declared result structure so lifting can locate the target before execution. Partial-aware handlers compose deferred work; enclosing maps determine when those handlers run.
-
-## Shape Propagation and Jaxtyping
-
-Every nested partial game retains metadata for its eventual game batch. `PartialShape = tuple[int | None, ...] | None`: `(8, None)` has one unresolved dimension, `None` has unresolved rank, and `()` is a known zero-dimensional batch.
-
-Binding refines this metadata. Transformations supply metadata-only output-shape rules; casts preserve batch shape and players. These rules propagate through every surrounding stage:
-
-```text
-ppg                    -> pg                     -> g
-eventual batch (8, None)   eventual batch (8, None)   batch (8, 5)
-```
-
-```python
-shapley_game.output_shape((8, None))  # (8, None)
-```
-
-Unknown output metadata stays unknown until a rule or supplied input refines it. Concrete results must satisfy the accumulated metadata.
+The minimal partial interface does not track shape or dtype. Concrete games and players retain their logical batch shapes and coalition-broadcasting contracts.
 
 Jaxtyping relates logical batches to backing arrays at construction, cast, and evaluation boundaries. For a finite scalar-valued table, check the related fields in one context:
 
@@ -166,8 +151,17 @@ with jaxtyped("context"):
 
 `Shaped` describes the domain object's logical shape; numeric annotations describe its storage. Anchoring `*batch` on the game makes the player check enforce one-way broadcasting.
 
+Values follow the same logical-shape convention: their `shape` is exactly the
+broadcasted game/coalition batch. Internal value axes are protected by the concrete
+representation; ordinary arrays are batches of scalar values, not unwrapped
+vector-valued results ([ADR 0009](../adr/0009-logical-value-shapes.md)).
+
+Shared typing aliases describe context-independent representations without named
+dimension bindings. Shape relationships belong inline in a checked operation or
+constructor. See the [typing conventions](../../tests/README.md#typing-conventions).
+
 ## Implementation Status
 
-`ParamSpec` preserves stage signatures through binding and explicit nested maps. Automatic recursive lifting's static typing, runtime matching priority, and the metadata/projection API are still being specified.
+The runtime core consists of the `Partial[T]` ABC and the ordinary `Transformation[A, B]` callable protocol. Concrete families, deferred mapping, exact nested call order, and partial-producing callbacks are demonstrated in the notebook. Partial metadata and a more inspectable representation are deliberately deferred.
 
 [Selected references](partiality-theory.md).

@@ -18,8 +18,16 @@ _Avoid_: player axis when referring to the player-set batch
 A selection of players from a player set. Coalition representations and their internal axes are defined by the compatible **Players** type. Representations may be batched; for example, a boolean JAX array can use its final axis for player membership and its leading axes for the coalition batch.
 _Avoid_: mandatory CoalitionArray container, sample when referring to arbitrary coalitions
 
+**Latent Player Space**:
+The shared, zero-based ID space of a `FinitePlayers` batch, with size `latent_n_players`. It may contain IDs absent from every current player set. Local coalitions use positions within each set; latent coalitions use positions indexed directly by player ID. Removing players or selecting player sets preserves the latent space.
+_Avoid_: union of currently referenced IDs, local player count
+
+**Latent Players**:
+The shared, read-only metadata catalog for a **Latent Player Space**, represented by `LatentPlayers[P]`. It exposes a one-dimensional sequence over array-like storage: integer indexing retrieves one player; slices and one-dimensional boolean filters produce catalogs. Explicit array-like backings retain NumPy, JAX, or ndlike storage; Python lists and other non-array iterables use one-dimensional NumPy object storage. Catalog equality and hashing use identity, not contents.
+_Avoid_: player-set batch, dynamic JAX data, deeply immutable arbitrary objects
+
 **Value**:
-The output assigned by a **Game** to a **Coalition**, represented by an ordinary supported array or structured value. A value has a **Zero-Player Game** interpretation without needing to be stored as a game object.
+The output assigned by a **Game** to a **Coalition**, represented by an array or shaped structured value exposing `shape` and `dtype`. Its logical `shape` is the broadcasted game/coalition batch; representations hide internal value axes. Ordinary arrays therefore represent batches of scalar values. A value has a **Zero-Player Game** interpretation without needing to be stored as a game object.
 _Avoid_: prediction when the game's value space differs from model output
 
 **Zero-Player Game**:
@@ -62,17 +70,17 @@ _Avoid_: confusing a basis element with its coefficient
 Supplying the missing input appropriate to an object: family parameters for a **Partial Game**, or a **Coalition** for a **Game**, to obtain the next result. Calling an object denotes its default reduction.
 _Avoid_: assuming all reductions take the same argument types
 
-**Partial Game / PGame**:
-A parameterized or deferred family of related game batches, supporting game operations through **Lifting**. Binding executes one declared **Reduction** stage and removes its pending-input requirement, possibly returning another partial with its own signature; a zero-parameter partial defers work until explicitly reduced.
+**Partial**:
+A reusable suspended computation stage with an immediate result type. Each concrete family supplies its own call signature and a deferred `map` that repackages that same family with a new result type. Calling executes one **Reduction** stage, possibly returning another partial with its own signature; a zero-parameter partial defers work until explicitly called.
+_Avoid_: automatic currying, flattened parameter stages
+
+**Partial Game**:
+A parameterized or deferred family of related game batches, represented by concrete **Partial** families and supporting game operations through explicit **Lifting**, not a separate runtime class.
 _Avoid_: game with missing coalition evaluations, explanation state
 
-**Partial Shape**:
-Metadata describing an eventual game batch before all inputs are bound. `PartialShape` is a tuple of known sizes and `None` for unresolved dimensions, or `None` for unresolved rank. Shape `()` is a known zero-dimensional batch. Binding inputs refines this metadata; transformations propagate it through metadata-only output-shape rules.
-_Avoid_: treating unknown shape as unbatched, counting family nesting as batch dimensions
-
 **Lifting**:
-Extending a **Game Transformation** through surrounding **Partial Game** stages until its declared input type is reached, which can itself be a partial. Surrounding stages are preserved and the transformation's result is inserted intact, including any new partial stages.
-_Avoid_: forcing or flattening the partial stack, guessing arguments shared by different stages
+Extending a **Game Transformation** over explicitly selected **Partial** stages using their `map` methods. Nested mapping preserves the concrete family and call signature at each level; the transformation's result is inserted intact, including any new partial stages.
+_Avoid_: automatic stack traversal, forcing or flattening the partial stack, guessing arguments shared by different stages
 
 **Protected Axis**:
 A representation-internal axis hidden from a game's or player set's logical batch shape by ndlike. Concrete representations may protect player, interaction, and value axes while exposing array operations over batch axes.

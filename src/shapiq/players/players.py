@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from math import prod
-from typing import TYPE_CHECKING, Any
+from typing import Any, TypeIs
 
 from ndlike.jax_like import JaxLikeImplementation
 
-if TYPE_CHECKING:
-    from shapiq.coalition import Coalition
 
-
-class Players[C: Coalition](JaxLikeImplementation[Any], ABC):
+class Players[C](JaxLikeImplementation[Any], ABC):
     """An abstract JAX-like batch whose elements are sets of players.
 
     ``shape`` describes the batch of player sets, excluding each set's internal
@@ -29,23 +25,13 @@ class Players[C: Coalition](JaxLikeImplementation[Any], ABC):
     validation. The base class chooses neither a player nor a coalition backing.
     """
 
-    @property
-    def ndim(self) -> int:
-        """Return the number of player-set batch dimensions."""
-        return len(self.shape)
-
-    @property
-    def size(self) -> int:
-        """Return the number of player sets in the batch."""
-        return prod(self.shape)
-
     @abstractmethod
     def is_valid(
         self,
         coalition: object,
         *,
         batch_shape: tuple[int, ...] | None = None,
-    ) -> bool:
+    ) -> TypeIs[C]:
         """Check whether an entire coalition batch is admissible.
 
         Args:
@@ -63,6 +49,6 @@ class Players[C: Coalition](JaxLikeImplementation[Any], ABC):
             shape rather than iterate over coalitions or inspect array values.
         """
 
-    def __contains__(self, coalition: object) -> bool:
+    def __contains__(self, coalition: object) -> TypeIs[C]:
         """Check coalition admissibility for this batch of player sets."""
         return self.is_valid(coalition)

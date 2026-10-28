@@ -1,20 +1,16 @@
 """Base game class for shapiq."""
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from jaxtyping import Shaped
 from ndlike.jax_like import JaxLikeImplementation
 
+from shapiq.players import Players
 from shapiq.value import NumericValue, Value
 
-if TYPE_CHECKING:
-    from shapiq.coalition import Coalition
-    from shapiq.players import Players
 
-
-class Game[C: Coalition, V: Value](JaxLikeImplementation[Any], ABC):
+class Game[C, V: Value](JaxLikeImplementation[Any], ABC):
     """An abstract JAX-like batch of cooperative games.
 
     ``shape`` describes the game batch; a scalar game has shape ``()``. Indexing
@@ -45,21 +41,21 @@ class Game[C: Coalition, V: Value](JaxLikeImplementation[Any], ABC):
         """Check if a coalition is valid in the game."""
         return self.is_valid(coalition)
 
-    def __call__(self, coalition: C) -> V:
+    def __call__(self, coalition: C) -> Shaped[V, "..."]:
         """Evaluate coalitions through the game's default reduction."""
         return self.eval(coalition)
 
     @abstractmethod
-    def eval(self, coalition: C) -> V:
+    def eval(self, coalition: C) -> Shaped[V, "..."]:
         """Evaluate coalitions, broadcasting their batch shape with ``shape``.
 
-        The returned values have the broadcasted logical batch shape, excluding
-        any internal value dimensions. Implementations accept the coalition
-        representations declared by ``players`` and use ``is_valid`` to check
-        admissibility at the evaluation boundary.
+        The returned values expose the broadcasted logical batch as ``shape``;
+        their representations hide any internal value dimensions. Implementations
+        accept the coalition representations declared by ``players`` and use
+        ``is_valid`` to check admissibility at the evaluation boundary.
         """
         msg = "Game evaluation not implemented."
         raise NotImplementedError(msg)
 
 
-type NumericGame[C: Coalition, V: NumericValue] = Game[C, V]
+type NumericGame[C, V: NumericValue] = Game[C, V]

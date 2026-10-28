@@ -1,13 +1,31 @@
-"""Datatypes for representing values in a game."""
+"""Context-independent representation contracts for game values.
 
-from __future__ import annotations
+Shapes describe logical batches. Concrete representations hide and validate
+internal value axes rather than including them in these annotations.
+"""
 
-from typing import Any
+from typing import Protocol, runtime_checkable
 
-import jax
 from jaxtyping import Float, Num
 
-type GenericValue = Any
-type NumericValue = Num[jax.Array, "*batch"]
-type FloatVectorValue = Float[jax.Array, "*batch val_dim"]
-type Value = GenericValue | NumericValue | FloatVectorValue
+
+@runtime_checkable
+class GenericValue(Protocol):
+    """A shaped value whose internal structure is hidden from its logical batch."""
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Return the logical value batch shape, excluding internal value axes."""
+        ...
+
+    @property
+    def dtype(self) -> object:
+        """Return dtype metadata understood by jaxtyping."""
+        ...
+
+
+# Assignment aliases are also understood by the test suite's typeguard 2.x.
+Value = GenericValue
+NumericValue = Num[GenericValue, "..."]
+# The concrete vector representation owns its protected axis and vector width.
+FloatVectorValue = Float[GenericValue, "..."]

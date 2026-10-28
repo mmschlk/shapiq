@@ -13,21 +13,24 @@ dependencies = [
     "array-api-compat>=1.14.0",
     "jax>=0.10.1",
     "jaxtyping>=0.3.11",
+    "beartype>=0.23.1",
     # plotting
     "matplotlib",
     "colour",
     "flextype>=0.3.0",
-    "ndlike>=0.1.2",
+    "ndlike>=0.2.4",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
     {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
+    {name = "Clemens Damke", email = "C.Damke@lmu.de"},
     {name = "Hubert Baniecki"},
     {name = "Fabian Fumagalli"},
 ]
 maintainers = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
     {name = "Santo M. A. R. Thies", email = "S.Thies@campus.lmu.de"},
+    {name = "Clemens Damke", email = "C.Damke@lmu.de"},
 ]
 license = "MIT"
 classifiers = [
@@ -42,6 +45,7 @@ classifiers = [
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
+    'Programming Language :: Python :: 3.15',
 ]
 keywords = [
     "python",
@@ -77,6 +81,9 @@ tracker = "https://github.com/mmschlk/shapiq/issues"
 changelog = "https://github.com/mmschlk/shapiq/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
+markers = [
+    "typeguard: requires opt-in exhaustive type and shape checking (--typeguard)",
+]
 testpaths = [
   "tests/shapiq"
 ]
@@ -238,7 +245,6 @@ extra-standard-library = ["typing_extensions"]
 combine-as-imports = true
 force-wrap-aliases = true
 no-lines-before = ["future"]
-required-imports = ["from __future__ import annotations"]
 
 
 [dependency-groups]
@@ -256,6 +262,10 @@ test = [
     "pytest-cov>=7.0.0",    # for coverage
     "pytest-xdist>=3.8.0",  # for parallel test execution
     "packaging",            # for version parsing in tests
+]
+test-typeguard = [
+    {include-group = "test"},
+    "typeguard>=2.13.3,<3", # jaxtyping's supported typeguard series
 ]
 lint = [
     "ruff>=0.14.1",       # for linting
