@@ -50,6 +50,9 @@
   // how far the blank sheet of the order pointed at slides out of the stack, towards the reader:
   // less than its strip, so that the blank sheet below it still shows
   const PEEK = 0.03;
+  // the blank sheets of an example: as many for every example (where it skips as many orders), so
+  // that every stack looks as deep
+  const BLANKS = 6;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
   const PLOT = { height: 176, left: 42, right: 14, top: 14, bottom: 40 }; // pixels
 
@@ -592,10 +595,21 @@
     },
   };
 
-  // the orders of an example's plot between its last sheet of interactions and the full
-  // decomposition: a blank sheet each
-  const between = (example) =>
-    example.fits.filter(([order]) => order > example.sheets.at(-2).order && order < example.sheets.at(-1).order);
+  // the fit of an order (order, R^2, number of values): the plot's, or, above the highest order
+  // with an interaction, the full decomposition's, which every such order equals
+  const fitOf = (example, order) => {
+    const [, r2, values] = example.fits.find(([k]) => k === order) ?? example.fits.at(-1);
+    return [order, r2, values];
+  };
+
+  // the orders between an example's last sheet of interactions and the full decomposition with a
+  // blank sheet each: those of its plot, and more up to BLANKS, which equal the full decomposition
+  const between = (example) => {
+    const [first, last] = [example.sheets.at(-2).order + 1, example.sheets.at(-1).order - 1];
+    const plotted = example.fits.filter(([order]) => order >= first && order <= last).length;
+    const count = Math.max(0, Math.min(last - first + 1, Math.max(BLANKS, plotted)));
+    return Array.from({ length: count }, (_, k) => fitOf(example, first + k));
+  };
 
   // -- the demo -------------------------------------------------------------------------------------
 
@@ -954,7 +968,12 @@
       const broken = n - fits.at(-2)[0] > 1;
       const slots = fits.map((_, k) => k + (broken && k === fits.length - 1 ? 0.8 : 0));
       const places = new Map(fits.map(([order], k) => [order, x0 + (slots[k] / slots.at(-1)) * (x1 - x0)]));
-      const x = (order) => places.get(order);
+      // an order left out at the break lies on the dashed line, as far along it as between its ends
+      const x = (order) => {
+        if (places.has(order)) return places.get(order);
+        const from = fits.at(-2)[0];
+        return places.get(from) + ((order - from) / (n - from)) * (places.get(n) - places.get(from));
+      };
       const y = (r2) => y0 - ((Math.max(low, Math.min(1, r2)) - low) / (1 - low)) * (y0 - y1);
 
       const grid = add(plot, "g", { class: "orders-demo-plot-grid" });
@@ -1012,7 +1031,7 @@
       add(ring, "circle", { r: 7 });
       add(ring, "circle", { class: "orders-demo-plot-core", r: 3 });
       const label = add(ring, "text", { class: "orders-demo-plot-label", "text-anchor": "middle" });
-      marker = { guide, ring, label, x, y, fits, last: n, middle: (y0 + y1) / 2 };
+      marker = { guide, ring, label, x, y, last: n, middle: (y0 + y1) / 2 };
 
       // a cover over the plot: the order nearest to the pointer
       const cover = add(plot, "rect", { class: "orders-demo-plot-cover", x: x0 - 12, y: 0, width: x1 - x0 + 24, height: h });
@@ -1061,7 +1080,7 @@
         dot.classList.toggle("orders-demo-plot-dot-active", Number(dot.dataset.order) === order);
       }
       if (order === null) return;
-      const r2 = marker.fits.find(([k]) => k === order)[1];
+      const r2 = fitOf(example, order)[1];
       const [cx, cy] = [roundTo(marker.x(order), 1), roundTo(marker.y(r2), 1)];
       marker.ring.style.transform = `translate(${cx}px, ${cy}px)`;
       marker.guide.style.transform = `translateX(${cx}px)`;
@@ -1078,7 +1097,7 @@
     function describe() {
       const example = current();
       const sheet = state.active === null ? null : example.sheets[state.active];
-      const blank = state.blank === null ? null : example.fits.find(([order]) => order === state.blank);
+      const blank = state.blank === null ? null : fitOf(example, state.blank);
       caption.replaceChildren();
       for (const sentence of CAPTIONS[example.id](example, { sheet, blank })) {
         for (const part of sentence) {
