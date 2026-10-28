@@ -639,11 +639,11 @@ body[data-theme="dark"] .orders-demo {
   font-variant-numeric: tabular-nums;
 }
 
+/* the bar, the R^2 and the verdict as wide in every row, so that the bars line up and match */
 .orders-demo-meter {
   position: relative;
-  flex: 1 1 auto;
-  min-width: 3rem;
-  max-width: 7.5rem;
+  flex: none;
+  width: 4.5rem;
   height: 0.4rem;
   overflow: hidden;
   border-radius: 999px;
@@ -660,6 +660,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-r2 {
+  min-width: 4.4rem;
   color: var(--orders-ink);
   font-weight: 700;
 }
@@ -671,6 +672,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-verdict {
+  min-width: 3.7rem;
   font-size: 0.75rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -741,7 +743,13 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-narrow .orders-demo-meter {
+  flex: 1 1 auto;
+  width: auto;
   min-width: 1.5rem;
+}
+
+.orders-demo-narrow .orders-demo-r2 {
+  min-width: 2.9rem;
 }
 
 /* -- below the stack: the plot of the fit by order ---------------------------------------------- */
@@ -791,6 +799,14 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-plot-axis {
   font-size: 10.5px;
   font-style: italic;
+}
+
+/* the axes' labels: the order under the axis, the faithfulness along it */
+.orders-demo-plot-label {
+  fill: var(--orders-ink);
+  font-size: 11px;
+  font-weight: 600;
+  dominant-baseline: central;
 }
 
 /* along the axis, an arrow: every order to the right is more complex (its label over the line) */

@@ -69,7 +69,7 @@
   const RAIL_LINE = 28;
   const RAIL_REST = 24;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
-  const PLOT = { height: 176, left: 42, right: 14, top: 14, bottom: 40 }; // pixels
+  const PLOT = { height: 196, left: 58, right: 14, top: 24, bottom: 54 }; // pixels
 
   const roundTo = (value, digits) => Number(value.toFixed(digits));
   const el = (tag, className, text) => {
@@ -572,7 +572,7 @@
 
     const footer = el("div", "orders-demo-footer");
     const plotBox = el("figure", "orders-demo-plot");
-    const plotTitle = el("figcaption", "orders-demo-plot-title", "Fit to the model (R²) by order");
+    const plotTitle = el("figcaption", "orders-demo-plot-title", "Faithfulness by order");
     const plot = document.createElementNS(SVG, "svg");
     plot.setAttribute("class", "orders-demo-plot-svg");
     plot.setAttribute("role", "img");
@@ -600,7 +600,8 @@
       const width = stage.clientWidth;
       const narrow = width < 560;
       const slide = root.dataset.lift !== "lift";
-      const ladderWidth = narrow ? Math.max(92, width * 0.3) : Math.min(240, width * 0.3);
+      // the rows of the ladder: on wide screens, room for a bar, the R^2 and the verdict, all as wide
+      const ladderWidth = narrow ? Math.max(92, width * 0.3) : Math.min(256, width * 0.32);
       const gap = narrow ? 8 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const room = width - ladderWidth - gap - RAIL;
@@ -1008,16 +1009,16 @@
           String(order),
         );
       }
-      const first = add(plot, "text", { class: "orders-demo-plot-axis", x: x0, y: h - 6 }, "order");
-      const last = add(plot, "text", { class: "orders-demo-plot-axis", x: x1 + 6, y: h - 6, "text-anchor": "end" }, "full decomposition");
-      // between them, an arrow: every order to the right is more complex
-      const [from, to] = [x0 + first.getComputedTextLength() + 10, x1 + 6 - last.getComputedTextLength() - 10];
-      if (to - from > 100) {
-        const arrow = add(plot, "g", { class: "orders-demo-plot-complexity" });
-        const f = (value) => roundTo(value, 1);
-        add(arrow, "path", { d: `M${f(from)},${h - 6}H${f(to)}M${f(to - 5)},${h - 9.5}L${f(to)},${h - 6}L${f(to - 5)},${h - 2.5}` });
-        add(arrow, "text", { class: "orders-demo-plot-axis", x: f((from + to) / 2), y: h - 6, "text-anchor": "middle" }, "more complex");
-      }
+      // the axes' labels: the order under the axis, the faithfulness along it, turned
+      const f = (value) => roundTo(value, 1);
+      add(plot, "text", { class: "orders-demo-plot-label", x: f((x0 + x1) / 2), y: y0 + 31, "text-anchor": "middle" }, "order of interaction");
+      const middle = f((y0 + y1) / 2);
+      add(plot, "text", { class: "orders-demo-plot-label", x: 12, y: middle, "text-anchor": "middle", transform: `rotate(-90 12 ${middle})` }, "faithfulness (R²)");
+      // under it, an arrow along the axis: every order to the right is more complex
+      const arrowY = h - 6;
+      const arrow = add(plot, "g", { class: "orders-demo-plot-complexity" });
+      add(arrow, "path", { d: `M${f(x0)},${arrowY}H${f(x1)}M${f(x1 - 5)},${arrowY - 3.5}L${f(x1)},${arrowY}L${f(x1 - 5)},${arrowY + 3.5}` });
+      add(arrow, "text", { class: "orders-demo-plot-axis", x: f((x0 + x1) / 2), y: arrowY, "text-anchor": "middle" }, "more complex");
 
       const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
       add(plot, "path", { class: "orders-demo-plot-area", d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z` });
@@ -1041,6 +1042,9 @@
           "data-order": order,
         });
       }
+
+      // the last order is the full decomposition: a note above its point
+      add(plot, "text", { class: "orders-demo-plot-axis", x: f(x(n) + 4), y: f(y(fits.at(-1)[1]) - 15), "text-anchor": "end" }, "full decomposition");
 
       // the marker: a guide down to the axis and a ring on the line, with the order's R^2
       const guide = add(plot, "g", { class: "orders-demo-plot-guide" });
