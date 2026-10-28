@@ -120,20 +120,31 @@
     );
   };
 
+  // how a group is drawn, by its value's share of the largest on its sheet: the width of its
+  // connections, its opacity, and the smallest share drawn at all. Soft: a weak group still shows.
+  const softLook = (widest) => ({
+    width: (ratio) => Math.max(0.3, widest * ratio ** 0.75),
+    opacity: (ratio) => 0.08 + 0.8 * ratio ** 1.1,
+    cutoff: 0.015,
+  });
+  // as shapiq's SI graph plot draws it: as wide and as opaque as its share
+  const proportionalLook = (widest) => ({ width: (ratio) => widest * ratio, opacity: (ratio) => ratio, cutoff: 0.01 });
+
   // an interaction of two or more players: every player joined to the group's center (for a pair,
-  // to the other player), in red or blue, as wide and as opaque as the value is large
-  const drawGroup = (parent, points, value, largest, base) => {
+  // to the other player; else, where given, or the players' centroid), in red or blue, the wider
+  // and the more opaque, the larger the value
+  const drawGroup = (parent, points, value, largest, look, at) => {
     const ratio = Math.abs(value) / largest;
-    if (ratio < 0.015) return;
-    const width = Math.max(0.3, base * ratio ** 0.75);
+    if (ratio < look.cutoff) return;
+    const width = look.width(ratio);
     const group = add(parent, "g", {
       fill: solid(value),
-      opacity: roundTo(0.08 + 0.8 * ratio ** 1.1, 3),
+      opacity: roundTo(look.opacity(ratio), 3),
     });
     const center =
       points.length === 2
         ? points[1]
-        : [0, 1].map((axis) => points.reduce((sum, p) => sum + p[axis], 0) / points.length);
+        : (at ?? [0, 1].map((axis) => points.reduce((sum, p) => sum + p[axis], 0) / points.length));
     for (const p of points.length === 2 ? [points[0]] : points) {
       const d = bowtie(p, center, width);
       if (d) add(group, "path", { d });
@@ -143,16 +154,17 @@
     }
   };
 
-  const drawGroups = (parent, sheet, anchor, largest, base) => {
+  // the groups of a sheet; a group's center, where the data gives one, is placed by place
+  const drawGroups = (parent, sheet, anchor, largest, look, place) => {
     const layer = add(parent, "g", { class: "orders-demo-groups" });
     // the weakest first, so that the strongest lie on top
     const groups = [...sheet.groups].sort((a, b) => Math.abs(a[1]) - Math.abs(b[1]));
-    for (const [players, value] of groups) {
-      drawGroup(layer, players.map(anchor), value, largest, base);
+    for (const [players, value, center] of groups) {
+      drawGroup(layer, players.map(anchor), value, largest, look, center && place(center));
     }
   };
 
-  // points scaled into a box, keeping their aspect, centered
+  // the map of points into a box that scales them, keeping their aspect, to fit it, centered
   const fit = (points, [left, top, right, bottom]) => {
     const xs = points.map((p) => p[0]);
     const ys = points.map((p) => p[1]);
@@ -160,25 +172,38 @@
     const [w, h] = [Math.max(...xs) - x0, Math.max(...ys) - y0];
     const scale = Math.min((right - left) / w, (bottom - top) / h);
     const [ox, oy] = [left + (right - left - w * scale) / 2, top + (bottom - top - h * scale) / 2];
-    return points.map(([x, y]) => [ox + (x - x0) * scale, oy + (y - y0) * scale]);
+    return ([x, y]) => [ox + (x - x0) * scale, oy + (y - y0) * scale];
   };
+
+  // the molecule as shapiq's SI graph plot draws it with node_size_scaling=0.5 and size_factor=2,
+  // in units of the molecule's extent: the atoms' diameter, and the width of the largest value
+  const ATOM = 0.0625;
+  const WIDEST = 0.05;
 
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
   function moleculeFace(svg, example, sheet) {
-    const position = fit(example.coords, [9, 5, 93, 87]);
+    const place = fit(example.coords, [9, 5, 93, 87]);
+    const position = example.coords.map(place);
+    const extent = Math.max(
+      ...[0, 1].map((axis) => Math.max(...position.map((p) => p[axis])) - Math.min(...position.map((p) => p[axis]))),
+    );
+    const [radius, widest] = [(ATOM / 2) * extent, WIDEST * extent];
     const largest = largestValue(sheet);
-    drawGroups(svg, sheet, (atom) => position[atom], largest, 4.6);
+    // the groups' centers where shapiq's SI graph plot puts them (../compute/pack.py)
+    drawGroups(svg, sheet, (atom) => position[atom], largest, proportionalLook(widest), place);
+    // a main effect: a disc around its atom, as much wider as a group of its value, over a disc of
+    // the sheet's color that hides the groups below it
     const halos = add(svg, "g", { class: "orders-demo-halos" });
     sheet.first.forEach((value, atom) => {
       const ratio = Math.abs(value) / largest;
-      if (ratio < 0.02) return;
-      add(halos, "circle", {
+      if (ratio < 0.01) return;
+      const disc = {
         cx: roundTo(position[atom][0], 2),
         cy: roundTo(position[atom][1], 2),
-        r: roundTo(2.3 + 4.4 * ratio, 2),
-        fill: solid(value),
-        opacity: roundTo(0.15 + 0.85 * ratio, 3),
-      });
+        r: roundTo(radius + (widest * ratio) / 2, 2),
+      };
+      add(halos, "circle", { ...disc, class: "orders-demo-halo-ground" });
+      add(halos, "circle", { ...disc, fill: solid(value), opacity: roundTo(ratio, 3) });
     });
     const bonds = add(svg, "g", { class: "orders-demo-bonds" });
     for (const [i, j] of example.bonds) {
@@ -188,7 +213,7 @@
     const atoms = add(svg, "g", { class: "orders-demo-atoms" });
     example.atoms.forEach((atom, i) => {
       const [x, y] = position[i];
-      add(atoms, "circle", { cx: x, cy: y, r: 2.3 });
+      add(atoms, "circle", { cx: x, cy: y, r: roundTo(radius, 2) });
       add(atoms, "text", { x, y: roundTo(y + 0.05, 2) }, atom);
     });
   }
@@ -252,7 +277,7 @@
       add(lines, "line", { x1: photo.x, y1: across, x2: photo.x + photo.size, y2: across });
     }
 
-    drawGroups(svg, sheet, anchor, largest, 2.3);
+    drawGroups(svg, sheet, anchor, largest, softLook(2.3));
 
     const words = add(svg, "g", { class: "orders-demo-tokens" });
     example.tokens.forEach((token, k) => {

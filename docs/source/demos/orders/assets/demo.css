@@ -313,6 +313,10 @@ body[data-theme="dark"] .orders-demo {
   stroke-linecap: round;
 }
 
+.orders-demo-halo-ground {
+  fill: var(--orders-sheet);
+}
+
 .orders-demo-atoms circle {
   fill: var(--orders-sheet);
   stroke: var(--orders-ink);

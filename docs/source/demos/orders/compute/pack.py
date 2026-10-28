@@ -4,7 +4,8 @@ Reads the explanations of the molecule (molecule.py), of the houses of Californi
 (housing.py), and of how SigLIP 2 matches the FIxLIP demo's elephant and its caption (fixlip.py). It keeps
 what the demo draws on its sheets, rounded: the orders 1 to 4 and the full decomposition (k-SII of
 order n, the number of players, which equals the Möbius transform), every main effect, and the
-strongest interactions of each order; for the houses, the strongest rows of their heatmap. And the
+strongest interactions of each order (of the molecule, 300 of them, with the centers of its groups
+where shapiq's SI graph plot places them); for the houses, the strongest rows of their heatmap. And the
 R^2 and the number of values of every order up to the highest with an interaction, and of order n,
 for the plot of the fit by order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a
 script loads from disk too, where the browser would not fetch a JSON file).
@@ -21,11 +22,15 @@ import json
 from pathlib import Path
 from typing import Any
 
+import networkx as nx
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
 ORDERS = (1, 2, 3, 4)  # the sheets, above the one of order n (the full decomposition)
 STRONGEST = 72  # the interactions (of two or more players) drawn on a sheet
+# the molecule's sheets draw many more, most of them weak: a haze around its strongest groups
+STRONGEST_MOLECULE = 300
+COMPACTNESS = 1e10  # how hard a group's center is pulled to its atoms: si_graph_plot's default
 ROWS = 14  # the rows of a sheet of the heatmap
 SHORT = ["Income", "Age", "Rooms", "Bedrooms", "Population", "Occupancy", "Lat", "Long"]
 # the house's features as its tree shows them, left to right: the location in the middle, next to
@@ -78,6 +83,30 @@ def sheets(result: dict[str, Any], strongest: int | None = STRONGEST) -> list[di
             }
         )
     return out
+
+
+def place_groups(sheet: dict[str, Any], coords: list[list[float]]) -> None:
+    """Add to every group of three or more atoms of a sheet the center where its atoms' connections meet.
+
+    The centers are where shapiq's SI graph plot (``si_graph_plot``) puts them: a spring layout of
+    the explanation graph with the atoms fixed, in which every group's center is pulled to its atoms
+    (all but its last, as there) by its value, and pushed off all atoms and other centers. They do
+    not fall onto an atom the way a centroid does, the center of an atom and its three neighbors.
+    The centers are in the units of the coordinates.
+    """
+    xy = np.array(coords)
+    low, side = xy.min(axis=0), np.ptp(xy, axis=0).max()
+    pos = {atom: (point - low) / side for atom, point in enumerate(xy)}  # as si_graph_plot scales
+    graph = nx.Graph()
+    graph.add_nodes_from(pos)
+    for players, value in sheet["groups"]:
+        if len(players) > 2:
+            for player in players[:-1]:
+                graph.add_edge(player, tuple(players), weight=abs(value) * COMPACTNESS)
+    layout = nx.spring_layout(graph, weight="weight", seed=42, pos=pos, fixed=list(pos))
+    for group in sheet["groups"]:
+        if len(group[0]) > 2:
+            group.append([round(float(c), 4) for c in layout[tuple(group[0])] * side + low])
 
 
 def fits(result: dict[str, Any]) -> list[list[float]]:
@@ -167,6 +196,9 @@ def main() -> None:
         load("fixlip"),
     )
     molecule["n_players"] = len(molecule["atoms"])
+    molecule_sheets = sheets(molecule, strongest=STRONGEST_MOLECULE)
+    for sheet in molecule_sheets:
+        place_groups(sheet, molecule["coords"])
     fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
 
     data = {
@@ -184,7 +216,7 @@ def main() -> None:
                 "accuracy": round(molecule["test_accuracy"], 3),
                 "budget": molecule["budget"],
                 "largest": molecule["largest_order"],
-                "sheets": sheets(molecule),
+                "sheets": molecule_sheets,
                 "fits": fits(molecule),
             },
             {
