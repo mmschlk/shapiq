@@ -14,13 +14,14 @@
 // by ProxySHAP through an XGBoost proxy, without adjustment. The full decomposition is k-SII of
 // order n, the number of players; the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
-// precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, or
-// a tap that pins it) lifts it out of the stack: the sheets above it move up, those below it move
-// down, and the sheet tilts towards the reader and grows; with data-lift="slide" on the demo, the
-// sheet slides out to the side of the stack as it lies, under the sheets above it, and the others
-// stay where they are. A ring
-// marks its order on the plot; pointing along the plot lifts the sheet of the order pointed at, or
-// brings out the blank sheet of an order between.
+// precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, a
+// tap that pins it, or, on touch screens, its chip under the stack) slides it out to the side of the
+// stack as it lies, under the sheets above it, and the others stay where they are; with
+// data-lift="lift" on the demo, it lifts out of the stack instead: the sheets above it move up, those
+// below it move down, and the sheet tilts towards the reader and grows. A ring marks its order on the
+// plot; pointing along the plot brings out the sheet of the order pointed at, or the blank sheet of
+// an order between. An arrow beside the stack, and one along the plot's axis, say that the
+// explanations grow more complex from order to order.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -55,9 +56,9 @@
   // the blank sheets of an example: as many for every example (where it skips as many orders), so
   // that every stack looks as deep
   const BLANKS = 6;
-  // with data-lift="slide" on the demo, the sheet pointed at slides out of the stack instead, as it
-  // lies and keeping its place in the stack (the sheets above it still lie over it), and the others
-  // stay where they are: how far it slides, in units of its width, and down
+  // the sheet pointed at slides out of the stack, as it lies and keeping its place in the stack (the
+  // sheets above it still lie over it), and the others stay where they are (unless data-lift="lift"
+  // on the demo lifts it out): how far it slides, in units of its width, and down
   const SLIDE = 0.32;
   const DROP = 0.03; // in units of a sheet's side
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
@@ -686,7 +687,15 @@
     const stack = el("div", "orders-demo-stack");
     stack.setAttribute("aria-hidden", "true");
     const ladder = el("div", "orders-demo-ladder");
-    stage.append(stack, ladder);
+    // beside the stack, an arrow down: every order below is more complex
+    const rail = el("div", "orders-demo-rail");
+    rail.setAttribute("aria-hidden", "true");
+    rail.append(el("span", "orders-demo-rail-label", "more complex"));
+    stage.append(rail, stack, ladder);
+    // under the stack, a chip for every sheet: on touch screens, where nothing is pointed at by
+    // hovering, a tap brings it out (the rows of the ladder do the same for keyboards)
+    const steps = el("div", "orders-demo-steps");
+    steps.setAttribute("aria-hidden", "true");
 
     const footer = el("div", "orders-demo-footer");
     const plotBox = el("figure", "orders-demo-plot");
@@ -698,13 +707,14 @@
     const caption = el("p", "orders-demo-caption");
     caption.setAttribute("aria-live", "polite");
     footer.append(plotBox, caption);
-    root.append(bar, stage, footer);
+    root.append(bar, stage, steps, footer);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
     // the full decomposition, and the sheet of the full decomposition
     let items = [];
     let rows = [];
+    let chips = [];
     let blankRow = null;
     let marker = null;
     let plotWidth = 0;
@@ -718,7 +728,7 @@
     function measure() {
       const width = stage.clientWidth;
       const narrow = width < 560;
-      const slide = root.dataset.lift === "slide";
+      const slide = root.dataset.lift !== "lift";
       const ladderWidth = narrow ? Math.max(92, width * 0.3) : Math.min(240, width * 0.3);
       const gap = narrow ? 8 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
@@ -959,6 +969,14 @@
         ladder.append(row);
         return row;
       });
+      chips = example.sheets.map((sheet, i) => {
+        const chip = el("button", "orders-demo-step", sheetName(sheet).tag);
+        chip.type = "button";
+        chip.tabIndex = -1;
+        chip.addEventListener("click", () => toggle(i, null));
+        return chip;
+      });
+      steps.replaceChildren(...chips);
 
       // one row for all blank sheets: the orders between, which the plot shows one by one
       blankRow = null;
@@ -1016,6 +1034,15 @@
         row.classList.toggle("orders-demo-compact", lifted && item.index !== active && !g.slideBy);
         row.setAttribute("aria-pressed", String(lifted && item.index === active));
       });
+
+      chips.forEach((chip, i) => chip.classList.toggle("orders-demo-active", lifted && i === active));
+
+      // the arrow beside the stack at rest, from the middle of its top sheet to that of its bottom
+      // one, left of their left corners
+      const rest = layout(null);
+      const [top, bottom] = [rest[0].y, rest.at(-1).y];
+      rail.style.transform = `translate(${roundTo(Math.max(18, corners(rest[0])[0][0] - 12), 2)}px, ${roundTo(top, 2)}px)`;
+      rail.style.height = `${roundTo(bottom - top, 2)}px`;
 
       // the row of the blank sheets: beside the one pointed at, or the middle one
       if (blankRow) {
@@ -1099,8 +1126,16 @@
           String(order),
         );
       }
-      add(plot, "text", { class: "orders-demo-plot-axis", x: x0, y: h - 6 }, "order");
-      add(plot, "text", { class: "orders-demo-plot-axis", x: x1 + 6, y: h - 6, "text-anchor": "end" }, "full decomposition");
+      const first = add(plot, "text", { class: "orders-demo-plot-axis", x: x0, y: h - 6 }, "order");
+      const last = add(plot, "text", { class: "orders-demo-plot-axis", x: x1 + 6, y: h - 6, "text-anchor": "end" }, "full decomposition");
+      // between them, an arrow: every order to the right is more complex
+      const [from, to] = [x0 + first.getComputedTextLength() + 10, x1 + 6 - last.getComputedTextLength() - 10];
+      if (to - from > 100) {
+        const arrow = add(plot, "g", { class: "orders-demo-plot-complexity" });
+        const f = (value) => roundTo(value, 1);
+        add(arrow, "path", { d: `M${f(from)},${h - 6}H${f(to)}M${f(to - 5)},${h - 9.5}L${f(to)},${h - 6}L${f(to - 5)},${h - 2.5}` });
+        add(arrow, "text", { class: "orders-demo-plot-axis", x: f((from + to) / 2), y: h - 6, "text-anchor": "middle" }, "more complex");
+      }
 
       const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
       add(plot, "path", { class: "orders-demo-plot-area", d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z` });
@@ -1279,7 +1314,7 @@
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
-    // the demo follows its data-lift attribute: a sheet lifts out (by default), or slides out
+    // the demo follows its data-lift attribute: a sheet slides out (by default), or lifts out
     new MutationObserver(() => {
       geometry = measure();
       place(state.active);

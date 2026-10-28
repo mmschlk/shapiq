@@ -464,6 +464,85 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
+/* beside the stack, an arrow down from its top sheet to its bottom one (demo.js places it): every
+   order below is more complex */
+.orders-demo-rail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-left: 1px solid var(--orders-edge);
+  pointer-events: none;
+}
+
+.orders-demo-rail::after {
+  position: absolute;
+  bottom: -1px;
+  left: -4.5px;
+  border: 4px solid transparent;
+  border-top: 6px solid var(--orders-edge);
+  border-bottom: 0;
+  content: "";
+}
+
+.orders-demo-rail-label {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  color: var(--orders-muted);
+  font-size: 0.72rem;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+}
+
+/* under the stack, a chip for every sheet: shown where nothing hovers (touch screens), or where
+   the room is short */
+.orders-demo-steps {
+  display: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.2rem 0 1rem;
+}
+
+@media (hover: none) {
+  .orders-demo-steps {
+    display: flex;
+  }
+}
+
+@container (max-width: 34rem) {
+  .orders-demo-steps {
+    display: flex;
+  }
+}
+
+.orders-demo-step {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 999px;
+  background: var(--orders-raised);
+  color: var(--orders-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background var(--shapiq-duration, 220ms),
+    border-color var(--shapiq-duration, 220ms),
+    color var(--shapiq-duration, 220ms);
+}
+
+.orders-demo-step.orders-demo-active {
+  border-color: var(--orders-ink);
+  background: var(--orders-ink);
+  color: var(--orders-sheet);
+}
+
 /* the ladder: a row per sheet, beside its right corner, with the sheet's fit */
 .orders-demo-ladder {
   position: absolute;
@@ -678,6 +757,22 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-plot-axis {
   font-size: 10.5px;
   font-style: italic;
+}
+
+/* along the axis, an arrow: every order to the right is more complex (its label over the line) */
+.orders-demo-plot-complexity path {
+  fill: none;
+  stroke: var(--orders-edge);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orders-demo-plot-complexity text {
+  paint-order: stroke;
+  stroke: var(--orders-page);
+  stroke-width: 8px;
+  stroke-linejoin: round;
 }
 
 .orders-demo-plot-strong {

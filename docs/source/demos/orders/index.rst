@@ -23,9 +23,11 @@ order more, k-SII :cite:p:`Bordt.2023`: the effects of the players and of all gr
 holds the **full decomposition**: k-SII of order :math:`n`, the number of players, which gives every
 group of players its own value, the Möbius transform :cite:p:`Grabisch.1999`; for trees of depth 5,
 k-SII of order 5, which already is. Red raises the prediction,
-blue lowers it; the larger and the more opaque, the stronger. Point at a sheet (or tap it) to lift
-it out of the stack. Above the stack, an icon shows the kind of model: a tree for tree ensembles, a
-graph for graph neural networks, and a black box for any other model.
+blue lowers it; the larger and the more opaque, the stronger. The arrow beside the stack points to
+the more complex explanations: every order below has more values. Point at a sheet to slide it out
+of the stack; on a touch screen, tap it, or its chip under the stack. Above the stack, an icon shows
+the kind of model: a tree for tree ensembles, a graph for graph neural networks, and a black box for
+any other model.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
 the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output
