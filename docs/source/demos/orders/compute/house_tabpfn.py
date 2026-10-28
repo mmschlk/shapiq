@@ -1,25 +1,25 @@
 """Explain TabPFN's prediction of the house of ``results/house.json`` at every order.
 
 The house is the one of ``housing.py``, in Los Angeles: the same split of the California housing
-dataset of scikit-learn, the same test house (of the test houses within 0.15 degrees of downtown
-Los Angeles, the one whose Shapley values of the XGBoost model of depth 5 fit closest to
-R^2 = 0.3). The model is TabPFN, a transformer pretrained on synthetic tables, which predicts by
-in-context learning: it is not trained on the houses, but reads training houses (its context)
-together with the house it predicts. Its context is 2,000 training houses drawn at random (with a
-fixed seed), not all 16,512: on four CPU cores, TabPFN takes about a second per prediction with this
-context.
+dataset of scikit-learn, the same test house (837, whose Shapley values of the XGBoost model of
+depth 5 fit poorly). The model is TabPFN, a transformer pretrained on synthetic tables, which
+predicts by in-context learning: it is not trained on the houses, but reads training houses (its
+context) together with the house it predicts. Its context is 2,000 training houses drawn at random
+(with a fixed seed), not all 16,512: on four CPU cores, TabPFN takes about a second per prediction
+with this context.
 
 By default, TabPFN averages an ensemble of 8 passes of the model, each with the features in a random
 order (one pass is not invariant to their order) and with an extra feature hashing every house, both
 drawn anew for every set of features. For this house, the ensemble's random orders move the value of
 a coalition by about 0.02 (its standard deviation over seeds): small next to the spread of the
-game's values (0.31), but k-SII of the orders 4 to 7 sum the Möbius values of all larger
-coalitions, where this noise piles up, and fit the game worse than k-SII of order 3. Here, TabPFN
-makes one pass, with the features in the dataset's order and without the hashed feature: the game
-is deterministic, the same for every seed, so the orders show the model's own output and not its
-ensemble's random draws. It still depends on the order of the features (reversed, it moves the
-values of coalitions by about 0.08, the strongest values hardly). This TabPFN also predicts the
-test houses better than the ensemble (R^2 = 0.846 against 0.818), in an eighth of the time.
+game's values (0.31), but the Möbius value of a group of k features adds up the values of 2^k
+coalitions, with alternating signs, and so does this noise: the higher orders would show the
+ensemble's random draws as interactions. Here, TabPFN makes one pass, with the features in the
+dataset's order and without the hashed feature: the game is deterministic, the same for every seed,
+so the orders show the model's own output and not its ensemble's random draws. It still depends on
+the order of the features (reversed, it moves the values of coalitions by about 0.08, the strongest
+values hardly). This TabPFN also predicts the test houses better than the ensemble (R^2 = 0.846
+against 0.818), in an eighth of the time.
 
 TabPFN is a black box: unlike trees, it has no structure that would give its interactions exactly,
 and no depth that would limit their order. But a house has only 8 features, so the game has only
@@ -30,11 +30,12 @@ house and from every house of TabPFN's context, and TabPFN predicts the house fr
 of the coalition alone. The empty coalition has no feature to predict from: its value is TabPFN's
 mean prediction of the test houses (the imputer's empty prediction), the explanation's baseline.
 
-As for the XGBoost model, ``shapiq`` converts the Möbius transform into k-SII of every order, and
-scores every order by its R^2 on all 2^8 coalitions of the game (every feature present with
-probability 1/2): how much of TabPFN's output on those coalitions the explanation reproduces. One
-file, ``results/house_tabpfn.json``, in the format of ``results/house.json``, with the number of
-training houses in TabPFN's context.
+As for the XGBoost model, ``shapiq`` converts the Möbius transform into FSII of every order, and
+scores every order by its R^2 under the Shapley distribution (``faithfulness.py``), exactly: on all
+254 coalitions of the game but the empty and the full one, each weighted by its probability. It is
+how much of TabPFN's output on those coalitions the explanation reproduces. One file,
+``results/house_tabpfn.json``, in the format of ``results/house.json``, with the number of training
+houses in TabPFN's context.
 
 Usage::
 
@@ -49,13 +50,13 @@ minutes.
 from __future__ import annotations
 
 import argparse
-import itertools
 import json
 import time
 from pathlib import Path
 
 import numpy as np
-from housing import LOS_ANGELES, NAMES, explain  # the XGBoost model's script, in this folder
+from faithfulness import all_coalitions  # in this folder
+from housing import HOUSE, LOS_ANGELES, NAMES, explain  # the XGBoost model's script, in this folder
 from sklearn.datasets import fetch_california_housing
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
@@ -65,7 +66,6 @@ from tabpfn.constants import ModelVersion
 import shapiq
 
 HERE = Path(__file__).resolve().parent
-HOUSE = 837  # the test house of results/house.json, which housing.py picks (XGBoost of depth 5)
 N_CONTEXT = 2000  # the training houses in TabPFN's context
 
 
@@ -137,9 +137,9 @@ def main() -> None:
     assert np.isclose(full, prediction)  # noqa: S101  (the full decomposition is exact)
 
     n = X_test.shape[1]
-    coalitions = np.array(list(itertools.product([False, True], repeat=n)))
-    orders = explain(moebius, coalitions)
+    orders = explain(moebius, *all_coalitions(n))
     result = {
+        "index": "FSII",
         "features": NAMES,
         "x": house.tolist(),
         "prediction": prediction,
