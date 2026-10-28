@@ -21,7 +21,8 @@ one number per player, its main effect. Every sheet below holds the **Shapley in
 order more, k-SII :cite:p:`Bordt.2023`: the effects of the players and of all groups of up to
 :math:`k` of them. Blank sheets stand for the orders after order 4, and the bottom sheet holds the
 **full decomposition**: k-SII of order :math:`n`, the number of players, which gives every group of
-players its own value, the Möbius transform :cite:p:`Grabisch.1999`. Red raises the prediction,
+players its own value, the Möbius transform :cite:p:`Grabisch.1999`; for trees of depth 7, k-SII of
+order 7, which already is. Red raises the prediction,
 blue lowers it; the larger and the more opaque, the stronger. Point at a sheet (or tap it) to lift
 it out of the stack. Above the stack, an icon shows the kind of model: a tree for tree ensembles, a
 graph for graph neural networks, and a black box for any other model.
@@ -33,8 +34,9 @@ Shapley values miss everything that players do only together. Every order recove
 the full decomposition is the model itself, written as a sum over groups of players:
 :math:`R^2 = 1`. Many models have no interactions above some order: the trees of a given depth, the
 receptive fields of a graph neural network. From that order on, k-SII equals the full
-decomposition, and the plot below the stack breaks its axis before :math:`n`. Point along the plot
-to bring out the sheet of an order.
+decomposition: the houses' stacks end there, at order 7, where the fit is exact, and the plot of
+the molecule breaks its axis before :math:`n = 30`. Point along the plot to bring out the sheet of
+an order.
 
 **The molecule** is graph 71 of the Mutagenicity dataset of the TUDataset collection
 :cite:p:`Morris.2020`, 30 atoms with three nitro groups (NO\ :sub:`2`), which a graph
@@ -59,7 +61,7 @@ houses near downtown Los Angeles, this is the one whose Shapley values fit close
 model's prediction, and a row per feature or group of features. On average, the Shapley values fit
 with :math:`R^2 = 0.77`, and those of a quarter of all test houses below 0.66; with pairs of
 features, led by the interaction of latitude and longitude, the fit rises to 0.99. The trees have
-depth 7, so no group of all 8 features has a value.
+depth 7, so no group of all 8 features has a value, and 7-SII is exact.
 
 **The photo and caption** are those of the :doc:`FIxLIP demo <../fixlip/index>`: SigLIP 2
 :cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's 64

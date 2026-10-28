@@ -17,7 +17,8 @@
 // precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, or
 // a tap that pins it) lifts it out of the stack: the sheets above it move up, those below it move
 // down, and the sheet tilts towards the reader and grows; with data-lift="slide" on the demo, the
-// sheet slides out of the stack as it lies, over the others, which stay where they are. A ring
+// sheet slides out to the side of the stack as it lies, under the sheets above it, and the others
+// stay where they are. A ring
 // marks its order on the plot; pointing along the plot lifts the sheet of the order pointed at, or
 // brings out the blank sheet of an order between.
 //
@@ -55,7 +56,8 @@
   // that every stack looks as deep
   const BLANKS = 6;
   // with data-lift="slide" on the demo, the sheet pointed at slides out of the stack instead, as it
-  // lies, and the others stay where they are: how far it slides, in units of its width, and down
+  // lies and keeping its place in the stack (the sheets above it still lie over it), and the others
+  // stay where they are: how far it slides, in units of its width, and down
   const SLIDE = 0.32;
   const DROP = 0.03; // in units of a sheet's side
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
@@ -528,7 +530,7 @@
       ];
     },
     house: (example, { sheet, blank }) => {
-      const n = example.sheets.at(-1).order;
+      const n = example.features.length;
       const depth = `The trees have depth ${example.largest}: no path splits on more than ${example.largest} features, so from order ${example.largest} on, the explanation is the full decomposition`;
       if (blank) {
         const [order, r2, values] = blank;
@@ -554,14 +556,14 @@
       }
       if (sheet.full) {
         return [
-          [`The full decomposition of all ${n} features: ${count(sheet.count)} values, in a tree as deep as the model's trees. None of their paths splits on more than ${example.largest} features, so no group of all ${n} has a value. Computed exactly by shapiq's TreeExplainer, it is the model itself, written as a sum: `, fit, "."],
+          [`The full decomposition of all ${n} features: ${count(sheet.count)} values, in a tree as deep as the model's trees. None of their paths splits on more than ${example.largest} features, so no group of all ${n} has a value, and Shapley interactions of order ${example.largest} are already exact. Computed by shapiq's TreeExplainer, they are the model itself, written as a sum: `, fit, "."],
         ];
       }
       const texts = { 3: "Groups of three: the income with the location. ", 4: "Groups of four add hardly anything: " };
       return [[`Shapley interactions of order ${sheet.order}: ${count(sheet.count)} values. ${texts[sheet.order] ?? ""}`, fit, "."]];
     },
     houses: (example, { sheet, blank }) => {
-      const n = example.sheets.at(-1).order;
+      const n = example.features.length;
       const columns = example.predictions.length;
       if (blank) {
         const [order, r2] = blank;
@@ -583,7 +585,7 @@
       }
       if (sheet.full) {
         return [
-          [`The full decomposition of every house, of all ${n} features: groups of up to ${example.largest} features, the trees' depth. It is the model itself, written as a sum: `, fit, "."],
+          [`The full decomposition of every house, of all ${n} features: groups of up to ${example.largest} features, the trees' depth, so that Shapley interactions of order ${example.largest} are already exact. It is the model itself, written as a sum: `, fit, "."],
         ];
       }
       const texts = { 3: "Groups of three join the income and the occupancy to the location. On average, ", 4: "Groups of four add hardly anything. On average, " };
@@ -744,7 +746,7 @@
 
     // the place (center) and pose of every item: stacked so that a strip of every sheet shows below
     // the one above it, and the lifted sheet, which lies over all others, shows whole; or, sliding,
-    // every sheet as at rest, and the one pointed at slid out of the stack, over all others
+    // every sheet as at rest, and the one pointed at slid out to the side of the stack
     function layout(active) {
       const g = geometry;
       const pointed = active === null ? null : sheetItems()[active];
@@ -802,8 +804,11 @@
       return true;
     };
 
+    // the order of the sheets on top of each other: the lifted sheet on top, else as stacked
     const zIndex = (item, active) =>
-      active !== null && item === sheetItems()[active] ? items.length + 1 : items.length - items.indexOf(item);
+      active !== null && !geometry.slideBy && item === sheetItems()[active]
+        ? items.length + 1
+        : items.length - items.indexOf(item);
 
     // the item under a point of the stage, where the sheets are going (not where they are while
     // they move), the one on top first
@@ -904,7 +909,7 @@
         const names = sheetName(sheet);
         const row = el("button", "orders-demo-row");
         row.type = "button";
-        row.setAttribute("aria-label", `${names.name}, order ${sheet.full ? "n" : sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`);
+        row.setAttribute("aria-label", `${names.name}, order ${sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`);
         const title = el("span", "orders-demo-row-title");
         title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", names.name));
         const fitBox = el("span", "orders-demo-row-fit");
@@ -972,7 +977,7 @@
         const node = item.node;
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
-        node.style.zIndex = lifted && item.index === active ? items.length + 1 : items.length - position;
+        node.style.zIndex = zIndex(item, lifted ? active : null);
         node.style.transform =
           `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scale(${pose.scale}) ` +
           `scaleY(${pose.tilt}) rotate(${(TURN * 180) / Math.PI}deg)`;

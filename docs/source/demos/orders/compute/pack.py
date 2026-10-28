@@ -3,7 +3,8 @@
 Reads the explanations of the molecule (molecule.py), of the houses of California housing
 (housing.py), and of how SigLIP 2 matches the FIxLIP demo's elephant and its caption (fixlip.py). It keeps
 what the demo draws on its sheets, rounded: the orders 1 to 4 and the full decomposition (k-SII of
-order n, the number of players, which equals the Möbius transform), every main effect, and the
+order n, the number of players, which equals the Möbius transform; for the houses, of order 7, the
+trees' depth, which equals it already and is exact), every main effect, and the
 300 strongest interactions of each order (of the molecule, with the centers of its groups where
 shapiq's SI graph plot places them); for the houses, the strongest rows of their heatmap. And the
 R^2 and the number of values of every order up to the highest with an interaction, and of order n,
@@ -55,14 +56,18 @@ def model(kind: str) -> dict[str, str]:
     return dict(zip(("icon", "title", "detail", "method"), MODELS[kind], strict=True))
 
 
-def sheets(result: dict[str, Any], strongest: int | None = STRONGEST) -> list[dict[str, Any]]:
+def sheets(
+    result: dict[str, Any], strongest: int | None = STRONGEST, full: int | None = None
+) -> list[dict[str, Any]]:
     """Return the sheets of an explanation: per order, its R^2, main effects and interactions.
 
-    Of the interactions, a sheet keeps the ``strongest`` (all of them for ``None``).
+    Of the interactions, a sheet keeps the ``strongest`` (all of them for ``None``). The last sheet
+    is the full decomposition, of order ``full`` (n, the number of players, for ``None``).
     """
     n = result["n_players"]
+    full = full or n
     out = []
-    for order in (*ORDERS, n):
+    for order in (*ORDERS, full):
         values = explanation(result, order)["values"]
         first = [0.0] * n
         groups = []
@@ -75,7 +80,7 @@ def sheets(result: dict[str, Any], strongest: int | None = STRONGEST) -> list[di
         out.append(
             {
                 "order": order,
-                "full": order == n,
+                "full": order == full,
                 "r2": round(explanation(result, order)["r2"], 6),
                 "first": [round(value, 5) for value in first],
                 "groups": [[players, round(value, 5)] for players, value in groups[:strongest]],
@@ -109,11 +114,15 @@ def place_groups(sheet: dict[str, Any], coords: list[list[float]]) -> None:
             group.append([round(float(c), 4) for c in layout[tuple(group[0])] * side + low])
 
 
-def fits(result: dict[str, Any]) -> list[list[float]]:
-    """Return the order, R^2 and number of values of every order with interactions, and of n."""
+def fits(result: dict[str, Any], full: int | None = None) -> list[list[float]]:
+    """Return the order, R^2 and number of values of every order with interactions, and of ``full``.
+
+    ``full`` is the order of the full decomposition: n, the number of players, for ``None``.
+    """
+    full = full or result["n_players"]
     orders = [*range(1, result["largest_order"] + 1)]
-    if result["n_players"] > result["largest_order"]:
-        orders.append(result["n_players"])
+    if full > result["largest_order"]:
+        orders.append(full)
     return [
         [
             order,
@@ -124,17 +133,16 @@ def fits(result: dict[str, Any]) -> list[list[float]]:
     ]
 
 
-def heatmap(result: dict[str, Any]) -> dict[str, Any]:
+def heatmap(result: dict[str, Any], full: int) -> dict[str, Any]:
     """Return the heatmap of the houses: their predictions and, per sheet, the strongest rows.
 
     The houses are sorted by their prediction. A row is a feature or a group of features, with its
     value for every house, as an integer from -99 to 99 of the sheet's scale (the 98th percentile
-    of its absolute values).
+    of its absolute values). The last sheet is the full decomposition, of order ``full``.
     """
-    n = result["n_players"]
     columns = np.argsort(result["predictions"])
     out = []
-    for order in (*ORDERS, n):
+    for order in (*ORDERS, full):
         values = explanation(result, order)["values"]
         strongest = sorted(values.items(), key=lambda row: -np.mean(np.abs(row[1])))[:ROWS]
         matrix = np.array([row[1] for row in strongest])[:, columns]
@@ -142,7 +150,7 @@ def heatmap(result: dict[str, Any]) -> dict[str, Any]:
         out.append(
             {
                 "order": order,
-                "full": order == n,
+                "full": order == full,
                 "r2": round(explanation(result, order)["r2"], 6),
                 "count": len(values),
                 "scale": round(scale, 4),
@@ -159,7 +167,7 @@ def heatmap(result: dict[str, Any]) -> dict[str, Any]:
     return {
         "predictions": [round(result["predictions"][i], 3) for i in columns],
         "sheets": out,
-        "fits": fits(result),
+        "fits": fits(result, full),
         "quartiles": [round(q, 3) for q in result["shapley_r2_quartiles"]],
     }
 
@@ -232,8 +240,9 @@ def main() -> None:
                 "baseline": round(house["baseline"], 4),
                 "accuracy": round(house["test_r2"], 3),
                 "largest": house["largest_order"],
-                "sheets": sheets(house, strongest=None),
-                "fits": fits(house),
+                # the trees' depth: k-SII of that order is already the full decomposition, exact
+                "sheets": sheets(house, strongest=None, full=house["largest_order"]),
+                "fits": fits(house, full=house["largest_order"]),
             },
             {
                 "id": "houses",
@@ -243,7 +252,7 @@ def main() -> None:
                 "model": model("tree"),
                 "features": SHORT,
                 "largest": houses["largest_order"],
-                **heatmap(houses),
+                **heatmap(houses, full=houses["largest_order"]),
             },
             {
                 "id": "fixlip",
