@@ -13,12 +13,13 @@
 // each); and how SigLIP 2, a black box, matches the photo and caption of the FIxLIP demo, explained
 // by ProxySHAP through an XGBoost proxy, without adjustment. The full decomposition is k-SII of
 // order n, the number of players; the orders above the highest one with an interaction (the trees'
-// depth, the network's receptive field, the proxy's depth) all equal it. The
-// explanations are precomputed (../compute) into data.js. Pointing at a
-// sheet (hover, keyboard focus on its row, or a tap that pins it) lifts it out of the stack: the
-// sheets above it move up, those below it move down, and the sheet tilts towards the reader and
-// grows. A ring marks its order on the plot; pointing along the plot lifts the sheet of the order
-// pointed at, or brings out the blank sheet of an order between.
+// depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
+// precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, or
+// a tap that pins it) lifts it out of the stack: the sheets above it move up, those below it move
+// down, and the sheet tilts towards the reader and grows; with data-lift="slide" on the demo, the
+// sheet slides out of the stack as it lies, over the others, which stay where they are. A ring
+// marks its order on the plot; pointing along the plot lifts the sheet of the order pointed at, or
+// brings out the blank sheet of an order between.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -53,6 +54,10 @@
   // the blank sheets of an example: as many for every example (where it skips as many orders), so
   // that every stack looks as deep
   const BLANKS = 6;
+  // with data-lift="slide" on the demo, the sheet pointed at slides out of the stack instead, as it
+  // lies, and the others stay where they are: how far it slides, in units of its width, and down
+  const SLIDE = 0.32;
+  const DROP = 0.03; // in units of a sheet's side
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
   const PLOT = { height: 176, left: 42, right: 14, top: 14, bottom: 40 }; // pixels
 
@@ -464,10 +469,13 @@
     const text = fit2(r2);
     return ["R² ", text.startsWith(">") ? text : `= ${text}`];
   };
+  // how well an explanation fits: exact, very good from R^2 = 0.95, good from 0.8, workable from
+  // 0.6, else poor
   const verdict = (r2) => {
     if (r2 >= 0.999995) return "exact";
-    if (r2 >= 0.95) return "good";
-    if (r2 >= 0.8) return "workable";
+    if (r2 >= 0.95) return "very good";
+    if (r2 >= 0.8) return "good";
+    if (r2 >= 0.6) return "workable";
     return "poor";
   };
   const count = (n) => n.toLocaleString("en-US");
@@ -705,11 +713,13 @@
     function measure() {
       const width = stage.clientWidth;
       const narrow = width < 560;
+      const slide = root.dataset.lift === "slide";
       const ladderWidth = narrow ? Math.max(92, width * 0.3) : Math.min(240, width * 0.3);
       const gap = narrow ? 8 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const room = width - ladderWidth - gap;
-      const side = Math.max(110, Math.min(360, room / (LIFTED.scale * spread)));
+      // the room holds the lifted sheet, or the stack and the sheet slid out of it
+      const side = Math.max(110, Math.min(360, room / ((slide ? 1 + SLIDE : LIFTED.scale) * spread)));
       const height = (pose) => side * pose.scale * pose.tilt * spread;
       // the same height for every example: the most sheets and blank sheets of any
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
@@ -718,22 +728,27 @@
       const open =
         height(RECEDED) + height(LIFTED) - OVERLAP * side + (n - 2) * OPEN_STRIP * side + blanks * BLANK_OPEN_STRIP * side;
       const rest = height(REST) + (n - 1) * REST_STRIP * side + blanks * BLANK_REST_STRIP * side;
+      // a sheet slides out to the left: the stack lies right of the middle by half of that
+      const slideBy = slide ? SLIDE * side * spread : 0;
       return {
         width,
         narrow,
         side,
+        slideBy,
         ladderLeft: width - ladderWidth,
-        center: room / 2,
-        height: Math.ceil(Math.max(open, rest) + 2 * THICKNESS + 16),
+        center: room / 2 + slideBy / 2,
+        height: Math.ceil((slide ? rest + DROP * side : Math.max(open, rest)) + 2 * THICKNESS + 16),
         poseHeight: height,
       };
     }
 
     // the place (center) and pose of every item: stacked so that a strip of every sheet shows below
-    // the one above it, and the lifted sheet, which lies over all others, shows whole
+    // the one above it, and the lifted sheet, which lies over all others, shows whole; or, sliding,
+    // every sheet as at rest, and the one pointed at slid out of the stack, over all others
     function layout(active) {
       const g = geometry;
-      const lifted = active === null ? null : sheetItems()[active];
+      const pointed = active === null ? null : sheetItems()[active];
+      const lifted = g.slideBy ? null : pointed;
       const centers = [];
       const poses = [];
       let bottom = 0;
@@ -748,11 +763,14 @@
         poses.push(pose);
       });
       const offset = (g.height - bottom) / 2;
-      return items.map((item, position) => ({
-        pose: poses[position],
-        x: g.center,
-        y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0),
-      }));
+      return items.map((item, position) => {
+        const out = g.slideBy && item === pointed;
+        return {
+          pose: poses[position],
+          x: g.center - (out ? g.slideBy : 0),
+          y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0) + (out ? DROP * g.side : 0),
+        };
+      });
     }
 
     // the corners of a sheet on the stage (left, top, right, bottom for the turn of -45 degrees)
@@ -897,7 +915,7 @@
         fitBox.append(
           meter,
           el("span", "orders-demo-r2", fit2(sheet.r2)),
-          el("span", `orders-demo-verdict orders-demo-verdict-${verdict(sheet.r2)}`, verdict(sheet.r2)),
+          el("span", `orders-demo-verdict orders-demo-verdict-${verdict(sheet.r2).replace(" ", "-")}`, verdict(sheet.r2)),
         );
         row.append(title, fitBox);
         row.addEventListener("pointerenter", (event) => {
@@ -974,7 +992,7 @@
         row.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
         row.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
         row.classList.toggle("orders-demo-active", lifted && item.index === active);
-        row.classList.toggle("orders-demo-compact", lifted && item.index !== active);
+        row.classList.toggle("orders-demo-compact", lifted && item.index !== active && !g.slideBy);
         row.setAttribute("aria-pressed", String(lifted && item.index === active));
       });
 
@@ -984,7 +1002,7 @@
         const target = blanks.find((item) => item.order === state.blank) ?? blanks[Math.floor((blanks.length - 1) / 2)];
         const right = rightCorner(places[items.indexOf(target)]);
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
-        blankRow.classList.toggle("orders-demo-compact", lifted);
+        blankRow.classList.toggle("orders-demo-compact", lifted && !g.slideBy);
         // beside the blank sheet, but clear of the rows above and below it, which are taller where
         // the blank sheets lie close together (on narrow screens)
         const [above, below] = [rows.length - 2, rows.length - 1];
@@ -1240,6 +1258,11 @@
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
+    // the demo follows its data-lift attribute: a sheet lifts out (by default), or slides out
+    new MutationObserver(() => {
+      geometry = measure();
+      place(state.active);
+    }).observe(root, { attributes: true, attributeFilter: ["data-lift"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");

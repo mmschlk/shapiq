@@ -556,6 +556,7 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-verdict {
   font-size: 0.75rem;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .orders-demo-row:hover,
