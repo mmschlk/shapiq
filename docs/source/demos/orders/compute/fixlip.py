@@ -6,26 +6,31 @@ the photo with only the coalition's patches and the caption with only its tokens
 FIxLIP demo, imported from its scripts (``../../fixlip/compute/explain.py``).
 
 SigLIP 2 is a black box: unlike trees or graph neural networks, it has no structure that would give
-its interactions exactly. ProxySHAP fits an XGBoost proxy to coalitions of the game drawn from the
-Shapley distribution (``faithfulness.py``), the distribution FSII is faithful to, and reads the
-proxy's interactions off its trees exactly. Its sampler evaluates the empty and the full coalition
-in any case (their weights are ignored), all coalitions of a size it would draw more often than the
-size has coalitions (here the 74 of one player and the 74 of 73 players), and draws the others by
-the weights of their sizes, each with its complement. Without the residual adjustment, FSII of the
-proxy's depth is the full decomposition of the proxy: its trees split on at most that many players,
-so no larger group has a value, and every lower order of FSII follows from it. The depth, 6, is the
-best of 3 to 8 in a 5-fold cross-validation on the coalitions.
+its interactions exactly. ProxySHAP draws coalitions of the game from the Shapley distribution
+(``faithfulness.py``), the distribution FSII is faithful to, evaluates the game on them, and fits
+an XGBoost proxy to them. Its sampler evaluates the empty and the full coalition in any case (their
+weights are ignored), all coalitions of a size it would draw more often than the size has
+coalitions (here the 74 of one player and the 74 of 73 players), and draws the others by the
+weights of their sizes, each with its complement. Without the residual adjustment, the explanation
+is the proxy's: its full decomposition, the Möbius transform, read off its trees exactly with
+shapiq's interventional tree explainer, as ProxySHAP reads them (ProxySHAP reads FSII of the
+proxy's depth, the same values, which at depth 8 do not fit in a laptop's memory that way). The
+trees split on at most 8 players, so no larger group has a value, and every lower order of FSII
+follows from it. The explanation keeps the proxy's own value of the empty coalition, -0.009, where
+ProxySHAP gives the game's, 0 (the empty coalition shares its leaves with coalitions of one or two
+players, whose values are about -0.007): so every order is FSII of the proxy, and the full
+decomposition is the proxy itself. With the game's value, every order would be off the proxy by
+this constant, which R^2 beyond size counts: the fit would peak at order 3 and fall after it.
 
 Every order is scored by its R^2 beyond size under the Shapley distribution (as for the molecule
 and the houses), on 512 coalitions drawn from it independently of the proxy's (a coalition of 1 or
 73 players is one the proxy has seen: it saw all of them), against the model itself. The mean value
 of every size, which R^2 beyond size measures against, comes from all coalitions of the run, the
-proxy's and the held-out ones: the held-out ones alone are too few for 73 sizes. The game is
-centered, and ProxySHAP gives the empty group the game's value of the empty coalition, 0, where the
-proxy predicts -0.008 (the empty coalition shares its leaves with coalitions of one or two players,
-whose values are about -0.007): the full decomposition reproduces the proxy up to this constant.
-Beyond size, the constant counts: the full decomposition fits the model with R^2 = 0.814, the
-proxy itself with 0.909 (plain R^2: 0.967 against 0.984).
+proxy's and the held-out ones: the held-out ones alone are too few for 73 sizes. FSII of a higher
+order fits the proxy at least as well, but SigLIP 2 not necessarily: of the depths 4 to 12, the R^2
+of depth 8 comes closest to rising with every order (it falls once, by 0.00004 from order 5 to 6;
+the other depths by up to 0.0008, but depth 4, which rises throughout and fits less well, 0.889),
+with a proxy that fits SigLIP 2 about as well as any (0.915; 0.909 at depth 6, 0.916 at depth 9).
 
 Usage::
 
@@ -52,6 +57,7 @@ from xgboost import XGBRegressor
 
 import shapiq
 from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq.tree import InterventionalTreeSHAPIQ
 
 HERE = Path(__file__).resolve().parent
 FIXLIP = HERE.parent.parent / "fixlip" / "compute"  # the FIxLIP demo's scripts and config
@@ -61,7 +67,8 @@ import explain as fixlip  # noqa: E402  (the FIxLIP demo's game)
 PHOTO, MODEL = "elephant", "siglip2"
 BUDGET = 10_000  # the coalitions the proxy is fit to
 N_TEST = 512  # the coalitions every order is scored on, drawn independently of the proxy's
-DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
+DEPTH = 8  # the proxy's depth, its highest order of interaction
+SHEETS = (1, 2, 3, 4, DEPTH)  # the orders the demo draws, whose values the results keep
 PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
 
 
@@ -131,18 +138,25 @@ def main() -> None:
     n = game.n_players
     cached = CachedGame(game, args.results / "fixlip_coalitions.npz")
 
-    # the full decomposition of the proxy: FSII of its highest order, without adjustment
+    # the proxy: ProxySHAP draws the coalitions, evaluates the game on them, and fits it (its own
+    # readout, of order 1 here, is not used)
     start = time.time()
     approximator = shapiq.approximator.ProxySHAP(
         n=n,
         index="FSII",
-        max_order=DEPTH,
+        max_order=1,
         sampling_weights=size_weights(n),  # the Shapley distribution's sizes
         proxy_model=XGBRegressor(**PROXY, random_state=0, n_jobs=4),
         adjustment=False,
         random_state=0,
     )
-    full = approximator.approximate(budget=BUDGET, game=cached)
+    approximator.approximate(budget=BUDGET, game=cached)
+    # its full decomposition: its Moebius transform, read off its trees exactly, as ProxySHAP reads
+    # them (ProxySHAP reads FSII of the proxy's depth, the same values, but at depth 8 not in the
+    # memory of a laptop), with the proxy's own value of the empty coalition
+    full = InterventionalTreeSHAPIQ(
+        approximator.proxy_model, data=np.zeros((1, n)), index="Moebius", max_order=DEPTH
+    ).explain_function(np.ones((1, n)))
     print(f"proxy fit and read in {time.time() - start:.0f} s: {len(full.values)} values")
     moebius = shapiq.InteractionValues(
         values=full.values,
@@ -166,14 +180,17 @@ def main() -> None:
     for order in range(1, DEPTH + 1):
         values = fsii(converter, order)
         fit = r2(y, predictions(values, test), test.sum(axis=1), means=means)
-        strongest = sorted(
-            ((key, value) for key, value in values.items() if key),
-            key=lambda item: (len(item[0]), -abs(item[1])),
-        )
-        orders[order] = {"r2": fit, "values": [[list(key), value] for key, value in strongest]}
-        print(f"order {order}: {len(strongest)} values, R^2 {fit:.3f}", flush=True)
+        orders[order] = {"r2": fit, "count": sum(1 for key in values if key)}
+        if order in SHEETS:
+            strongest = sorted(
+                ((key, value) for key, value in values.items() if key),
+                key=lambda item: (len(item[0]), -abs(item[1])),
+            )
+            orders[order]["values"] = [[list(key), value] for key, value in strongest]
+        print(f"order {order}: {orders[order]['count']} values, R^2 {fit:.9f}", flush=True)
 
-    # the lower orders from the full decomposition are ProxySHAP's own at that order
+    # the lower orders from the full decomposition are ProxySHAP's own at that order (but for the
+    # empty group, which ProxySHAP gives the game's value of the empty coalition)
     pairs = shapiq.approximator.ProxySHAP(
         n=n,
         index="FSII",
@@ -184,7 +201,7 @@ def main() -> None:
         random_state=0,
     ).approximate(budget=BUDGET, game=cached)
     difference = max(
-        abs(pairs[key] - converter("FSII", 2)[key]) for key in pairs.interaction_lookup
+        abs(pairs[key] - converter("FSII", 2)[key]) for key in pairs.interaction_lookup if key
     )
     print(f"largest difference to ProxySHAP of order 2: {difference:.1e}")
 

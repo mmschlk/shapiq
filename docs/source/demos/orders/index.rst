@@ -101,16 +101,14 @@ have depth 5, so no group of more than 5 features has a value, and 5-FSII is exa
 SigLIP 2 :cite:p:`Tschannen.2025` matches a photo and its caption, and the players are the photo's
 64 patches and the caption's 10 tokens, as in FIxLIP :cite:p:`Baniecki.2025`. SigLIP 2 is a black
 box: nothing in it gives its interactions exactly. :class:`~shapiq.approximator.ProxySHAP`
-:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 10,000 coalitions of the game, drawn from
-the distribution of the Shapley values, and, without its residual adjustment, reads the proxy's full
-decomposition off its trees exactly; every order of FSII follows from it. The Shapley values fit
-SigLIP 2 with :math:`R^2 = 0.48`; pairs, which link "bird" and "white" to the egret's patch, lift
-the fit to 0.78, and groups of three to 0.82. From there, the fit stays at 0.81: every order is the
-proxy's, and what its higher orders learned from the 10,000 coalitions adds nothing on held-out
-ones. Even the full decomposition falls short of 1 by 0.19, the estimation tax, which only all
-:math:`2^{74}` coalitions of the game would spare: about half of it is the proxy's own error (the
-proxy fits SigLIP 2 with 0.91), and half a constant, as ProxySHAP gives the empty group the game's
-value of the empty coalition, 0, where the proxy predicts −0.008.
+:cite:p:`Thies.2026` fits an XGBoost proxy of depth 8 to 10,000 coalitions of the game, drawn from
+the distribution of the Shapley values; without its residual adjustment, the explanation is the
+proxy's full decomposition, read off its trees exactly, and every order of FSII follows from it.
+The Shapley values fit SigLIP 2 with :math:`R^2 = 0.68`; pairs, which link "bird" and "white" to the
+egret's patch, lift the fit to 0.85, groups of three to 0.89, and of four to 0.91. From there, the
+fit stays at about 0.91, up to the full decomposition, the proxy itself, with 0.915. That falls
+short of 1 by 0.085, the estimation tax: what the proxy, fit to 10,000 of the :math:`2^{74}`
+coalitions, misses of SigLIP 2, which only all of them would spare.
 
 How it was computed
 -------------------
@@ -189,8 +187,9 @@ is the same on every run:
    full = shapiq.ExactComputer(game)("Moebius")  # the full decomposition, from all 256 subsets
 
 **Describing images.** For a black box, :class:`~shapiq.approximator.ProxySHAP` explains a
-proxy of the model instead. Without its residual adjustment, FSII of the proxy's depth is the
-proxy's full decomposition, and every lower order follows from it:
+proxy of the model instead. Without its residual adjustment, the explanation is the proxy's full
+decomposition, which shapiq's :class:`~shapiq.tree.InterventionalTreeSHAPIQ` reads off its trees
+exactly, as ProxySHAP does, and every order of FSII follows from it:
 
 .. code-block:: python
 
@@ -198,6 +197,7 @@ proxy's full decomposition, and every lower order follows from it:
    from xgboost import XGBRegressor
 
    import shapiq
+   from shapiq.tree import InterventionalTreeSHAPIQ
 
    # game: the FIxLIP demo's game of SigLIP 2, the elephant and its caption (74 players)
    n = game.n_players
@@ -207,12 +207,16 @@ proxy's full decomposition, and every lower order follows from it:
    approximator = shapiq.approximator.ProxySHAP(
        n=n,
        index="FSII",
-       max_order=6,  # the proxy's depth: its trees split on at most 6 players
        sampling_weights=weights,
-       proxy_model=XGBRegressor(n_estimators=1000, max_depth=6, learning_rate=0.05, reg_lambda=5.0),
+       proxy_model=XGBRegressor(n_estimators=1000, max_depth=8, learning_rate=0.05, reg_lambda=5.0),
        adjustment=False,
    )
-   full = approximator.approximate(budget=10_000, game=game)  # the proxy's full decomposition
+   approximator.approximate(budget=10_000, game=game)  # draws the coalitions, fits the proxy
+   # the proxy's full decomposition: its trees split on at most 8 players
+   explainer = InterventionalTreeSHAPIQ(
+       approximator.proxy_model, data=np.zeros((1, n)), index="Moebius", max_order=8
+   )
+   full = explainer.explain_function(np.ones((1, n)))
 
 Run it again
 ------------

@@ -134,13 +134,12 @@ def fits(result: dict[str, Any], full: int | None = None) -> list[list[float]]:
     orders = [*range(1, result["largest_order"] + 1)]
     if full > result["largest_order"]:
         orders.append(full)
+    entries = [explanation(result, order) for order in orders]
+    # the number of values: counted where the values were left out (fixlip.py keeps only those of
+    # the orders with a sheet), else all of them
     return [
-        [
-            order,
-            round(explanation(result, order)["r2"], R2_DIGITS),
-            len(explanation(result, order)["values"]),
-        ]
-        for order in orders
+        [order, round(entry["r2"], R2_DIGITS), entry.get("count", len(entry.get("values", [])))]
+        for order, entry in zip(orders, entries, strict=True)
     ]
 
 

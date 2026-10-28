@@ -75,14 +75,19 @@ def sample(n: int, count: int, seed: int) -> np.ndarray:
 def predictions(values: dict[tuple[int, ...], float], coalitions: np.ndarray) -> np.ndarray:
     """Return the sum of the values of every coalition's subsets: the explanation's prediction.
 
-    The empty group's value, the explanation's baseline, is part of every coalition's sum.
+    The empty group's value, the explanation's baseline, is part of every coalition's sum. The
+    groups are summed in chunks, so that millions of them fit in memory.
     """
     groups = [group for group in values if group]
-    members = np.zeros((len(groups), coalitions.shape[1]))
-    for row, group in enumerate(groups):
-        members[row, list(group)] = 1
-    inside = coalitions.astype(float) @ members.T == members.sum(axis=1)
-    return values.get((), 0.0) + inside @ np.array([values[group] for group in groups])
+    out = np.full(len(coalitions), values.get((), 0.0))
+    for start in range(0, len(groups), 100_000):
+        chunk = groups[start : start + 100_000]
+        members = np.zeros((len(chunk), coalitions.shape[1]))
+        for row, group in enumerate(chunk):
+            members[row, list(group)] = 1
+        inside = coalitions.astype(float) @ members.T == members.sum(axis=1)
+        out += inside @ np.array([values[group] for group in chunk])
+    return out
 
 
 def size_means(
