@@ -639,7 +639,7 @@ body[data-theme="dark"] .orders-demo {
   font-variant-numeric: tabular-nums;
 }
 
-/* the bar, the R^2 and the verdict as wide in every row, so that the bars line up and match */
+/* the bar as wide in every row, so that the bars line up and match */
 .orders-demo-meter {
   position: relative;
   flex: none;
@@ -659,8 +659,11 @@ body[data-theme="dark"] .orders-demo {
   transition: opacity var(--shapiq-duration, 220ms);
 }
 
+.orders-demo-score {
+  white-space: nowrap;
+}
+
 .orders-demo-r2 {
-  min-width: 4.4rem;
   color: var(--orders-ink);
   font-weight: 700;
 }
@@ -672,10 +675,13 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-verdict {
-  min-width: 3.7rem;
   font-size: 0.75rem;
   letter-spacing: 0.02em;
-  white-space: nowrap;
+}
+
+/* after the R^2, with its comma: where the verdict is hidden, so is the comma */
+.orders-demo-verdict::before {
+  content: ", ";
 }
 
 .orders-demo-row:hover,
@@ -748,7 +754,7 @@ body[data-theme="dark"] .orders-demo {
   min-width: 1.5rem;
 }
 
-.orders-demo-narrow .orders-demo-r2 {
+.orders-demo-narrow .orders-demo-score {
   min-width: 2.9rem;
 }
 

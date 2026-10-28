@@ -817,11 +817,13 @@
         const fill = el("span", "orders-demo-meter-fill");
         fill.style.width = `${Math.max(0, Math.min(1, sheet.r2)) * 100}%`;
         meter.append(fill);
-        fitBox.append(
-          meter,
+        // the R^2 and its verdict in one phrase: "R² 0.76, workable"
+        const score = el("span", "orders-demo-score");
+        score.append(
           el("span", "orders-demo-r2", fit2(sheet.r2)),
           el("span", `orders-demo-verdict orders-demo-verdict-${verdict(sheet.r2).replace(" ", "-")}`, verdict(sheet.r2)),
         );
+        fitBox.append(meter, score);
         row.append(title, fitBox);
         row.addEventListener("pointerenter", (event) => {
           if (event.pointerType === "mouse" && !state.pinned) point(i, null);
