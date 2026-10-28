@@ -19,6 +19,7 @@
   --orders-box-edge: #ffffff;
   --orders-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --orders-duration: 640ms;
+  --orders-switch: 360ms; /* the pill sliding to the example chosen */
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -38,7 +39,28 @@ body[data-theme="dark"] .orders-demo {
 @media (prefers-reduced-motion: reduce) {
   .orders-demo {
     --orders-duration: 0ms;
+    --orders-switch: 0ms;
   }
+}
+
+/* choosing an example: the stack, its fits, the plot and the caption fade out (demo.js draws the
+   example chosen when they have), and in again with it */
+.orders-demo-stack,
+.orders-demo-ladder,
+.orders-demo-plot-svg,
+.orders-demo-caption {
+  transition: opacity 340ms ease-out;
+}
+
+.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg, .orders-demo-caption) {
+  opacity: 0;
+  transition-duration: 160ms;
+}
+
+/* a new example takes its places at once, without moving there */
+.orders-demo-instant :is(.orders-demo-sheet, .orders-demo-row, .orders-demo-face, .orders-demo-meter-fill),
+.orders-demo-instant .orders-demo-row::before {
+  transition: none;
 }
 
 /* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
@@ -73,6 +95,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-switch {
+  position: relative; /* the pill's place */
   display: inline-flex;
   flex-wrap: wrap;
   padding: 3px;
@@ -105,7 +128,35 @@ body[data-theme="dark"] .orders-demo {
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background var(--shapiq-duration, 220ms), color var(--shapiq-duration, 220ms);
+  transition:
+    color var(--shapiq-duration, 220ms),
+    transform 140ms var(--orders-ease);
+}
+
+.orders-demo-option:hover {
+  color: var(--orders-ink);
+}
+
+.orders-demo-option:active {
+  transform: scale(0.96);
+}
+
+/* the pill around the example chosen: a copy of the examples, laid out as they are, over them,
+   in the colors of the one chosen, cut to the pill (demo.js), which slides to the next one */
+.orders-demo-pill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 3px;
+  border-radius: inherit;
+  background: var(--orders-ink);
+  pointer-events: none;
+  transition: clip-path var(--orders-switch) var(--orders-ease);
+}
+
+.orders-demo-pill .orders-demo-option {
+  color: var(--orders-sheet);
 }
 
 .orders-demo-option-detail {
@@ -114,27 +165,10 @@ body[data-theme="dark"] .orders-demo {
   opacity: 0.75;
 }
 
-.orders-demo-option[aria-pressed="true"] {
-  background: var(--orders-ink);
-  color: var(--orders-sheet);
-}
-
 .orders-demo-option:focus-visible,
 .orders-demo-row:focus-visible {
   outline: 2px dashed var(--orders-ink);
   outline-offset: 2px;
-}
-
-.orders-demo-hint {
-  margin: 0;
-  color: var(--orders-muted);
-  font-size: 0.82rem;
-}
-
-@media (hover: none) {
-  .orders-demo-hint {
-    display: none;
-  }
 }
 
 /* -- the stage: the stack of sheets, and the ladder of their fits ------------------------------ */
@@ -144,7 +178,7 @@ body[data-theme="dark"] .orders-demo {
   touch-action: manipulation;
 }
 
-/* the model of the example, under the examples, and the hint beside it */
+/* the model of the example, under the examples */
 .orders-demo-about {
   display: flex;
   flex-wrap: wrap;

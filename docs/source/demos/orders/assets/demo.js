@@ -120,27 +120,18 @@
     );
   };
 
-  // how a group is drawn, by its value's share of the largest on its sheet: the width of its
-  // connections, its opacity, and the smallest share drawn at all. Soft: a weak group still shows.
-  const softLook = (widest) => ({
-    width: (ratio) => Math.max(0.3, widest * ratio ** 0.75),
-    opacity: (ratio) => 0.08 + 0.8 * ratio ** 1.1,
-    cutoff: 0.015,
-  });
-  // as shapiq's SI graph plot draws it: as wide and as opaque as its share
-  const proportionalLook = (widest) => ({ width: (ratio) => widest * ratio, opacity: (ratio) => ratio, cutoff: 0.01 });
+  // the smallest share of the largest value on a sheet that is drawn at all
+  const FAINTEST = 0.01;
 
   // an interaction of two or more players: every player joined to the group's center (for a pair,
-  // to the other player; else, where given, or the players' centroid), in red or blue, the wider
-  // and the more opaque, the larger the value
-  const drawGroup = (parent, points, value, largest, look, at) => {
+  // to the other player; else, where given, or the players' centroid), in red or blue; as shapiq's
+  // SI graph plot draws it, as wide (widest for the largest value) and as opaque as its share of
+  // the largest value on its sheet
+  const drawGroup = (parent, points, value, largest, widest, at) => {
     const ratio = Math.abs(value) / largest;
-    if (ratio < look.cutoff) return;
-    const width = look.width(ratio);
-    const group = add(parent, "g", {
-      fill: solid(value),
-      opacity: roundTo(look.opacity(ratio), 3),
-    });
+    if (ratio < FAINTEST) return;
+    const width = widest * ratio;
+    const group = add(parent, "g", { fill: solid(value), opacity: roundTo(ratio, 3) });
     const center =
       points.length === 2
         ? points[1]
@@ -155,12 +146,12 @@
   };
 
   // the groups of a sheet; a group's center, where the data gives one, is placed by place
-  const drawGroups = (parent, sheet, anchor, largest, look, place) => {
+  const drawGroups = (parent, sheet, anchor, largest, widest, place) => {
     const layer = add(parent, "g", { class: "orders-demo-groups" });
     // the weakest first, so that the strongest lie on top
     const groups = [...sheet.groups].sort((a, b) => Math.abs(a[1]) - Math.abs(b[1]));
     for (const [players, value, center] of groups) {
-      drawGroup(layer, players.map(anchor), value, largest, look, center && place(center));
+      drawGroup(layer, players.map(anchor), value, largest, widest, center && place(center));
     }
   };
 
@@ -175,28 +166,29 @@
     return ([x, y]) => [ox + (x - x0) * scale, oy + (y - y0) * scale];
   };
 
-  // the molecule as shapiq's SI graph plot draws it with node_size_scaling=0.5 and size_factor=2,
-  // in units of the molecule's extent: the atoms' diameter, and the width of the largest value
+  // the explanations as shapiq's SI graph plot draws them with node_size_scaling=0.5 and
+  // size_factor=2, in units of the players' extent: an atom's diameter, and the width of the
+  // largest value
   const ATOM = 0.0625;
   const WIDEST = 0.05;
+  const extentOf = (points) =>
+    Math.max(...[0, 1].map((axis) => Math.max(...points.map((p) => p[axis])) - Math.min(...points.map((p) => p[axis]))));
 
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
   function moleculeFace(svg, example, sheet) {
     const place = fit(example.coords, [9, 5, 93, 87]);
     const position = example.coords.map(place);
-    const extent = Math.max(
-      ...[0, 1].map((axis) => Math.max(...position.map((p) => p[axis])) - Math.min(...position.map((p) => p[axis]))),
-    );
+    const extent = extentOf(position);
     const [radius, widest] = [(ATOM / 2) * extent, WIDEST * extent];
     const largest = largestValue(sheet);
     // the groups' centers where shapiq's SI graph plot puts them (../compute/pack.py)
-    drawGroups(svg, sheet, (atom) => position[atom], largest, proportionalLook(widest), place);
+    drawGroups(svg, sheet, (atom) => position[atom], largest, widest, place);
     // a main effect: a disc around its atom, as much wider as a group of its value, over a disc of
     // the sheet's color that hides the groups below it
     const halos = add(svg, "g", { class: "orders-demo-halos" });
     sheet.first.forEach((value, atom) => {
       const ratio = Math.abs(value) / largest;
-      if (ratio < 0.01) return;
+      if (ratio < FAINTEST) return;
       const disc = {
         cx: roundTo(position[atom][0], 2),
         cy: roundTo(position[atom][1], 2),
@@ -256,9 +248,10 @@
       width: photo.size,
       height: photo.size,
     });
+    // a main effect tints its patch, or its word, as opaque as its share of the largest value
     sheet.first.slice(0, patches).forEach((value, patch) => {
       const ratio = Math.abs(value) / largest;
-      if (ratio < 0.02) return;
+      if (ratio < FAINTEST) return;
       const [cx, cy] = anchor(patch);
       add(image, "rect", {
         x: roundTo(cx - cell / 2, 2),
@@ -266,7 +259,7 @@
         width: roundTo(cell, 2),
         height: roundTo(cell, 2),
         fill: solid(value),
-        opacity: roundTo(0.12 + 0.6 * ratio, 3),
+        opacity: roundTo(ratio, 3),
       });
     });
     const lines = add(image, "g", { class: "orders-demo-grid" });
@@ -277,7 +270,8 @@
       add(lines, "line", { x1: photo.x, y1: across, x2: photo.x + photo.size, y2: across });
     }
 
-    drawGroups(svg, sheet, anchor, largest, softLook(2.3));
+    const players = Array.from({ length: patches + example.tokens.length }, (_, player) => anchor(player));
+    drawGroups(svg, sheet, anchor, largest, WIDEST * extentOf(players));
 
     const words = add(svg, "g", { class: "orders-demo-tokens" });
     example.tokens.forEach((token, k) => {
@@ -286,7 +280,7 @@
       const y = tokens.top + k * row + row * 0.12;
       const height = row * 0.76;
       add(words, "rect", { x: tokens.x, y: roundTo(y, 2), width: tokens.width, height: roundTo(height, 2), rx: 1.4 });
-      if (ratio >= 0.02) {
+      if (ratio >= FAINTEST) {
         add(words, "rect", {
           class: "orders-demo-tint",
           x: tokens.x,
@@ -295,7 +289,7 @@
           height: roundTo(height, 2),
           rx: 1.4,
           fill: solid(value),
-          opacity: roundTo(0.12 + 0.6 * ratio, 3),
+          opacity: roundTo(ratio, 3),
         });
       }
       add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
@@ -649,24 +643,29 @@
     const switcher = el("div", "orders-demo-switch");
     switcher.setAttribute("role", "group");
     switcher.setAttribute("aria-label", "Example");
+    // the pill around the example chosen, which slides to the next one chosen: a copy of the
+    // examples over them, in the colors of the one chosen, cut to the pill, so that every label
+    // turns as the pill passes over it
+    const pill = el("div", "orders-demo-pill");
+    pill.setAttribute("aria-hidden", "true");
+    const label = (example, node) => {
+      node.append(icon(example.model.icon, "orders-demo-option-icon"), el("span", "orders-demo-option-label", example.label));
+      return node;
+    };
     const options = data.examples.map((example) => {
-      const option = el("button", "orders-demo-option");
+      const option = label(example, el("button", "orders-demo-option"));
       option.type = "button";
-      option.append(icon(example.model.icon, "orders-demo-option-icon"), el("span", "orders-demo-option-label", example.label));
-      option.addEventListener("click", () => {
-        if (state.example === example.id) return;
-        Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
-        render();
-      });
+      option.addEventListener("click", () => choose(example));
       switcher.append(option);
+      pill.append(label(example, el("span", "orders-demo-option")));
       return [example.id, option];
     });
-    const hint = el("p", "orders-demo-hint", "Point at a sheet, or along the plot.");
+    switcher.append(pill);
     // the model of the example: its icon, what it is, and how it was explained
     const badge = el("div", "orders-demo-model");
     badge.setAttribute("aria-live", "polite");
     const about = el("div", "orders-demo-about");
-    about.append(badge, hint);
+    about.append(badge);
     bar.append(switcher, about);
 
     const stage = el("div", "orders-demo-stage");
@@ -798,6 +797,49 @@
       return position === undefined ? null : items[position];
     }
 
+    // -- the examples ---------------------------------------------------------------------------
+
+    // the pill around the example chosen; it slides there, unless instant (as when the buttons
+    // change their size)
+    function movePill(instant) {
+      const option = new Map(options).get(state.example);
+      const [top, left] = [option.offsetTop, option.offsetLeft];
+      const right = pill.clientWidth - left - option.offsetWidth;
+      const bottom = pill.clientHeight - top - option.offsetHeight;
+      if (instant) pill.style.transition = "none";
+      pill.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px round 999px)`;
+      if (instant) {
+        pill.getBoundingClientRect();
+        pill.style.transition = "";
+      }
+    }
+
+    // choose an example: the pill slides to it while the stack, its fits, the plot and the caption
+    // fade out, and the example fades in, at rest; without motion, it shows at once
+    let chosen = 0; // the examples chosen so far: only the last one chosen is drawn
+    function choose(example) {
+      if (state.example === example.id) return;
+      Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
+      for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
+      movePill(false);
+      const choice = ++chosen;
+      if (reducedMotion()) {
+        render();
+        return;
+      }
+      root.classList.add("orders-demo-fading");
+      // the fade out starts now, and the example is drawn when it ends (at once, if all is faded)
+      const fades = [stack, ladder, plot, caption].flatMap((node) => {
+        getComputedStyle(node).opacity;
+        return node.getAnimations();
+      });
+      Promise.allSettled(fades.map((fade) => fade.finished)).then(() => {
+        if (choice !== chosen) return;
+        render();
+        root.classList.remove("orders-demo-fading");
+      });
+    }
+
     // -- drawing --------------------------------------------------------------------------------
 
     function render() {
@@ -891,26 +933,21 @@
       }
 
       drawPlot();
-      // the stack opens out of a pile: first all sheets on top of each other, then their strips
-      // show; without motion, the stack is shown at rest at once
-      place("pile");
-      if (reducedMotion()) {
-        place(state.active);
-      } else {
-        stack.getBoundingClientRect(); // the pile is drawn before the stack opens
-        requestAnimationFrame(() => place(state.active));
-      }
+      // a new example shows at rest at once: its sheets and rows take their places without moving
+      root.classList.add("orders-demo-instant");
+      place(state.active);
+      root.getBoundingClientRect();
+      root.classList.remove("orders-demo-instant");
       describe();
     }
 
-    // move every sheet and row to its place, for a lifted sheet (or null at rest, "pile" for the
-    // sheets on top of each other before they open)
+    // move every sheet and row to its place, for a lifted sheet (or null at rest)
     function place(active) {
       const g = geometry;
       stage.style.height = `${g.height}px`;
       root.classList.toggle("orders-demo-narrow", g.narrow);
       const lifted = typeof active === "number";
-      const places = active === "pile" ? layout(null).map((p) => ({ ...p, y: g.height / 2 })) : layout(active);
+      const places = layout(active);
       const rowY = []; // the height of every sheet's row, for the row of the blank sheets
       items.forEach((item, position) => {
         const { pose, x, y } = places[position];
@@ -1202,8 +1239,13 @@
       }
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
+    new ResizeObserver(() => movePill(true)).observe(switcher);
 
+    // the first example fades in, as every next one
+    root.classList.add("orders-demo-fading");
     render();
+    movePill(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("orders-demo-fading")));
   }
 
   // -- loading ----------------------------------------------------------------------------------------

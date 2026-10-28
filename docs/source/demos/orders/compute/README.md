@@ -9,7 +9,7 @@ values to the full decomposition. They are run by hand, once; the docs only show
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2: `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 7 on California housing and explains one house in Los Angeles and 150 random houses exactly (interventional), at every order: `results/house.json`, `results/houses.json`. |
 | `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment) from 10,000 coalitions, every player present with probability 1/2 as in FIxLIP, at every order, scored on 512 held-out coalitions: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
-| `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the full decomposition (order n), with the strongest interactions of each (for the molecule, 300, with the centers of its groups where shapiq's SI graph plot places them; for the 150 houses, the strongest rows of their heatmap), and the R^2 of every order. |
+| `pack.py` | Writes the demo's data, `../assets/data.js`: the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 150 houses, the strongest rows of their heatmap), and the R^2 of every order. |
 
 ## Run
 

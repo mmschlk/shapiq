@@ -4,8 +4,8 @@ Reads the explanations of the molecule (molecule.py), of the houses of Californi
 (housing.py), and of how SigLIP 2 matches the FIxLIP demo's elephant and its caption (fixlip.py). It keeps
 what the demo draws on its sheets, rounded: the orders 1 to 4 and the full decomposition (k-SII of
 order n, the number of players, which equals the Möbius transform), every main effect, and the
-strongest interactions of each order (of the molecule, 300 of them, with the centers of its groups
-where shapiq's SI graph plot places them); for the houses, the strongest rows of their heatmap. And the
+300 strongest interactions of each order (of the molecule, with the centers of its groups where
+shapiq's SI graph plot places them); for the houses, the strongest rows of their heatmap. And the
 R^2 and the number of values of every order up to the highest with an interaction, and of order n,
 for the plot of the fit by order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a
 script loads from disk too, where the browser would not fetch a JSON file).
@@ -27,9 +27,9 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 ORDERS = (1, 2, 3, 4)  # the sheets, above the one of order n (the full decomposition)
-STRONGEST = 72  # the interactions (of two or more players) drawn on a sheet
-# the molecule's sheets draw many more, most of them weak: a haze around its strongest groups
-STRONGEST_MOLECULE = 300
+# the interactions (of two or more players) drawn on a sheet, most of them weak: a haze around
+# the strongest
+STRONGEST = 300
 COMPACTNESS = 1e10  # how hard a group's center is pulled to its atoms: si_graph_plot's default
 ROWS = 14  # the rows of a sheet of the heatmap
 SHORT = ["Income", "Age", "Rooms", "Bedrooms", "Population", "Occupancy", "Lat", "Long"]
@@ -196,7 +196,7 @@ def main() -> None:
         load("fixlip"),
     )
     molecule["n_players"] = len(molecule["atoms"])
-    molecule_sheets = sheets(molecule, strongest=STRONGEST_MOLECULE)
+    molecule_sheets = sheets(molecule)
     for sheet in molecule_sheets:
         place_groups(sheet, molecule["coords"])
     fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
