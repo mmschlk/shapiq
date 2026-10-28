@@ -17,8 +17,12 @@ so no larger group has a value, and every lower order of FSII follows from it. T
 best of 3 to 8 in a 5-fold cross-validation on the coalitions.
 
 Every order is scored by its R^2 under the Shapley distribution (as for the molecule and the
-houses), on 512 coalitions drawn from it apart from the proxy's, against the model itself: the full
-decomposition reproduces the proxy exactly, and the model as well as the proxy does.
+houses), on 512 coalitions drawn from it independently of the proxy's (a coalition of 1 or 73
+players is one the proxy has seen: it saw all of them), against the model itself. The game is
+centered, and ProxySHAP gives the empty group the game's value of the empty coalition, 0, where the
+proxy predicts -0.008 (the empty coalition shares its leaves with coalitions of one or two players,
+whose values are about -0.007): the full decomposition reproduces the proxy up to this constant,
+and fits the model less well than the proxy itself (R^2 = 0.967 against 0.984).
 
 Usage::
 
@@ -53,7 +57,7 @@ import explain as fixlip  # noqa: E402  (the FIxLIP demo's game)
 
 PHOTO, MODEL = "elephant", "siglip2"
 BUDGET = 10_000  # the coalitions the proxy is fit to
-N_TEST = 512  # the coalitions every order is scored on, drawn apart from the proxy's
+N_TEST = 512  # the coalitions every order is scored on, drawn independently of the proxy's
 DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
 PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
 
