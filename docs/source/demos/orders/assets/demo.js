@@ -765,36 +765,36 @@
       shown.getBoundingClientRect(); // restart the entrance
       shown.classList.add("orders-demo-step-enter");
     }
-    // step to the next example (1) or the previous one (-1); a swipe hands on how far the stack
-    // already went with the finger
-    function step(delta, swept = 0) {
+    // step to the next example (1) or the previous one (-1)
+    function step(delta) {
       const count = data.examples.length;
       const at = data.examples.findIndex((example) => example.id === state.example);
       stepper.style.setProperty("--orders-step-from", `${delta * 12}px`);
-      choose(data.examples[(at + delta + count) % count], delta, swept);
+      choose(data.examples[(at + delta + count) % count], delta);
     }
 
     // choose an example: the pill slides to it while the stack, its fits and the plot fade out, and
-    // the example fades in, at rest; stepped to, the stack also leaves to one side and the example
-    // comes in from the other. Without motion, it shows at once
+    // the example fades in, at rest. Stepped to, the stack and the plot are swiped instead: they
+    // leave to one side, out of view (from where a finger let go of them), and the example comes in
+    // from the other. Without motion, it shows at once
     let chosen = 0; // the examples chosen so far: only the last one chosen is drawn
-    const SHIFT = 60; // pixels: how far a stack stepped from or to slides
     const shift = (pixels) => root.style.setProperty("--orders-shift", `${roundTo(pixels, 1)}px`);
-    function choose(example, direction = 0, swept = 0) {
+    function choose(example, direction = 0) {
       if (state.example === example.id) return;
       Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       movePill(false);
       showStep(example);
       const choice = ++chosen;
-      root.style.removeProperty("--orders-swipe-opacity");
       if (reducedMotion()) {
         shift(0);
+        root.style.removeProperty("--orders-swipe-opacity");
         render();
         return;
       }
       root.classList.add("orders-demo-fading");
-      shift(-direction * (swept + SHIFT));
+      root.classList.toggle("orders-demo-leaving", direction !== 0);
+      shift(-direction * stage.clientWidth);
       // the fade out starts now, and the example is drawn when it ends (at once, if all is faded)
       const fades = [stack, ladder, plot].flatMap((node) => {
         getComputedStyle(node).opacity;
@@ -803,12 +803,15 @@
       Promise.allSettled(fades.map((fade) => fade.finished)).then(() => {
         if (choice !== chosen) return;
         render();
-        // the new stack comes in from the side stepped to: placed there at once, then sliding home
+        // stepped to, the new stack and plot come in from the side: placed there at once, then
+        // sliding home
         root.classList.add("orders-demo-jump");
-        shift(direction * SHIFT);
+        shift(direction * stage.clientWidth);
+        if (direction) root.style.setProperty("--orders-swipe-opacity", "0.6");
         root.getBoundingClientRect();
-        root.classList.remove("orders-demo-jump", "orders-demo-fading");
+        root.classList.remove("orders-demo-jump", "orders-demo-leaving", "orders-demo-fading");
         shift(0);
+        root.style.removeProperty("--orders-swipe-opacity");
       });
     }
 
@@ -861,9 +864,12 @@
         el("span", "orders-demo-model-method", example.model.method),
       );
       badge.replaceChildren(icon(example.model.icon, "orders-demo-model-icon"), text);
+      // the badge's entrance, unless it is swiped in with the stack
       badge.classList.remove("orders-demo-model-enter");
-      badge.getBoundingClientRect(); // restart the badge's entrance
-      badge.classList.add("orders-demo-model-enter");
+      if (!root.classList.contains("orders-demo-leaving")) {
+        badge.getBoundingClientRect(); // restart the entrance
+        badge.classList.add("orders-demo-model-enter");
+      }
       geometry = measure();
 
       const last = example.sheets.at(-1);
@@ -1367,7 +1373,7 @@
       const speed = (dx - from) / Math.max(16, event.timeStamp - at);
       const flick = Math.abs(dx) > 20 && Math.abs(speed) > 0.3 && Math.sign(speed) === Math.sign(dx);
       if (!cancelled && (Math.abs(dx) > stage.clientWidth / 5 || flick)) {
-        step(dx < 0 ? 1 : -1, Math.abs(dx));
+        step(dx < 0 ? 1 : -1);
       } else {
         shift(0);
         root.style.removeProperty("--orders-swipe-opacity");

@@ -54,7 +54,11 @@ body[data-theme="dark"] .orders-demo {
   will-change: opacity; /* a layer of its own already: a fade neither starts nor ends with a repaint */
 }
 
-.orders-demo-stack {
+/* the stack, the plot and the model above them, swiped (demo.js): aside by --orders-shift, and
+   fading with the swipe */
+.orders-demo-stack,
+.orders-demo-plot-svg,
+.orders-demo-model {
   translate: var(--orders-shift, 0px) 0;
   opacity: var(--orders-swipe-opacity, 1);
   transition:
@@ -63,9 +67,19 @@ body[data-theme="dark"] .orders-demo {
   will-change: opacity, translate;
 }
 
-/* while a finger swipes the stack, it follows at once; a new stack takes its side at once */
-.orders-demo-swiping .orders-demo-stack,
-.orders-demo-jump .orders-demo-stack {
+/* stepped from, they leave to the side, out of view, as a swipe carries them on: they keep their
+   opacity, and speed up as they go */
+.orders-demo-fading.orders-demo-leaving :is(.orders-demo-stack, .orders-demo-plot-svg, .orders-demo-model) {
+  opacity: var(--orders-swipe-opacity, 1);
+  transition:
+    opacity 240ms cubic-bezier(0.4, 0, 1, 1),
+    translate 240ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* while a finger swipes them, they follow at once; a new stack, plot and model take their side at
+   once (over the leaving rule, which is still on then) */
+.orders-demo.orders-demo-swiping :is(.orders-demo-stack, .orders-demo-plot-svg, .orders-demo-model),
+.orders-demo.orders-demo-jump :is(.orders-demo-stack, .orders-demo-plot-svg, .orders-demo-model) {
   transition: none;
 }
 
@@ -313,7 +327,7 @@ body[data-theme="dark"] .orders-demo {
   touch-action: pan-y pinch-zoom;
 }
 
-/* the model of the example, under the examples */
+/* the model of the example, under the examples (a model swiped aside does not widen the page) */
 .orders-demo-about {
   display: flex;
   flex-wrap: wrap;
@@ -321,6 +335,7 @@ body[data-theme="dark"] .orders-demo {
   justify-content: space-between;
   gap: 0.5rem 1rem;
   width: 100%;
+  overflow-x: clip;
 }
 
 .orders-demo-model {
@@ -869,6 +884,7 @@ body[data-theme="dark"] .orders-demo {
   display: flex;
   justify-content: center;
   margin-top: 0.75rem;
+  overflow-x: clip; /* a plot swiped aside does not widen the page */
 }
 
 .orders-demo-plot {
