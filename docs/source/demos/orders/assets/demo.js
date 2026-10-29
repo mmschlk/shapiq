@@ -581,7 +581,8 @@
     rail.style.width = `${RAIL}px`;
     rail.style.setProperty("--orders-rail-line", `${RAIL_LINE}px`);
     const railLine = el("span", "orders-demo-rail-line");
-    const railLabel = el("span", "orders-demo-rail-label", "more complex, more faithful");
+    const railLabel = el("span", "orders-demo-rail-label");
+    railLabel.append("more ", el("em", "", "complex"), " and more ", el("em", "", "faithful"));
     railLabel.setAttribute("aria-hidden", "true");
     const ticks = el("span", "orders-demo-rail-ticks");
     ticks.setAttribute("aria-hidden", "true");

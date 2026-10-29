@@ -613,13 +613,16 @@ body[data-theme="dark"] .orders-demo {
   left: calc(var(--orders-rail-line) - 1.65rem);
   color: var(--orders-muted);
   font-size: 0.75rem;
-  font-style: italic;
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
   writing-mode: vertical-rl;
   transform: translateY(-50%);
   pointer-events: none;
+}
+
+.orders-demo-rail-label em {
+  font-style: italic;
 }
 
 .orders-demo-tick {
