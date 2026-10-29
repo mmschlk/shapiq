@@ -68,13 +68,13 @@ body[data-theme="dark"] .orders-demo {
 /* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
 @media (scripting: enabled) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 58rem;
+    min-height: 44.5rem;
   }
 }
 
 @media (scripting: enabled) and (max-width: 45em) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 44rem;
+    min-height: 37.5rem;
   }
 }
 
@@ -175,12 +175,36 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-raised);
 }
 
+/* with the stepper, under the stack: a dot for every example, the one shown dark */
+.orders-demo-dots {
+  display: none;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 0.4rem;
+}
+
+.orders-demo-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--orders-edge);
+  transition:
+    background var(--orders-duration) var(--orders-ease),
+    scale var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-dots .orders-demo-dot-on {
+  background: var(--orders-ink);
+  scale: 1.25;
+}
+
 @container (max-width: 45rem) {
   .orders-demo-switch {
     display: none;
   }
 
-  .orders-demo-stepper {
+  .orders-demo-stepper,
+  .orders-demo-dots {
     display: flex;
   }
 }
@@ -813,14 +837,6 @@ body[data-theme="dark"] .orders-demo {
   max-width: 34rem;
   min-width: 0;
   margin: 0;
-}
-
-.orders-demo-plot-title {
-  margin: 0 0 0.15rem;
-  text-align: center;
-  color: var(--orders-ink);
-  font-size: 0.8rem;
-  font-weight: 700;
 }
 
 .orders-demo-plot-svg {

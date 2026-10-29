@@ -62,7 +62,7 @@
   const RAIL_LINE = 28;
   const RAIL_REST = 24;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
-  const PLOT = { height: 172, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 94
+  const PLOT = { height: 153, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 75
 
   const roundTo = (value, digits) => {
     const scale = 10 ** digits;
@@ -595,15 +595,16 @@
 
     const footer = el("div", "orders-demo-footer");
     const plotBox = el("figure", "orders-demo-plot");
-    const plotTitle = el("figcaption", "orders-demo-plot-title", "Faithfulness by order");
-    // the title over the plot's area, not over its ticks: with the plot's margins
-    plotTitle.style.padding = `0 ${PLOT.right}px 0 ${PLOT.left}px`;
     const plot = document.createElementNS(SVG, "svg");
     plot.setAttribute("class", "orders-demo-plot-svg");
     plot.setAttribute("role", "img");
-    plotBox.append(plotTitle, plot);
+    plotBox.append(plot);
     footer.append(plotBox);
-    root.append(bar, stage, footer);
+    // under the stack, where the stepper shows (demo.css): a dot for every example, the one shown dark
+    const dots = el("div", "orders-demo-dots");
+    dots.setAttribute("aria-hidden", "true");
+    dots.append(...data.examples.map(() => el("span")));
+    root.append(bar, stage, dots, footer);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
@@ -752,6 +753,7 @@
         el("strong", "", example.label),
         el("span", "orders-demo-step-count", `${position} of ${data.examples.length}`),
       );
+      [...dots.children].forEach((dot, k) => dot.classList.toggle("orders-demo-dot-on", k === position - 1));
       shown.classList.remove("orders-demo-step-enter");
       if (!enter) return;
       shown.getBoundingClientRect(); // restart the entrance
@@ -1021,7 +1023,7 @@
       plot.setAttribute("height", h);
       plot.setAttribute(
         "aria-label",
-        `R² by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition` +
+        `Faithfulness (R²) by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition` +
           (example.fits.at(-1)[1] < EXACT ? ", estimated: what its R² falls short of 1 is the estimation tax" : ""),
       );
       plot.replaceChildren();
