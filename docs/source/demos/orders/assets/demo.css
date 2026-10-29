@@ -128,13 +128,6 @@ body[data-theme="dark"] .orders-demo {
     transform 120ms var(--orders-ease);
 }
 
-/* on narrow screens, the options closer together */
-@container (max-width: 40rem) {
-  .orders-demo-option {
-    padding-inline: 0.7rem;
-  }
-}
-
 .orders-demo-option:hover {
   color: var(--orders-ink);
 }
@@ -167,11 +160,112 @@ body[data-theme="dark"] .orders-demo {
   outline-offset: 2px;
 }
 
+/* where the examples would not fit in a row: a stepper through them, the example shown between a
+   button to the previous and one to the next */
+.orders-demo-stepper {
+  display: none;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  height: var(--orders-control);
+  padding: 3px;
+  border: 1px solid var(--orders-line);
+  border-radius: 999px;
+  background: var(--orders-raised);
+}
+
+@container (max-width: 45rem) {
+  .orders-demo-switch {
+    display: none;
+  }
+
+  .orders-demo-stepper {
+    display: flex;
+  }
+}
+
+.orders-demo-step {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--orders-control) - 8px);
+  height: calc(var(--orders-control) - 8px);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--orders-ink);
+  color: var(--orders-sheet);
+  cursor: pointer;
+  transition: transform 120ms var(--orders-ease);
+}
+
+.orders-demo-step:active {
+  transform: scale(0.96);
+}
+
+.orders-demo-step:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 2px;
+}
+
+.orders-demo-step svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orders-demo-step-shown {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--orders-ink);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.orders-demo-step-shown strong {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.orders-demo-step-count {
+  color: var(--orders-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the example stepped to comes in from the side it was stepped to */
+.orders-demo-step-enter {
+  animation: orders-demo-step-enter 420ms var(--orders-ease) both;
+}
+
+@keyframes orders-demo-step-enter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--orders-step-from, 0));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* -- the stage: the stack of sheets, and the ladder of their fits ------------------------------ */
 
 .orders-demo-stage {
   position: relative;
-  touch-action: manipulation;
+  touch-action: pan-y pinch-zoom; /* a swipe sideways steps through the examples (demo.js) */
 }
 
 /* the model of the example, under the examples */

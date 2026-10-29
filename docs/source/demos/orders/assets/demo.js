@@ -21,9 +21,11 @@
 // precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, a
 // tap that pins it, or the slider beside the stack) slides it out to the side of the
 // stack as it lies, under the sheets above it, and the others stay where they are. A ring marks its
-// order on the plot; pointing along the plot brings out the sheet of the order pointed at, or the blank sheet of
-// an order between. The slider is an arrow down the side of the stack, and one along the plot's
-// axis matches it: the explanations grow more complex from order to order.
+// order on the plot; pointing along the plot brings out the sheet of the order pointed at, or the
+// blank sheet of an order between. The slider is an arrow down the side of the stack, and one along
+// the plot's axis matches it: the explanations grow more complex, and more faithful, from order to
+// order. Where the examples do not fit in a row, a stepper goes from one to the next, and so does a
+// swipe across the stack.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -542,12 +544,29 @@
       return [example.id, option];
     });
     switcher.append(pill);
+    // where the examples would not fit in a row (demo.css): a stepper through them instead, the
+    // example shown between a button to the previous and one to the next (a swipe across the stack
+    // steps too)
+    const stepper = el("div", "orders-demo-stepper");
+    stepper.setAttribute("role", "group");
+    stepper.setAttribute("aria-label", "Example");
+    const stepButton = (delta, name, d) => {
+      const button = el("button", "orders-demo-step");
+      button.type = "button";
+      button.setAttribute("aria-label", name);
+      add(add(button, "svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }), "path", { d });
+      button.addEventListener("click", () => step(delta));
+      return button;
+    };
+    const shown = el("span", "orders-demo-step-shown");
+    shown.setAttribute("aria-live", "polite");
+    stepper.append(stepButton(-1, "Previous example", "M10 3.5 5.5 8l4.5 4.5"), shown, stepButton(1, "Next example", "M6 3.5l4.5 4.5L6 12.5"));
     // the model of the example: its icon, what it is, and how it was explained
     const badge = el("div", "orders-demo-model");
     badge.setAttribute("aria-live", "polite");
     const about = el("div", "orders-demo-about");
     about.append(badge);
-    bar.append(switcher, about);
+    bar.append(switcher, stepper, about);
 
     const stage = el("div", "orders-demo-stage");
     stage.setAttribute("role", "group");
@@ -555,13 +574,14 @@
     stack.setAttribute("aria-hidden", "true");
     const ladder = el("div", "orders-demo-ladder");
     // beside the stack, in a column of its own, the slider of the orders: an arrow down (every order
-    // below is more complex), a tick at every sheet, and a handle that brings out the sheet at its
-    // tick; it rests above the top sheet. It serves touch screens, where nothing hovers.
+    // below is more complex, and fits the model more faithfully), a tick at every sheet, and a handle
+    // that brings out the sheet at its tick; it rests above the top sheet. It serves touch screens,
+    // where nothing hovers.
     const rail = el("div", "orders-demo-rail");
     rail.style.width = `${RAIL}px`;
     rail.style.setProperty("--orders-rail-line", `${RAIL_LINE}px`);
     const railLine = el("span", "orders-demo-rail-line");
-    const railLabel = el("span", "orders-demo-rail-label", "more complex");
+    const railLabel = el("span", "orders-demo-rail-label", "more complex, more faithful");
     railLabel.setAttribute("aria-hidden", "true");
     const ticks = el("span", "orders-demo-rail-ticks");
     ticks.setAttribute("aria-hidden", "true");
@@ -723,6 +743,27 @@
       }
     }
 
+    // the stepper's example: its icon, its name, and where it is among the examples, coming in from
+    // the side it was stepped to from
+    function showStep(example, enter = true) {
+      const position = data.examples.indexOf(example) + 1;
+      shown.replaceChildren(
+        icon(example.model.icon, "orders-demo-option-icon"),
+        el("strong", "", example.label),
+        el("span", "orders-demo-step-count", `${position} of ${data.examples.length}`),
+      );
+      shown.classList.remove("orders-demo-step-enter");
+      if (!enter) return;
+      shown.getBoundingClientRect(); // restart the entrance
+      shown.classList.add("orders-demo-step-enter");
+    }
+    function step(delta) {
+      const count = data.examples.length;
+      const at = data.examples.findIndex((example) => example.id === state.example);
+      stepper.style.setProperty("--orders-step-from", `${delta * 12}px`);
+      choose(data.examples[(at + delta + count) % count]);
+    }
+
     // choose an example: the pill slides to it while the stack, its fits and the plot fade out, and
     // the example fades in, at rest; without motion, it shows at once
     let chosen = 0; // the examples chosen so far: only the last one chosen is drawn
@@ -731,6 +772,7 @@
       Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       movePill(false);
+      showStep(example);
       const choice = ++chosen;
       if (reducedMotion()) {
         render();
@@ -1251,7 +1293,27 @@
     stage.addEventListener("pointerleave", (event) => {
       if (event.pointerType === "mouse" && !state.pinned) point(null, null);
     });
+    // a swipe across the stack steps through the examples, as the stepper does (the page still
+    // scrolls with a swipe up or down)
+    let swipe = null;
+    let swiped = -Infinity;
+    stage.addEventListener("pointerdown", (event) => {
+      swipe = event.pointerType === "touch" && !event.target.closest(".orders-demo-rail") ? [event.clientX, event.clientY] : null;
+    });
+    stage.addEventListener("pointercancel", () => {
+      swipe = null;
+    });
+    stage.addEventListener("pointerup", (event) => {
+      if (!swipe) return;
+      const [dx, dy] = [event.clientX - swipe[0], event.clientY - swipe[1]];
+      swipe = null;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > 2 * Math.abs(dy)) {
+        swiped = performance.now();
+        step(dx < 0 ? 1 : -1);
+      }
+    });
     stack.addEventListener("click", (event) => {
+      if (performance.now() - swiped < 400) return; // the end of a swipe is no tap
       const item = itemAt(pointer(event));
       if (item === null) {
         state.pinned = false;
@@ -1281,6 +1343,7 @@
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
+    showStep(current(), false);
     render();
     movePill(true);
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("orders-demo-fading")));
