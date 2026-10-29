@@ -1315,48 +1315,66 @@
       if (event.pointerType === "mouse" && !state.pinned) point(null, null);
     });
     // on a touch screen, a swipe sideways across the stack goes to the next example or the previous
-    // one, as the stepper does: the stack follows the finger, fading, and past a third of its width
-    // (or flicked) it leaves to that side; else it springs back. A swipe up or down scrolls the page.
+    // one, as the stepper does: the stack follows the finger, fading, and past a fifth of its width,
+    // or flicked, it leaves to that side; else it springs back. A swipe up or down scrolls the page.
+    // Touch events, not pointer events: only a touchmove can be kept from the browser, which on iOS
+    // takes a sideways drag over after a few pixels and cancels it for the page
     let swipe = null;
     let touching = false; // the last press on the stage was a touch: a tap brings out no sheet
     stage.addEventListener("pointerdown", (event) => {
       touching = event.pointerType === "touch";
-      const free = touching && !event.target.closest(".orders-demo-rail") && !root.classList.contains("orders-demo-fading");
-      swipe = free ? { id: event.pointerId, x: event.clientX, y: event.clientY, at: event.timeStamp, dx: 0, sideways: null } : null;
     });
-    stage.addEventListener("pointermove", (event) => {
-      if (event.pointerId !== swipe?.id) return;
-      const [dx, dy] = [event.clientX - swipe.x, event.clientY - swipe.y];
-      if (swipe.sideways === null) {
-        if (Math.hypot(dx, dy) < 8) return;
-        swipe.sideways = Math.abs(dx) > Math.abs(dy);
-        if (!swipe.sideways) {
-          swipe = null;
-          return;
+    stage.addEventListener(
+      "touchstart",
+      (event) => {
+        const free = event.touches.length === 1 && !event.target.closest(".orders-demo-rail") && !root.classList.contains("orders-demo-fading");
+        const [touch] = event.touches;
+        swipe = free ? { x: touch.clientX, y: touch.clientY, dx: 0, sideways: null, moves: [[event.timeStamp, 0]] } : null;
+      },
+      { passive: true },
+    );
+    stage.addEventListener(
+      "touchmove",
+      (event) => {
+        if (!swipe) return;
+        const [touch] = event.touches;
+        const [dx, dy] = [touch.clientX - swipe.x, touch.clientY - swipe.y];
+        if (swipe.sideways === null) {
+          if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+          swipe.sideways = event.touches.length === 1 && Math.abs(dx) > Math.abs(dy);
+          if (!swipe.sideways) {
+            swipe = null; // the page scrolls, or zooms
+            return;
+          }
+          root.classList.add("orders-demo-swiping");
         }
-        stage.setPointerCapture(event.pointerId);
-        root.classList.add("orders-demo-swiping");
-      }
-      swipe.dx = dx;
-      shift(dx);
-      root.style.setProperty("--orders-swipe-opacity", String(roundTo(1 - Math.min(0.6, Math.abs(dx) / stage.clientWidth), 3)));
-    });
+        event.preventDefault(); // the drag is the stack's: the page neither scrolls nor takes it over
+        swipe.dx = dx;
+        swipe.moves.push([event.timeStamp, dx]);
+        shift(dx);
+        root.style.setProperty("--orders-swipe-opacity", String(roundTo(1 - Math.min(0.6, Math.abs(dx) / stage.clientWidth), 3)));
+      },
+      { passive: false },
+    );
     const endSwipe = (event, cancelled) => {
-      if (event.pointerId !== swipe?.id) return;
-      const { dx, sideways, at } = swipe;
+      if (!swipe) return;
+      const { dx, sideways, moves } = swipe;
       swipe = null;
       if (!sideways) return;
       root.classList.remove("orders-demo-swiping");
-      const flick = Math.abs(dx) > 24 && Math.abs(dx) / Math.max(1, event.timeStamp - at) > 0.5;
-      if (!cancelled && (Math.abs(dx) > stage.clientWidth / 3 || flick)) {
+      // a flick: fast over the last tenth of a second, in the direction swiped
+      const [at, from] = moves.find(([time]) => event.timeStamp - time <= 100) ?? moves.at(-1);
+      const speed = (dx - from) / Math.max(16, event.timeStamp - at);
+      const flick = Math.abs(dx) > 20 && Math.abs(speed) > 0.3 && Math.sign(speed) === Math.sign(dx);
+      if (!cancelled && (Math.abs(dx) > stage.clientWidth / 5 || flick)) {
         step(dx < 0 ? 1 : -1, Math.abs(dx));
       } else {
         shift(0);
         root.style.removeProperty("--orders-swipe-opacity");
       }
     };
-    stage.addEventListener("pointerup", (event) => endSwipe(event, false));
-    stage.addEventListener("pointercancel", (event) => endSwipe(event, true));
+    stage.addEventListener("touchend", (event) => endSwipe(event, false));
+    stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
       if (touching) return; // on a touch screen, the stack is for swiping; the slider brings out sheets
       const item = itemAt(pointer(event));
