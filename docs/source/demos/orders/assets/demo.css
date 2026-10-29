@@ -27,15 +27,14 @@
   --orders-box-edge: #ffffff;
   /* the estimation tax in the plot: the fit an estimated full decomposition falls short of */
   --orders-tax: #c2700a;
-  /* the projector: its foils (film, sheen, edge, how their ink lies over the card: multiplied on a
-     light card, screened on a dark one, so that the card's text shows through), the tape of their
-     labels, and the lamp's light around the card */
-  --orders-foil: rgba(214, 226, 246, 0.16);
-  --orders-foil-sheen: rgba(255, 255, 255, 0.7);
-  --orders-foil-edge: rgba(110, 126, 168, 0.4);
-  --orders-foil-blend: multiply;
-  --orders-tape: #f6efd9;
-  --orders-projector-light: rgba(255, 214, 120, 0.22);
+  /* the hologram: its layers' edge, glow, film and scan lines, the light down to the card, and how
+     the projected marks lie on the card (multiplied on a light one, screened on a dark one) */
+  --orders-holo-edge: rgba(64, 112, 224, 0.6);
+  --orders-holo-glow: rgba(86, 136, 255, 0.2);
+  --orders-holo-film: rgba(120, 160, 255, 0.04);
+  --orders-holo-line: rgba(86, 128, 232, 0.08);
+  --orders-holo-beam: rgba(110, 160, 255, 0.15);
+  --orders-holo-blend: multiply;
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -43,12 +42,12 @@ body[data-theme="dark"] .orders-demo {
   --orders-shade: rgba(0, 0, 0, 0.45);
   --orders-box-edge: #9aa1b4;
   --orders-tax: #f0a43a;
-  --orders-foil: rgba(150, 170, 220, 0.08);
-  --orders-foil-sheen: rgba(255, 255, 255, 0.12);
-  --orders-foil-edge: rgba(190, 200, 230, 0.3);
-  --orders-foil-blend: screen;
-  --orders-tape: #3a3628;
-  --orders-projector-light: rgba(255, 214, 120, 0.12);
+  --orders-holo-edge: rgba(130, 176, 255, 0.7);
+  --orders-holo-glow: rgba(90, 150, 255, 0.32);
+  --orders-holo-film: rgba(120, 170, 255, 0.06);
+  --orders-holo-line: rgba(140, 180, 255, 0.1);
+  --orders-holo-beam: rgba(120, 170, 255, 0.18);
+  --orders-holo-blend: screen;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -57,12 +56,12 @@ body[data-theme="dark"] .orders-demo {
     --orders-shade: rgba(0, 0, 0, 0.45);
     --orders-box-edge: #9aa1b4;
     --orders-tax: #f0a43a;
-    --orders-foil: rgba(150, 170, 220, 0.08);
-    --orders-foil-sheen: rgba(255, 255, 255, 0.12);
-    --orders-foil-edge: rgba(190, 200, 230, 0.3);
-    --orders-foil-blend: screen;
-    --orders-tape: #3a3628;
-    --orders-projector-light: rgba(255, 214, 120, 0.12);
+    --orders-holo-edge: rgba(130, 176, 255, 0.7);
+    --orders-holo-glow: rgba(90, 150, 255, 0.32);
+    --orders-holo-film: rgba(120, 170, 255, 0.06);
+    --orders-holo-line: rgba(140, 180, 255, 0.1);
+    --orders-holo-beam: rgba(120, 170, 255, 0.18);
+    --orders-holo-blend: screen;
   }
 }
 
@@ -641,133 +640,125 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
-/* -- the projector view (data-view="projector"): the input as a card on the glass of an overhead
-   projector, and every explanation as a transparent foil, laid onto the card from a tray ------- */
+/* -- the hologram view (data-view="hologram"): the input on a card at the bottom, and every
+   explanation on a glowing, see-through layer above it, which floats off the card while open --- */
 
-.orders-demo[data-view="projector"] .orders-demo-rail {
-  display: none;
-}
-
-/* no slider's column to keep clear: the window and the stack span the stage */
-.orders-demo[data-view="projector"] .orders-demo-view,
-.orders-demo[data-view="projector"] .orders-demo-stack {
-  inset: 0;
-}
-
-/* the projector's glass plate, and the card on it */
-.orders-demo-plate {
-  position: absolute;
-  box-sizing: border-box;
-  padding: 12px;
-  border: 1px solid var(--orders-line);
-  border-radius: 14px;
-  background: var(--orders-raised);
-  box-shadow: inset 0 1px 3px rgba(20, 28, 60, 0.06);
-}
-
-.orders-demo-glass {
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border: 1px solid var(--orders-line);
-  border-radius: 3%;
-  background: var(--orders-sheet);
-  transition: box-shadow var(--orders-move) var(--orders-settle);
-}
-
-/* with a foil on it, the card lies in the lamp's light */
-.orders-demo-lit .orders-demo-glass {
+/* a layer: film with scan lines and a glowing edge, nothing but the explanation's marks on it */
+.orders-demo-sheet.orders-demo-layer {
+  border-color: var(--orders-holo-edge);
+  background:
+    repeating-linear-gradient(0deg, var(--orders-holo-line) 0 1px, transparent 1px 6px),
+    var(--orders-holo-film);
   box-shadow:
-    0 0 0 4px var(--orders-projector-light),
-    0 0 28px 6px var(--orders-projector-light);
+    0 0 14px var(--orders-holo-glow),
+    inset 0 0 20px var(--orders-holo-glow);
+  transition:
+    transform var(--orders-move) var(--orders-settle),
+    opacity 360ms var(--orders-ease),
+    box-shadow 360ms var(--orders-ease),
+    background 360ms var(--orders-ease),
+    border-color 360ms var(--orders-ease);
 }
 
-.orders-demo-glass svg,
-.orders-demo-foil svg {
+.orders-demo-layer .orders-demo-tag {
+  fill: var(--orders-holo-edge);
+}
+
+/* open, the layers hang in the air, each floating a little (demo.js staggers them) */
+.orders-demo-holo-open .orders-demo-layer {
+  animation: orders-demo-float 3.6s ease-in-out infinite alternate;
+}
+
+@keyframes orders-demo-float {
+  from {
+    translate: 0 -2.5px;
+  }
+
+  to {
+    translate: 0 2.5px;
+  }
+}
+
+/* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
+.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-layer {
+  opacity: 0;
+}
+
+.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-holo-top {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* at rest, the card's name gives way to the top layer's, which lies on it */
+.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-card .orders-demo-tag {
+  opacity: 0;
+}
+
+/* the card wears the marks of the layer pointed at, projected (and a rested hologram's rows point
+   at nothing: their lines show only while the layers float) */
+.orders-demo-projection {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: var(--orders-holo-blend);
+  pointer-events: none;
+}
+
+.orders-demo-projection svg {
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
+  opacity: 0.85;
 }
 
-/* a foil: clear film with a sheen, its ink over what lies under it, and a tape label */
-.orders-demo-foil {
+.orders-demo[data-view="hologram"] .orders-demo-row::before {
+  transition:
+    width var(--orders-move) var(--orders-settle),
+    opacity 360ms var(--orders-ease);
+}
+
+.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-row::before {
+  opacity: 0;
+}
+
+/* a new example's layers take their places at once, as its sheets do */
+.orders-demo-instant .orders-demo-layer {
+  transition: none;
+}
+
+/* the light from the layer pointed at down to the card */
+.orders-demo-beam {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: 0;
-  box-sizing: border-box;
-  border: 1px solid var(--orders-foil-edge);
-  border-radius: 3%;
-  background: linear-gradient(135deg, var(--orders-foil-sheen), transparent 42%), var(--orders-foil);
-  box-shadow: 0 8px 22px var(--orders-shade);
-  cursor: pointer;
-  /* its ink lies over the card as ink on film does: what lies under it shows through (the blend
-     reaches the card: the foil is its own layer, the svg in it would blend with the film only) */
-  mix-blend-mode: var(--orders-foil-blend);
-  transform-origin: 0 0;
-  transition:
-    transform 560ms cubic-bezier(0.3, 1.2, 0.55, 1),
-    box-shadow 560ms var(--orders-settle),
-    background 560ms var(--orders-settle);
-  will-change: transform;
-}
-
-/* laid onto the card, a foil lies flat on the glass: hardly a shadow, a fainter sheen */
-.orders-demo-foil.orders-demo-on {
-  background: linear-gradient(135deg, var(--orders-foil-sheen), transparent 30%);
-  box-shadow: 0 1px 2px var(--orders-shade);
-}
-
-/* the tape over the foil's top edge, half on the film, clear of what the card shows */
-.orders-demo-foil-tab {
-  position: absolute;
-  top: 0;
-  left: 6%;
-  translate: 0 -50%;
-  padding: 0.15rem 0.45rem;
-  border-radius: 2px;
-  background: var(--orders-tape);
-  color: var(--orders-ink);
-  font-size: 0.75rem;
-  font-weight: 700;
-  rotate: -2deg;
-  box-shadow: 0 1px 2px var(--orders-shade);
-}
-
-/* the foil of the orders between: blank, its edge dashed */
-.orders-demo-foil-spare {
-  border-style: dashed;
-  cursor: default;
-}
-
-.orders-demo-foil-spare.orders-demo-peek {
-  border-color: var(--orders-ink);
-}
-
-/* on narrow screens, which have no ladder, a caption under every foil of the tray */
-.orders-demo-foil-caption {
-  display: none;
-  position: absolute;
-  color: var(--orders-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transform: translateX(-50%);
+  overflow: visible;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 360ms var(--orders-ease);
 }
 
-.orders-demo-narrow .orders-demo-foil-caption {
-  display: block;
+.orders-demo-beam.orders-demo-beam-on {
+  opacity: 1;
 }
 
-.orders-demo-foil-caption.orders-demo-on {
-  color: var(--orders-ink);
+.orders-demo-beam-top {
+  stop-color: var(--orders-holo-beam);
 }
 
-/* a new example's foils take their places at once */
-.orders-demo-instant .orders-demo-foil {
-  transition: none;
+.orders-demo-beam-bottom {
+  stop-color: var(--orders-holo-beam);
+  stop-opacity: 0.25;
+}
+
+.orders-demo-beam-edges {
+  fill: none;
+  stroke: var(--orders-holo-edge);
+  stroke-width: 0.75;
+  stroke-dasharray: 2 3;
+  opacity: 0.6;
 }
 
 /* the slider of the orders, in its column left of the stack (demo.js places its parts): an arrow

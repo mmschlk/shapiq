@@ -27,10 +27,12 @@
 // order. Where the examples do not fit in a row, a stepper goes from one to the next, and so does a
 // swipe across the stack.
 //
-// Another view, the projector (data-view="projector" on the demo; the docs show the stack): the
-// example's input as a card on the glass of an overhead projector, and every explanation as a
-// transparent foil, which lies in a tray beside the card until it is laid onto it, its ink over the
-// input. The rows, the plot, the stepper and the swipe work as in the stack.
+// Another view, the hologram (data-view="hologram" on the demo; the docs show the stack): the
+// example's input on a card at the bottom, and every explanation on a see-through layer above it,
+// its marks only. At rest, the layers lie on the card (the top one showing, on the input); while
+// the pointer is over the stage (or after a tap), they float off it, apart, and the layer pointed
+// at casts its light down onto the card, which wears its marks. The rows, the slider, the plot, the
+// stepper and the swipe work as in the stack.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -67,6 +69,8 @@
   const RAIL_LINE = 28;
   const RAIL_REST = 24;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
+  // the hologram: the air between its lowest layer and the input below, in units of a sheet's side
+  const AIR = 0.3;
   const PLOT = { height: 153, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 75
 
   const roundTo = (value, digits) => {
@@ -194,8 +198,8 @@
   const extentOf = (points) =>
     Math.max(...[0, 1].map((axis) => Math.max(...points.map((p) => p[axis])) - Math.min(...points.map((p) => p[axis]))));
 
-  // a face's layers: "all" for a sheet of the stack, or, for the projector, the "input" (what is
-  // explained, on the card under the lamp) or the "marks" (the explanation, on a transparent foil)
+  // a face's layers: "all" for a sheet of the stack, or, for the hologram, the "input" (what is
+  // explained, on the card at the bottom) or the "marks" (the explanation, on a layer above it)
   const shows = (layer, part) => layer === "all" || layer === part;
 
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
@@ -209,7 +213,7 @@
       // the groups' centers where shapiq's SI graph plot puts them (../compute/pack.py)
       drawGroups(svg, sheet, (atom) => position[atom], largest, widest, place);
       // a main effect: a disc around its atom, as much wider as a group of its value, over a disc
-      // of the sheet's color that hides the groups below it (on a sheet; a foil has no color)
+      // of the sheet's color that hides the groups below it (on a sheet; a layer has no color)
       const halos = add(svg, "g", { class: "orders-demo-halos" });
       sheet.first.forEach((value, atom) => {
         const ratio = Math.abs(value) / largest;
@@ -547,6 +551,13 @@
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
     const plotId = ++plots;
+    // the hologram (data-view="hologram"; the docs show the stack): the input on a card at the
+    // bottom, and the explanations on layers above it, which lie on the card at rest and float off
+    // it, apart, while the pointer is over the stage (or after a tap on the card), or a layer is
+    // pointed at
+    const holo = () => root.dataset.view === "hologram";
+    let hovering = false;
+    const exploded = () => hovering || state.active !== null || state.blank !== null;
 
     root.replaceChildren();
     const bar = el("div", "orders-demo-bar");
@@ -651,12 +662,12 @@
 
     const current = () => data.examples.find((example) => example.id === state.example);
     const sheetItems = () => items.filter((item) => item.sheet);
-    const blankItems = () => items.filter((item) => !item.sheet);
+    const blankItems = () => items.filter((item) => !item.sheet && !item.base);
+    const stopItems = () => items.filter((item) => !item.base); // the slider's: no stop at the card
 
     // -- geometry: the size of the sheets, the stage, and every sheet's place ------------------------
 
     function measure() {
-      if (projecting()) return measureProjector();
       const width = stage.clientWidth;
       const narrow = width < 560;
       // the rows of the ladder: room for a bar, the R^2 and the verdict, all as wide; on narrow
@@ -671,9 +682,11 @@
       // the same height for every example: the most sheets and blank sheets of any
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
       const blanks = Math.max(...data.examples.map((example) => between(example).length));
-      const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side;
-      // a sheet slides out to the left: the stack lies right of the middle by half of that
-      const slideBy = SLIDE * side * spread;
+      const air = holo() ? AIR * side : 0; // the hologram's card, below its layers
+      const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side + air;
+      // a sheet slides out to the left: the stack lies right of the middle by half of that (in the
+      // hologram, none does)
+      const slideBy = holo() ? 0 : SLIDE * side * spread;
       return {
         width,
         narrow,
@@ -689,6 +702,7 @@
     // the place (center) of every item: stacked so that a strip of every sheet shows below the one
     // above it, and the one pointed at slid out to the side of the stack
     function layout(active) {
+      if (holo()) return holoLayout(exploded());
       const g = geometry;
       const pointed = active === null ? null : sheetItems()[active];
       const h = g.sheetHeight;
@@ -704,6 +718,22 @@
         x: g.center - (item === pointed ? g.slideBy : 0),
         y: centers[position] + offset + (item.order === state.blank ? PEEK * g.side : 0),
       }));
+    }
+
+    // the hologram's places: open, its layers as the stack's sheets, and the card a breath of air
+    // below the lowest; at rest, every layer on the card, in the middle of the stage
+    function holoLayout(open) {
+      const g = geometry;
+      const h = g.sheetHeight;
+      const centers = [];
+      let bottom = 0;
+      items.forEach((item, position) => {
+        if (position === 0) bottom = h;
+        else bottom += (item.base ? AIR : item.sheet ? STRIP : BLANK_STRIP) * g.side;
+        centers.push(bottom - h / 2);
+      });
+      const offset = (g.height - bottom) / 2;
+      return items.map((_, position) => ({ x: g.center, y: open ? centers[position] + offset : g.height / 2 }));
     }
 
     // the corners of a sheet on the stage (left, top, right, bottom for the turn of -45 degrees)
@@ -743,6 +773,12 @@
     // at rest, and the one slid out also where it shows: else the sheet would slide away from under
     // the pointer, hand it to the sheet below, and come back for it, over and over.
     function itemAt(point) {
+      if (holo()) {
+        const places = holoLayout(true);
+        const order = items.map((_, position) => position).sort((a, b) => zIndex(items[b]) - zIndex(items[a]));
+        const position = order.find((p) => inside(point, corners(places[p])));
+        return position === undefined ? null : items[position];
+      }
       const sliding = state.active !== null;
       const places = layout(null);
       const order = items.map((_, position) => position);
@@ -847,25 +883,49 @@
 
     // a sheet of an example: its face, and its name along the bottom edge, from the bottom corner
     // (the part of a sheet that shows)
-    function drawSheet(example, i) {
+    // (all of it, or, for a layer of the hologram, its marks, or for its card, the input)
+    function drawSheet(example, i, layer = "all") {
       const sheet = example.sheets[i];
-      const node = el("div", "orders-demo-sheet");
+      const node = el("div", layer === "marks" ? "orders-demo-sheet orders-demo-layer" : "orders-demo-sheet");
       const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
-      if (example.kind === "graph") moleculeFace(svg, example, sheet);
-      else if (example.kind === "tree") treeFace(svg, example, sheet);
-      else if (example.kind === "heatmap") heatmapFace(svg, example, sheet);
-      else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${example.id}-${i}`);
-      add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, sheetName(sheet).face);
+      if (example.kind === "graph") moleculeFace(svg, example, sheet, layer);
+      else if (example.kind === "tree") treeFace(svg, example, sheet, layer);
+      else if (example.kind === "heatmap") heatmapFace(svg, example, sheet, layer);
+      else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${example.id}-${layer}-${i}`, layer);
+      add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, layer === "input" ? "Input" : sheetName(sheet).face);
       return node;
     }
-    // every example's sheets, drawn once: an example chosen again shows them as they were drawn
+    // every example's sheets, drawn once: an example chosen again shows them as they were drawn (the
+    // hologram's layers apart from the stack's sheets)
     const drawn = new Map();
     function sheetsOf(example) {
-      const nodes = drawn.get(example.id) ?? [];
-      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i));
-      drawn.set(example.id, nodes);
+      const layer = holo() ? "marks" : "all";
+      const key = holo() ? `${example.id} hologram` : example.id;
+      const nodes = drawn.get(key) ?? [];
+      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i, layer));
+      drawn.set(key, nodes);
       return nodes;
     }
+    // the hologram's card: the input, and over it, the marks of the layer pointed at, projected
+    const cards = new Map();
+    function cardOf(example) {
+      if (!cards.has(example.id)) {
+        const card = drawSheet(example, 0, "input");
+        card.classList.add("orders-demo-card");
+        card.append(el("div", "orders-demo-projection"));
+        cards.set(example.id, card);
+      }
+      return cards.get(example.id);
+    }
+    // the light between the layer pointed at and the card
+    const beam = document.createElementNS(SVG, "svg");
+    beam.setAttribute("class", "orders-demo-beam");
+    beam.setAttribute("aria-hidden", "true");
+    const glow = add(add(beam, "defs"), "linearGradient", { id: `orders-beam-${plotId}`, x1: 0, y1: 0, x2: 0, y2: 1 });
+    add(glow, "stop", { offset: 0, class: "orders-demo-beam-top" });
+    add(glow, "stop", { offset: 1, class: "orders-demo-beam-bottom" });
+    const beamHull = add(beam, "polygon", { fill: `url(#orders-beam-${plotId})` });
+    const beamEdges = add(beam, "path", { class: "orders-demo-beam-edges" });
     // the examples not shown yet, drawn while the page is idle, a sheet at a time, so that choosing
     // one only has to show it
     const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 100));
@@ -876,146 +936,6 @@
       nodes.push(drawSheet(example, nodes.length));
       drawn.set(example.id, nodes);
       idle(drawAhead);
-    }
-
-    // -- the projector: the example's input as a card on the glass of an overhead projector, and its
-    // explanations as transparent foils, one per order, that lie in a tray beside it until one is
-    // laid onto the card (data-view="projector" on the demo; the stack is the default view)
-
-    const projecting = () => root.dataset.view === "projector";
-    // the projector's pieces of an example, drawn once: the card under the lamp (the input), a foil
-    // for every sheet (the explanation's marks), a blank foil for the orders between, and for each
-    // foil, in the tray's order, a caption (shown on narrow screens, which have no ladder)
-    const projected = new Map();
-    function projectorOf(example) {
-      if (projected.has(example.id)) return projected.get(example.id);
-      const draw = (sheet, layer, i) => {
-        const svg = document.createElementNS(SVG, "svg");
-        svg.setAttribute("viewBox", "0 0 100 100");
-        if (example.kind === "graph") moleculeFace(svg, example, sheet, layer);
-        else if (example.kind === "tree") treeFace(svg, example, sheet, layer);
-        else if (example.kind === "heatmap") heatmapFace(svg, example, sheet, layer);
-        else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${example.id}-${layer}-${i}`, layer);
-        return svg;
-      };
-      const plate = el("div", "orders-demo-plate");
-      const glass = el("div", "orders-demo-glass");
-      glass.append(draw(example.sheets[0], "input", 0));
-      plate.append(glass);
-      const foils = example.sheets.map((sheet, i) => {
-        const foil = el("div", "orders-demo-foil");
-        foil.append(draw(sheet, "marks", i), el("span", "orders-demo-foil-tab", sheetName(sheet).tag));
-        return foil;
-      });
-      const tray = foils.map((node, i) => ({ node, index: i, caption: sheetName(example.sheets[i]).tag }));
-      const blanks = between(example);
-      if (blanks.length) {
-        const span = `${blanks[0][0]}–${example.sheets.at(-1).order - 1}`;
-        const spare = el("div", "orders-demo-foil orders-demo-foil-spare");
-        spare.append(el("span", "orders-demo-foil-tab", span));
-        tray.splice(-1, 0, { node: spare, index: null, order: blanks[0][0], caption: span });
-      }
-      for (const item of tray) item.label = el("span", "orders-demo-foil-caption", item.caption);
-      const pieces = { plate, glass, foils, tray };
-      projected.set(example.id, pieces);
-      return pieces;
-    }
-
-    // the card on its plate, and beside it (below it, on narrow screens) the tray: the foils as
-    // small as a thumbnail, one under the other (beside each other), with the ladder's rows beside
-    function measureProjector() {
-      const width = stage.clientWidth;
-      const narrow = width < 560;
-      const count = projectorOf(current()).tray.length;
-      const pad = 12; // the plate around the card
-      if (narrow) {
-        const card = Math.min(width - 2 * pad, 420);
-        const gap = 8;
-        const thumb = Math.min(64, (width - (count - 1) * gap) / count);
-        const trayTop = card + 2 * pad + 16;
-        return {
-          narrow,
-          card,
-          pad,
-          plate: [(width - card - 2 * pad) / 2, 0],
-          thumb,
-          tray: Array.from({ length: count }, (_, k) => [(width - count * thumb - (count - 1) * gap) / 2 + k * (thumb + gap), trayTop]),
-          height: Math.ceil(trayTop + thumb + 26),
-        };
-      }
-      const ladderWidth = Math.min(256, width * 0.32);
-      const thumb = 76;
-      const card = Math.max(160, Math.min(380, width - ladderWidth - thumb - 2 * pad - 48));
-      const trayLeft = card + 2 * pad + 24;
-      const step = (card + 2 * pad - thumb) / Math.max(1, count - 1);
-      return {
-        narrow,
-        card,
-        pad,
-        plate: [0, 0],
-        thumb,
-        tray: Array.from({ length: count }, (_, k) => [trayLeft, k * step]),
-        ladderLeft: trayLeft + thumb + 18,
-        height: Math.ceil(card + 2 * pad + 8),
-      };
-    }
-
-    // the tray's foil under a point of the stage, by where the foils lie in the tray (not where one
-    // flies to), so that a foil laid onto the card hands the pointer to no other
-    function trayAt([x, y]) {
-      const g = geometry;
-      const tray = projectorOf(current()).tray;
-      const step = g.narrow ? null : tray.length > 1 ? g.tray[1][1] - g.tray[0][1] : g.thumb;
-      const k = tray.findIndex((_, i) => {
-        const [left, top] = g.tray[i];
-        if (x < left || x > left + g.thumb) return false;
-        return g.narrow ? y >= top && y <= top + g.thumb : y >= top && y < top + (i === tray.length - 1 ? g.thumb : step);
-      });
-      return k < 0 ? null : tray[k];
-    }
-
-    // lay the foil pointed at onto the card, and every other one into the tray
-    function placeProjector(active) {
-      const g = geometry;
-      const pieces = projectorOf(current());
-      stage.style.height = `${g.height}px`;
-      root.classList.toggle("orders-demo-narrow", g.narrow);
-      const out = typeof active === "number";
-      const [px, py] = g.plate;
-      Object.assign(pieces.plate.style, { left: `${px}px`, top: `${py}px`, width: `${g.card + 2 * g.pad}px`, height: `${g.card + 2 * g.pad}px` });
-      pieces.plate.classList.toggle("orders-demo-lit", out);
-      pieces.tray.forEach((item, k) => {
-        const on = out && item.index === active;
-        const [x, y] = on ? [px + g.pad, py + g.pad] : g.tray[k];
-        // in the tray, a foil lies a little askew, every other one the other way
-        const scale = on ? 1 : g.thumb / g.card;
-        const turn = on ? 0 : (k % 2 ? -1 : 1) * (g.narrow ? 2 : 3);
-        Object.assign(item.node.style, {
-          width: `${g.card}px`,
-          height: `${g.card}px`,
-          zIndex: on ? 50 : k + 1,
-          transform: `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) rotate(${turn}deg) scale(${roundTo(scale, 4)})`,
-        });
-        item.node.classList.toggle("orders-demo-on", on);
-        item.node.classList.toggle("orders-demo-peek", item.index === null && state.blank !== null);
-        const [lx, ly] = g.tray[k];
-        Object.assign(item.label.style, { left: `${roundTo(lx + g.thumb / 2, 2)}px`, top: `${roundTo(ly + g.thumb + 5, 2)}px` });
-        item.label.classList.toggle("orders-demo-on", on || (item.index === null && state.blank !== null));
-        // the ladder's row of a foil, beside it in the tray
-        const row = item.index === null ? blankRow : rows[item.index];
-        if (!row || g.narrow) return;
-        row.style.left = `${g.ladderLeft}px`;
-        row.style.transform = `translateY(${roundTo(ly + g.thumb / 2, 2)}px) translateY(-50%)`;
-        row.style.setProperty("--orders-lead", "14px");
-        if (item.index === null) {
-          row.classList.toggle("orders-demo-active", state.blank !== null);
-          row.querySelector(".orders-demo-row-name").textContent =
-            state.blank !== null ? `Order ${state.blank}: R² ${fit2(fitOf(current(), state.blank)[1])}` : `Orders ${item.caption}`;
-        } else {
-          row.classList.toggle("orders-demo-active", on);
-          row.setAttribute("aria-pressed", String(state.pinned && on));
-        }
-      });
     }
 
     function render() {
@@ -1042,8 +962,7 @@
 
       const last = example.sheets.at(-1);
       items = [];
-      const projector = projecting();
-      const nodes = projector ? projectorOf(example).foils : sheetsOf(example);
+      const nodes = sheetsOf(example);
       example.sheets.forEach((sheet, i) => {
         if (sheet === last) {
           for (const fit of between(example)) items.push({ order: fit[0], fit });
@@ -1051,8 +970,10 @@
         items.push({ order: sheet.order, sheet, index: i, node: nodes[i] });
       });
       for (const item of items) {
-        if (!item.sheet && !projector) item.node = el("div", "orders-demo-sheet orders-demo-blank");
+        if (!item.sheet) item.node = el("div", holo() ? "orders-demo-sheet orders-demo-blank orders-demo-layer" : "orders-demo-sheet orders-demo-blank");
       }
+      hovering = false;
+      if (holo()) items.push({ order: 0, base: true, node: cardOf(example) });
 
       rows = example.sheets.map((sheet, i) => {
         const names = sheetName(sheet);
@@ -1094,7 +1015,7 @@
         ladder.append(row);
         return row;
       });
-      ticks.replaceChildren(...items.map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
+      ticks.replaceChildren(...stopItems().map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
 
       // one row for all blank sheets: the orders between, which the plot shows one by one
       blankRow = null;
@@ -1114,45 +1035,51 @@
       // properties of their edges, which every element inherits) would do so again
       root.classList.add("orders-demo-instant");
       place(null);
-      if (projector) {
-        const { plate, tray } = projectorOf(example);
-        stack.append(plate, ...tray.map((item) => item.node), ...tray.map((item) => item.label));
-      } else {
-        stack.append(...items.map((item) => item.node));
-      }
+      stack.append(...items.map((item) => item.node));
+      if (holo()) stack.append(beam);
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
     }
 
     // move every sheet and row to its place, for a sheet slid out (or null at rest)
     function place(active) {
-      if (projecting()) {
-        placeProjector(active);
-        return;
-      }
       const g = geometry;
       stage.style.height = `${g.height}px`;
       root.classList.toggle("orders-demo-narrow", g.narrow);
       const out = typeof active === "number";
       const places = layout(active);
+      // the hologram's rows, slider and beam keep to where its layers float, open or at rest
+      const hologram = holo();
+      const anchors = hologram ? holoLayout(true) : places;
+      const open = hologram && exploded();
+      const opening = hologram && open !== root.classList.contains("orders-demo-holo-open");
+      root.classList.toggle("orders-demo-holo-open", open);
       const rowY = []; // the height of every sheet's row, for the row of the blank sheets
       items.forEach((item, position) => {
         const { x, y } = places[position];
         const node = item.node;
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
-        node.style.zIndex = zIndex(item);
+        node.style.zIndex = item.base ? 0 : zIndex(item);
+        if (hologram) {
+          // the layers peel off the card one after the other, the top one first, and settle back
+          // onto it the lowest first; each floats a little, in a rhythm of its own
+          const delay = opening ? (open ? position : items.length - position) * 45 : 0;
+          node.style.transitionDelay = `${delay}ms`;
+          node.style.animationDelay = `${-position * 0.9}s`;
+          node.classList.toggle("orders-demo-holo-top", position === 0);
+        }
         node.style.transform = `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scaleY(${TILT}) rotate(${(TURN * 180) / Math.PI}deg)`;
         // the edge below the face, in the face's own coordinates: straight down on the stage
         const depth = (item.sheet ? THICKNESS : THICKNESS / 2) / TILT;
         node.style.setProperty("--orders-edge-x", `${roundTo(Math.sin(TURN) * depth, 2)}px`);
         node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
-        node.classList.toggle("orders-demo-receded", out && item.index !== active);
+        node.classList.toggle("orders-demo-receded", out && !item.base && item.index !== active);
         node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
 
         if (!item.sheet) return;
         const row = rows[item.index];
-        const right = rightCorner(places[position]);
+        const right = rightCorner(anchors[position]);
         rowY[item.index] = right[1];
         row.style.left = `${g.ladderLeft}px`;
         row.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
@@ -1163,10 +1090,10 @@
 
       // the slider: its stops at the middles of the sheets at rest (without a blank sheet's peek), its
       // line from its rest down to the bottom sheet, and its handle at the sheet pointed at
-      const rest = layout(null);
+      const rest = hologram ? anchors : layout(null);
       stops = [
         { y: Math.max(10, rest[0].y - RAIL_REST), item: null },
-        ...items.map((item, p) => ({ y: rest[p].y - (item.order === state.blank ? PEEK * g.side : 0), item })),
+        ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y - (!hologram && item.order === state.blank ? PEEK * g.side : 0), item })),
       ];
       const [top, bottom] = [stops[0].y, stops.at(-1).y];
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
@@ -1193,8 +1120,8 @@
       if (blankRow) {
         const blanks = blankItems();
         const target = blanks[Math.floor((blanks.length - 1) / 2)];
-        const right = rightCorner(places[items.indexOf(target)]);
-        if (target.order === state.blank) right[1] -= PEEK * g.side;
+        const right = rightCorner(anchors[items.indexOf(target)]);
+        if (!hologram && target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
         // beside the blank sheet, but clear of the rows above and below it
         const [above, below] = [rows.length - 2, rows.length - 1];
@@ -1213,6 +1140,34 @@
             ? `Order ${state.blank}: R² ${fit2(blanks.find((item) => item.order === state.blank).fit[1])}`
             : `Orders ${first}–${last}`;
       }
+      if (hologram) project(out ? sheetItems()[active] : null, anchors);
+    }
+
+    // the hologram's light: from the layer pointed at down to the card, whose input then wears the
+    // layer's marks (or none)
+    const projected = new WeakMap(); // every card's projection: the node of the layer it wears
+    function project(item, anchors) {
+      const card = items.find((other) => other.base);
+      beam.classList.toggle("orders-demo-beam-on", Boolean(item));
+      if ((projected.get(card.node) ?? null) !== (item?.node ?? null)) {
+        const marks = item?.node.querySelector(".orders-demo-face").cloneNode(true);
+        marks?.querySelector(".orders-demo-tag")?.remove();
+        card.node.querySelector(".orders-demo-projection").replaceChildren(...(marks ? [marks] : []));
+        projected.set(card.node, item?.node ?? null);
+      }
+      if (!item) return;
+      beam.setAttribute("width", geometry.width);
+      beam.setAttribute("height", geometry.height);
+      // the hull of the layer and the card, one above the other: the layer's left, top and right
+      // corners, the card's right, bottom and left ones; and the edges between their corners
+      const [upper, lower] = [corners(anchors[items.indexOf(item)]), corners(anchors[items.indexOf(card)])];
+      const by = (points, pick) => points.reduce(pick);
+      const left = (a, b) => (b[0] < a[0] ? b : a);
+      const right = (a, b) => (b[0] > a[0] ? b : a);
+      const hull = [by(upper, left), by(upper, (a, b) => (b[1] < a[1] ? b : a)), by(upper, right), by(lower, right), by(lower, (a, b) => (b[1] > a[1] ? b : a)), by(lower, left)];
+      const f = ([x, y]) => `${roundTo(x, 1)},${roundTo(y, 1)}`;
+      beamHull.setAttribute("points", hull.map(f).join(" "));
+      beamEdges.setAttribute("d", upper.map((p, k) => `M${f(p)}L${f(lower[k])}`).join(""));
     }
 
     // -- the plot of the fit by order: a ring on the line marks the order pointed at -------------
@@ -1490,19 +1445,21 @@
     };
     stage.addEventListener("pointermove", (event) => {
       if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail")) return;
-      if (projecting()) {
-        // a foil of the tray pointed at is laid onto the card; over the card, it stays there
-        const foil = trayAt(pointer(event));
-        if (foil) point(foil.index, foil.index === null ? foil.order : null);
-        return;
+      if (holo() && !hovering) {
+        hovering = true;
+        place(state.active);
       }
       const item = itemAt(pointer(event));
+      if (item?.base) return;
       if (item?.sheet) point(item.index, null);
       // a blank sheet comes out only from the stack at rest, which it does not change
       else if (item && state.active === null) point(null, item.order);
     });
     stage.addEventListener("pointerleave", (event) => {
-      if (event.pointerType === "mouse" && !state.pinned) point(null, null);
+      if (event.pointerType !== "mouse" || state.pinned) return;
+      hovering = false;
+      if (state.active !== null || state.blank !== null) point(null, null);
+      else if (holo()) place(null);
     });
     // on a touch screen, a swipe sideways across the stack goes to the next example or the previous
     // one, as the stepper does: the stack follows the finger, fading, and past a fifth of its width,
@@ -1565,15 +1522,21 @@
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
       if (performance.now() - swiped < 400) return; // the end of a swipe, not a tap
-      if (projecting()) {
-        // a foil of the tray is laid onto the card, or taken back; a tap on the card takes back
-        // the foil on it
-        const foil = trayAt(pointer(event));
-        if (foil) toggle(foil.index, foil.index === null ? foil.order : null);
-        else if (state.pinned) toggle(state.active, state.blank);
+      if (holo() && !exploded()) {
+        // a tap on the hologram at rest opens it: its layers float off the card, none pointed at
+        hovering = true;
+        place(null);
         return;
       }
       const item = itemAt(pointer(event));
+      if (holo() && (item === null || item.base)) {
+        // open, a tap on the card, or beside the layers, closes it again
+        state.pinned = false;
+        hovering = false;
+        if (state.active !== null || state.blank !== null) point(null, null);
+        else place(null);
+        return;
+      }
       if (item === null) {
         state.pinned = false;
         point(null, null);
@@ -1599,7 +1562,7 @@
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
-    // the view, a stack or a projector, follows the demo's data-view attribute
+    // the view, a stack or a hologram, follows the demo's data-view attribute
     new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view"] });
 
     // the first example fades in, as every next one
