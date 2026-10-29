@@ -62,7 +62,10 @@
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
   const PLOT = { height: 172, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 94
 
-  const roundTo = (value, digits) => Number(value.toFixed(digits));
+  const roundTo = (value, digits) => {
+    const scale = 10 ** digits;
+    return (Math.sign(value) * Math.round(Math.abs(value) * scale)) / scale;
+  };
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -126,29 +129,33 @@
     );
   };
 
+  // a disc as a path, clockwise as every bowtie: in one path with them, it is filled once where
+  // they overlap (nonzero)
+  const discPath = (x, y, r) =>
+    `M${roundTo(x - r, 2)} ${y}A${r} ${r} 0 0 1 ${roundTo(x + r, 2)} ${y}A${r} ${r} 0 0 1 ${roundTo(x - r, 2)} ${y}Z`;
+
   // the smallest share of the largest value on a sheet that is drawn at all
   const FAINTEST = 0.01;
 
   // an interaction of two or more players: every player joined to the group's center (for a pair,
   // to the other player; else, where given, or the players' centroid), in red or blue; as shapiq's
   // SI graph plot draws it, as wide (widest for the largest value) and as opaque as its share of
-  // the largest value on its sheet
+  // the largest value on its sheet. Its shapes are one path, so that it shows as one shape, as
+  // opaque where they overlap as elsewhere, without a group's opacity (a layer of its own to paint)
   const drawGroup = (parent, points, value, largest, widest, at) => {
     const ratio = Math.abs(value) / largest;
     if (ratio < FAINTEST) return;
     const width = widest * ratio;
-    const group = add(parent, "g", { fill: solid(value), opacity: roundTo(ratio, 3) });
     const center =
       points.length === 2
         ? points[1]
         : (at ?? [0, 1].map((axis) => points.reduce((sum, p) => sum + p[axis], 0) / points.length));
-    for (const p of points.length === 2 ? [points[0]] : points) {
-      const d = bowtie(p, center, width);
-      if (d) add(group, "path", { d });
-    }
+    let d = "";
+    for (const p of points.length === 2 ? [points[0]] : points) d += bowtie(p, center, width);
     for (const [x, y] of points.length === 2 ? points : [...points, center]) {
-      add(group, "circle", { cx: roundTo(x, 2), cy: roundTo(y, 2), r: roundTo(width / 2, 2) });
+      d += discPath(roundTo(x, 2), roundTo(y, 2), roundTo(width / 2, 2));
     }
+    add(parent, "path", { d, fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
   };
 
   // the groups of a sheet; a group's center, where the data gives one, is placed by place
@@ -201,7 +208,7 @@
         r: roundTo(radius + (widest * ratio) / 2, 2),
       };
       add(halos, "circle", { ...disc, class: "orders-demo-halo-ground" });
-      add(halos, "circle", { ...disc, fill: solid(value), opacity: roundTo(ratio, 3) });
+      add(halos, "circle", { ...disc, fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
     });
     const bonds = add(svg, "g", { class: "orders-demo-bonds" });
     for (const [i, j] of example.bonds) {
@@ -265,7 +272,7 @@
         width: roundTo(cell, 2),
         height: roundTo(cell, 2),
         fill: solid(value),
-        opacity: roundTo(ratio, 3),
+        "fill-opacity": roundTo(ratio, 3),
       });
     });
     const lines = add(image, "g", { class: "orders-demo-grid" });
@@ -295,7 +302,7 @@
           height: roundTo(height, 2),
           rx: 1.4,
           fill: solid(value),
-          opacity: roundTo(ratio, 3),
+          "fill-opacity": roundTo(ratio, 3),
         });
       }
       add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
@@ -355,7 +362,7 @@
           d: `M${roundTo(x1, 2)} ${roundTo(y1, 2)}C${roundTo(x1, 2)} ${roundTo(y1 - bend, 2)} ${roundTo(x2, 2)} ${roundTo(top + bend, 2)} ${roundTo(x2, 2)} ${top}`,
           stroke: solid(node.value),
           "stroke-width": roundTo(0.2 + 1.3 * ratio, 2),
-          opacity: roundTo(0.18 + 0.6 * ratio, 3),
+          "stroke-opacity": roundTo(0.18 + 0.6 * ratio, 3),
         });
       }
     }
@@ -368,7 +375,7 @@
         cy: roundTo(node.y, 2),
         r: roundTo(r, 2),
         fill: solid(node.value),
-        opacity: roundTo(0.4 + 0.6 * ratio, 3),
+        "fill-opacity": roundTo(0.4 + 0.6 * ratio, 3),
       });
       if (ratio >= 0.25) {
         add(groups, "text", { x: roundTo(node.x + r + 1, 2), y: roundTo(node.y, 2) }, dollars(node.value));
@@ -389,7 +396,7 @@
           cy: top,
           r: roundTo(2.2 + 4.4 * ratio, 2),
           fill: solid(sheet.first[feature]),
-          opacity: roundTo(0.15 + 0.85 * ratio, 3),
+          "fill-opacity": roundTo(0.15 + 0.85 * ratio, 3),
         });
       }
       add(features, "circle", { cx: x, cy: top, r: 2 });
@@ -510,7 +517,6 @@
     // what is pointed at: a sheet slid out (its index), or the blank sheet of an order between
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
-    let instance = 0;
     const plotId = ++plots;
 
     root.replaceChildren();
@@ -745,9 +751,41 @@
 
     // -- drawing --------------------------------------------------------------------------------
 
+    // a sheet of an example: its face, and its name along the bottom edge, from the bottom corner
+    // (the part of a sheet that shows)
+    function drawSheet(example, i) {
+      const sheet = example.sheets[i];
+      const node = el("div", "orders-demo-sheet");
+      const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
+      if (example.kind === "graph") moleculeFace(svg, example, sheet);
+      else if (example.kind === "tree") treeFace(svg, example, sheet);
+      else if (example.kind === "heatmap") heatmapFace(svg, example, sheet);
+      else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${example.id}-${i}`);
+      add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, sheetName(sheet).face);
+      return node;
+    }
+    // every example's sheets, drawn once: an example chosen again shows them as they were drawn
+    const drawn = new Map();
+    function sheetsOf(example) {
+      const nodes = drawn.get(example.id) ?? [];
+      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i));
+      drawn.set(example.id, nodes);
+      return nodes;
+    }
+    // the examples not shown yet, drawn while the page is idle, a sheet at a time, so that choosing
+    // one only has to show it
+    const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 100));
+    function drawAhead() {
+      const example = data.examples.find((other) => (drawn.get(other.id)?.length ?? 0) < other.sheets.length);
+      if (!example) return;
+      const nodes = drawn.get(example.id) ?? [];
+      nodes.push(drawSheet(example, nodes.length));
+      drawn.set(example.id, nodes);
+      idle(drawAhead);
+    }
+
     function render() {
       const example = current();
-      instance += 1;
       Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
@@ -767,24 +805,16 @@
 
       const last = example.sheets.at(-1);
       items = [];
+      const nodes = sheetsOf(example);
       example.sheets.forEach((sheet, i) => {
         if (sheet === last) {
           for (const fit of between(example)) items.push({ order: fit[0], fit });
         }
-        const node = el("div", "orders-demo-sheet");
-        const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
-        if (example.kind === "graph") moleculeFace(svg, example, sheet);
-        else if (example.kind === "tree") treeFace(svg, example, sheet);
-        else if (example.kind === "heatmap") heatmapFace(svg, example, sheet);
-        else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${instance}-${i}`);
-        // the name along the bottom edge, from the bottom corner: the part of a sheet that shows
-        add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, sheetName(sheet).face);
-        items.push({ order: sheet.order, sheet, index: i, node });
+        items.push({ order: sheet.order, sheet, index: i, node: nodes[i] });
       });
       for (const item of items) {
         if (!item.sheet) item.node = el("div", "orders-demo-sheet orders-demo-blank");
       }
-      stack.append(...items.map((item) => item.node));
 
       rows = example.sheets.map((sheet, i) => {
         const names = sheetName(sheet);
@@ -840,9 +870,13 @@
       }
 
       drawPlot();
-      // a new example shows at rest at once: its sheets and rows take their places without moving
+      // a new example shows at rest at once: its sheets and rows take their places without moving.
+      // Its sheets join the stack only now, placed: measuring the plot and the rows would else style
+      // and lay out every element of their faces, and placing them (their size, and the custom
+      // properties of their edges, which every element inherits) would do so again
       root.classList.add("orders-demo-instant");
       place(null);
+      stack.append(...items.map((item) => item.node));
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
     }
@@ -1241,6 +1275,7 @@
     render();
     movePill(true);
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("orders-demo-fading")));
+    idle(drawAhead);
   }
 
   // -- loading ----------------------------------------------------------------------------------------

@@ -51,6 +51,7 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-ladder,
 .orders-demo-plot-svg {
   transition: opacity 420ms var(--orders-ease);
+  will-change: opacity; /* a layer of its own already: a fade neither starts nor ends with a repaint */
 }
 
 .orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg) {
@@ -306,6 +307,7 @@ body[data-theme="dark"] .orders-demo {
   height: 100%;
   overflow: visible;
   transition: opacity var(--orders-move) var(--orders-settle);
+  will-change: opacity; /* a layer of its own: stepping back neither starts nor ends with a repaint */
 }
 
 /* while a sheet is slid out, the others step back */
