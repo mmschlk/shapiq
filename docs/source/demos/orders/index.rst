@@ -28,10 +28,10 @@ raises the prediction, blue lowers it; the larger and the more opaque, the stron
 beside the stack, an arrow down, points to the more complex and more faithful explanations: every
 order below has more values, and fits the model more closely (see the fit, below). Point at a sheet
 to slide it out of the stack, or drag the slider's handle down through the orders (on a touch
-screen, tap a sheet or drag the handle). Where the examples do not fit in a row, as on a phone, the
-arrows above the stack, or a swipe across it, step from one example to the next. Above the stack,
-an icon shows the kind of model: a tree for tree ensembles, a graph for graph neural networks, and
-a black box for any other model.
+screen, drag the handle, or tap an order on the plot). Where the examples do not fit in a row, as on
+a phone, the arrows above the stack, or a swipe across it, step from one example to the next. Above
+the stack, an icon shows the kind of model: a tree for tree ensembles, a graph for graph neural
+networks, and a black box for any other model.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
 the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output

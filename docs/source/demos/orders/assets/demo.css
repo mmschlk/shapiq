@@ -54,6 +54,21 @@ body[data-theme="dark"] .orders-demo {
   will-change: opacity; /* a layer of its own already: a fade neither starts nor ends with a repaint */
 }
 
+.orders-demo-stack {
+  translate: var(--orders-shift, 0px) 0;
+  opacity: var(--orders-swipe-opacity, 1);
+  transition:
+    opacity 420ms var(--orders-ease),
+    translate 420ms var(--orders-ease);
+  will-change: opacity, translate;
+}
+
+/* while a finger swipes the stack, it follows at once; a new stack takes its side at once */
+.orders-demo-swiping .orders-demo-stack,
+.orders-demo-jump .orders-demo-stack {
+  transition: none;
+}
+
 .orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg) {
   opacity: 0;
   transition-duration: 160ms;
@@ -128,8 +143,10 @@ body[data-theme="dark"] .orders-demo {
     transform 120ms var(--orders-ease);
 }
 
-.orders-demo-option:hover {
-  color: var(--orders-ink);
+@media (hover: hover) {
+  .orders-demo-option:hover {
+    color: var(--orders-ink);
+  }
 }
 
 .orders-demo-option:active {
@@ -289,7 +306,11 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-stage {
   position: relative;
-  touch-action: pan-y pinch-zoom; /* a swipe sideways steps through the examples (demo.js) */
+  overflow-x: clip; /* a stack swiped or slid aside does not widen the page */
+  /* a swipe sideways steps through the examples (demo.js), up or down scrolls the page; Safari,
+     which knows no pinch-zoom here, keeps the first */
+  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 /* the model of the example, under the examples */
@@ -395,9 +416,17 @@ body[data-theme="dark"] .orders-demo {
   stroke-width: 2.2;
 }
 
+/* the stack's window: from the slider's column to the stage's edge, it cuts off a stack swiped or
+   slid aside; the stack within lies over the whole stage, as the rows' coordinates assume */
+.orders-demo-view {
+  position: absolute;
+  inset: 0 0 0 calc(var(--orders-rail, 0px) - 6px);
+  overflow-x: clip;
+}
+
 .orders-demo-stack {
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 calc(6px - var(--orders-rail, 0px));
 }
 
 .orders-demo-sheet {
@@ -672,8 +701,10 @@ body[data-theme="dark"] .orders-demo {
     0 1px 4px var(--orders-shade);
 }
 
-.orders-demo-rail:hover .orders-demo-thumb {
-  scale: 1.12;
+@media (hover: hover) {
+  .orders-demo-rail:hover .orders-demo-thumb {
+    scale: 1.12;
+  }
 }
 
 .orders-demo-thumb:focus-visible {
@@ -794,9 +825,14 @@ body[data-theme="dark"] .orders-demo {
   content: ", ";
 }
 
-.orders-demo-row:hover,
 .orders-demo-active {
   color: var(--orders-ink);
+}
+
+@media (hover: hover) {
+  .orders-demo-row:hover {
+    color: var(--orders-ink);
+  }
 }
 
 .orders-demo-active .orders-demo-meter-fill {

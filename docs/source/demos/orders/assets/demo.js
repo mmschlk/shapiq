@@ -579,6 +579,7 @@
     // where nothing hovers.
     const rail = el("div", "orders-demo-rail");
     rail.style.width = `${RAIL}px`;
+    stage.style.setProperty("--orders-rail", `${RAIL}px`); // the stack is cut at the slider's column
     rail.style.setProperty("--orders-rail-line", `${RAIL_LINE}px`);
     const railLine = el("span", "orders-demo-rail-line");
     const railLabel = el("span", "orders-demo-rail-label");
@@ -592,7 +593,11 @@
     thumb.setAttribute("aria-orientation", "vertical");
     thumb.setAttribute("aria-label", "Order of the explanation");
     rail.append(railLine, railLabel, ticks, thumb);
-    stage.append(rail, stack, ladder);
+    // the stack's window: it starts at the slider's column, so that a stack swiped or slid aside goes
+    // out of view there, not under the slider
+    const view = el("div", "orders-demo-view");
+    view.append(stack);
+    stage.append(rail, view, ladder);
 
     const footer = el("div", "orders-demo-footer");
     const plotBox = el("figure", "orders-demo-plot");
@@ -760,28 +765,36 @@
       shown.getBoundingClientRect(); // restart the entrance
       shown.classList.add("orders-demo-step-enter");
     }
-    function step(delta) {
+    // step to the next example (1) or the previous one (-1); a swipe hands on how far the stack
+    // already went with the finger
+    function step(delta, swept = 0) {
       const count = data.examples.length;
       const at = data.examples.findIndex((example) => example.id === state.example);
       stepper.style.setProperty("--orders-step-from", `${delta * 12}px`);
-      choose(data.examples[(at + delta + count) % count]);
+      choose(data.examples[(at + delta + count) % count], delta, swept);
     }
 
     // choose an example: the pill slides to it while the stack, its fits and the plot fade out, and
-    // the example fades in, at rest; without motion, it shows at once
+    // the example fades in, at rest; stepped to, the stack also leaves to one side and the example
+    // comes in from the other. Without motion, it shows at once
     let chosen = 0; // the examples chosen so far: only the last one chosen is drawn
-    function choose(example) {
+    const SHIFT = 60; // pixels: how far a stack stepped from or to slides
+    const shift = (pixels) => root.style.setProperty("--orders-shift", `${roundTo(pixels, 1)}px`);
+    function choose(example, direction = 0, swept = 0) {
       if (state.example === example.id) return;
       Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       movePill(false);
       showStep(example);
       const choice = ++chosen;
+      root.style.removeProperty("--orders-swipe-opacity");
       if (reducedMotion()) {
+        shift(0);
         render();
         return;
       }
       root.classList.add("orders-demo-fading");
+      shift(-direction * (swept + SHIFT));
       // the fade out starts now, and the example is drawn when it ends (at once, if all is faded)
       const fades = [stack, ladder, plot].flatMap((node) => {
         getComputedStyle(node).opacity;
@@ -790,7 +803,12 @@
       Promise.allSettled(fades.map((fade) => fade.finished)).then(() => {
         if (choice !== chosen) return;
         render();
-        root.classList.remove("orders-demo-fading");
+        // the new stack comes in from the side stepped to: placed there at once, then sliding home
+        root.classList.add("orders-demo-jump");
+        shift(direction * SHIFT);
+        root.getBoundingClientRect();
+        root.classList.remove("orders-demo-jump", "orders-demo-fading");
+        shift(0);
       });
     }
 
@@ -1296,27 +1314,51 @@
     stage.addEventListener("pointerleave", (event) => {
       if (event.pointerType === "mouse" && !state.pinned) point(null, null);
     });
-    // a swipe across the stack steps through the examples, as the stepper does (the page still
-    // scrolls with a swipe up or down)
+    // on a touch screen, a swipe sideways across the stack goes to the next example or the previous
+    // one, as the stepper does: the stack follows the finger, fading, and past a third of its width
+    // (or flicked) it leaves to that side; else it springs back. A swipe up or down scrolls the page.
     let swipe = null;
-    let swiped = -Infinity;
+    let touching = false; // the last press on the stage was a touch: a tap brings out no sheet
     stage.addEventListener("pointerdown", (event) => {
-      swipe = event.pointerType === "touch" && !event.target.closest(".orders-demo-rail") ? [event.clientX, event.clientY] : null;
+      touching = event.pointerType === "touch";
+      const free = touching && !event.target.closest(".orders-demo-rail") && !root.classList.contains("orders-demo-fading");
+      swipe = free ? { id: event.pointerId, x: event.clientX, y: event.clientY, at: event.timeStamp, dx: 0, sideways: null } : null;
     });
-    stage.addEventListener("pointercancel", () => {
-      swipe = null;
-    });
-    stage.addEventListener("pointerup", (event) => {
-      if (!swipe) return;
-      const [dx, dy] = [event.clientX - swipe[0], event.clientY - swipe[1]];
-      swipe = null;
-      if (Math.abs(dx) > 48 && Math.abs(dx) > 2 * Math.abs(dy)) {
-        swiped = performance.now();
-        step(dx < 0 ? 1 : -1);
+    stage.addEventListener("pointermove", (event) => {
+      if (event.pointerId !== swipe?.id) return;
+      const [dx, dy] = [event.clientX - swipe.x, event.clientY - swipe.y];
+      if (swipe.sideways === null) {
+        if (Math.hypot(dx, dy) < 8) return;
+        swipe.sideways = Math.abs(dx) > Math.abs(dy);
+        if (!swipe.sideways) {
+          swipe = null;
+          return;
+        }
+        stage.setPointerCapture(event.pointerId);
+        root.classList.add("orders-demo-swiping");
       }
+      swipe.dx = dx;
+      shift(dx);
+      root.style.setProperty("--orders-swipe-opacity", String(roundTo(1 - Math.min(0.6, Math.abs(dx) / stage.clientWidth), 3)));
     });
+    const endSwipe = (event, cancelled) => {
+      if (event.pointerId !== swipe?.id) return;
+      const { dx, sideways, at } = swipe;
+      swipe = null;
+      if (!sideways) return;
+      root.classList.remove("orders-demo-swiping");
+      const flick = Math.abs(dx) > 24 && Math.abs(dx) / Math.max(1, event.timeStamp - at) > 0.5;
+      if (!cancelled && (Math.abs(dx) > stage.clientWidth / 3 || flick)) {
+        step(dx < 0 ? 1 : -1, Math.abs(dx));
+      } else {
+        shift(0);
+        root.style.removeProperty("--orders-swipe-opacity");
+      }
+    };
+    stage.addEventListener("pointerup", (event) => endSwipe(event, false));
+    stage.addEventListener("pointercancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
-      if (performance.now() - swiped < 400) return; // the end of a swipe is no tap
+      if (touching) return; // on a touch screen, the stack is for swiping; the slider brings out sheets
       const item = itemAt(pointer(event));
       if (item === null) {
         state.pinned = false;
