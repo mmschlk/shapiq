@@ -1063,7 +1063,16 @@
       }
 
       const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
-      add(plot, "path", { class: "orders-demo-plot-area", d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z` });
+      // the area under the line, a wash that fades from the line's highest point down to the axis
+      const fade = `orders-fade-${plotId}`;
+      const gradient = add(add(plot, "defs"), "linearGradient", { id: fade, x1: 0, y1: 0, x2: 0, y2: 1 });
+      add(gradient, "stop", { class: "orders-demo-plot-fade-top", offset: 0 });
+      add(gradient, "stop", { class: "orders-demo-plot-fade-bottom", offset: 1 });
+      add(plot, "path", {
+        class: "orders-demo-plot-area",
+        d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z`,
+        fill: `url(#${fade})`,
+      });
       // across the break, the line is dashed: the orders it skips have the same fit
       const solid = broken ? points.slice(0, -1) : points;
       add(plot, "path", { class: "orders-demo-plot-line", d: `M${solid.join("L")}` });

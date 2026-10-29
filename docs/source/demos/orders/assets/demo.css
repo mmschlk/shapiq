@@ -814,9 +814,15 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 700;
 }
 
-.orders-demo-plot-area {
-  fill: var(--orders-ink);
-  opacity: 0.06;
+/* the area under the line: the line's ink, darkest where the line runs highest, fading to the axis */
+.orders-demo-plot-fade-top {
+  stop-color: var(--orders-ink);
+  stop-opacity: 0.16;
+}
+
+.orders-demo-plot-fade-bottom {
+  stop-color: var(--orders-ink);
+  stop-opacity: 0.01;
 }
 
 .orders-demo-plot-line {
