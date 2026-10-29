@@ -24,7 +24,7 @@ Game families:
 
 - synthetic games with analytic values: :class:`DummyGame`, :class:`UnanimityGame`,
   :class:`SOUM`, :class:`RandomTableGame`, :class:`LinearGaussianSCM`,
-  :class:`ConfoundedChainSCM`
+  :class:`RandomLinearGaussianSCM`
 - model-specific games with exact explainers: :class:`PathDependentTreeGame`,
   :class:`InterventionalTreeGame`, :class:`KNNGame`, :class:`WeightedKNNGame`,
   :class:`ThresholdNNGame`, :class:`ProductKernelGame`, :class:`GraphGame` (whose players are
@@ -49,9 +49,9 @@ from .local_xai import TabularLocalExplanation
 from .nn import KNNGame, ThresholdNNGame, WeightedKNNGame
 from .synthetic import (
     SOUM,
-    ConfoundedChainSCM,
     DummyGame,
     LinearGaussianSCM,
+    RandomLinearGaussianSCM,
     RandomTableGame,
     UnanimityGame,
 )
@@ -63,9 +63,9 @@ from .vision import ImageClassifier, ImageTextSimilarity
 
 __all__ = [
     # synthetic
-    "ConfoundedChainSCM",
     "DummyGame",
     "LinearGaussianSCM",
+    "RandomLinearGaussianSCM",
     "RandomTableGame",
     "SOUM",
     "UnanimityGame",

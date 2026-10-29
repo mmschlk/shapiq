@@ -1,34 +1,47 @@
-"""Synthetic linear-Gaussian SCM games with closed-form value functions.
+"""Linear-Gaussian games with closed-form marginal, conditional, and causal value functions.
 
-This module provides a ground-truth benchmark for the three value functions that
-Shapley-value explanations of a model are built on: the *marginal* (also called
-interventional in the feature-perturbation sense), the *conditional*
-(observational), and the *causal* one of Heskes et al. (2020)
-:cite:t:`Heskes.2020`.
-
-For a linear model on Gaussian features every conditional expectation involved is
-itself linear, so all three value functions compose analytically. No sampling and
-no random seed is involved, which makes the resulting games exact references for
-benchmarking approximators and for comparing the three semantics against each
-other on one and the same data-generating process.
+Shapley-value explanations of a model are built on one of three value functions: the *marginal*
+one (interventional in the feature-perturbation sense), the *conditional* (observational) one,
+and the *causal* one of :cite:t:`Heskes.2020`. For a linear model on Gaussian features every
+conditional expectation involved is itself linear, so all three compose analytically. No sampling
+is involved, which makes the games exact references for benchmarking approximators and for
+comparing the three semantics on one and the same data-generating process.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, get_args
 
 import numpy as np
 
 from shapiq.game import Game
+from shapiq_games._base import as_bool_coalitions
+from shapiq_games.typing import ValueFunctionMode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-ValueFunctionMode = Literal["marginal", "conditional", "causal"]
+    from numpy.typing import ArrayLike
+
+    from shapiq.typing import BoolVector, CoalitionMatrix, FloatVector, GameValues, IntVector
+
+    type Indices = Sequence[int] | IntVector
+
+__all__ = ["LinearGaussianSCM", "RandomLinearGaussianSCM"]
+
+_MODES: tuple[str, ...] = get_args(ValueFunctionMode.__value__)
+
+
+def _as_vector(values: ArrayLike, n: int, name: str) -> FloatVector:
+    vector = np.asarray(values, dtype=float).reshape(-1)
+    if vector.shape != (n,):
+        msg = f"{name} has shape {vector.shape}, expected ({n},) to match coefficients."
+        raise ValueError(msg)
+    return vector
 
 
 class LinearGaussianSCM(Game):
-    r"""A linear model on Gaussian features with marginal, conditional and causal value functions.
+    r"""A linear model on Gaussian features with marginal, conditional, and causal value functions.
 
     The features follow :math:`X \sim \mathcal{N}(\mu, \Sigma)` and the model is linear,
     :math:`f(x) = \beta^\top x`. For an explanation point :math:`x^*` the three value
@@ -43,18 +56,18 @@ class LinearGaussianSCM(Game):
         v_{\text{causal}}(S)      & = & \mathbb{E}[f(X) \mid do(X_S = x^*_S)]
         \end{eqnarray}
 
-    The causal value function follows the causal chain graph of
-    :cite:t:`Heskes.2020`, specified by a ``causal_ordering`` (feature groups in
-    causal order) together with a ``confounding`` flag per group. Within a group,
-    the features that were *not* intervened on are drawn conditional on every
-    preceding group, plus the intervened features of the same group -- the latter
-    only when that group is not confounded, because an intervention cuts a
-    dependence that runs through an unobserved common cause. This is the rule the
-    R package ``shapr`` implements in ``get_S_causal_steps``.
+    The causal value function follows the causal chain graph of :cite:t:`Heskes.2020`, given by a
+    ``causal_ordering`` (feature groups in causal order) and a ``confounding`` flag per group.
+    The features of a group that are not intervened on are drawn conditional on every preceding
+    group, and also on the intervened features of their own group unless the group is
+    confounded: an intervention cuts a dependence that runs through an unobserved common cause.
+    This is the rule the R package ``shapr`` implements in ``get_S_causal_steps``. Without a
+    ``causal_ordering``, all features form one unconfounded group and the causal value function
+    equals the conditional one.
 
-    Note that for the linear-Gaussian case the three value functions are fully
-    determined by :math:`\beta`, :math:`x^*`, :math:`\mu`, :math:`\Sigma` and the
-    causal chain graph. The structural coefficients themselves are not needed.
+    The three value functions depend on :math:`\beta`, :math:`x^*`, :math:`\mu`, :math:`\Sigma`,
+    and the causal chain graph only, not on the structural equations behind :math:`\Sigma`.
+    :class:`RandomLinearGaussianSCM` draws random instances from structural equations.
 
     Attributes:
         coefficients: The model coefficients :math:`\beta`.
@@ -64,9 +77,10 @@ class LinearGaussianSCM(Game):
         causal_ordering: The feature groups in causal order.
         confounding: One flag per group in ``causal_ordering``.
         mode: Which of the three value functions the game evaluates.
+        empty_value: The value of the empty coalition, :math:`f(\mu)` (before centering).
+        original_model_output: The value of the grand coalition, :math:`f(x^*)`.
 
     Examples:
-        >>> import numpy as np
         >>> game = LinearGaussianSCM(
         ...     coefficients=np.array([1.0, 2.0]),
         ...     x_explain=np.array([1.0, 1.0]),
@@ -74,19 +88,17 @@ class LinearGaussianSCM(Game):
         ...     mode="conditional",
         ...     normalize=False,
         ... )
-        >>> coalitions = np.array([[0, 0], [1, 0], [0, 1], [1, 1]]).astype(bool)
-        >>> game(coalitions)
+        >>> game(np.array([[0, 0], [1, 0], [0, 1], [1, 1]], dtype=bool))
         array([0. , 2. , 2.5, 3. ])
-
     """
 
     def __init__(
         self,
-        coefficients: np.ndarray,
-        x_explain: np.ndarray,
-        cov: np.ndarray,
+        coefficients: ArrayLike,
+        x_explain: ArrayLike,
+        cov: ArrayLike,
         *,
-        mean: np.ndarray | None = None,
+        mean: ArrayLike | None = None,
         causal_ordering: Sequence[Sequence[int]] | None = None,
         confounding: Sequence[bool] | None = None,
         mode: ValueFunctionMode = "causal",
@@ -97,63 +109,56 @@ class LinearGaussianSCM(Game):
         Args:
             coefficients: The model coefficients of shape ``(n_features,)``.
             x_explain: The point to explain of shape ``(n_features,)``.
-            cov: The feature covariance matrix of shape ``(n_features, n_features)``.
-            mean: The feature mean of shape ``(n_features,)``. Defaults to ``None``, which
-                is the zero vector.
-            causal_ordering: The feature groups in causal order, as a sequence of sequences
-                of feature indices that partitions all features. Defaults to ``None``, which
-                places every feature in one single group. Only used by ``mode='causal'``.
+            cov: The feature covariance matrix of shape ``(n_features, n_features)``. It must be
+                symmetric and positive definite.
+            mean: The feature mean of shape ``(n_features,)``. Defaults to ``None``, which is the
+                zero vector.
+            causal_ordering: The feature groups in causal order, as a sequence of sequences of
+                feature indices that partitions all features. Defaults to ``None``, which places
+                every feature in one single group. Only used by ``mode='causal'``.
             confounding: One boolean per group in ``causal_ordering``, marking whether the
-                dependence inside that group is due to an unobserved common cause. Defaults
-                to ``None``, which is ``False`` for every group. Only used by
-                ``mode='causal'``.
-            mode: Which value function to evaluate. One of ``'marginal'``, ``'conditional'``
-                or ``'causal'``. Defaults to ``'causal'``.
+                dependence inside that group is due to an unobserved common cause. Defaults to
+                ``None``, which is ``False`` for every group. Only used by ``mode='causal'``.
+            mode: Which value function to evaluate. One of ``'marginal'``, ``'conditional'``, or
+                ``'causal'``. Defaults to ``'causal'``.
             normalize: Whether to center the game at the empty coalition. Defaults to ``True``.
 
         Raises:
-            ValueError: If ``mode`` is not one of the three supported value functions, if the
-                shapes of the inputs disagree, or if ``causal_ordering`` does not partition
-                the features.
+            ValueError: If ``mode`` is not one of the three value functions, if the shapes of the
+                inputs disagree, if ``cov`` is not symmetric positive definite, or if
+                ``causal_ordering`` does not partition the features.
         """
-        if mode not in ("marginal", "conditional", "causal"):
-            msg = f"mode must be 'marginal', 'conditional', or 'causal'; got {mode!r}."
+        if mode not in _MODES:
+            msg = f"mode must be one of {_MODES}, got {mode!r}."
             raise ValueError(msg)
 
-        self.coefficients = np.asarray(coefficients, dtype=float).reshape(-1)
-        self.x_explain = np.asarray(x_explain, dtype=float).reshape(-1)
-        self.cov = np.asarray(cov, dtype=float)
+        self.coefficients: FloatVector = np.asarray(coefficients, dtype=float).reshape(-1)
         n_players = len(self.coefficients)
+        self.x_explain = _as_vector(x_explain, n_players, "x_explain")
+        self.mean = np.zeros(n_players) if mean is None else _as_vector(mean, n_players, "mean")
 
-        if self.x_explain.shape != (n_players,):
-            msg = (
-                f"x_explain has shape {self.x_explain.shape}, expected ({n_players},) to "
-                f"match coefficients."
-            )
-            raise ValueError(msg)
+        self.cov = np.asarray(cov, dtype=float)
         if self.cov.shape != (n_players, n_players):
             msg = (
-                f"cov has shape {self.cov.shape}, expected ({n_players}, {n_players}) to "
-                f"match coefficients."
+                f"cov has shape {self.cov.shape}, expected ({n_players}, {n_players}) to match "
+                "coefficients."
             )
             raise ValueError(msg)
-
-        self.mean = (
-            np.zeros(n_players) if mean is None else np.asarray(mean, dtype=float).reshape(-1)
-        )
-        if self.mean.shape != (n_players,):
-            msg = (
-                f"mean has shape {self.mean.shape}, expected ({n_players},) to match coefficients."
-            )
+        if not np.allclose(self.cov, self.cov.T):
+            msg = "cov must be symmetric."
             raise ValueError(msg)
+        try:
+            np.linalg.cholesky(self.cov)
+        except np.linalg.LinAlgError:
+            msg = "cov must be positive definite."
+            raise ValueError(msg) from None
 
         if causal_ordering is None:
-            causal_ordering = [list(range(n_players))]
-        self.causal_ordering = [list(group) for group in causal_ordering]
-        flat = [feature for group in self.causal_ordering for feature in group]
-        if sorted(flat) != list(range(n_players)):
+            causal_ordering = [range(n_players)]
+        self.causal_ordering = [[int(j) for j in group] for group in causal_ordering]
+        if sorted(j for group in self.causal_ordering for j in group) != list(range(n_players)):
             msg = (
-                f"causal_ordering must partition the {n_players} features exactly once each; "
+                f"causal_ordering must partition the {n_players} features exactly once each, "
                 f"got {self.causal_ordering}."
             )
             raise ValueError(msg)
@@ -169,142 +174,170 @@ class LinearGaussianSCM(Game):
             raise ValueError(msg)
 
         self.mode: ValueFunctionMode = mode
-        self._empty_value = float(self.coefficients @ self.mean)
-
+        self.empty_value = float(self.coefficients @ self.mean)
+        self.original_model_output = float(self.coefficients @ self.x_explain)
         super().__init__(
-            n_players=n_players,
-            normalize=normalize,
-            normalization_value=self._empty_value,
+            n_players=n_players, normalize=normalize, normalization_value=self.empty_value
         )
 
     def _conditional_mean(
-        self, target: list[int], given: list[int], x_given: np.ndarray
-    ) -> np.ndarray:
-        """Return E[X_target | X_given = x_given] for the Gaussian features."""
-        if not target:
-            return np.zeros(0)
-        if not given:
+        self, target: Indices, given: Indices, x_given: FloatVector
+    ) -> FloatVector:
+        r"""Return :math:`\mathbb{E}[X_T \mid X_G = x_G]` of the Gaussian features."""
+        if len(given) == 0:
             return self.mean[target]
         cov_tg = self.cov[np.ix_(target, given)]
         cov_gg = self.cov[np.ix_(given, given)]
-        residual = x_given - self.mean[given]
-        return self.mean[target] + cov_tg @ np.linalg.solve(cov_gg, residual)
+        return self.mean[target] + cov_tg @ np.linalg.solve(cov_gg, x_given - self.mean[given])
 
-    def _feature_means(self, coalition: np.ndarray) -> np.ndarray:
-        """Return the expected feature vector the model is evaluated on for one coalition."""
-        in_coalition = [int(j) for j in np.flatnonzero(coalition)]
-        out_coalition = [j for j in range(self.n_players) if j not in set(in_coalition)]
+    def _feature_means(self, coalition: BoolVector) -> FloatVector:
+        """Return the expected features the model is evaluated on for one coalition.
 
-        means = self.mean.copy()
-        means[in_coalition] = self.x_explain[in_coalition]
-
-        if self.mode == "marginal" or not out_coalition:
+        The model is linear, so its expected output is its output on the expected features.
+        """
+        means = np.where(coalition, self.x_explain, self.mean)
+        if self.mode == "marginal" or coalition.all():
             return means
 
         if self.mode == "conditional":
-            means[out_coalition] = self._conditional_mean(
-                out_coalition, in_coalition, self.x_explain[in_coalition]
-            )
+            present, absent = np.flatnonzero(coalition), np.flatnonzero(~coalition)
+            means[absent] = self._conditional_mean(absent, present, self.x_explain[present])
             return means
 
-        # causal: walk the chain graph one group at a time
-        intervened = set(in_coalition)
+        # causal: walk the chain graph one group at a time; by linearity, the expected features
+        # of the preceding groups stand in for the features drawn there
         preceding: list[int] = []
         for group, confounded in zip(self.causal_ordering, self.confounding, strict=True):
-            group_intervened = [j for j in group if j in intervened]
-            group_generated = [j for j in group if j not in intervened]
-            if group_generated:
-                given = list(preceding) if confounded else [*preceding, *group_intervened]
-                means[group_generated] = self._conditional_mean(
-                    group_generated, given, means[given]
-                )
-            preceding.extend(group)
+            intervened = [j for j in group if coalition[j]]
+            generated = [j for j in group if not coalition[j]]
+            if generated:
+                given = preceding if confounded else preceding + intervened
+                means[generated] = self._conditional_mean(generated, given, means[given])
+            preceding = preceding + group
         return means
 
-    def value_function(self, coalitions: np.ndarray) -> np.ndarray:
-        """Evaluate the selected value function on a set of coalitions.
-
-        Args:
-            coalitions: Binary matrix of shape ``(n_coalitions, n_players)``.
-
-        Returns:
-            The coalition values of shape ``(n_coalitions,)``.
-        """
-        worth = np.empty(len(coalitions), dtype=float)
-        for i, coalition in enumerate(coalitions):
-            worth[i] = float(self.coefficients @ self._feature_means(coalition))
-        return worth
+    def value_function(self, coalitions: CoalitionMatrix) -> GameValues:
+        """Return the model's output on the expected features of each coalition."""
+        coalitions = as_bool_coalitions(coalitions)
+        return np.array(
+            [self.coefficients @ self._feature_means(coalition) for coalition in coalitions],
+            dtype=float,
+        )
 
 
-class ConfoundedChainSCM(LinearGaussianSCM):
-    r"""A three-feature confounded SCM on which the three value functions disagree in sign.
+class RandomLinearGaussianSCM(LinearGaussianSCM):
+    r"""A :class:`LinearGaussianSCM` drawn from a random linear structural causal model.
 
-    The data-generating process places an unobserved common cause :math:`U` behind the
-    first two features and makes the third a descendant of both:
+    The features are shuffled and split into ``n_groups`` non-empty groups in causal order. Every
+    feature depends linearly on features of the preceding groups,
 
     .. math::
-        :nowrap:
+        X_j = c_j + \sum_{k \in \text{pa}(j)} w_{jk} X_k + \lambda_j U_{g(j)} + \varepsilon_j,
 
-        \begin{eqnarray}
-        X_1 & = & U + \varepsilon_1 \\
-        X_2 & = & U + \varepsilon_2 \\
-        X_3 & = & 2 X_1 + X_2 + \varepsilon_3 \\
-        f(x) & = & x_1 + 2 x_2 + 3 x_3
-        \end{eqnarray}
+    where each feature of a preceding group is a parent with probability ``edge_probability``,
+    and a group of several features is confounded with probability ``confounding_probability``:
+    its features then share the unobserved common cause :math:`U_{g(j)}`, otherwise
+    :math:`\lambda_j = 0`. The intercepts :math:`c_j`, the weights :math:`w_{jk}`, the loadings
+    :math:`\lambda_j`, the unobserved causes, the noise :math:`\varepsilon_j`, and the model
+    coefficients :math:`\beta` are standard normal, and the explanation point :math:`x^*` is a
+    draw of :math:`X`.
 
-    with :math:`U, \varepsilon_1, \varepsilon_2, \varepsilon_3 \sim \mathcal{N}(0, 1)`
-    independent, which gives the causal chain graph ``[[0, 1], [2]]`` with
-    ``confounding=[True, False]``. The explanation point is :math:`x^* = (1, 1, 1)`.
+    The features of a group do not affect each other, so the causal chain graph of the groups is
+    exact for the drawn model: the causal value function is the interventional expectation
+    :math:`\mathbb{E}[f(X) \mid do(X_S = x^*_S)]` of the structural causal model.
 
-    At that point the three value functions attribute the prediction of ``6.0`` as
-
-    ======================  =========  =========  =========
-    value function          ``X_1``    ``X_2``    ``X_3``
-    ======================  =========  =========  =========
-    ``'marginal'``          ``1.00``   ``2.00``   ``3.00``
-    ``'conditional'``       ``3.95``   ``4.38``   ``-2.33``
-    ``'causal'``            ``4.00``   ``3.50``   ``-1.50``
-    ======================  =========  =========  =========
-
-    The sign of the third feature flips: against its unconditional mean of zero it is the
-    largest positive contributor, while against what its parents predict for it
-    (:math:`2 \cdot 1 + 1 \cdot 1 = 3`) the observed value of ``1`` falls short and drags
-    the prediction down. The conditional and the causal value function then part ways on
-    the second feature, because intervening on the first cuts the confounded path between
-    them while conditioning on it does not.
+    Attributes:
+        weights: The structural weights of shape ``(n, n)``: ``weights[j, k]`` is the direct
+            effect of feature ``k`` on feature ``j``.
+        intercepts: The intercepts :math:`c` of the structural equations.
+        noise_cov: The covariance of the unobserved terms
+            :math:`\lambda_j U_{g(j)} + \varepsilon_j`, which is not diagonal within the
+            confounded groups.
 
     Examples:
-        >>> import numpy as np
-        >>> game = ConfoundedChainSCM(mode="causal")
-        >>> coalitions = np.array([[0, 0, 0], [1, 1, 0], [1, 1, 1]]).astype(bool)
-        >>> np.round(game(coalitions), 4)
-        array([ 0., 12.,  6.])
-
+        >>> game = RandomLinearGaussianSCM(8, n_groups=3, random_state=0)
+        >>> len(game.causal_ordering)
+        3
+        >>> grand_coalition = np.ones((1, 8), dtype=bool)
+        >>> np.allclose(game(grand_coalition), game.original_model_output - game.empty_value)
+        True
     """
 
-    COEFFICIENTS = np.array([1.0, 2.0, 3.0])
-    """The model coefficients of the benchmark."""
-
-    X_EXPLAIN = np.array([1.0, 1.0, 1.0])
-    """The explanation point of the benchmark."""
-
-    COV = np.array([[2.0, 1.0, 5.0], [1.0, 2.0, 4.0], [5.0, 4.0, 15.0]])
-    """The feature covariance implied by the structural equations."""
-
-    def __init__(self, *, mode: ValueFunctionMode = "causal", normalize: bool = True) -> None:
-        """Initialize the ConfoundedChainSCM benchmark game.
+    def __init__(
+        self,
+        n: int,
+        *,
+        n_groups: int | None = None,
+        edge_probability: float = 0.5,
+        confounding_probability: float = 0.5,
+        mode: ValueFunctionMode = "causal",
+        normalize: bool = True,
+        random_state: int | None = 42,
+    ) -> None:
+        """Initialize the RandomLinearGaussianSCM game.
 
         Args:
-            mode: Which value function to evaluate. One of ``'marginal'``, ``'conditional'``
-                or ``'causal'``. Defaults to ``'causal'``.
+            n: The number of features (players).
+            n_groups: The number of groups in the causal ordering, between ``1`` and ``n``.
+                Defaults to ``None``, which is ``ceil(n / 2)``, groups of two features on average.
+            edge_probability: The probability that a feature of a preceding group is a parent of
+                a feature. Defaults to ``0.5``.
+            confounding_probability: The probability that a group of several features shares an
+                unobserved common cause. Defaults to ``0.5``.
+            mode: Which value function to evaluate. One of ``'marginal'``, ``'conditional'``, or
+                ``'causal'``. Defaults to ``'causal'``.
             normalize: Whether to center the game at the empty coalition. Defaults to ``True``.
+            random_state: The seed of the model and the explanation point. Defaults to ``42``.
+
+        Raises:
+            ValueError: If ``n_groups`` is not between ``1`` and ``n`` or a probability is not
+                between ``0`` and ``1``.
         """
+        n_groups = (n + 1) // 2 if n_groups is None else n_groups
+        if not 1 <= n_groups <= n:
+            msg = f"n_groups must be between 1 and n={n}, got {n_groups}."
+            raise ValueError(msg)
+        for name, probability in (
+            ("edge_probability", edge_probability),
+            ("confounding_probability", confounding_probability),
+        ):
+            if not 0.0 <= probability <= 1.0:
+                msg = f"{name} must be between 0 and 1, got {probability}."
+                raise ValueError(msg)
+
+        rng = np.random.default_rng(random_state)
+        cuts = np.sort(rng.choice(np.arange(1, n), size=n_groups - 1, replace=False))
+        causal_ordering = [sorted(int(j) for j in g) for g in np.split(rng.permutation(n), cuts)]
+        confounding = [
+            len(group) > 1 and bool(draw)
+            for group, draw in zip(
+                causal_ordering, rng.random(n_groups) < confounding_probability, strict=True
+            )
+        ]
+
+        position = np.empty(n, dtype=int)
+        for index, group in enumerate(causal_ordering):
+            position[group] = index
+        precedes = position[None, :] < position[:, None]  # [j, k]: k is in an earlier group
+        edges = precedes & (rng.random((n, n)) < edge_probability)
+        self.weights: FloatVector = np.where(edges, rng.standard_normal((n, n)), 0.0)
+        self.intercepts: FloatVector = rng.standard_normal(n)
+        self.noise_cov: FloatVector = np.eye(n)
+        for group, confounded in zip(causal_ordering, confounding, strict=True):
+            if confounded:
+                loadings = rng.standard_normal(len(group))
+                self.noise_cov[np.ix_(group, group)] += np.outer(loadings, loadings)
+
+        transform = np.linalg.inv(np.eye(n) - self.weights)
+        mean = transform @ self.intercepts
+        cov = transform @ self.noise_cov @ transform.T
         super().__init__(
-            coefficients=self.COEFFICIENTS,
-            x_explain=self.X_EXPLAIN,
-            cov=self.COV,
-            causal_ordering=[[0, 1], [2]],
-            confounding=[True, False],
+            coefficients=rng.standard_normal(n),
+            x_explain=rng.multivariate_normal(mean, cov, method="cholesky"),
+            cov=cov,
+            mean=mean,
+            causal_ordering=causal_ordering,
+            confounding=confounding,
             mode=mode,
             normalize=normalize,
         )

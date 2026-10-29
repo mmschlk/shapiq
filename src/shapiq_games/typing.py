@@ -32,6 +32,7 @@ __all__ = [
     "PredictFunction",
     "Task",
     "Uncertainty",
+    "ValueFunctionMode",
 ]
 
 type Task = Literal["classification", "regression"]
@@ -54,6 +55,9 @@ type LossName = Literal["mse", "mae"]
 
 type ImputerName = Literal["marginal", "conditional", "baseline"]
 """How :class:`~shapiq_games.TabularLocalExplanation` removes features."""
+
+type ValueFunctionMode = Literal["marginal", "conditional", "causal"]
+"""The value function of :class:`~shapiq_games.LinearGaussianSCM`."""
 
 type Uncertainty = Literal["total", "aleatoric", "epistemic"]
 """The uncertainty :class:`~shapiq_games.TabularUncertaintyExplanation` explains."""

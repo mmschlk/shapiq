@@ -83,7 +83,7 @@ Games whose interaction values are known in closed form.
    SOUM
    RandomTableGame
    LinearGaussianSCM
-   ConfoundedChainSCM
+   RandomLinearGaussianSCM
 
 .. _games-model-specific:
 
@@ -211,6 +211,7 @@ Types
    Loss
    LossName
    ImputerName
+   ValueFunctionMode
    Uncertainty
    PlayerSizes
    ClusterMethod

@@ -93,7 +93,7 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
         ),
         True,
     ),
-    "confounded_chain_scm": (lambda: sg.ConfoundedChainSCM(), True),
+    "random_linear_gaussian_scm": (lambda: sg.RandomLinearGaussianSCM(6, random_state=0), True),
     "local_xai_marginal": (
         lambda: sg.TabularLocalExplanation(_tree_regressor(), _X_TRAIN[:50], x=_X_TEST[0]),
         True,

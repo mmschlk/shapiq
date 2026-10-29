@@ -43,7 +43,7 @@ from shapiq_benchmark.setups import (
 if TYPE_CHECKING:
     from shapiq import Game
 
-_SYNTHETIC_GAMES = {"DummyGame", "RandomTableGame", "SOUM", "UnanimityGame"}
+_SYNTHETIC_GAMES = set(sg.synthetic.__all__)
 
 # setups that build offline (registered synthetic datasets and scikit-learn's breast cancer)
 OFFLINE: dict[str, tuple[Setup, type[Game]]] = {
