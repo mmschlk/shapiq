@@ -48,12 +48,7 @@ MODELS = {
     "graph": ["graph", "Graph neural network", "GCN with 2 layers", "exact with GraphSHAP-IQ"],
     "tree": ["tree", "Tree ensemble", "XGBoost, 300 trees of depth 5", "exact with TreeExplainer"],
     "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "ProxySHAP"],
-    "tabpfn": [
-        "box",
-        "Black box",
-        "TabPFN, a tabular foundation model",
-        "exact with TabPFNImputer",
-    ],
+    "tabpfn": ["box", "Black box", "TabPFN", "exact with TabPFNImputer"],
 }
 
 

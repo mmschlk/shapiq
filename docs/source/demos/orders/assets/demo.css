@@ -368,9 +368,9 @@ body[data-theme="dark"] .orders-demo {
   font-size: 0.9rem;
 }
 
-.orders-demo-model-text span + span::before {
-  margin-right: 0.5rem;
-  content: "·";
+/* the model and how it was explained, with a comma between them */
+.orders-demo-model-text span:not(:last-child)::after {
+  content: ",";
 }
 
 .orders-demo-model-method {
