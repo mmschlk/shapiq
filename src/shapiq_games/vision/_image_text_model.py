@@ -148,7 +148,11 @@ class ImageTextTokenModel:
         self.regions = pixel_regions(players, self._model.config.vision_config.patch_size)
 
         def encode(tokens: Any) -> Any:  # noqa: ANN401
-            features = pool(vision.encoder(inputs_embeds=tokens).last_hidden_state)
+            # SigLIP's empty coalition is an empty sequence, which the encoder leaves empty; it
+            # is skipped, as the attention of transformers >= 5.5.1 cannot reshape it
+            if tokens.shape[1] > 0:
+                tokens = vision.encoder(inputs_embeds=tokens).last_hidden_state
+            features = pool(tokens)
             return features / features.norm(dim=-1, keepdim=True)
 
         self._encode = encode

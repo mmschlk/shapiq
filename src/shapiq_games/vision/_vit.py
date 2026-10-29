@@ -94,7 +94,13 @@ class ViTTokenModel:
             masked = model.vit.embeddings(pixels, bool_masked_pos=all_masked)
 
         def encode(tokens: Any) -> Any:  # noqa: ANN401
-            hidden = model.vit.layernorm(model.vit.encoder(tokens).last_hidden_state)
+            if hasattr(model.vit, "encoder"):  # transformers < 5.9
+                hidden = model.vit.encoder(tokens).last_hidden_state
+            else:  # transformers >= 5.9 has no ViTEncoder: the layers live on the model
+                hidden = tokens
+                for layer in model.vit.layers:
+                    hidden = layer(hidden)
+            hidden = model.vit.layernorm(hidden)
             return torch.softmax(model.classifier(hidden[:, 0]), dim=-1)
 
         grid = VIT_PATCH_GRIDS[n_players]
