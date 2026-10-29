@@ -101,6 +101,8 @@ def test_linear_gaussian_scm_interventional_mean_by_hand() -> None:
     np.testing.assert_allclose(
         confounded.interventional_mean([True, False, False], np.ones(3)), [1.0, 0.0, 2.0]
     )
+    with pytest.raises(ValueError, match="intervened has shape"):
+        confounded.interventional_mean([True], np.ones(3))
     independent = _example_scm()
     for coalition in _all_coalitions(3):
         np.testing.assert_allclose(
@@ -139,7 +141,7 @@ def test_random_linear_gaussian_game_causal_equals_do(confounding_probability: f
 
 def test_linear_gaussian_game_marginal_shapley_values_are_closed_form() -> None:
     game = RandomLinearGaussianGame(6, mode="marginal", random_state=1)
-    expected = game.coefficients * (game.x_explain - game.mean)
+    expected = game.coefficients * (game.x - game.mean)
     np.testing.assert_allclose(_shapley_values(game), expected, atol=1e-10)
 
 
@@ -149,8 +151,8 @@ def test_linear_gaussian_game_conditional_values_match_the_precision_form() -> N
     precision = np.linalg.inv(game.cov)
     for coalition in _all_coalitions(6)[:-1]:
         present, absent = coalition, ~coalition
-        features = game.x_explain.copy()
-        residual = game.x_explain[present] - game.mean[present]
+        features = game.x.copy()
+        residual = game.x[present] - game.mean[present]
         features[absent] = game.mean[absent] - np.linalg.solve(
             precision[np.ix_(absent, absent)], precision[np.ix_(absent, present)] @ residual
         )
@@ -158,10 +160,22 @@ def test_linear_gaussian_game_conditional_values_match_the_precision_form() -> N
 
 
 @pytest.mark.parametrize("mode", MODES)
-def test_linear_gaussian_game_is_efficient(mode: ValueFunctionMode) -> None:
-    game = RandomLinearGaussianGame(6, mode=mode, random_state=3)
-    total = game.original_model_output - game.empty_value
-    assert _shapley_values(game).sum() == pytest.approx(total)
+def test_linear_gaussian_game_explains_f_of_x_against_f_of_the_mean(
+    mode: ValueFunctionMode,
+) -> None:
+    game = RandomLinearGaussianGame(6, mode=mode, random_state=3, normalize=False)
+    empty, full = np.zeros((1, 6), dtype=bool), np.ones((1, 6), dtype=bool)
+    assert game(empty)[0] == pytest.approx(game.coefficients @ game.mean)
+    assert game(full)[0] == pytest.approx(game.coefficients @ game.x)
+
+
+def test_linear_gaussian_game_copies_its_arguments() -> None:
+    """Changing an array after construction does not change the game."""
+    cov = np.array([[1.0, 0.5], [0.5, 1.0]])
+    game = LinearGaussianGame(np.ones(2), np.ones(2), cov=cov, mode="conditional")
+    before = game(_all_coalitions(2))
+    cov[0, 1] = cov[1, 0] = 0.9
+    np.testing.assert_array_equal(game(_all_coalitions(2)), before)
 
 
 @pytest.mark.parametrize(
@@ -172,7 +186,7 @@ def test_linear_gaussian_game_with_a_misspecified_chain_graph(
 ) -> None:
     """One unconfounded group conditions on all intervened features, a confounded one on none."""
     drawn = RandomLinearGaussianGame(6, random_state=4)
-    arguments = {"coefficients": drawn.coefficients, "x_explain": drawn.x_explain, "scm": drawn.scm}
+    arguments = {"coefficients": drawn.coefficients, "x": drawn.x, "scm": drawn.scm}
     misspecified = LinearGaussianGame(
         **arguments, causal_ordering=[range(6)], confounding=confounding
     )
@@ -209,7 +223,7 @@ def test_random_linear_gaussian_game_is_seeded() -> None:
     ("kwargs", "match"),
     [
         ({"mode": "interventional"}, "mode must be"),
-        ({"x_explain": np.array([1.0])}, "x_explain has shape"),
+        ({"x": np.array([1.0])}, "x has shape"),
         ({"cov": np.eye(3)}, "cov has shape"),
         ({"cov": np.array([[1.0, 0.5], [0.0, 1.0]])}, "symmetric"),
         ({"cov": np.ones((2, 2))}, "positive definite"),
@@ -224,7 +238,7 @@ def test_random_linear_gaussian_game_is_seeded() -> None:
     ],
 )
 def test_linear_gaussian_game_rejects_invalid_arguments(kwargs: dict, match: str) -> None:
-    valid = {"coefficients": np.array([1.0, 2.0]), "x_explain": np.ones(2), "cov": np.eye(2)}
+    valid = {"coefficients": np.array([1.0, 2.0]), "x": np.ones(2), "cov": np.eye(2)}
     with pytest.raises(ValueError, match=match):
         LinearGaussianGame(**{**valid, **kwargs})
 

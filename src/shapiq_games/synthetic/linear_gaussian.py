@@ -35,7 +35,7 @@ _MODES: tuple[str, ...] = get_args(ValueFunctionMode.__value__)
 
 
 def _as_vector(values: ArrayLike, n: int, name: str) -> FloatVector:
-    vector = np.asarray(values, dtype=float).reshape(-1)
+    vector = np.array(values, dtype=float).reshape(-1)
     if vector.shape != (n,):
         msg = f"{name} has shape {vector.shape}, expected ({n},)."
         raise ValueError(msg)
@@ -43,7 +43,7 @@ def _as_vector(values: ArrayLike, n: int, name: str) -> FloatVector:
 
 
 def _as_covariance(values: ArrayLike, n: int, name: str) -> FloatVector:
-    matrix = np.asarray(values, dtype=float)
+    matrix = np.array(values, dtype=float)
     if matrix.shape != (n, n):
         msg = f"{name} has shape {matrix.shape}, expected ({n}, {n})."
         raise ValueError(msg)
@@ -79,12 +79,6 @@ def _precedes(groups: Sequence[Sequence[int]], n: int) -> BoolVector:
     for index, group in enumerate(groups):
         position[list(group)] = index
     return position[None, :] < position[:, None]
-
-
-def _frozen(values: ArrayLike) -> FloatVector:
-    array = np.array(values, dtype=float)
-    array.setflags(write=False)
-    return array
 
 
 class LinearGaussianSCM:
@@ -156,7 +150,7 @@ class LinearGaussianSCM:
                 definite, if ``causal_ordering`` does not partition the features, or if a weight or
                 a noise correlation does not fit the chain graph.
         """
-        weights = np.asarray(weights, dtype=float)
+        weights = np.array(weights, dtype=float)
         if weights.ndim != 2 or weights.shape[0] != weights.shape[1]:
             msg = f"weights must be a square matrix, got shape {weights.shape}."
             raise ValueError(msg)
@@ -179,13 +173,13 @@ class LinearGaussianSCM:
 
         transform = np.linalg.inv(np.eye(n) - weights)
         self.n_features = n
-        self.weights = _frozen(weights)
-        self.intercepts = _frozen(intercepts)
-        self.noise_cov = _frozen(noise_cov)
+        self.weights = weights
+        self.intercepts = intercepts
+        self.noise_cov = noise_cov
         self.causal_ordering = groups
         self.confounding = flags
-        self.mean = _frozen(transform @ intercepts)
-        self.cov = _frozen(transform @ noise_cov @ transform.T)
+        self.mean = transform @ intercepts
+        self.cov = transform @ noise_cov @ transform.T
 
     def interventional_mean(self, intervened: ArrayLike, values: ArrayLike) -> FloatVector:
         r"""Return :math:`\mathbb{E}[X \mid do(X_S = x_S)]`, the mean under an intervention.
@@ -199,8 +193,14 @@ class LinearGaussianSCM:
 
         Returns:
             The mean of all features under the intervention.
+
+        Raises:
+            ValueError: If ``intervened`` or ``values`` does not have shape ``(n_features,)``.
         """
         intervened = np.asarray(intervened, dtype=bool).reshape(-1)
+        if intervened.shape != (self.n_features,):
+            msg = f"intervened has shape {intervened.shape}, expected ({self.n_features},)."
+            raise ValueError(msg)
         values = _as_vector(values, self.n_features, "values")
         weights = np.where(intervened[:, None], 0.0, self.weights)
         intercepts = np.where(intervened, values, self.intercepts)
@@ -342,7 +342,7 @@ class LinearGaussianGame(Game):
 
     Attributes:
         coefficients: The model coefficients :math:`\beta`.
-        x_explain: The explanation point :math:`x^*`.
+        x: The explanation point :math:`x^*`.
         scm: The structural causal model, or ``None`` for a game built from a covariance.
         mean: The feature mean :math:`\mu`.
         cov: The feature covariance :math:`\Sigma`.
@@ -355,7 +355,7 @@ class LinearGaussianGame(Game):
     Examples:
         >>> game = LinearGaussianGame(
         ...     coefficients=np.array([1.0, 2.0]),
-        ...     x_explain=np.array([1.0, 1.0]),
+        ...     x=np.array([1.0, 1.0]),
         ...     cov=np.array([[1.0, 0.5], [0.5, 1.0]]),
         ...     mode="conditional",
         ...     normalize=False,
@@ -367,7 +367,7 @@ class LinearGaussianGame(Game):
     def __init__(
         self,
         coefficients: ArrayLike,
-        x_explain: ArrayLike,
+        x: ArrayLike,
         *,
         scm: LinearGaussianSCM | None = None,
         cov: ArrayLike | None = None,
@@ -381,7 +381,7 @@ class LinearGaussianGame(Game):
 
         Args:
             coefficients: The model coefficients of shape ``(n_features,)``.
-            x_explain: The point to explain of shape ``(n_features,)``.
+            x: The point to explain of shape ``(n_features,)``.
             scm: The structural causal model of the features. Give either ``scm`` or ``cov``.
             cov: The feature covariance matrix of shape ``(n_features, n_features)``, symmetric
                 and positive definite. Give either ``scm`` or ``cov``.
@@ -393,8 +393,8 @@ class LinearGaussianGame(Game):
                 by ``mode='causal'``.
             confounding: One boolean per group in ``causal_ordering``, marking whether the
                 dependence inside that group is due to an unobserved common cause. Defaults to
-                ``None``, which is the flags of the ``scm`` when ``causal_ordering`` is its own,
-                and ``False`` for every group otherwise. Only used by ``mode='causal'``.
+                ``None``, which is the flags of the ``scm`` when ``causal_ordering`` is ``None``
+                too, and ``False`` for every group otherwise. Only used by ``mode='causal'``.
             mode: Which value function to evaluate. One of ``'marginal'``, ``'conditional'``,
                 ``'causal'``, or ``'do'`` (only with an ``scm``). Defaults to ``'causal'``.
             normalize: Whether to center the game at the empty coalition. Defaults to ``True``.
@@ -410,9 +410,9 @@ class LinearGaussianGame(Game):
             raise ValueError(msg)
         either = "Give either scm or cov; with an scm, mean and cov are taken from it."
 
-        self.coefficients: FloatVector = np.asarray(coefficients, dtype=float).reshape(-1)
+        self.coefficients: FloatVector = np.array(coefficients, dtype=float).reshape(-1)
         n_players = len(self.coefficients)
-        self.x_explain = _as_vector(x_explain, n_players, "x_explain")
+        self.x = _as_vector(x, n_players, "x")
         self.scm = scm
         if scm is None:
             if cov is None:
@@ -440,7 +440,7 @@ class LinearGaussianGame(Game):
 
         self.mode: ValueFunctionMode = mode
         self.empty_value = float(self.coefficients @ self.mean)
-        self.original_model_output = float(self.coefficients @ self.x_explain)
+        self.original_model_output = float(self.coefficients @ self.x)
         super().__init__(
             n_players=n_players, normalize=normalize, normalization_value=self.empty_value
         )
@@ -461,14 +461,14 @@ class LinearGaussianGame(Game):
         The model is linear, so its expected output is its output on the expected features.
         """
         if self.mode == "do" and self.scm is not None:
-            return self.scm.interventional_mean(coalition, self.x_explain)
-        means = np.where(coalition, self.x_explain, self.mean)
+            return self.scm.interventional_mean(coalition, self.x)
+        means = np.where(coalition, self.x, self.mean)
         if self.mode == "marginal" or coalition.all():
             return means
 
         if self.mode == "conditional":
             present, absent = np.flatnonzero(coalition), np.flatnonzero(~coalition)
-            means[absent] = self._conditional_mean(absent, present, self.x_explain[present])
+            means[absent] = self._conditional_mean(absent, present, self.x[present])
             return means
 
         # causal: walk the chain graph one group at a time; by linearity, the expected features
@@ -546,7 +546,7 @@ class RandomLinearGaussianGame(LinearGaussianGame):
         )
         super().__init__(
             coefficients=rng.standard_normal(n),
-            x_explain=scm.sample(1, random_state=rng)[0],
+            x=scm.sample(1, random_state=rng)[0],
             scm=scm,
             mode=mode,
             normalize=normalize,
