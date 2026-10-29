@@ -82,8 +82,8 @@ Games whose interaction values are known in closed form.
    UnanimityGame
    SOUM
    RandomTableGame
-   LinearGaussianSCM
-   RandomLinearGaussianSCM
+   LinearGaussianGame
+   RandomLinearGaussianGame
 
 .. _games-model-specific:
 
@@ -186,6 +186,7 @@ Helpers
 
    causal.tabpfn_regressor
    language.SENTIMENT_MODEL_ID
+   synthetic.LinearGaussianSCM
    unsupervised.total_correlation
    vision.get_superpixels
    vision.grid_regions

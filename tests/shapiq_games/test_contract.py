@@ -84,16 +84,20 @@ GAMES: dict[str, tuple[Callable[[], Game], bool]] = {
     "unanimity": (lambda: sg.UnanimityGame(np.array([1, 0, 1, 0])), True),
     "soum": (lambda: sg.SOUM(6, 10, random_state=3, normalize=True), True),
     "random_table": (lambda: sg.RandomTableGame(5, random_state=1, normalize=True), True),
-    "linear_gaussian_scm": (
-        lambda: sg.LinearGaussianSCM(
+    "linear_gaussian_game": (
+        lambda: sg.LinearGaussianGame(
             np.array([1.0, 2.0, 3.0]),
             np.array([1.0, -0.5, 1.0]),
-            np.array([[1.0, 0.6, 0.3], [0.6, 1.0, 0.4], [0.3, 0.4, 1.0]]),
+            cov=np.array([[1.0, 0.6, 0.3], [0.6, 1.0, 0.4], [0.3, 0.4, 1.0]]),
             mode="conditional",
         ),
         True,
     ),
-    "random_linear_gaussian_scm": (lambda: sg.RandomLinearGaussianSCM(6, random_state=0), True),
+    "random_linear_gaussian_game": (lambda: sg.RandomLinearGaussianGame(6, random_state=0), True),
+    "random_linear_gaussian_game_do": (
+        lambda: sg.RandomLinearGaussianGame(6, mode="do", random_state=0),
+        True,
+    ),
     "local_xai_marginal": (
         lambda: sg.TabularLocalExplanation(_tree_regressor(), _X_TRAIN[:50], x=_X_TEST[0]),
         True,

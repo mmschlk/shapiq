@@ -3,7 +3,7 @@ Causal Shapley Values: The Same Feature, +3.00 and -2.33
 =========================================================
 
 This example contrasts the three value functions a Shapley explanation can be built on, using
-the :class:`~shapiq_games.LinearGaussianSCM` game: the **marginal** one, the **conditional**
+the :class:`~shapiq_games.LinearGaussianGame` game: the **marginal** one, the **conditional**
 one, and the **causal** one of :cite:t:`Heskes.2020`.
 
 All three decompose the very same prediction of the very same model at the very same point.
@@ -34,44 +34,39 @@ import numpy as np
 
 import shapiq
 from shapiq.utils import powerset
-from shapiq_games import LinearGaussianSCM, RandomLinearGaussianSCM
+from shapiq_games import LinearGaussianGame, RandomLinearGaussianGame
+from shapiq_games.synthetic import LinearGaussianSCM
 
 MODES = ("marginal", "conditional", "causal")
 
 # %%
 # The Structural Causal Model
 # ---------------------------
+# :class:`~shapiq_games.synthetic.LinearGaussianSCM` holds the structural equations:
 # ``weights[j, k]`` is the direct effect of feature ``k`` on feature ``j``, and the unobserved
-# terms of ``X1`` and ``X2`` share the common cause ``U``, so their covariance is not diagonal.
-# The features are then ``X = (I - weights)^-1 (noise)``, which gives their covariance.
+# terms of ``X1`` and ``X2`` share the common cause ``U``, so their noise covariance is not
+# diagonal. The model also carries its causal chain graph, exactly as the R package ``shapr``
+# takes it: a ``causal_ordering`` of feature groups and one ``confounding`` flag per group. Here
+# the first two features form one confounded group and the third follows.
 
 weights = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 1.0, 0.0]])
 noise_cov = np.array([[2.0, 1.0, 0.0], [1.0, 2.0, 0.0], [0.0, 0.0, 1.0]])
-transform = np.linalg.inv(np.eye(3) - weights)
-cov = transform @ noise_cov @ transform.T
+scm = LinearGaussianSCM(
+    weights, noise_cov=noise_cov, causal_ordering=[[0, 1], [2]], confounding=[True, False]
+)
+print(f"feature covariance:\n{scm.cov}")
 
 coefficients = np.array([1.0, 2.0, 3.0])
 x_explain = np.ones(3)
 feature_names = [f"X{j + 1}" for j in range(len(coefficients))]
 
 # %%
-# The Causal Chain Graph
-# ----------------------
-# The causal structure enters through two arguments, exactly as in the R package ``shapr``: a
-# ``causal_ordering`` of feature groups and one ``confounding`` flag per group. Here the first
-# two features form one confounded group and the third follows.
+# One Game per Value Function
+# ---------------------------
+# A :class:`~shapiq_games.LinearGaussianGame` explains the linear model on the features of the
+# structural causal model, with the value function given by ``mode``.
 
-games = {
-    mode: LinearGaussianSCM(
-        coefficients,
-        x_explain,
-        cov,
-        causal_ordering=[[0, 1], [2]],
-        confounding=[True, False],
-        mode=mode,
-    )
-    for mode in MODES
-}
+games = {mode: LinearGaussianGame(coefficients, x_explain, scm=scm, mode=mode) for mode in MODES}
 print(f"f(x*) = {games['causal'].original_model_output:.2f}")
 
 # %%
@@ -93,12 +88,20 @@ for i, subset in enumerate(subsets):
     print(f"{label:<12}" + "".join(f"{values[mode][i]:>13.4f}" for mode in MODES))
 
 # %%
+# Because the game knows the structural equations, it can also intervene on the model itself:
+# ``mode="do"`` solves the equations with the incoming effects of ``S`` cut. On the chain graph
+# the model was built on, this agrees with the causal column.
+
+do_game = LinearGaussianGame(coefficients, x_explain, scm=scm, mode="do")
+print(f"do equals causal: {np.allclose(do_game(coalitions), values['causal'])}")
+
+# %%
 # Exact Shapley Values
 # --------------------
 # With three players all eight coalitions are enumerated, so these are exact.
 
 
-def shapley_values(game: LinearGaussianSCM) -> np.ndarray:
+def shapley_values(game: LinearGaussianGame) -> np.ndarray:
     """Return the exact Shapley values of a game as an array."""
     exact = shapiq.ExactComputer(game)("SV", 1)
     return np.array([exact[(player,)] for player in range(game.n_players)])
@@ -141,14 +144,14 @@ plt.show()
 # %%
 # Random Structural Causal Models
 # -------------------------------
-# For benchmarks, :class:`~shapiq_games.RandomLinearGaussianSCM` draws such models of any size:
-# a causal ordering of feature groups, unobserved common causes within some groups, and
-# structural weights from earlier to later groups. Its causal chain graph is exact for the drawn
-# model, so the causal value function is the interventional expectation of the model itself.
-# The same ``random_state`` draws the same model, here once per value function.
+# For benchmarks, :class:`~shapiq_games.RandomLinearGaussianGame` draws such models of any size
+# with :meth:`LinearGaussianSCM.random <shapiq_games.synthetic.LinearGaussianSCM.random>`: a
+# causal ordering of feature groups, unobserved common causes within some groups, and structural
+# weights from earlier to later groups. The same ``random_state`` draws the same model, here once
+# per value function.
 
-random_games = {mode: RandomLinearGaussianSCM(8, mode=mode, random_state=1) for mode in MODES}
-print(f"causal ordering: {random_games['causal'].causal_ordering}")
-print(f"confounding:     {random_games['causal'].confounding}")
+random_games = {mode: RandomLinearGaussianGame(8, mode=mode, random_state=1) for mode in MODES}
+print(f"causal ordering: {random_games['causal'].scm.causal_ordering}")
+print(f"confounding:     {random_games['causal'].scm.confounding}")
 for mode, game in random_games.items():
     print(f"{mode:<14}" + "".join(f"{value:>7.2f}" for value in shapley_values(game)))
