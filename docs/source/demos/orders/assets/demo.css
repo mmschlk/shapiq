@@ -35,6 +35,11 @@
   --orders-holo-line: rgba(86, 128, 232, 0.08);
   --orders-holo-beam: rgba(110, 160, 255, 0.15);
   --orders-holo-blend: multiply;
+  /* the mechanism: amber, as a blueprint's lines */
+  --orders-mech-edge: rgba(196, 122, 26, 0.75);
+  --orders-mech-glow: rgba(232, 150, 40, 0.22);
+  --orders-mech-film: rgba(240, 170, 70, 0.05);
+  --orders-mech-line: rgba(196, 122, 26, 0.1);
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -48,6 +53,10 @@ body[data-theme="dark"] .orders-demo {
   --orders-holo-line: rgba(140, 180, 255, 0.1);
   --orders-holo-beam: rgba(120, 170, 255, 0.18);
   --orders-holo-blend: screen;
+  --orders-mech-edge: rgba(255, 190, 100, 0.75);
+  --orders-mech-glow: rgba(255, 170, 60, 0.3);
+  --orders-mech-film: rgba(255, 180, 80, 0.06);
+  --orders-mech-line: rgba(255, 190, 100, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,6 +71,10 @@ body[data-theme="dark"] .orders-demo {
     --orders-holo-line: rgba(140, 180, 255, 0.1);
     --orders-holo-beam: rgba(120, 170, 255, 0.18);
     --orders-holo-blend: screen;
+    --orders-mech-edge: rgba(255, 190, 100, 0.75);
+    --orders-mech-glow: rgba(255, 170, 60, 0.3);
+    --orders-mech-film: rgba(255, 180, 80, 0.06);
+    --orders-mech-line: rgba(255, 190, 100, 0.1);
   }
 }
 
@@ -680,11 +693,11 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
-.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-layer {
+.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-layer {
   opacity: 0;
 }
 
-.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-holo-top {
+.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-holo-top {
   border-color: transparent;
   background: none;
   box-shadow: none;
@@ -692,7 +705,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* at rest, the card's name gives way to the top layer's, which lies on it */
-.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-card .orders-demo-tag {
+.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-card .orders-demo-tag {
   opacity: 0;
 }
 
@@ -713,13 +726,13 @@ body[data-theme="dark"] .orders-demo {
   opacity: 0.85;
 }
 
-.orders-demo[data-view="hologram"] .orders-demo-row::before {
+.orders-demo.orders-demo-holo .orders-demo-row::before {
   transition:
     width var(--orders-move) var(--orders-settle),
     opacity 360ms var(--orders-ease);
 }
 
-.orders-demo[data-view="hologram"]:not(.orders-demo-holo-open) .orders-demo-row::before {
+.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-row::before {
   opacity: 0;
 }
 
@@ -759,6 +772,78 @@ body[data-theme="dark"] .orders-demo {
   stroke-width: 0.75;
   stroke-dasharray: 2 3;
   opacity: 0.6;
+}
+
+/* -- the mechanism view (data-view="mechanism"): the hologram, but the full decomposition lies
+   below the input, the mechanism under it all: blueprint-like, amber, hidden under the card at
+   rest ---------------------------------------------------------------------------------------- */
+
+.orders-demo-sheet.orders-demo-layer.orders-demo-deep {
+  border-color: var(--orders-mech-edge);
+  background:
+    repeating-linear-gradient(0deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(90deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    var(--orders-mech-film);
+  box-shadow:
+    0 0 16px var(--orders-mech-glow),
+    inset 0 0 22px var(--orders-mech-glow);
+}
+
+.orders-demo-deep .orders-demo-tag {
+  fill: var(--orders-mech-edge);
+}
+
+/* at rest, under the card: only its glowing edge shows below the card's */
+.orders-demo[data-view="mechanism"]:not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-deep {
+  opacity: 1;
+}
+
+.orders-demo[data-view="mechanism"]:not(.orders-demo-holo-open) .orders-demo-deep .orders-demo-face {
+  opacity: 0;
+}
+
+/* its light, rising under the card */
+.orders-demo-beam-deep .orders-demo-beam-top,
+.orders-demo-beam-deep .orders-demo-beam-bottom {
+  stop-color: var(--orders-mech-glow);
+}
+
+.orders-demo-beam-deep .orders-demo-beam-edges {
+  stroke: var(--orders-mech-edge);
+}
+
+/* the slider as a depth gauge: the arrow down the explanations ends at the input's surface, a
+   bar across the slider, and below it, a dashed line goes down to the mechanism */
+.orders-demo-rail-surface,
+.orders-demo-rail-deep,
+/* below the input's surface, reading down from it: on a phone, the dashed line is shorter than
+   the label, which hangs below it rather than into the arrow's */
+.orders-demo-rail-deep-label {
+  display: none;
+}
+
+.orders-demo-rail-label.orders-demo-rail-deep-label {
+  transform: none;
+}
+
+.orders-demo[data-view="mechanism"] :is(.orders-demo-rail-surface, .orders-demo-rail-deep, .orders-demo-rail-deep-label) {
+  display: block;
+}
+
+.orders-demo-rail-surface {
+  position: absolute;
+  top: -1.5px;
+  left: calc(var(--orders-rail-line) - 10px);
+  width: 22px;
+  border-top: 3px solid var(--orders-ink);
+  border-radius: 2px;
+}
+
+.orders-demo-rail-deep {
+  position: absolute;
+  top: 0;
+  left: calc(var(--orders-rail-line) - 0.5px);
+  border-left: 2px dashed var(--orders-mech-edge);
 }
 
 /* the slider of the orders, in its column left of the stack (demo.js places its parts): an arrow

@@ -69,8 +69,10 @@
   const RAIL_LINE = 28;
   const RAIL_REST = 24;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
-  // the hologram: the air between its lowest layer and the input below, in units of a sheet's side
+  // the hologram: the air between its lowest layer and the input below, in units of a sheet's side;
+  // and in the mechanism, the depth below the input at which the full decomposition lies
   const AIR = 0.3;
+  const DEPTH = 0.34;
   const PLOT = { height: 153, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 75
 
   const roundTo = (value, digits) => {
@@ -555,7 +557,10 @@
     // bottom, and the explanations on layers above it, which lie on the card at rest and float off
     // it, apart, while the pointer is over the stage (or after a tap on the card), or a layer is
     // pointed at
-    const holo = () => root.dataset.view === "hologram";
+    const holo = () => root.dataset.view === "hologram" || root.dataset.view === "mechanism";
+    // the mechanism (data-view="mechanism"): the hologram, but the full decomposition is no layer over
+    // the input: it lies below the card, the mechanism under it all, hidden at rest
+    const beneath = () => root.dataset.view === "mechanism";
     let hovering = false;
     const exploded = () => hovering || state.active !== null || state.blank !== null;
 
@@ -621,6 +626,13 @@
     rail.style.setProperty("--orders-rail-line", `${RAIL_LINE}px`);
     const railLine = el("span", "orders-demo-rail-line");
     const railLabel = el("span", "orders-demo-rail-label");
+    // the mechanism's: the input's surface across the slider, and below it, the depth to the
+    // mechanism
+    const railSurface = el("span", "orders-demo-rail-surface");
+    const railDeep = el("span", "orders-demo-rail-deep");
+    const railDeepLabel = el("span", "orders-demo-rail-label orders-demo-rail-deep-label");
+    railDeepLabel.append("the ", el("em", "", "mechanism"));
+    railDeepLabel.setAttribute("aria-hidden", "true");
     railLabel.append("more ", el("em", "", "complex"), " and more ", el("em", "", "faithful"));
     railLabel.setAttribute("aria-hidden", "true");
     const ticks = el("span", "orders-demo-rail-ticks");
@@ -630,7 +642,7 @@
     thumb.setAttribute("role", "slider");
     thumb.setAttribute("aria-orientation", "vertical");
     thumb.setAttribute("aria-label", "Order of the explanation");
-    rail.append(railLine, railLabel, ticks, thumb);
+    rail.append(railLine, railLabel, railSurface, railDeep, railDeepLabel, ticks, thumb);
     // the stack's window: it starts at the slider's column, so that a stack swiped or slid aside goes
     // out of view there, not under the slider
     const view = el("div", "orders-demo-view");
@@ -657,6 +669,7 @@
     let rows = [];
     let stops = []; // the slider's: its rest, then every sheet and blank sheet, top to bottom
     let blankRow = null;
+    let cardRow = null; // the hologram's: the input's row, beside its card
     let marker = null;
     let plotWidth = 0;
 
@@ -682,7 +695,8 @@
       // the same height for every example: the most sheets and blank sheets of any
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
       const blanks = Math.max(...data.examples.map((example) => between(example).length));
-      const air = holo() ? AIR * side : 0; // the hologram's card, below its layers
+      // the hologram's card, below its layers; the mechanism's full decomposition, below the card
+      const air = holo() ? (AIR + (beneath() ? DEPTH - STRIP : 0)) * side : 0;
       const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side + air;
       // a sheet slides out to the left: the stack lies right of the middle by half of that (in the
       // hologram, none does)
@@ -729,11 +743,12 @@
       let bottom = 0;
       items.forEach((item, position) => {
         if (position === 0) bottom = h;
-        else bottom += (item.base ? AIR : item.sheet ? STRIP : BLANK_STRIP) * g.side;
+        else bottom += (item.base ? AIR : item.deep ? DEPTH : item.sheet ? STRIP : BLANK_STRIP) * g.side;
         centers.push(bottom - h / 2);
       });
       const offset = (g.height - bottom) / 2;
-      return items.map((_, position) => ({ x: g.center, y: open ? centers[position] + offset : g.height / 2 }));
+      // at rest, the mechanism lies just under the card, its edge showing below the card's
+      return items.map((item, position) => ({ x: g.center, y: open ? centers[position] + offset : g.height / 2 + (item.deep ? 2 * THICKNESS : 0) }));
     }
 
     // the corners of a sheet on the stage (left, top, right, bottom for the turn of -45 degrees)
@@ -767,6 +782,9 @@
 
     // the order of the sheets on top of each other, as stacked: a sheet slid out keeps its place
     const zIndex = (item) => items.length - items.indexOf(item);
+    // a hologram's: the card under its layers, and in the mechanism, the full decomposition under the
+    // card, and the light between them
+    const layerZ = (item) => (item.base ? (beneath() ? 2 : 0) : item.deep ? 0 : zIndex(item) + (beneath() ? 3 : 0));
 
     // the item under a point of the stage, where the sheets are going (not where they are while
     // they move), the one on top first. While a sheet slides out, the sheets count where they lie
@@ -775,7 +793,7 @@
     function itemAt(point) {
       if (holo()) {
         const places = holoLayout(true);
-        const order = items.map((_, position) => position).sort((a, b) => zIndex(items[b]) - zIndex(items[a]));
+        const order = items.map((_, position) => position).sort((a, b) => layerZ(items[b]) - layerZ(items[a]));
         const position = order.find((p) => inside(point, corners(places[p])));
         return position === undefined ? null : items[position];
       }
@@ -944,7 +962,7 @@
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
-      for (const row of [...rows, blankRow]) row?.remove();
+      for (const row of [...rows, blankRow, cardRow]) row?.remove();
       const text = el("span", "orders-demo-model-text");
       text.append(
         el("strong", "", example.model.title),
@@ -973,7 +991,16 @@
         if (!item.sheet) item.node = el("div", holo() ? "orders-demo-sheet orders-demo-blank orders-demo-layer" : "orders-demo-sheet orders-demo-blank");
       }
       hovering = false;
-      if (holo()) items.push({ order: 0, base: true, node: cardOf(example) });
+      if (holo()) {
+        const card = { order: 0, base: true, node: cardOf(example) };
+        if (beneath()) {
+          items.at(-1).deep = true;
+          items.splice(-1, 0, card);
+        } else {
+          items.push(card);
+        }
+      }
+      for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
       rows = example.sheets.map((sheet, i) => {
         const names = sheetName(sheet);
@@ -1017,6 +1044,17 @@
       });
       ticks.replaceChildren(...stopItems().map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
 
+      // the hologram's row of its card: the input, what the layers explain
+      cardRow = null;
+      if (holo()) {
+        cardRow = el("div", "orders-demo-row orders-demo-blank-row orders-demo-card-row");
+        cardRow.setAttribute("aria-hidden", "true");
+        const title = el("span", "orders-demo-row-title");
+        title.append(el("strong", "", "Input"), el("span", "orders-demo-row-name", example.label));
+        cardRow.append(title);
+        ladder.append(cardRow);
+      }
+
       // one row for all blank sheets: the orders between, which the plot shows one by one
       blankRow = null;
       if (between(example).length) {
@@ -1053,14 +1091,16 @@
       const anchors = hologram ? holoLayout(true) : places;
       const open = hologram && exploded();
       const opening = hologram && open !== root.classList.contains("orders-demo-holo-open");
+      root.classList.toggle("orders-demo-holo", hologram); // a hologram, or the mechanism
       root.classList.toggle("orders-demo-holo-open", open);
       const rowY = []; // the height of every sheet's row, for the row of the blank sheets
+      let cardRowY = null;
       items.forEach((item, position) => {
         const { x, y } = places[position];
         const node = item.node;
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
-        node.style.zIndex = item.base ? 0 : zIndex(item);
+        node.style.zIndex = hologram ? layerZ(item) : zIndex(item);
         if (hologram) {
           // the layers peel off the card one after the other, the top one first, and settle back
           // onto it the lowest first; each floats a little, in a rhythm of its own
@@ -1077,6 +1117,13 @@
         node.classList.toggle("orders-demo-receded", out && !item.base && item.index !== active);
         node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
 
+        if (item.base) {
+          const right = rightCorner(anchors[position]);
+          cardRowY = right[1];
+          cardRow.style.left = `${g.ladderLeft}px`;
+          cardRow.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
+          cardRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
+        }
         if (!item.sheet) return;
         const row = rows[item.index];
         const right = rightCorner(anchors[position]);
@@ -1096,9 +1143,19 @@
         ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y - (!hologram && item.order === state.blank ? PEEK * g.side : 0), item })),
       ];
       const [top, bottom] = [stops[0].y, stops.at(-1).y];
+      // in the mechanism, the arrow ends at the input's surface, and below it, a dashed line goes
+      // down to the mechanism
+      const surface = beneath() ? cardRowY : null;
+      const end = surface ?? bottom;
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
-      railLine.style.height = `${roundTo(bottom - top, 2)}px`;
-      railLabel.style.top = `${roundTo((stops[1].y + bottom) / 2, 2)}px`;
+      railLine.style.height = `${roundTo(end - top - (surface === null ? 0 : 10), 2)}px`;
+      railLabel.style.top = `${roundTo((stops[1].y + end) / 2, 2)}px`;
+      if (surface !== null) {
+        railSurface.style.translate = `0 ${roundTo(surface, 2)}px`;
+        railDeep.style.translate = `0 ${roundTo(surface, 2)}px`;
+        railDeep.style.height = `${roundTo(bottom - surface, 2)}px`;
+        railDeepLabel.style.top = `${roundTo(surface + 10, 2)}px`;
+      }
       [...ticks.children].forEach((tick, p) => {
         tick.style.transform = `translateY(${roundTo(stops[p + 1].y, 2)}px)`;
       });
@@ -1124,11 +1181,13 @@
         if (!hologram && target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
         // beside the blank sheet, but clear of the rows above and below it
+        // (in the mechanism, the row below is the card's)
         const [above, below] = [rows.length - 2, rows.length - 1];
+        const [belowRow, belowY] = beneath() ? [cardRow, cardRowY] : [rows[below], rowY[below]];
         const half = (row) => row.offsetHeight / 2;
         const y = Math.min(
           Math.max(right[1], rowY[above] + half(rows[above]) + half(blankRow) + 2),
-          rowY[below] - half(rows[below]) - half(blankRow) - 2,
+          belowY - half(belowRow) - half(blankRow) - 2,
         );
         blankRow.style.left = `${g.ladderLeft}px`;
         blankRow.style.transform = `translateY(${roundTo(y, 2)}px) translateY(-50%)`;
@@ -1149,6 +1208,13 @@
     function project(item, anchors) {
       const card = items.find((other) => other.base);
       beam.classList.toggle("orders-demo-beam-on", Boolean(item));
+      // in the mechanism, the light is over the card, under the layers; the mechanism's own rises under
+      // the card
+      beam.style.zIndex = beneath() ? (item?.deep ? 1 : 3) : "";
+      // brightest at the layer it comes from: above the card, or the mechanism's, amber, below it
+      beam.classList.toggle("orders-demo-beam-deep", Boolean(item?.deep));
+      glow.setAttribute("y1", item?.deep ? 1 : 0);
+      glow.setAttribute("y2", item?.deep ? 0 : 1);
       if ((projected.get(card.node) ?? null) !== (item?.node ?? null)) {
         const marks = item?.node.querySelector(".orders-demo-face").cloneNode(true);
         marks?.querySelector(".orders-demo-tag")?.remove();
@@ -1160,7 +1226,7 @@
       beam.setAttribute("height", geometry.height);
       // the hull of the layer and the card, one above the other: the layer's left, top and right
       // corners, the card's right, bottom and left ones; and the edges between their corners
-      const [upper, lower] = [corners(anchors[items.indexOf(item)]), corners(anchors[items.indexOf(card)])];
+      const [upper, lower] = [anchors[items.indexOf(item)], anchors[items.indexOf(card)]].sort((a, b) => a.y - b.y).map(corners);
       const by = (points, pick) => points.reduce(pick);
       const left = (a, b) => (b[0] < a[0] ? b : a);
       const right = (a, b) => (b[0] > a[0] ? b : a);
