@@ -1326,10 +1326,7 @@
     // Touch events, not pointer events: only a touchmove can be kept from the browser, which on iOS
     // takes a sideways drag over after a few pixels and cancels it for the page
     let swipe = null;
-    let touching = false; // the last press on the stage was a touch: a tap brings out no sheet
-    stage.addEventListener("pointerdown", (event) => {
-      touching = event.pointerType === "touch";
-    });
+    let swiped = -Infinity; // when the last swipe ended: the click that may follow it is no tap
     stage.addEventListener(
       "touchstart",
       (event) => {
@@ -1367,6 +1364,7 @@
       const { dx, sideways, moves } = swipe;
       swipe = null;
       if (!sideways) return;
+      swiped = performance.now();
       root.classList.remove("orders-demo-swiping");
       // a flick: fast over the last tenth of a second, in the direction swiped
       const [at, from] = moves.find(([time]) => event.timeStamp - time <= 100) ?? moves.at(-1);
@@ -1382,7 +1380,7 @@
     stage.addEventListener("touchend", (event) => endSwipe(event, false));
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
-      if (touching) return; // on a touch screen, the stack is for swiping; the slider brings out sheets
+      if (performance.now() - swiped < 400) return; // the end of a swipe, not a tap
       const item = itemAt(pointer(event));
       if (item === null) {
         state.pinned = false;
