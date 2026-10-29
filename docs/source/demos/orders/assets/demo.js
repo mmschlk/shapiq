@@ -27,6 +27,11 @@
 // order. Where the examples do not fit in a row, a stepper goes from one to the next, and so does a
 // swipe across the stack.
 //
+// Another view, the projector (data-view="projector" on the demo; the docs show the stack): the
+// example's input as a card on the glass of an overhead projector, and every explanation as a
+// transparent foil, which lies in a tray beside the card until it is laid onto it, its ink over the
+// input. The rows, the plot, the stepper and the swipe work as in the stack.
+//
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
 // find the sheet under the pointer and to lead every row of the ladder to its sheet.
@@ -189,29 +194,36 @@
   const extentOf = (points) =>
     Math.max(...[0, 1].map((axis) => Math.max(...points.map((p) => p[axis])) - Math.min(...points.map((p) => p[axis]))));
 
+  // a face's layers: "all" for a sheet of the stack, or, for the projector, the "input" (what is
+  // explained, on the card under the lamp) or the "marks" (the explanation, on a transparent foil)
+  const shows = (layer, part) => layer === "all" || layer === part;
+
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
-  function moleculeFace(svg, example, sheet) {
+  function moleculeFace(svg, example, sheet, layer = "all") {
     const place = fit(example.coords, [9, 5, 93, 87]);
     const position = example.coords.map(place);
     const extent = extentOf(position);
     const [radius, widest] = [(ATOM / 2) * extent, WIDEST * extent];
     const largest = largestValue(sheet);
-    // the groups' centers where shapiq's SI graph plot puts them (../compute/pack.py)
-    drawGroups(svg, sheet, (atom) => position[atom], largest, widest, place);
-    // a main effect: a disc around its atom, as much wider as a group of its value, over a disc of
-    // the sheet's color that hides the groups below it
-    const halos = add(svg, "g", { class: "orders-demo-halos" });
-    sheet.first.forEach((value, atom) => {
-      const ratio = Math.abs(value) / largest;
-      if (ratio < FAINTEST) return;
-      const disc = {
-        cx: roundTo(position[atom][0], 2),
-        cy: roundTo(position[atom][1], 2),
-        r: roundTo(radius + (widest * ratio) / 2, 2),
-      };
-      add(halos, "circle", { ...disc, class: "orders-demo-halo-ground" });
-      add(halos, "circle", { ...disc, fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
-    });
+    if (shows(layer, "marks")) {
+      // the groups' centers where shapiq's SI graph plot puts them (../compute/pack.py)
+      drawGroups(svg, sheet, (atom) => position[atom], largest, widest, place);
+      // a main effect: a disc around its atom, as much wider as a group of its value, over a disc
+      // of the sheet's color that hides the groups below it (on a sheet; a foil has no color)
+      const halos = add(svg, "g", { class: "orders-demo-halos" });
+      sheet.first.forEach((value, atom) => {
+        const ratio = Math.abs(value) / largest;
+        if (ratio < FAINTEST) return;
+        const disc = {
+          cx: roundTo(position[atom][0], 2),
+          cy: roundTo(position[atom][1], 2),
+          r: roundTo(radius + (widest * ratio) / 2, 2),
+        };
+        if (layer === "all") add(halos, "circle", { ...disc, class: "orders-demo-halo-ground" });
+        add(halos, "circle", { ...disc, fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
+      });
+    }
+    if (!shows(layer, "input")) return;
     const bonds = add(svg, "g", { class: "orders-demo-bonds" });
     for (const [i, j] of example.bonds) {
       const [[x1, y1], [x2, y2]] = [position[i], position[j]];
@@ -226,7 +238,7 @@
   }
 
   // the photo and its caption: the photo's patches on the left, the caption's tokens on the right
-  function imageTextFace(svg, example, sheet, url, id) {
+  function imageTextFace(svg, example, sheet, url, id, layer = "all") {
     const photo = { x: 4, y: 11, size: 62 };
     const grid = example.grid;
     const cell = photo.size / grid;
@@ -248,45 +260,51 @@
       rx: 1.6,
     });
     const image = add(svg, "g", { "clip-path": `url(#${clip})` });
-    add(image, "image", {
-      href: url,
-      x: photo.x,
-      y: photo.y,
-      width: photo.size,
-      height: photo.size,
-      preserveAspectRatio: "xMidYMid slice",
-    });
-    add(image, "rect", {
-      class: "orders-demo-wash",
-      x: photo.x,
-      y: photo.y,
-      width: photo.size,
-      height: photo.size,
-    });
-    // a main effect tints its patch, or its word, as opaque as its share of the largest value
-    sheet.first.slice(0, patches).forEach((value, patch) => {
-      const ratio = Math.abs(value) / largest;
-      if (ratio < FAINTEST) return;
-      const [cx, cy] = anchor(patch);
-      add(image, "rect", {
-        x: roundTo(cx - cell / 2, 2),
-        y: roundTo(cy - cell / 2, 2),
-        width: roundTo(cell, 2),
-        height: roundTo(cell, 2),
-        fill: solid(value),
-        "fill-opacity": roundTo(ratio, 3),
+    if (shows(layer, "input")) {
+      add(image, "image", {
+        href: url,
+        x: photo.x,
+        y: photo.y,
+        width: photo.size,
+        height: photo.size,
+        preserveAspectRatio: "xMidYMid slice",
       });
-    });
-    const lines = add(image, "g", { class: "orders-demo-grid" });
-    for (let k = 1; k < grid; k++) {
-      const at = roundTo(photo.x + k * cell, 2);
-      const across = roundTo(photo.y + k * cell, 2);
-      add(lines, "line", { x1: at, y1: photo.y, x2: at, y2: photo.y + photo.size });
-      add(lines, "line", { x1: photo.x, y1: across, x2: photo.x + photo.size, y2: across });
+      add(image, "rect", {
+        class: "orders-demo-wash",
+        x: photo.x,
+        y: photo.y,
+        width: photo.size,
+        height: photo.size,
+      });
+    }
+    // a main effect tints its patch, or its word, as opaque as its share of the largest value
+    if (shows(layer, "marks")) {
+      sheet.first.slice(0, patches).forEach((value, patch) => {
+        const ratio = Math.abs(value) / largest;
+        if (ratio < FAINTEST) return;
+        const [cx, cy] = anchor(patch);
+        add(image, "rect", {
+          x: roundTo(cx - cell / 2, 2),
+          y: roundTo(cy - cell / 2, 2),
+          width: roundTo(cell, 2),
+          height: roundTo(cell, 2),
+          fill: solid(value),
+          "fill-opacity": roundTo(ratio, 3),
+        });
+      });
+    }
+    if (shows(layer, "input")) {
+      const lines = add(image, "g", { class: "orders-demo-grid" });
+      for (let k = 1; k < grid; k++) {
+        const at = roundTo(photo.x + k * cell, 2);
+        const across = roundTo(photo.y + k * cell, 2);
+        add(lines, "line", { x1: at, y1: photo.y, x2: at, y2: photo.y + photo.size });
+        add(lines, "line", { x1: photo.x, y1: across, x2: photo.x + photo.size, y2: across });
+      }
     }
 
     const players = Array.from({ length: patches + example.tokens.length }, (_, player) => anchor(player));
-    drawGroups(svg, sheet, anchor, largest, WIDEST * extentOf(players));
+    if (shows(layer, "marks")) drawGroups(svg, sheet, anchor, largest, WIDEST * extentOf(players));
 
     const words = add(svg, "g", { class: "orders-demo-tokens" });
     example.tokens.forEach((token, k) => {
@@ -294,8 +312,10 @@
       const ratio = Math.abs(value) / largest;
       const y = tokens.top + k * row + row * 0.12;
       const height = row * 0.76;
-      add(words, "rect", { x: tokens.x, y: roundTo(y, 2), width: tokens.width, height: roundTo(height, 2), rx: 1.4 });
-      if (ratio >= FAINTEST) {
+      if (shows(layer, "input")) {
+        add(words, "rect", { x: tokens.x, y: roundTo(y, 2), width: tokens.width, height: roundTo(height, 2), rx: 1.4 });
+      }
+      if (shows(layer, "marks") && ratio >= FAINTEST) {
         add(words, "rect", {
           class: "orders-demo-tint",
           x: tokens.x,
@@ -307,7 +327,9 @@
           "fill-opacity": roundTo(ratio, 3),
         });
       }
-      add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
+      if (shows(layer, "input")) {
+        add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
+      }
     });
   }
 
@@ -316,7 +338,7 @@
   // each of them; red raises the value of the house, blue lowers it. The full decomposition of a
   // tree ensemble is as deep as its trees.
   const TREE_GROUPS = [0, 0, 6, 5, 4, 3, 3, 2]; // the strongest groups shown, by level
-  function treeFace(svg, example, sheet) {
+  function treeFace(svg, example, sheet, layer = "all") {
     const levels = example.largest;
     const [top, bottom] = [24, 88];
     const step = (bottom - top) / (levels - 1);
@@ -324,8 +346,9 @@
     const largest = largestValue(sheet);
     const ratioOf = (value) => Math.abs(value) / largest;
 
+    const marks = shows(layer, "marks");
     const guides = add(svg, "g", { class: "orders-demo-tree-levels" });
-    for (let level = 1; level <= levels; level++) {
+    for (let level = 1; level <= (marks ? levels : 0); level++) {
       const y = roundTo(top + (level - 1) * step, 2);
       add(guides, "line", { x1: 6, x2: 94, y1: y, y2: y });
       add(guides, "text", { x: 2.5, y }, String(level));
@@ -355,7 +378,7 @@
     }
 
     const links = add(svg, "g", { class: "orders-demo-tree-links" });
-    for (const node of [...nodes].sort((a, b) => Math.abs(a.value) - Math.abs(b.value))) {
+    for (const node of marks ? [...nodes].sort((a, b) => Math.abs(a.value) - Math.abs(b.value)) : []) {
       const ratio = ratioOf(node.value);
       for (const player of node.players) {
         const [x1, y1, x2] = [node.x, node.y, slot.get(player)];
@@ -369,7 +392,7 @@
       }
     }
     const groups = add(svg, "g", { class: "orders-demo-tree-groups" });
-    for (const node of nodes) {
+    for (const node of marks ? nodes : []) {
       const ratio = ratioOf(node.value);
       const r = 1 + 4.6 * ratio ** 0.8;
       add(groups, "circle", {
@@ -392,7 +415,7 @@
     example.layout.forEach((feature, k) => {
       const x = roundTo(slot.get(feature), 2);
       const ratio = ratioOf(sheet.first[feature]);
-      if (ratio >= 0.02) {
+      if (marks && ratio >= 0.02) {
         add(halos, "circle", {
           cx: x,
           cy: top,
@@ -401,6 +424,7 @@
           "fill-opacity": roundTo(0.15 + 0.85 * ratio, 3),
         });
       }
+      if (!shows(layer, "input")) return;
       add(features, "circle", { cx: x, cy: top, r: 2 });
       const y = k % 2 === 0 ? 5.6 : 12;
       add(labels, "text", { x, y, "text-anchor": "middle", class: "orders-demo-feature-name" }, example.features[feature]);
@@ -410,7 +434,7 @@
 
   // many houses: a heatmap, a column per house sorted by its prediction (the line on top), a row
   // per feature or group of features; the cells are drawn on a canvas, one pixel each
-  function heatmapFace(svg, example, sheet) {
+  function heatmapFace(svg, example, sheet, layer = "all") {
     const box = { left: 30, right: 97, top: 23, row: 4.7, band: [6, 18] };
     const columns = example.predictions.length;
     const rows = sheet.rows;
@@ -422,12 +446,15 @@
       const y = box.band[1] - ((value - low) / (high - low)) * (box.band[1] - box.band[0]);
       return `${roundTo(x, 2)},${roundTo(y, 2)}`;
     });
-    add(svg, "path", {
-      class: "orders-demo-heat-area",
-      d: `M${box.left},${box.band[1]}L${line.join("L")}L${box.right},${box.band[1]}Z`,
-    });
-    add(svg, "path", { class: "orders-demo-heat-line", d: `M${line.join("L")}` });
-    add(svg, "text", { class: "orders-demo-heat-label", x: box.left - 1.5, y: box.band[1] - 2 }, "prediction");
+    if (shows(layer, "input")) {
+      add(svg, "path", {
+        class: "orders-demo-heat-area",
+        d: `M${box.left},${box.band[1]}L${line.join("L")}L${box.right},${box.band[1]}Z`,
+      });
+      add(svg, "path", { class: "orders-demo-heat-line", d: `M${line.join("L")}` });
+      add(svg, "text", { class: "orders-demo-heat-label", x: box.left - 1.5, y: box.band[1] - 2 }, "prediction");
+    }
+    if (!shows(layer, "marks")) return;
 
     const canvas = document.createElement("canvas");
     canvas.width = columns;
@@ -629,6 +656,7 @@
     // -- geometry: the size of the sheets, the stage, and every sheet's place ------------------------
 
     function measure() {
+      if (projecting()) return measureProjector();
       const width = stage.clientWidth;
       const narrow = width < 560;
       // the rows of the ladder: room for a bar, the R^2 and the verdict, all as wide; on narrow
@@ -850,6 +878,146 @@
       idle(drawAhead);
     }
 
+    // -- the projector: the example's input as a card on the glass of an overhead projector, and its
+    // explanations as transparent foils, one per order, that lie in a tray beside it until one is
+    // laid onto the card (data-view="projector" on the demo; the stack is the default view)
+
+    const projecting = () => root.dataset.view === "projector";
+    // the projector's pieces of an example, drawn once: the card under the lamp (the input), a foil
+    // for every sheet (the explanation's marks), a blank foil for the orders between, and for each
+    // foil, in the tray's order, a caption (shown on narrow screens, which have no ladder)
+    const projected = new Map();
+    function projectorOf(example) {
+      if (projected.has(example.id)) return projected.get(example.id);
+      const draw = (sheet, layer, i) => {
+        const svg = document.createElementNS(SVG, "svg");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        if (example.kind === "graph") moleculeFace(svg, example, sheet, layer);
+        else if (example.kind === "tree") treeFace(svg, example, sheet, layer);
+        else if (example.kind === "heatmap") heatmapFace(svg, example, sheet, layer);
+        else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${example.id}-${layer}-${i}`, layer);
+        return svg;
+      };
+      const plate = el("div", "orders-demo-plate");
+      const glass = el("div", "orders-demo-glass");
+      glass.append(draw(example.sheets[0], "input", 0));
+      plate.append(glass);
+      const foils = example.sheets.map((sheet, i) => {
+        const foil = el("div", "orders-demo-foil");
+        foil.append(draw(sheet, "marks", i), el("span", "orders-demo-foil-tab", sheetName(sheet).tag));
+        return foil;
+      });
+      const tray = foils.map((node, i) => ({ node, index: i, caption: sheetName(example.sheets[i]).tag }));
+      const blanks = between(example);
+      if (blanks.length) {
+        const span = `${blanks[0][0]}–${example.sheets.at(-1).order - 1}`;
+        const spare = el("div", "orders-demo-foil orders-demo-foil-spare");
+        spare.append(el("span", "orders-demo-foil-tab", span));
+        tray.splice(-1, 0, { node: spare, index: null, order: blanks[0][0], caption: span });
+      }
+      for (const item of tray) item.label = el("span", "orders-demo-foil-caption", item.caption);
+      const pieces = { plate, glass, foils, tray };
+      projected.set(example.id, pieces);
+      return pieces;
+    }
+
+    // the card on its plate, and beside it (below it, on narrow screens) the tray: the foils as
+    // small as a thumbnail, one under the other (beside each other), with the ladder's rows beside
+    function measureProjector() {
+      const width = stage.clientWidth;
+      const narrow = width < 560;
+      const count = projectorOf(current()).tray.length;
+      const pad = 12; // the plate around the card
+      if (narrow) {
+        const card = Math.min(width - 2 * pad, 420);
+        const gap = 8;
+        const thumb = Math.min(64, (width - (count - 1) * gap) / count);
+        const trayTop = card + 2 * pad + 16;
+        return {
+          narrow,
+          card,
+          pad,
+          plate: [(width - card - 2 * pad) / 2, 0],
+          thumb,
+          tray: Array.from({ length: count }, (_, k) => [(width - count * thumb - (count - 1) * gap) / 2 + k * (thumb + gap), trayTop]),
+          height: Math.ceil(trayTop + thumb + 26),
+        };
+      }
+      const ladderWidth = Math.min(256, width * 0.32);
+      const thumb = 76;
+      const card = Math.max(160, Math.min(380, width - ladderWidth - thumb - 2 * pad - 48));
+      const trayLeft = card + 2 * pad + 24;
+      const step = (card + 2 * pad - thumb) / Math.max(1, count - 1);
+      return {
+        narrow,
+        card,
+        pad,
+        plate: [0, 0],
+        thumb,
+        tray: Array.from({ length: count }, (_, k) => [trayLeft, k * step]),
+        ladderLeft: trayLeft + thumb + 18,
+        height: Math.ceil(card + 2 * pad + 8),
+      };
+    }
+
+    // the tray's foil under a point of the stage, by where the foils lie in the tray (not where one
+    // flies to), so that a foil laid onto the card hands the pointer to no other
+    function trayAt([x, y]) {
+      const g = geometry;
+      const tray = projectorOf(current()).tray;
+      const step = g.narrow ? null : tray.length > 1 ? g.tray[1][1] - g.tray[0][1] : g.thumb;
+      const k = tray.findIndex((_, i) => {
+        const [left, top] = g.tray[i];
+        if (x < left || x > left + g.thumb) return false;
+        return g.narrow ? y >= top && y <= top + g.thumb : y >= top && y < top + (i === tray.length - 1 ? g.thumb : step);
+      });
+      return k < 0 ? null : tray[k];
+    }
+
+    // lay the foil pointed at onto the card, and every other one into the tray
+    function placeProjector(active) {
+      const g = geometry;
+      const pieces = projectorOf(current());
+      stage.style.height = `${g.height}px`;
+      root.classList.toggle("orders-demo-narrow", g.narrow);
+      const out = typeof active === "number";
+      const [px, py] = g.plate;
+      Object.assign(pieces.plate.style, { left: `${px}px`, top: `${py}px`, width: `${g.card + 2 * g.pad}px`, height: `${g.card + 2 * g.pad}px` });
+      pieces.plate.classList.toggle("orders-demo-lit", out);
+      pieces.tray.forEach((item, k) => {
+        const on = out && item.index === active;
+        const [x, y] = on ? [px + g.pad, py + g.pad] : g.tray[k];
+        // in the tray, a foil lies a little askew, every other one the other way
+        const scale = on ? 1 : g.thumb / g.card;
+        const turn = on ? 0 : (k % 2 ? -1 : 1) * (g.narrow ? 2 : 3);
+        Object.assign(item.node.style, {
+          width: `${g.card}px`,
+          height: `${g.card}px`,
+          zIndex: on ? 50 : k + 1,
+          transform: `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) rotate(${turn}deg) scale(${roundTo(scale, 4)})`,
+        });
+        item.node.classList.toggle("orders-demo-on", on);
+        item.node.classList.toggle("orders-demo-peek", item.index === null && state.blank !== null);
+        const [lx, ly] = g.tray[k];
+        Object.assign(item.label.style, { left: `${roundTo(lx + g.thumb / 2, 2)}px`, top: `${roundTo(ly + g.thumb + 5, 2)}px` });
+        item.label.classList.toggle("orders-demo-on", on || (item.index === null && state.blank !== null));
+        // the ladder's row of a foil, beside it in the tray
+        const row = item.index === null ? blankRow : rows[item.index];
+        if (!row || g.narrow) return;
+        row.style.left = `${g.ladderLeft}px`;
+        row.style.transform = `translateY(${roundTo(ly + g.thumb / 2, 2)}px) translateY(-50%)`;
+        row.style.setProperty("--orders-lead", "14px");
+        if (item.index === null) {
+          row.classList.toggle("orders-demo-active", state.blank !== null);
+          row.querySelector(".orders-demo-row-name").textContent =
+            state.blank !== null ? `Order ${state.blank}: R² ${fit2(fitOf(current(), state.blank)[1])}` : `Orders ${item.caption}`;
+        } else {
+          row.classList.toggle("orders-demo-active", on);
+          row.setAttribute("aria-pressed", String(state.pinned && on));
+        }
+      });
+    }
+
     function render() {
       const example = current();
       Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
@@ -874,7 +1042,8 @@
 
       const last = example.sheets.at(-1);
       items = [];
-      const nodes = sheetsOf(example);
+      const projector = projecting();
+      const nodes = projector ? projectorOf(example).foils : sheetsOf(example);
       example.sheets.forEach((sheet, i) => {
         if (sheet === last) {
           for (const fit of between(example)) items.push({ order: fit[0], fit });
@@ -882,7 +1051,7 @@
         items.push({ order: sheet.order, sheet, index: i, node: nodes[i] });
       });
       for (const item of items) {
-        if (!item.sheet) item.node = el("div", "orders-demo-sheet orders-demo-blank");
+        if (!item.sheet && !projector) item.node = el("div", "orders-demo-sheet orders-demo-blank");
       }
 
       rows = example.sheets.map((sheet, i) => {
@@ -945,13 +1114,22 @@
       // properties of their edges, which every element inherits) would do so again
       root.classList.add("orders-demo-instant");
       place(null);
-      stack.append(...items.map((item) => item.node));
+      if (projector) {
+        const { plate, tray } = projectorOf(example);
+        stack.append(plate, ...tray.map((item) => item.node), ...tray.map((item) => item.label));
+      } else {
+        stack.append(...items.map((item) => item.node));
+      }
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
     }
 
     // move every sheet and row to its place, for a sheet slid out (or null at rest)
     function place(active) {
+      if (projecting()) {
+        placeProjector(active);
+        return;
+      }
       const g = geometry;
       stage.style.height = `${g.height}px`;
       root.classList.toggle("orders-demo-narrow", g.narrow);
@@ -1312,6 +1490,12 @@
     };
     stage.addEventListener("pointermove", (event) => {
       if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail")) return;
+      if (projecting()) {
+        // a foil of the tray pointed at is laid onto the card; over the card, it stays there
+        const foil = trayAt(pointer(event));
+        if (foil) point(foil.index, foil.index === null ? foil.order : null);
+        return;
+      }
       const item = itemAt(pointer(event));
       if (item?.sheet) point(item.index, null);
       // a blank sheet comes out only from the stack at rest, which it does not change
@@ -1381,6 +1565,14 @@
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
       if (performance.now() - swiped < 400) return; // the end of a swipe, not a tap
+      if (projecting()) {
+        // a foil of the tray is laid onto the card, or taken back; a tap on the card takes back
+        // the foil on it
+        const foil = trayAt(pointer(event));
+        if (foil) toggle(foil.index, foil.index === null ? foil.order : null);
+        else if (state.pinned) toggle(state.active, state.blank);
+        return;
+      }
       const item = itemAt(pointer(event));
       if (item === null) {
         state.pinned = false;
@@ -1407,6 +1599,8 @@
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
+    // the view, a stack or a projector, follows the demo's data-view attribute
+    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
