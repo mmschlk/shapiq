@@ -40,6 +40,10 @@
   --orders-mech-glow: rgba(232, 150, 40, 0.22);
   --orders-mech-film: rgba(240, 170, 70, 0.05);
   --orders-mech-line: rgba(196, 122, 26, 0.1);
+  /* the exploded view, a technical drawing: its lines, its parts' paper, and its sections' hatching */
+  --orders-draft-ink: rgba(27, 30, 39, 0.72);
+  --orders-draft-paper: rgba(255, 255, 255, 0.74);
+  --orders-draft-hatch: rgba(27, 30, 39, 0.3);
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -57,6 +61,9 @@ body[data-theme="dark"] .orders-demo {
   --orders-mech-glow: rgba(255, 170, 60, 0.3);
   --orders-mech-film: rgba(255, 180, 80, 0.06);
   --orders-mech-line: rgba(255, 190, 100, 0.1);
+  --orders-draft-ink: rgba(222, 226, 236, 0.7);
+  --orders-draft-paper: rgba(26, 28, 36, 0.74);
+  --orders-draft-hatch: rgba(222, 226, 236, 0.24);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -75,6 +82,49 @@ body[data-theme="dark"] .orders-demo {
     --orders-mech-glow: rgba(255, 170, 60, 0.3);
     --orders-mech-film: rgba(255, 180, 80, 0.06);
     --orders-mech-line: rgba(255, 190, 100, 0.1);
+    --orders-draft-ink: rgba(222, 226, 236, 0.7);
+    --orders-draft-paper: rgba(26, 28, 36, 0.74);
+    --orders-draft-hatch: rgba(222, 226, 236, 0.24);
+  }
+}
+
+/* the hologram and the mechanism, toned down (data-tone="calm" on the demo): their layers paper, as
+   the stack's sheets, with neither glow nor scan lines, and the light down to the card a shadow */
+.orders-demo[data-tone="calm"] {
+  --orders-holo-edge: rgba(91, 98, 117, 0.45);
+  --orders-holo-glow: transparent;
+  --orders-holo-film: rgba(255, 255, 255, 0.55);
+  --orders-holo-line: transparent;
+  --orders-holo-beam: rgba(91, 98, 117, 0.08);
+  --orders-mech-edge: rgba(150, 112, 60, 0.6);
+  --orders-mech-glow: transparent;
+  --orders-mech-film: rgba(252, 248, 240, 0.85);
+  --orders-mech-line: rgba(150, 112, 60, 0.07);
+}
+
+body[data-theme="dark"] .orders-demo[data-tone="calm"] {
+  --orders-holo-edge: rgba(170, 178, 196, 0.4);
+  --orders-holo-glow: transparent;
+  --orders-holo-film: rgba(30, 33, 42, 0.55);
+  --orders-holo-line: transparent;
+  --orders-holo-beam: rgba(170, 178, 196, 0.06);
+  --orders-mech-edge: rgba(210, 175, 120, 0.5);
+  --orders-mech-glow: transparent;
+  --orders-mech-film: rgba(40, 36, 30, 0.85);
+  --orders-mech-line: rgba(210, 175, 120, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .orders-demo[data-tone="calm"] {
+    --orders-holo-edge: rgba(170, 178, 196, 0.4);
+    --orders-holo-glow: transparent;
+    --orders-holo-film: rgba(30, 33, 42, 0.55);
+    --orders-holo-line: transparent;
+    --orders-holo-beam: rgba(170, 178, 196, 0.06);
+    --orders-mech-edge: rgba(210, 175, 120, 0.5);
+    --orders-mech-glow: transparent;
+    --orders-mech-film: rgba(40, 36, 30, 0.85);
+    --orders-mech-line: rgba(210, 175, 120, 0.06);
   }
 }
 
@@ -793,8 +843,9 @@ body[data-theme="dark"] .orders-demo {
   fill: var(--orders-mech-edge);
 }
 
-/* at rest, under the card: only its glowing edge shows below the card's */
-.orders-demo[data-view="mechanism"]:not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-deep {
+/* at rest, under the card: only its glowing edge shows below the card's (in the exploded view, it
+   shows inside the cutaway) */
+.orders-demo:is([data-view="mechanism"], [data-view="exploded"]):not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;
 }
 
@@ -816,17 +867,17 @@ body[data-theme="dark"] .orders-demo {
    bar across the slider, and below it, a dashed line goes down to the mechanism */
 .orders-demo-rail-surface,
 .orders-demo-rail-deep,
-/* below the input's surface, reading down from it: on a phone, the dashed line is shorter than
-   the label, which hangs below it rather than into the arrow's */
 .orders-demo-rail-deep-label {
   display: none;
 }
 
+/* below the input's surface, reading down from it: on a phone, the dashed line is shorter than
+   the label, which hangs below it rather than into the arrow's */
 .orders-demo-rail-label.orders-demo-rail-deep-label {
   transform: none;
 }
 
-.orders-demo[data-view="mechanism"] :is(.orders-demo-rail-surface, .orders-demo-rail-deep, .orders-demo-rail-deep-label) {
+.orders-demo:is([data-view="mechanism"], [data-view="exploded"]) :is(.orders-demo-rail-surface, .orders-demo-rail-deep, .orders-demo-rail-deep-label) {
   display: block;
 }
 
@@ -844,6 +895,283 @@ body[data-theme="dark"] .orders-demo {
   top: 0;
   left: calc(var(--orders-rail-line) - 0.5px);
   border-left: 2px dashed var(--orders-mech-edge);
+}
+
+/* -- the calm tone (data-tone="calm"): the hologram's and the mechanism's layers lie still, with an
+   edge below them, as the stack's sheets -------------------------------------------------------- */
+
+.orders-demo[data-tone="calm"] .orders-demo-layer {
+  animation: none;
+}
+
+.orders-demo[data-tone="calm"] .orders-demo-sheet.orders-demo-layer {
+  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
+}
+
+.orders-demo[data-tone="calm"] .orders-demo-projection {
+  mix-blend-mode: normal;
+}
+
+/* -- the exploded view (data-view="exploded"): the mechanism as a technical drawing. At rest, a
+   block cut away at the front (a cutaway), the mechanism inside; open, its parts apart along their
+   axis (an exploded view), a parts list beside them ------------------------------------------- */
+
+/* its parts: paper outlined in ink, an edge below; they neither glow nor float, and come apart as
+   machine parts do, starting and stopping gently */
+.orders-demo[data-view="exploded"] .orders-demo-sheet {
+  border: 1px solid var(--orders-draft-ink);
+  border-radius: 1.5%;
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-sheet.orders-demo-layer {
+  background: var(--orders-draft-paper);
+  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
+  animation: none;
+  transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-sheet.orders-demo-blank {
+  border-style: dashed;
+  border-color: var(--orders-draft-hatch);
+}
+
+/* the mechanism: hatched, as a section of a solid part, at 45 degrees on the stage (108 on the face,
+   before it is turned and squashed) */
+.orders-demo[data-view="exploded"] .orders-demo-sheet.orders-demo-layer.orders-demo-deep {
+  background:
+    repeating-linear-gradient(108deg, var(--orders-draft-hatch) 0 0.6px, transparent 0.6px 10px),
+    var(--orders-sheet);
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-tag {
+  fill: var(--orders-ink);
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-projection {
+  mix-blend-mode: normal;
+}
+
+/* at rest, the card and the layer on it are cut: their front quarter (the face's bottom left, before
+   it is turned) is gone, from the face's middle out to its edges' middles, and the edge below with
+   it. The cut heals as the parts come apart, and opens again once they are back together */
+.orders-demo[data-view="exploded"] :is(.orders-demo-card, .orders-demo-layer:not(.orders-demo-deep)) {
+  clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, -20% 120%, -20% 120%, -20% 120%);
+  animation: orders-demo-heal 300ms var(--orders-ease) both;
+}
+
+.orders-demo[data-view="exploded"]:not(.orders-demo-holo-open) :is(.orders-demo-card, .orders-demo-layer:not(.orders-demo-deep)) {
+  clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, 50% 120%, 50% 50%, -20% 50%);
+  animation: orders-demo-cut 560ms var(--orders-settle) 480ms both;
+}
+
+@keyframes orders-demo-heal {
+  from {
+    clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, 50% 120%, 50% 50%, -20% 50%);
+  }
+
+  to {
+    clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, -20% 120%, -20% 120%, -20% 120%);
+  }
+}
+
+@keyframes orders-demo-cut {
+  from {
+    clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, -20% 120%, -20% 120%, -20% 120%);
+  }
+
+  to {
+    clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, 50% 120%, 50% 50%, -20% 50%);
+  }
+}
+
+/* the block's sides and the cut's hatched faces (demo.js draws them), between the mechanism and
+   the card; they show once the cut is open, and go before the parts come apart */
+.orders-demo-section,
+.orders-demo-assembly {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.orders-demo-section {
+  transition: opacity 360ms var(--orders-ease) 520ms;
+}
+
+.orders-demo-holo-open .orders-demo-section {
+  opacity: 0;
+  transition: opacity 140ms var(--orders-ease);
+}
+
+.orders-demo-section-side {
+  fill: var(--orders-sheet);
+  stroke: var(--orders-draft-ink);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.orders-demo-section-ground {
+  fill: var(--orders-sheet);
+}
+
+.orders-demo-section-hatch {
+  stroke: var(--orders-draft-hatch);
+  stroke-width: 0.75;
+}
+
+.orders-demo-section-cut {
+  stroke: var(--orders-ink);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+.orders-demo-section-strata {
+  fill: none;
+  stroke: var(--orders-draft-ink);
+  stroke-width: 0.6;
+}
+
+/* open, the assembly lines: drawn down from the top part, as the parts come apart */
+.orders-demo-assembly {
+  opacity: 0;
+  clip-path: inset(0 0 100% 0);
+  transition:
+    opacity 160ms var(--orders-ease),
+    clip-path 0s 160ms;
+}
+
+.orders-demo-holo-open .orders-demo-assembly {
+  opacity: 1;
+  clip-path: inset(0);
+  transition:
+    opacity 200ms var(--orders-ease) 120ms,
+    clip-path 900ms var(--orders-glide) 120ms;
+}
+
+.orders-demo-assembly path {
+  fill: none;
+  stroke: var(--orders-draft-ink);
+  stroke-width: 0.75;
+  stroke-dasharray: 12 3 2 3; /* a chain line */
+  opacity: 0.5;
+}
+
+.orders-demo-assembly .orders-demo-assembly-axis {
+  stroke-dasharray: 18 3 3 3;
+  opacity: 0.4;
+}
+
+/* the part pointed at, projected onto the card: no light, its corners' projection lines */
+.orders-demo[data-view="exploded"] .orders-demo-beam polygon {
+  fill: none;
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-beam-edges {
+  stroke: var(--orders-draft-ink);
+  stroke-width: 0.75;
+  stroke-dasharray: 8 2.5 1.5 2.5;
+  opacity: 0.85;
+}
+
+/* the parts list: every row's part number in a balloon, and its leader ending in a dot on the part */
+.orders-demo-balloon {
+  display: inline-grid;
+  align-self: center;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--orders-ink);
+  border-radius: 999px;
+  background: var(--orders-page);
+  color: var(--orders-ink);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-row::before {
+  border-top: 1px solid var(--orders-draft-hatch);
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-active::before {
+  border-color: var(--orders-ink);
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-row::after {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + var(--orders-lead, 0px));
+  width: 5px;
+  height: 5px;
+  margin: -2.5px -2.5px 0 0;
+  border-radius: 50%;
+  background: var(--orders-ink);
+  content: "";
+  transition:
+    right var(--orders-move) var(--orders-settle),
+    opacity 360ms var(--orders-ease);
+}
+
+.orders-demo[data-view="exploded"]:not(.orders-demo-holo-open) .orders-demo-row::after {
+  opacity: 0;
+}
+
+/* the slider, as a dimension is drawn: a hairline, a slim arrowhead, a line across where it starts,
+   and its label in capitals */
+.orders-demo[data-view="exploded"] .orders-demo-rail-line {
+  width: 1px;
+  background: var(--orders-ink);
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-rail-line::before {
+  position: absolute;
+  top: 0;
+  left: -6px;
+  width: 13px;
+  border-top: 1px solid var(--orders-ink);
+  content: "";
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-rail-line::after {
+  bottom: -9px;
+  left: -3.5px;
+  border-width: 9px 4px 0;
+  border-top-color: var(--orders-ink);
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-rail-label {
+  color: var(--orders-ink);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@container (max-width: 40rem) {
+  .orders-demo[data-view="exploded"] .orders-demo-rail-label {
+    letter-spacing: 0.03em;
+  }
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-tick {
+  border-top-width: 1px;
+  opacity: 0.85;
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-rail-surface {
+  top: -2px;
+  height: 2px;
+  border-top-width: 1px;
+  border-bottom: 1px solid var(--orders-ink);
+  border-radius: 0;
+}
+
+.orders-demo[data-view="exploded"] .orders-demo-rail-deep {
+  border-left: 1px dashed var(--orders-ink);
 }
 
 /* the slider of the orders, in its column left of the stack (demo.js places its parts): an arrow
@@ -1041,8 +1369,28 @@ body[data-theme="dark"] .orders-demo {
   transition: opacity var(--orders-duration) var(--orders-ease);
 }
 
+/* what a sheet adds (data-show="delta"): the R^2 of the sheet above it, faint, and what it gains
+   after it, the bar's own */
+.orders-demo-meter-base {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--orders-ink);
+  opacity: 0.16;
+}
+
 .orders-demo-score {
   white-space: nowrap;
+}
+
+/* what it gains, to what: "R² +0.51 → 0.88" */
+.orders-demo-gain .orders-demo-verdict {
+  font-size: inherit;
+  letter-spacing: 0;
+}
+
+.orders-demo-gain .orders-demo-verdict::before {
+  content: " → ";
 }
 
 .orders-demo-r2 {
@@ -1214,6 +1562,12 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-plot-fade-bottom {
   stop-color: var(--orders-ink);
   stop-opacity: 0.01;
+}
+
+/* what every order gains (data-show="delta"): a bar up from the fit of the order before */
+.orders-demo-plot-gains rect {
+  fill: var(--orders-ink);
+  opacity: 0.16;
 }
 
 .orders-demo-plot-line {

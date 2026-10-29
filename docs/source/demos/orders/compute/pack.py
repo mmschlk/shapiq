@@ -8,7 +8,8 @@ to 4 and the full decomposition (FSII of order n, the number of players, which e
 transform; for the houses, of order 5, the trees' depth, which equals it already and is exact),
 every main effect, and the 300 strongest interactions of each order (of the molecule, with the
 centers of its groups where shapiq's SI graph plot places them); for the houses, the strongest rows
-of their heatmap. And the R^2 (beyond size, under the Shapley distribution) and the number of
+of their heatmap. For every sheet but the first, also what it adds to the sheet above it (its
+values less theirs), kept as the sheet is. And the R^2 (beyond size, under the Shapley distribution) and the number of
 values of every order up to the highest with an interaction, and of order n, for the plot of the
 fit by order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from
 disk too, where the browser would not fetch a JSON file).
@@ -62,37 +63,58 @@ def model(kind: str) -> dict[str, str]:
     return dict(zip(("icon", "title", "detail", "method"), MODELS[kind], strict=True))
 
 
+def split(
+    values: dict[tuple[int, ...], float], n: int, strongest: int | None
+) -> tuple[list[float], list[list[Any]]]:
+    """Return the main effects of values (one per player) and the ``strongest`` of their groups."""
+    first = [0.0] * n
+    groups = []
+    for players, value in values.items():
+        if len(players) == 1:
+            first[players[0]] = value
+        elif abs(value) > 1e-12:
+            groups.append([list(players), value])
+    groups.sort(key=lambda group: -abs(group[1]))
+    return [round(value, 5) for value in first], [
+        [players, round(value, 5)] for players, value in groups[:strongest]
+    ]
+
+
 def sheets(
     result: dict[str, Any], strongest: int | None = STRONGEST, full: int | None = None
 ) -> list[dict[str, Any]]:
     """Return the sheets of an explanation: per order, its R^2, main effects and interactions.
 
     Of the interactions, a sheet keeps the ``strongest`` (all of them for ``None``). The last sheet
-    is the full decomposition, of order ``full`` (n, the number of players, for ``None``).
+    is the full decomposition, of order ``full`` (n, the number of players, for ``None``). Every
+    sheet but the first also has its ``delta``: what it adds to the sheet above it, its values less
+    those of the sheet above (the interactions of its own order, and how the lower orders change),
+    as main effects and the strongest groups.
     """
     n = result["n_players"]
     full = full or n
     out = []
+    above: dict[tuple[int, ...], float] = {}
     for order in (*ORDERS, full):
-        values = explanation(result, order)["values"]
-        first = [0.0] * n
-        groups = []
-        for players, value in values:
-            if len(players) == 1:
-                first[players[0]] = value
-            else:
-                groups.append([players, value])
-        groups.sort(key=lambda group: -abs(group[1]))
-        out.append(
-            {
-                "order": order,
-                "full": order == full,
-                "r2": round(explanation(result, order)["r2"], R2_DIGITS),
-                "first": [round(value, 5) for value in first],
-                "groups": [[players, round(value, 5)] for players, value in groups[:strongest]],
-                "count": len(values),
+        values = {tuple(players): value for players, value in explanation(result, order)["values"]}
+        first, groups = split(values, n, strongest)
+        sheet = {
+            "order": order,
+            "full": order == full,
+            "r2": round(explanation(result, order)["r2"], R2_DIGITS),
+            "first": first,
+            "groups": groups,
+            "count": len(values),
+        }
+        if above:
+            change = {
+                key: values.get(key, 0.0) - above.get(key, 0.0)
+                for key in values.keys() | above.keys()
             }
-        )
+            delta_first, delta_groups = split(change, n, strongest)
+            sheet["delta"] = {"first": delta_first, "groups": delta_groups}
+        out.append(sheet)
+        above = values
     return out
 
 
@@ -118,6 +140,8 @@ def place_groups(sheet: dict[str, Any], coords: list[list[float]]) -> None:
     for group in sheet["groups"]:
         if len(group[0]) > 2:
             group.append([round(float(c), 4) for c in layout[tuple(group[0])] * side + low])
+    if "delta" in sheet:
+        place_groups(sheet["delta"], coords)
 
 
 def fits(result: dict[str, Any], full: int | None = None) -> list[list[float]]:
@@ -146,29 +170,41 @@ def heatmap(result: dict[str, Any], full: int) -> dict[str, Any]:
     of its absolute values). The last sheet is the full decomposition, of order ``full``.
     """
     columns = np.argsort(result["predictions"])
-    out = []
-    for order in (*ORDERS, full):
-        values = explanation(result, order)["values"]
+
+    def rows(values: dict[str, list[float]], scale: float | None = None) -> tuple[float, list[Any]]:
+        """Return the scale and the strongest rows of values, of their own scale or of ``scale``."""
         strongest = sorted(values.items(), key=lambda row: -np.mean(np.abs(row[1])))[:ROWS]
         matrix = np.array([row[1] for row in strongest])[:, columns]
-        scale = float(np.quantile(np.abs(matrix), 0.98))
-        out.append(
-            {
-                "order": order,
-                "full": order == full,
-                "r2": round(explanation(result, order)["r2"], R2_DIGITS),
-                "count": len(values),
-                "scale": round(scale, 4),
-                "rows": [
-                    [[int(player) for player in key.split(",")], quantized.tolist()]
-                    for (key, _), quantized in zip(
-                        strongest,
-                        np.round(np.clip(matrix / scale, -1, 1) * 99).astype(int),
-                        strict=True,
-                    )
-                ],
+        scale = scale or float(np.quantile(np.abs(matrix), 0.98))
+        quantized = np.round(np.clip(matrix / scale, -1, 1) * 99).astype(int)
+        return scale, [
+            [[int(player) for player in key.split(",")], row.tolist()]
+            for (key, _), row in zip(strongest, quantized, strict=True)
+        ]
+
+    out = []
+    above: dict[str, list[float]] = {}
+    for order in (*ORDERS, full):
+        values = explanation(result, order)["values"]
+        scale, strongest = rows(values)
+        sheet = {
+            "order": order,
+            "full": order == full,
+            "r2": round(explanation(result, order)["r2"], R2_DIGITS),
+            "count": len(values),
+            "scale": round(scale, 4),
+            "rows": strongest,
+        }
+        if above:
+            # what the sheet adds to the one above, at the sheet's scale: faint where it adds little
+            zero = [0.0] * len(columns)
+            change = {
+                key: (np.array(values.get(key, zero)) - np.array(above.get(key, zero))).tolist()
+                for key in values.keys() | above.keys()
             }
-        )
+            sheet["delta"] = {"rows": rows(change, scale)[1]}
+        out.append(sheet)
+        above = values
     return {
         "predictions": [round(result["predictions"][i], 3) for i in columns],
         "sheets": out,

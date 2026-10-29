@@ -32,7 +32,13 @@
 // its marks only. At rest, the layers lie on the card (the top one showing, on the input); while
 // the pointer is over the stage (or after a tap), they float off it, apart, and the layer pointed
 // at casts its light down onto the card, which wears its marks. The rows, the slider, the plot, the
-// stepper and the swipe work as in the stack.
+// stepper and the swipe work as in the stack. Two more views build on it: the mechanism
+// (data-view="mechanism"), where the full decomposition lies below the card, the mechanism under
+// the input; and the exploded view (data-view="exploded"), the mechanism as a technical drawing: a
+// block cut away at rest, the mechanism inside, whose parts come apart, numbered, as the hologram's
+// layers do. The hologram and the mechanism tone down to paper with data-tone="calm". Every view's
+// sheets can show, instead of all of an order, what it adds to the order above it
+// (data-show="delta"), and their rows and the plot what its R^2 gains.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -73,6 +79,7 @@
   // and in the mechanism, the depth below the input at which the full decomposition lies
   const AIR = 0.3;
   const DEPTH = 0.34;
+  const CUT = 0.09; // the exploded view's, at rest: how deep below the input the mechanism lies
   const PLOT = { height: 153, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 75
 
   const roundTo = (value, digits) => {
@@ -124,8 +131,10 @@
 
   // -- the faces of the sheets: the explanation of one order, in a 100 x 100 square ---------------
 
+  // the largest value on a sheet: what its faces scale to (a face of what a sheet adds to the one
+  // above it keeps the sheet's own, so that it is faint where it adds little)
   const largestValue = (sheet) =>
-    Math.max(...sheet.first.map(Math.abs), ...sheet.groups.map((group) => Math.abs(group[1])));
+    sheet.largest ?? Math.max(...sheet.first.map(Math.abs), ...sheet.groups.map((group) => Math.abs(group[1])));
 
   // the connection of a player at p with the center c of its group, pinched in the middle, as in
   // shapiq's SI graph plot
@@ -504,6 +513,25 @@
     const tag = `${sheet.order}-${INDEX}`;
     return { face: tag, tag, name: "Shapley interactions" };
   };
+  // what a face shows: the sheet, or (adding) what it adds to the sheet above it, its values less
+  // theirs, at the sheet's own scale. The first sheet adds all of itself
+  const faceOf = (example, i, adding) => {
+    const sheet = example.sheets[i];
+    if (!adding || !sheet.delta) return sheet;
+    if (example.kind === "heatmap") return { ...sheet, rows: sheet.delta.rows }; // of the sheet's scale
+    return { ...sheet, ...sheet.delta, largest: largestValue(sheet) };
+  };
+  const faceName = (example, i, adding) => {
+    const sheet = example.sheets[i];
+    if (!adding || i === 0) return sheetName(sheet).face;
+    return `${sheetName(sheet).tag} − ${sheetName(example.sheets[i - 1]).tag}`;
+  };
+  // a gain in R^2 as text: signed, two decimals, three where it is small
+  const gain2 = (gain) => {
+    const size = Math.abs(gain);
+    const sign = gain < -5e-4 ? "−" : "+";
+    return `${sign}${size >= 0.01 ? size.toFixed(2) : size.toFixed(3)}`;
+  };
   // R^2 as text: two decimals, three close to 1, and 1.00 only where the fit is exact
   // an explanation that reproduces the model exactly (the data rounds R^2 to nine decimals): only
   // that reads 1.00 and exact, and anything short of it at most > 0.999
@@ -557,10 +585,17 @@
     // bottom, and the explanations on layers above it, which lie on the card at rest and float off
     // it, apart, while the pointer is over the stage (or after a tap on the card), or a layer is
     // pointed at
-    const holo = () => root.dataset.view === "hologram" || root.dataset.view === "mechanism";
+    const holo = () => ["hologram", "mechanism", "exploded"].includes(root.dataset.view);
     // the mechanism (data-view="mechanism"): the hologram, but the full decomposition is no layer over
     // the input: it lies below the card, the mechanism under it all, hidden at rest
-    const beneath = () => root.dataset.view === "mechanism";
+    const beneath = () => root.dataset.view === "mechanism" || root.dataset.view === "exploded";
+    // the exploded view (data-view="exploded"): the mechanism as a technical drawing. At rest, its
+    // parts are put together, cut away at the front, where the mechanism shows inside (a cutaway);
+    // open, they come apart along their axis (an exploded view), each named in a parts list
+    const drawing = () => root.dataset.view === "exploded";
+    // what every sheet shows (data-show="delta" on the demo): all of it, or what it adds to the
+    // sheet above it, its R^2 as what it gains
+    const delta = () => root.dataset.show === "delta";
     let hovering = false;
     const exploded = () => hovering || state.active !== null || state.blank !== null;
 
@@ -747,8 +782,10 @@
         centers.push(bottom - h / 2);
       });
       const offset = (g.height - bottom) / 2;
-      // at rest, the mechanism lies just under the card, its edge showing below the card's
-      return items.map((item, position) => ({ x: g.center, y: open ? centers[position] + offset : g.height / 2 + (item.deep ? 2 * THICKNESS : 0) }));
+      // at rest, the mechanism lies just under the card, its edge showing below the card's (in the
+      // exploded view, as deep as its cutaway)
+      const under = drawing() ? CUT * g.side : 2 * THICKNESS;
+      return items.map((item, position) => ({ x: g.center, y: open ? centers[position] + offset : g.height / 2 + (item.deep ? under : 0) }));
     }
 
     // the corners of a sheet on the stage (left, top, right, bottom for the turn of -45 degrees)
@@ -901,26 +938,27 @@
 
     // a sheet of an example: its face, and its name along the bottom edge, from the bottom corner
     // (the part of a sheet that shows)
-    // (all of it, or, for a layer of the hologram, its marks, or for its card, the input)
-    function drawSheet(example, i, layer = "all") {
-      const sheet = example.sheets[i];
+    // (all of it, or, for a layer of the hologram, its marks, or for its card, the input), or
+    // (adding) what it adds to the sheet above it
+    function drawSheet(example, i, layer = "all", adding = false) {
+      const sheet = faceOf(example, i, adding);
       const node = el("div", layer === "marks" ? "orders-demo-sheet orders-demo-layer" : "orders-demo-sheet");
       const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
       if (example.kind === "graph") moleculeFace(svg, example, sheet, layer);
       else if (example.kind === "tree") treeFace(svg, example, sheet, layer);
       else if (example.kind === "heatmap") heatmapFace(svg, example, sheet, layer);
       else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${example.id}-${layer}-${i}`, layer);
-      add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, layer === "input" ? "Input" : sheetName(sheet).face);
+      add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, layer === "input" ? "Input" : faceName(example, i, adding));
       return node;
     }
     // every example's sheets, drawn once: an example chosen again shows them as they were drawn (the
-    // hologram's layers apart from the stack's sheets)
+    // hologram's layers apart from the stack's sheets, and what they add apart from all of them)
     const drawn = new Map();
-    function sheetsOf(example) {
+    function sheetsOf(example, adding = delta()) {
       const layer = holo() ? "marks" : "all";
-      const key = holo() ? `${example.id} hologram` : example.id;
+      const key = `${example.id}${holo() ? " hologram" : ""}${adding ? " delta" : ""}`;
       const nodes = drawn.get(key) ?? [];
-      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i, layer));
+      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i, layer, adding));
       drawn.set(key, nodes);
       return nodes;
     }
@@ -944,6 +982,30 @@
     add(glow, "stop", { offset: 1, class: "orders-demo-beam-bottom" });
     const beamHull = add(beam, "polygon", { fill: `url(#orders-beam-${plotId})` });
     const beamEdges = add(beam, "path", { class: "orders-demo-beam-edges" });
+    // the exploded view's cutaway, at rest: the parts put together are a block, with the input on
+    // top and the mechanism at its bottom; its front quarter is cut away (demo.css cuts the card and
+    // the layer on it), and the cut's faces are hatched, as a section is drawn
+    const section = document.createElementNS(SVG, "svg");
+    section.setAttribute("class", "orders-demo-section");
+    section.setAttribute("aria-hidden", "true");
+    const hatch = add(add(section, "defs"), "pattern", {
+      id: `orders-hatch-${plotId}`,
+      width: 5,
+      height: 5,
+      patternUnits: "userSpaceOnUse",
+      patternTransform: "rotate(45)",
+    });
+    add(hatch, "rect", { class: "orders-demo-section-ground", width: 5, height: 5 });
+    add(hatch, "line", { class: "orders-demo-section-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
+    const sides = add(section, "path", { class: "orders-demo-section-side" });
+    const cut = add(section, "path", { class: "orders-demo-section-cut", fill: `url(#orders-hatch-${plotId})` });
+    const strata = add(section, "path", { class: "orders-demo-section-strata" });
+    // open, the lines along which its parts came apart: through their corners, and their axis
+    const assembly = document.createElementNS(SVG, "svg");
+    assembly.setAttribute("class", "orders-demo-assembly");
+    assembly.setAttribute("aria-hidden", "true");
+    const axis = add(assembly, "path", { class: "orders-demo-assembly-axis" });
+    const guides = add(assembly, "path", { class: "orders-demo-assembly-lines" });
     // the examples not shown yet, drawn while the page is idle, a sheet at a time, so that choosing
     // one only has to show it
     const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 100));
@@ -1002,23 +1064,46 @@
       }
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
+      // the exploded view's parts list: every part's number, top to bottom, the input's among them
+      const partOf = (i) => (i < example.sheets.length - 1 ? i + 1 : i + 2);
+      const clamp = (r2) => Math.max(0, Math.min(1, r2));
       rows = example.sheets.map((sheet, i) => {
         const names = sheetName(sheet);
+        // what the sheet adds, to the sheet above it: what its R^2 gains over theirs
+        const above = delta() && i > 0 ? example.sheets[i - 1] : null;
         const row = el("button", "orders-demo-row");
         row.type = "button";
-        row.setAttribute("aria-label", `${names.name}, order ${sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`);
+        row.setAttribute(
+          "aria-label",
+          above
+            ? `${names.name}, order ${sheet.order}: what it adds to ${sheetName(above).tag}, R² ${gain2(sheet.r2 - above.r2)} to ${fit2(sheet.r2)}`
+            : `${names.name}, order ${sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`,
+        );
         const title = el("span", "orders-demo-row-title");
-        title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", names.name));
+        if (drawing()) title.append(el("span", "orders-demo-balloon", String(partOf(i))));
+        // in the parts list, how many values a part has (the more, the more complex) in place of its
+        // name, which its face bears
+        const name = above ? `adds to ${sheetName(above).tag}` : drawing() ? `${sheet.count.toLocaleString("en")} values` : names.name;
+        title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", name));
         const fitBox = el("span", "orders-demo-row-fit");
         const meter = el("span", "orders-demo-meter");
         const fill = el("span", "orders-demo-meter-fill");
-        fill.style.width = `${Math.max(0, Math.min(1, sheet.r2)) * 100}%`;
+        fill.style.width = `${clamp(sheet.r2) * 100}%`;
+        if (above) {
+          // the R^2 above, faint, and what it gains, after it
+          const base = el("span", "orders-demo-meter-base");
+          base.style.width = `${clamp(above.r2) * 100}%`;
+          fill.style.left = base.style.width;
+          fill.style.width = `${Math.max(0, clamp(sheet.r2) - clamp(above.r2)) * 100}%`;
+          meter.append(base);
+        }
         meter.append(fill);
-        // the R^2 and its verdict in one phrase: "R² 0.76, workable"
-        const score = el("span", "orders-demo-score");
+        // the R^2 and its verdict in one phrase: "R² 0.76, workable"; or what it gains, and to what:
+        // "R² +0.51 → 0.88"
+        const score = el("span", above ? "orders-demo-score orders-demo-gain" : "orders-demo-score");
         score.append(
-          el("span", "orders-demo-r2", fit2(sheet.r2)),
-          el("span", "orders-demo-verdict", verdict(sheet.r2)),
+          el("span", "orders-demo-r2", above ? gain2(sheet.r2 - above.r2) : fit2(sheet.r2)),
+          el("span", "orders-demo-verdict", above ? fit2(sheet.r2) : verdict(sheet.r2)),
         );
         fitBox.append(meter, score);
         row.append(title, fitBox);
@@ -1050,6 +1135,7 @@
         cardRow = el("div", "orders-demo-row orders-demo-blank-row orders-demo-card-row");
         cardRow.setAttribute("aria-hidden", "true");
         const title = el("span", "orders-demo-row-title");
+        if (drawing()) title.append(el("span", "orders-demo-balloon", String(example.sheets.length)));
         title.append(el("strong", "", "Input"), el("span", "orders-demo-row-name", example.label));
         cardRow.append(title);
         ladder.append(cardRow);
@@ -1075,6 +1161,7 @@
       place(null);
       stack.append(...items.map((item) => item.node));
       if (holo()) stack.append(beam);
+      if (drawing()) stack.append(section, assembly);
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
     }
@@ -1149,7 +1236,10 @@
       const end = surface ?? bottom;
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
       railLine.style.height = `${roundTo(end - top - (surface === null ? 0 : 10), 2)}px`;
-      railLabel.style.top = `${roundTo((stops[1].y + end) / 2, 2)}px`;
+      // the arrow's label beside its middle, but clear of the input's surface below it
+      const middle = (stops[1].y + end) / 2;
+      const clear = surface === null ? middle : Math.min(middle, surface - 14 - railLabel.offsetHeight / 2);
+      railLabel.style.top = `${roundTo(clear, 2)}px`;
       if (surface !== null) {
         railSurface.style.translate = `0 ${roundTo(surface, 2)}px`;
         railDeep.style.translate = `0 ${roundTo(surface, 2)}px`;
@@ -1200,6 +1290,49 @@
             : `Orders ${first}–${last}`;
       }
       if (hologram) project(out ? sheetItems()[active] : null, anchors);
+      if (drawing()) {
+        cutaway(holoLayout(false));
+        assemble(anchors);
+      }
+    }
+
+    // the cutaway at rest: the block from the card's face down to the mechanism's, its front quarter
+    // cut away. Its sides (left and right of the cut), and the cut's two faces, which meet at the
+    // middle, hatched; the layers on the input as thin lines across their top
+    function cutaway(rest) {
+      const [card, deep] = [items.find((item) => item.base), items.find((item) => item.deep)];
+      const [top, floor] = [rest[items.indexOf(card)], rest[items.indexOf(deep)]];
+      const [left, , right, front] = corners(top);
+      const [leftBelow, , rightBelow, frontBelow] = corners(floor);
+      const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const f = ([x, y]) => `${roundTo(x, 1)},${roundTo(y, 1)}`;
+      const shape = (...points) => `M${points.map(f).join("L")}Z`;
+      const [cutLeft, cutRight, cutLeftBelow, cutRightBelow] = [mid(left, front), mid(front, right), mid(leftBelow, frontBelow), mid(frontBelow, rightBelow)];
+      const [middle, middleBelow] = [[top.x, top.y], [floor.x, floor.y]];
+      section.setAttribute("width", geometry.width);
+      section.setAttribute("height", geometry.height);
+      sides.setAttribute("d", shape(left, cutLeft, cutLeftBelow, leftBelow) + shape(cutRight, right, rightBelow, cutRightBelow));
+      cut.setAttribute("d", shape(cutLeft, middle, middleBelow, cutLeftBelow) + shape(middle, cutRight, cutRightBelow, middleBelow));
+      // a line under every explanation on the input, two pixels apart
+      let d = "";
+      for (let k = 1; k < sheetItems().length; k++) {
+        const down = ([x, y]) => [x, y + 2 * k];
+        d += `M${[cutLeft, middle, cutRight].map(down).map(f).join("L")}`;
+      }
+      strata.setAttribute("d", d);
+    }
+
+    // the exploded view's assembly lines, open: down through the parts' left, right and front
+    // corners, from the top part to the mechanism, and their axis through their middles, beyond them
+    function assemble(open) {
+      const [first, last] = [open[0], open.at(-1)];
+      const [upper, lower] = [corners(first), corners(last)];
+      const f = ([x, y]) => `${roundTo(x, 1)},${roundTo(y, 1)}`;
+      assembly.setAttribute("width", geometry.width);
+      assembly.setAttribute("height", geometry.height);
+      guides.setAttribute("d", [0, 2, 3].map((k) => `M${f(upper[k])}L${f(lower[k])}`).join(""));
+      const beyond = 0.1 * geometry.side;
+      axis.setAttribute("d", `M${f([first.x, first.y - beyond])}L${f([last.x, last.y + beyond])}`);
     }
 
     // the hologram's light: from the layer pointed at down to the card, whose input then wears the
@@ -1215,11 +1348,13 @@
       beam.classList.toggle("orders-demo-beam-deep", Boolean(item?.deep));
       glow.setAttribute("y1", item?.deep ? 1 : 0);
       glow.setAttribute("y2", item?.deep ? 0 : 1);
-      if ((projected.get(card.node) ?? null) !== (item?.node ?? null)) {
-        const marks = item?.node.querySelector(".orders-demo-face").cloneNode(true);
+      // where the layers show what they add, the card wears what they add up to: all of the sheet
+      const source = item && delta() ? sheetsOf(current(), false)[item.index] : item?.node;
+      if ((projected.get(card.node) ?? null) !== (source ?? null)) {
+        const marks = source?.querySelector(".orders-demo-face").cloneNode(true);
         marks?.querySelector(".orders-demo-tag")?.remove();
         card.node.querySelector(".orders-demo-projection").replaceChildren(...(marks ? [marks] : []));
-        projected.set(card.node, item?.node ?? null);
+        projected.set(card.node, source ?? null);
       }
       if (!item) return;
       beam.setAttribute("width", geometry.width);
@@ -1330,6 +1465,17 @@
         note = { x: f(x1 - (inside ? 6 : 0)), y: line };
       }
 
+      // where the sheets show what they add: what every order gains, a bar from the fit of the order
+      // before it up to its own
+      if (delta()) {
+        const gains = add(plot, "g", { class: "orders-demo-plot-gains" });
+        fits.forEach(([order, r2], k) => {
+          const before = k === 0 ? low : fits[k - 1][1];
+          const [upper, lower] = [y(Math.max(before, r2)), y(Math.min(before, r2))];
+          add(gains, "rect", { x: f(x(order) - 3.5), y: f(upper), width: 7, height: f(Math.max(1, lower - upper)), rx: 1.5 });
+        });
+      }
+
       const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
       // the area under the line, a wash that fades from the line's highest point down to the axis
       const fade = `orders-fade-${plotId}`;
@@ -1427,6 +1573,12 @@
       // line runs high; left of it at the last order. On narrow screens, which have no ladder, the
       // verdict in a line under it
       marker.score.textContent = `R² ${fit2(r2)}`;
+      if (delta()) {
+        // and what it gains over the sheet above it (the order before, for an order between)
+        const index = example.sheets.findIndex((sheet) => sheet.order === order);
+        const before = index === 0 ? 0 : index > 0 ? example.sheets[index - 1].r2 : fitOf(example, order - 1)[1];
+        marker.score.textContent += ` (${gain2(r2 - before)})`;
+      }
       marker.rating.textContent = geometry.narrow ? verdict(r2) : "";
       const below = marker.y(r2) < marker.middle;
       const last = order === marker.last;
@@ -1628,8 +1780,9 @@
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
-    // the view, a stack or a hologram, follows the demo's data-view attribute
-    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view"] });
+    // the view (a stack, a hologram, the mechanism or the exploded view) follows the demo's data-view
+    // attribute, and what the sheets show its data-show
+    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
