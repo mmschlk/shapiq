@@ -44,7 +44,7 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
 
     @typechecked
     @override
-    def eval(
+    def _eval(
         self,
         coalition: Bool[jax.Array, "*coalition_batch {self.n_players}"]
         | UInt8[jax.Array, "*coalition_batch ({self.n_players}+7)//8"],

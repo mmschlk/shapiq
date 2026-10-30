@@ -45,8 +45,12 @@ class Game[C, V: Value](JaxLikeImplementation[Any], ABC):
         """Evaluate coalitions through the game's default reduction."""
         return self.eval(coalition)
 
-    @abstractmethod
     def eval(self, coalition: C) -> Shaped[V, "..."]:
+        """Evaluate coalitions using the representation-specific evaluation hook."""
+        return self._eval(coalition)
+
+    @abstractmethod
+    def _eval(self, coalition: C) -> Shaped[V, "..."]:
         """Evaluate coalitions, broadcasting their batch shape with ``shape``.
 
         The returned values expose the broadcasted logical batch as ``shape``;
