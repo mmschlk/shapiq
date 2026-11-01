@@ -34,3 +34,34 @@ class TestSklearnAPI:
         if not isinstance(predict_function, RuntimeError):
             _ = predict_function(model, self._dummy_input)
         assert flag_is_used, "The logits prediction function was not used."
+
+    def test_uses_decision_function(self) -> None:
+        """Models with decision_function should use it as the prediction function."""
+
+        class DummyModel:
+            def decision_function(self, x: np.ndarray) -> np.ndarray:
+                return np.ones(x.shape[0])
+
+        model = DummyModel()
+        predict_function, model_type = get_predict_function_and_model_type(model)
+
+        assert model_type == "tabular"
+        np.testing.assert_array_equal(
+            predict_function(model, self._dummy_input),
+            np.array([1.0]),
+        )
+
+    def test_decision_function_precedes_predict_proba(self) -> None:
+        class DummyModel:
+            def decision_function(self, x):
+                return np.full(x.shape[0], 2.0)
+
+            def predict_proba(self, x):
+                return np.full((x.shape[0], 2), 0.5)
+
+        model = DummyModel()
+        predict_function, _ = get_predict_function_and_model_type(model)
+        np.testing.assert_array_equal(
+            predict_function(model, self._dummy_input),
+            np.array([2.0]),
+        )
