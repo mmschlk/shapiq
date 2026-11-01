@@ -78,7 +78,7 @@ Capability protocols describe mathematical promises, not proofs or layouts. An `
 
 Future concrete families can use singleton storage, dense interaction coefficients, sparse coefficients, or model-backed evaluation. Materialized array-backed families compose `Game` with `ndlike.protected_axis.jax.JaxAxisProtected`; player/interaction/value axes are protected and batch axes remain public. An additive game need not use one particular storage family. Likewise, a Shapley result does not need a special storage class solely because of how it was computed.
 
-Layouts are intentionally unspecified here. In particular, ndlike's current protected fields require equal batch shapes, while `Game.players` permits broadcasting. A representation must preserve that distinction when indexing/reshaping; a shared player set cannot simply be treated as an identically batched storage field.
+Layouts are intentionally unspecified here. ndlike's protected fields require equal batch shapes by default; JAX representations can opt into compact batch broadcasting with `broadcasted_batch`. A representation must preserve `Game.players` broadcasting semantics when indexing and reshaping; a shared player set cannot simply be treated as an identically batched storage field.
 
 `FinitePlayers.players` is an optional shared `LatentPlayers[P]` catalog,
 independent of the player-set batch. Its read-only sequence interface supports
