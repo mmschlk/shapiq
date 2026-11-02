@@ -2,6 +2,7 @@
 
 import json
 import sys
+from math import prod
 from pathlib import Path
 from types import ModuleType
 
@@ -37,7 +38,7 @@ def sketchbook(request: pytest.FixtureRequest) -> ModuleType:
 def test_sketchbook_field_contracts_are_runtime_types(sketchbook):
     assert not isinstance(sketchbook.FinitePlayers.__annotations__["ids"], str)
     assert not isinstance(sketchbook.TableGame.__annotations__["values"], str)
-    assert not isinstance(sketchbook.TableGame.__annotations__["_players"], str)
+    assert not isinstance(sketchbook.TableGame.__annotations__["players"], str)
 
 
 @pytest.mark.parametrize(
@@ -74,6 +75,31 @@ def test_players_broadcast_into_game_batch(sketchbook, player_batch):
     game = sketchbook.TableGame(jnp.zeros((2, 3, 8)), players)
     assert game.players.shape == player_batch
     assert game(jnp.ones((3,), dtype=bool)).shape == (2, 3)
+
+
+@pytest.mark.parametrize("player_batch", [(), (1, 1), (3,), (2, 1), (2, 3)])
+def test_table_batch_operations_keep_broadcast_players_aligned(sketchbook, player_batch):
+    ids = jnp.arange(3 * prod(player_batch)).reshape((*player_batch, 3))
+    players = sketchbook.FinitePlayers(ids, players=list(range(18)))
+    values = jnp.arange(48, dtype=jnp.float32).reshape(2, 3, 8)
+    game = sketchbook.TableGame(values, players)
+    expanded_ids = jnp.broadcast_to(ids, (2, 3, 3))
+
+    for result, expected_values, expected_ids in [
+        (game[1], values[1], expanded_ids[1]),
+        (game[:, 1], values[:, 1], expanded_ids[:, 1]),
+        (game.reshape(6), values.reshape(6, 8), expanded_ids.reshape(6, 3)),
+        (game.T, values.transpose(1, 0, 2), expanded_ids.transpose(1, 0, 2)),
+    ]:
+        assert bool(jnp.array_equal(result.values, expected_values))
+        assert bool(
+            jnp.array_equal(jnp.broadcast_to(result.players.ids, expected_ids.shape), expected_ids)
+        )
+        assert result.players.players is players.players
+        assert result.players.latent_n_players == players.latent_n_players
+        assert bool(jnp.array_equal(result(jnp.ones(3, dtype=bool)), expected_values[..., -1]))
+        if players.size == 1:
+            assert result.players.size == 1
 
 
 def test_coalition_batch_can_enlarge_evaluation_batch(sketchbook):
