@@ -743,6 +743,147 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   color: color-mix(in srgb, var(--orders-glass-ink) 65%, transparent);
 }
 
+/* unexplained (data-reveal="click"), the demo is the problem alone, and the chip a button that
+   explains it: it calls, a ring going out of it, a tab under it */
+.orders-demo-veiled :is(.orders-demo-cast, .orders-demo-why, .orders-demo-stage, .orders-demo-dots, .orders-demo-footer) {
+  display: none;
+}
+
+.orders-demo-veiled .orders-demo-plan {
+  padding-bottom: 2.8rem; /* the tab's room */
+}
+
+.orders-demo-wire-chip.orders-demo-chip-call {
+  cursor: pointer;
+  animation: orders-demo-call 2.2s var(--orders-ease) infinite;
+}
+
+.orders-demo-chip-call:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 4px;
+}
+
+@keyframes orders-demo-call {
+  0% {
+    box-shadow:
+      0 8px 20px -8px rgba(0, 0, 0, 0.45),
+      0 0 0 0 rgba(255, 13, 87, 0.45);
+  }
+
+  70%,
+  100% {
+    box-shadow:
+      0 8px 20px -8px rgba(0, 0, 0, 0.45),
+      0 0 0 14px rgba(255, 13, 87, 0);
+  }
+}
+
+.orders-demo-chip-explain {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: 50%;
+  padding: 0.3rem 0.8rem 0.35rem;
+  border-radius: 999px;
+  background: var(--orders-ink);
+  color: var(--orders-sheet);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  translate: -50% 0;
+  animation: orders-demo-bob 2.2s ease-in-out infinite;
+}
+
+/* its arrow, down to where the explanation will be */
+.orders-demo-chip-explain::after {
+  content: " ↓";
+}
+
+@keyframes orders-demo-bob {
+  50% {
+    translate: -50% 3px;
+  }
+}
+
+@media (hover: hover) {
+  .orders-demo-chip-call:hover {
+    --orders-clear: 0.12; /* it gives a little, as a button does */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo-wire-chip.orders-demo-chip-call,
+  .orders-demo-chip-explain {
+    animation: none;
+  }
+}
+
+/* explained, it comes out of the chip: the light pours down, then the card, the sheets one after the
+   other (demo.js numbers them), the rows and the slider, and the plot, drawn from left to right */
+.orders-demo-revealing .orders-demo-cast {
+  animation: orders-demo-pour 560ms var(--orders-ease) both;
+}
+
+.orders-demo-revealing .orders-demo-why {
+  animation: orders-demo-materialize 560ms var(--orders-settle) 260ms both;
+}
+
+.orders-demo-revealing .orders-demo-sheet {
+  animation: orders-demo-drop 620ms var(--orders-settle) both;
+  animation-delay: calc(720ms + var(--orders-order, 0) * 70ms);
+}
+
+.orders-demo-revealing :is(.orders-demo-ladder, .orders-demo-rail, .orders-demo-dots) {
+  animation: orders-demo-appear 600ms var(--orders-ease) 1300ms both;
+}
+
+.orders-demo-revealing .orders-demo-plot-svg {
+  animation: orders-demo-draw 1000ms var(--orders-ease) 1500ms both;
+}
+
+@keyframes orders-demo-pour {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes orders-demo-materialize {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    scale: 0.97;
+    translate: 0 -10px;
+  }
+}
+
+@keyframes orders-demo-drop {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    translate: 0 -28px;
+  }
+}
+
+@keyframes orders-demo-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes orders-demo-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
 /* the prediction, in the red of what raises it: what the explanations explain */
 .orders-demo-wire-out {
   flex: 0 1 auto;

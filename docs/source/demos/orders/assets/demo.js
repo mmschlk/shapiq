@@ -30,7 +30,9 @@
 // the light of the explanation: the example seen from above, flat, its input with the explanation
 // pointed at on it (at rest, the Shapley values), a button for every order, which points at its
 // sheet, and in a few words what that explanation is and how well it fits. The chip clears as far
-// as the explanation fits: the black box opens, all the way where it is exact.
+// as the explanation fits: the black box opens, all the way where it is exact. With
+// data-reveal="click", the demo starts with the problem alone: a click on the chip explains it, and
+// the explanation comes out of it, the card, the sheets one after the other, and the plot.
 //
 // Another view, the mechanism (data-view="mechanism" on the demo; the docs show the stack): the
 // example's input on a card, every explanation on a see-through layer above it, its marks only, the
@@ -612,6 +614,10 @@
     // what every sheet shows (data-show="delta" on the demo): all of it, or what it adds to the
     // sheet above it, its R^2 as what it gains
     const delta = () => root.dataset.show === "delta";
+    // with data-reveal="click" on the demo, it starts with the problem alone: a click on the model's
+    // chip explains it, and the explanation comes out of it, card, sheets and plot one after the
+    // other; once explained, every example is
+    let revealed = root.dataset.reveal !== "click";
     let hovering = false;
     const exploded = () => hovering || state.active !== null || state.blank !== null;
 
@@ -684,9 +690,6 @@
     const orderButtons = el("span", "orders-demo-orders");
     orderButtons.setAttribute("role", "group");
     orderButtons.setAttribute("aria-label", "Order of the explanation");
-    orderButtons.addEventListener("pointerleave", (event) => {
-      if (event.pointerType === "mouse" && !state.pinned) point(null, null);
-    });
     let orderButtonOf = []; // the button of every sheet, by its index
     const orderGap = el("span", "orders-demo-orders-gap", "⋯"); // the orders between, of the blank sheets
     // the caption: the orders to explain at, how to, and what the explanation shown shows
@@ -1087,6 +1090,20 @@
       const out = el("div", "orders-demo-wire-side orders-demo-wire-onto");
       out.append(el("span", "orders-demo-wire-line"), tagged("orders-demo-wire-out", "f(x)", el("strong", "", problem.output), el("span", "", problem.value)));
       chip.title = `${model.title}: ${model.detail}`;
+      if (!revealed) {
+        // unexplained, the chip is a button that explains it
+        chip.classList.add("orders-demo-chip-call");
+        chip.setAttribute("role", "button");
+        chip.setAttribute("aria-label", `${model.title}, ${model.detail}: explain its prediction`);
+        chip.tabIndex = 0;
+        chip.append(el("span", "orders-demo-chip-explain", "Explain"));
+        chip.addEventListener("click", reveal);
+        chip.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          reveal();
+        });
+      }
       flow.replaceChildren(into, chip, out);
       // the orders, the mechanism's after them (an order between stands for the blank sheets)
       orderButtonOf = [];
@@ -1237,6 +1254,19 @@
       );
     }
 
+    // explain: the stage and the plot show, drawn anew for their room, and come in (demo.css), the
+    // light out of the chip first, then the card, the sheets one after the other, the rows and the
+    // plot
+    let revealing = 0;
+    function reveal() {
+      if (revealed) return;
+      revealed = true;
+      root.classList.toggle("orders-demo-revealing", !reducedMotion());
+      render();
+      clearTimeout(revealing);
+      revealing = setTimeout(() => root.classList.remove("orders-demo-revealing"), 2800);
+    }
+
     // the light out of the chip, onto the card of the explanation: from the chip's bottom corners to
     // the card's top ones
     function castLightOut() {
@@ -1298,6 +1328,7 @@
 
     function render() {
       const example = current();
+      root.classList.toggle("orders-demo-veiled", !revealed);
       Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
@@ -1484,12 +1515,13 @@
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
         node.style.zIndex = floating ? layerZ(item) : zIndex(item);
+        node.style.setProperty("--orders-order", position); // its entrance, after those above it (demo.css)
         if (floating) {
           // the layers peel off the card one after the other, the top one first, and settle back
           // onto it the lowest first; each floats a little, in a rhythm of its own
           const delay = opening ? (open ? position : items.length - position) * 45 : 0;
           node.style.transitionDelay = `${delay}ms`;
-          node.style.animationDelay = `${-position * 0.9}s`;
+          node.style.animationDelay = open ? `${-position * 0.9}s` : "";
           node.classList.toggle("orders-demo-top", position === 0);
         }
         node.style.transform = `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scaleY(${TILT}) rotate(${(TURN * 180) / Math.PI}deg)`;
@@ -1837,9 +1869,6 @@
         state.pinned = true;
         pointAtOrder(nearest(event));
       });
-      cover.addEventListener("pointerleave", (event) => {
-        if (event.pointerType === "mouse" && !state.pinned) point(null, null);
-      });
       cover.addEventListener("click", (event) => {
         if (touched) {
           touched = false;
@@ -1965,12 +1994,37 @@
       const box = stage.getBoundingClientRect();
       return [event.clientX - box.left, event.clientY - box.top];
     };
-    stage.addEventListener("pointermove", (event) => {
-      if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail")) return;
+    // the pointer over what points at the sheets (the plan's card, the stage, the plot) keeps what it
+    // points at, and the floating layers open: going from one to another, nothing goes back and comes
+    // out again. Only once the pointer has left them all, for a moment, does everything rest
+    let resting = 0;
+    function hold() {
+      clearTimeout(resting);
       if (layered() && !hovering) {
         hovering = true;
         place(state.active);
       }
+    }
+    function rest() {
+      clearTimeout(resting);
+      resting = setTimeout(() => {
+        if (state.pinned) return;
+        hovering = false;
+        if (state.active !== null || state.blank !== null) point(null, null);
+        else if (layered()) place(null);
+      }, 280);
+    }
+    for (const zone of [why, stage, plotBox]) {
+      zone.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse") hold();
+      });
+      zone.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") rest();
+      });
+    }
+    stage.addEventListener("pointermove", (event) => {
+      if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail")) return;
+      hold();
       const item = itemAt(pointer(event));
       if (item?.base) return;
       if (item?.sheet) point(item.index, null);
@@ -1978,12 +2032,6 @@
       // strip, where the stack at rest has it, stays under the pointer (over the sheet slid out,
       // itemAt gives that sheet)
       else if (item) point(null, item.order);
-    });
-    stage.addEventListener("pointerleave", (event) => {
-      if (event.pointerType !== "mouse" || state.pinned) return;
-      hovering = false;
-      if (state.active !== null || state.blank !== null) point(null, null);
-      else if (layered()) place(null);
     });
     // on a touch screen, a swipe sideways across the stack goes to the next example or the previous
     // one, as the stepper does: the stack follows the finger, fading, and past a fifth of its width,
@@ -2089,8 +2137,12 @@
     // the light out of the chip follows the plan's layout (its width, its fonts)
     new ResizeObserver(() => castLightOut()).observe(plan);
     // the view (a stack, the mechanism or the exploded view) follows the demo's data-view
-    // attribute, and what the sheets show its data-show
-    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
+    // attribute, what the sheets show its data-show, and whether it starts unexplained its
+    // data-reveal
+    new MutationObserver((records) => {
+      if (records.some((record) => record.attributeName === "data-reveal")) revealed = root.dataset.reveal !== "click";
+      render();
+    }).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show", "data-reveal"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
