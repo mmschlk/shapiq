@@ -1,4 +1,5 @@
 """Masked predictor game for explaining model predictions."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

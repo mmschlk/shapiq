@@ -12,6 +12,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --group lint ruff format
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: ty-check
         name: ty check
         entry: uv run --group lint ty check

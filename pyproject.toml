@@ -263,9 +263,9 @@ test-typeguard = [
     "typeguard>=2.13.3,<3", # jaxtyping's supported typeguard series
 ]
 lint = [
-    "ruff>=0.14.1",       # for linting
+    "ruff>=0.17.3",       # for linting
     "prek>=0.4.3",        # for running the linters as pre-commit hooks
-    "ty>=0.0.21",         # for type checking
+    "ty>=0.0.95",         # for type checking
 ]
 docs = [
     "sphinx>=9.1.0",            # documentation generator

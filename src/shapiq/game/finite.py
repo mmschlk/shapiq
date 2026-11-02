@@ -66,9 +66,7 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
         return self._eval_packed(coalition)
 
     @abstractmethod
-    def _eval_bool(
-        self, coalition: Bool[jax.Array, "... {self.n_players}"]
-    ) -> Shaped[V, "..."]:
+    def _eval_bool(self, coalition: Bool[jax.Array, "... {self.n_players}"]) -> Shaped[V, "..."]:
         """Evaluate boolean membership, broadcasting with the game batch."""
 
     @abstractmethod
@@ -101,8 +99,6 @@ class PackedFinitePlayerGame[P, V: Value](FinitePlayerGame[P, V]):
     """
 
     @override
-    def _eval_bool(
-        self, coalition: Bool[jax.Array, "... {self.n_players}"]
-    ) -> Shaped[V, "..."]:
+    def _eval_bool(self, coalition: Bool[jax.Array, "... {self.n_players}"]) -> Shaped[V, "..."]:
         """Pack boolean membership and defer to packed evaluation."""
         return self._eval_packed(pack_bool_coalition(coalition))

@@ -17,10 +17,10 @@ values = h.eval(singleton_coalitions)
 `Game` and `Players` implement `JaxLikeImplementation`. Concrete array-backed families can compose `JaxAxisProtected` to hide player, coefficient, and value axes from their logical batch shape.
 
 ```python
-g.shape                    # game batch, e.g. (8, 3)
-g.players.shape            # broadcasts into g.shape without enlarging it
-g[0].shape                 # (3,)
-g(S)                       # broadcasts game and coalition batches
+g.shape  # game batch, e.g. (8, 3)
+g.players.shape  # broadcasts into g.shape without enlarging it
+g[0].shape  # (3,)
+g(S)  # broadcasts game and coalition batches
 ```
 
 `Players.is_valid` returns one Python boolean for the whole coalition batch, normally checking type, dtype, internal shape, and broadcasting metadata. Games delegate with their own batch shape:
@@ -46,7 +46,7 @@ m = cast(g, MobiusGame)
 f = cast(g, FourierGame)
 assert_allclose(g.eval(S), m.eval(S))
 assert_allclose(g.eval(S), f.eval(S))
-m.coefficient(T)             # Möbius dividend for T
+m.coefficient(T)  # Möbius dividend for T
 ```
 
 Mathematical capabilities such as `KAdditive` and normalized `Additive` are independent of storage. The exact Shapley transformation produces an additive game with the same players:
@@ -63,7 +63,7 @@ Ordinary values also have a zero-player-game interpretation. Transformation rout
 x = jnp.array(7.0)
 g0 = cast(x, ZeroPlayerGame)
 g0.eval(jnp.zeros((0,), dtype=bool))  # 7.0
-shapley_game(x)                     # through the zero-player-game cast
+shapley_game(x)  # through the zero-player-game cast
 ```
 
 ## Partial Stages and Deferral
@@ -98,7 +98,7 @@ Calling supplies one family's inputs, executes exactly that stage, and returns i
 ```python
 family: Factors[Offset[Game]]
 remaining = family(factors=xs)  # Offset[Game]
-game = remaining(offset=3.0)    # Game
+game = remaining(offset=3.0)  # Game
 ```
 
 ## Mapping and Explicit Lifting
@@ -127,8 +127,8 @@ p.map(f) : Offset[Offset[B]]
 The target may itself be partial. Apply such a handler directly to that stage, or map explicitly over its surroundings:
 
 ```python
-def replace_offset(stage: Offset[Game]) -> Offset[Game]:
-    ...
+def replace_offset(stage: Offset[Game]) -> Offset[Game]: ...
+
 
 changed = family.map(replace_offset)  # Factors[Offset[Game]]
 ```

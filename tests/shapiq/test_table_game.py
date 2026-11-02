@@ -80,9 +80,7 @@ def test_table_batch_operations_keep_broadcast_players_aligned(player_batch):
 
 
 def test_coalition_batch_can_enlarge_evaluation_batch():
-    game = TableGame(
-        jnp.arange(8, dtype=jnp.float32)[None, :], FinitePlayers(jnp.arange(3))
-    )
+    game = TableGame(jnp.arange(8, dtype=jnp.float32)[None, :], FinitePlayers(jnp.arange(3)))
     coalitions = jnp.ones((5, 1, 3), dtype=bool)
     assert game.is_valid(coalitions)
     values = game(coalitions)
@@ -142,13 +140,9 @@ def test_shape_contracts_work_with_jit_and_game_pytrees():
 
 def test_return_contract_rejects_wrong_evaluation_batch(monkeypatch):
     game = TableGame(jnp.zeros((2, 8)), FinitePlayers(jnp.arange(3)))
-    monkeypatch.setattr(
-        jnp, "take_along_axis", lambda *args, **kwargs: jnp.zeros((1, 1))
-    )
+    monkeypatch.setattr(jnp, "take_along_axis", lambda *args, **kwargs: jnp.zeros((1, 1)))
     # Exercise the patched lookup even if this shape has already been compiled.
-    with jax.disable_jit(), pytest.raises(
-        TypeCheckError, match="return value"
-    ):
+    with jax.disable_jit(), pytest.raises(TypeCheckError, match="return value"):
         game(jnp.zeros((3,), dtype=bool))
 
 
@@ -185,9 +179,7 @@ def test_table_implements_only_the_packed_native_hook():
 @pytest.mark.parametrize("x64", [False, True])
 def test_packed_table_indexes_bytes_directly(monkeypatch, n_players, compiled, x64):
     with jax.enable_x64(new_val=x64):
-        game = TableGame(
-            jnp.arange(1 << n_players, dtype=jnp.float32), FinitePlayers(n_players)
-        )
+        game = TableGame(jnp.arange(1 << n_players, dtype=jnp.float32), FinitePlayers(n_players))
         indices = jnp.array([0, 1, 7, 8, 255, 256, (1 << n_players) - 1], dtype=jnp.uint32)
         indices &= jnp.uint32((1 << n_players) - 1)
         coalition = ((indices[:, None] >> jnp.arange(n_players)) & 1).astype(bool)

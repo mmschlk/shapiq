@@ -3,6 +3,7 @@
 Shapes describe logical batches. Concrete representations hide and validate
 internal value axes rather than including them in these annotations.
 """
+
 from typing import Any, Protocol, runtime_checkable
 
 import jax
@@ -24,8 +25,9 @@ class GenericValue(Protocol):
         """Return dtype metadata understood by jaxtyping."""
         ...
 
+
 @runtime_checkable
-class GenericModel[ModelInputT, V : Value](Protocol):
+class GenericModel[ModelInputT, V: Value](Protocol):
     """A shaped model whose internal structure is hidden from its logical batch."""
 
     def __call__(self, *args: object, **kwargs: object) -> V:
@@ -35,7 +37,7 @@ class GenericModel[ModelInputT, V : Value](Protocol):
 
 # Assignment aliases are also understood by the test suite's typeguard 2.x.
 Value = GenericValue
-Model  = GenericModel
+Model = GenericModel
 NumericValue = Num[GenericValue, "..."]
 # The concrete vector representation owns its protected axis and vector width.
 FloatVectorValue = Float[GenericValue, "..."]
