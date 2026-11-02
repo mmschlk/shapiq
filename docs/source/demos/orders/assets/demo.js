@@ -36,9 +36,11 @@
 // (data-view="mechanism"), where the full decomposition lies below the card, the mechanism under
 // the input; and the exploded view (data-view="exploded"), the mechanism as a technical drawing: a
 // block cut away at rest, the mechanism inside, whose parts come apart, numbered, as the hologram's
-// layers do. The hologram and the mechanism tone down to paper with data-tone="calm". Every view's
-// sheets can show, instead of all of an order, what it adds to the order above it
-// (data-show="delta"), and their rows and the plot what its R^2 gains.
+// layers do. In both, with data-full="both", the full decomposition is also the last explanation
+// above the input, and the mechanism below it lies apart: the model itself, which the explanations
+// reveal more of order by order. The hologram and the mechanism tone down to paper with
+// data-tone="calm". Every view's sheets can show, instead of all of an order, what it adds to the
+// order above it (data-show="delta"), and their rows and the plot what its R^2 gains.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -550,6 +552,11 @@
     if (r2 >= 0.6) return "workable";
     return "poor";
   };
+  // an example whose full decomposition is estimated (from a proxy of the model): it falls short of
+  // R^2 = 1, the estimation tax
+  const estimated = (example) => example.fits.at(-1)[1] < EXACT;
+  // the number of players: the features of a house, or what every sheet has a main effect of
+  const playersOf = (example) => example.features?.length ?? example.sheets[0].first.length;
   // a house's value in $100,000, as a change in thousands of dollars
   const dollars = (value) => `${value < 0 ? "−" : "+"}$${Math.round(Math.abs(value) * 100)}k`;
 
@@ -593,6 +600,10 @@
     // parts are put together, cut away at the front, where the mechanism shows inside (a cutaway);
     // open, they come apart along their axis (an exploded view), each named in a parts list
     const drawing = () => root.dataset.view === "exploded";
+    // in these two (data-full="both"): the full decomposition is also the last of the explanations
+    // above the input, as in the stack, and below it lies, apart, the mechanism they explain, the
+    // model itself, however complex: the explanations reveal more and more of it, order by order
+    const twin = () => beneath() && root.dataset.full === "both";
     // what every sheet shows (data-show="delta" on the demo): all of it, or what it adds to the
     // sheet above it, its R^2 as what it gains
     const delta = () => root.dataset.show === "delta";
@@ -731,7 +742,8 @@
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
       const blanks = Math.max(...data.examples.map((example) => between(example).length));
       // the hologram's card, below its layers; the mechanism's full decomposition, below the card
-      const air = holo() ? (AIR + (beneath() ? DEPTH - STRIP : 0)) * side : 0;
+      // (apart from the explanation of order n, it adds its depth to the stack's strips)
+      const air = holo() ? (AIR + (beneath() ? DEPTH - (twin() ? 0 : STRIP) : 0)) * side : 0;
       const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side + air;
       // a sheet slides out to the left: the stack lies right of the middle by half of that (in the
       // hologram, none does)
@@ -973,6 +985,20 @@
       }
       return cards.get(example.id);
     }
+    // the mechanism apart (data-full="both"): the full decomposition, all of it (never what it adds)
+    // and named as the mechanism; where it is estimated, blurred, as only an estimate shows it
+    const mechanisms = new Map();
+    function mechanismOf(example) {
+      if (!mechanisms.has(example.id)) {
+        const node = drawSheet(example, example.sheets.length - 1, "marks");
+        node.querySelector(".orders-demo-tag").textContent = estimated(example)
+          ? "The mechanism, estimated"
+          : `The mechanism (${sheetName(example.sheets.at(-1)).tag})`;
+        node.classList.toggle("orders-demo-estimated", estimated(example));
+        mechanisms.set(example.id, node);
+      }
+      return mechanisms.get(example.id);
+    }
     // the light between the layer pointed at and the card
     const beam = document.createElementNS(SVG, "svg");
     beam.setAttribute("class", "orders-demo-beam");
@@ -1055,7 +1081,12 @@
       hovering = false;
       if (holo()) {
         const card = { order: 0, base: true, node: cardOf(example) };
-        if (beneath()) {
+        if (twin()) {
+          // below the card, the mechanism: a sheet of its own, after the example's sheets
+          const full = example.sheets.at(-1);
+          const index = example.sheets.length;
+          items.push(card, { order: full.order, sheet: full, index, mechanism: true, deep: true, node: mechanismOf(example) });
+        } else if (beneath()) {
           items.at(-1).deep = true;
           items.splice(-1, 0, card);
         } else {
@@ -1065,7 +1096,29 @@
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
       // the exploded view's parts list: every part's number, top to bottom, the input's among them
-      const partOf = (i) => (i < example.sheets.length - 1 ? i + 1 : i + 2);
+      // (above the mechanism, which is the full decomposition, or apart from it)
+      const inputPart = twin() ? example.sheets.length + 1 : example.sheets.length;
+      const partOf = (i) => (i < inputPart - 1 ? i + 1 : i + 2);
+      // a row points at its sheet: hovered, focused or tapped, and the arrow keys go to the next row
+      const wire = (row, i) => {
+        row.addEventListener("pointerenter", (event) => {
+          if (event.pointerType === "mouse" && !state.pinned) point(i, null);
+        });
+        row.addEventListener("focus", () => {
+          if (!state.pinned) point(i, null);
+        });
+        row.addEventListener("click", () => toggle(i, null));
+        row.addEventListener("keydown", (event) => {
+          const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+          if (step) {
+            event.preventDefault();
+            rows[(i + step + rows.length) % rows.length].focus();
+          } else if (event.key === "Escape") {
+            state.pinned = false;
+            point(null, null);
+          }
+        });
+      };
       const clamp = (r2) => Math.max(0, Math.min(1, r2));
       rows = example.sheets.map((sheet, i) => {
         const names = sheetName(sheet);
@@ -1107,26 +1160,35 @@
         );
         fitBox.append(meter, score);
         row.append(title, fitBox);
-        row.addEventListener("pointerenter", (event) => {
-          if (event.pointerType === "mouse" && !state.pinned) point(i, null);
-        });
-        row.addEventListener("focus", () => {
-          if (!state.pinned) point(i, null);
-        });
-        row.addEventListener("click", () => toggle(i, null));
-        row.addEventListener("keydown", (event) => {
-          const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
-          if (step) {
-            event.preventDefault();
-            rows[(i + step + rows.length) % rows.length].focus();
-          } else if (event.key === "Escape") {
-            state.pinned = false;
-            point(null, null);
-          }
-        });
+        wire(row, i);
         ladder.append(row);
         return row;
       });
+      if (twin()) {
+        // the mechanism's row: the model itself, which fits itself; how complex it is, of how
+        // complex it could be, a term for every subset of the players (only an estimate shows it)
+        const i = rows.length;
+        const full = example.sheets.at(-1);
+        const n = playersOf(example);
+        const row = el("button", "orders-demo-row orders-demo-mechanism-row");
+        row.type = "button";
+        row.setAttribute(
+          "aria-label",
+          `The mechanism, the model itself: ${estimated(example) ? `up to 2^${n} terms, estimated` : `${full.count.toLocaleString("en")} of 2^${n} possible terms`}`,
+        );
+        const title = el("span", "orders-demo-row-title");
+        if (drawing()) title.append(el("span", "orders-demo-balloon", String(partOf(i))));
+        title.append(el("strong", "", "Mechanism"), el("span", "orders-demo-row-name", "the model itself"));
+        const power = el("span", "orders-demo-power", "2");
+        power.append(el("sup", "", String(n)));
+        const size = el("span", "orders-demo-mechanism-size");
+        if (estimated(example)) size.append("up to ", power, " terms, estimated");
+        else size.append(`${full.count.toLocaleString("en")} of `, power, " possible terms");
+        row.append(title, size);
+        wire(row, i);
+        ladder.append(row);
+        rows.push(row);
+      }
       ticks.replaceChildren(...stopItems().map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
 
       // the hologram's row of its card: the input, what the layers explain
@@ -1135,7 +1197,7 @@
         cardRow = el("div", "orders-demo-row orders-demo-blank-row orders-demo-card-row");
         cardRow.setAttribute("aria-hidden", "true");
         const title = el("span", "orders-demo-row-title");
-        if (drawing()) title.append(el("span", "orders-demo-balloon", String(example.sheets.length)));
+        if (drawing()) title.append(el("span", "orders-demo-balloon", String(inputPart)));
         title.append(el("strong", "", "Input"), el("span", "orders-demo-row-name", example.label));
         cardRow.append(title);
         ladder.append(cardRow);
@@ -1271,9 +1333,10 @@
         if (!hologram && target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
         // beside the blank sheet, but clear of the rows above and below it
-        // (in the mechanism, the row below is the card's)
-        const [above, below] = [rows.length - 2, rows.length - 1];
-        const [belowRow, belowY] = beneath() ? [cardRow, cardRowY] : [rows[below], rowY[below]];
+        // (in the mechanism, the row below is the card's, unless the full decomposition is apart)
+        const below = current().sheets.length - 1;
+        const above = below - 1;
+        const [belowRow, belowY] = beneath() && !twin() ? [cardRow, cardRowY] : [rows[below], rowY[below]];
         const half = (row) => row.offsetHeight / 2;
         const y = Math.min(
           Math.max(right[1], rowY[above] + half(rows[above]) + half(blankRow) + 2),
@@ -1349,7 +1412,7 @@
       glow.setAttribute("y1", item?.deep ? 1 : 0);
       glow.setAttribute("y2", item?.deep ? 0 : 1);
       // where the layers show what they add, the card wears what they add up to: all of the sheet
-      const source = item && delta() ? sheetsOf(current(), false)[item.index] : item?.node;
+      const source = item && delta() && !item.mechanism ? sheetsOf(current(), false)[item.index] : item?.node;
       if ((projected.get(card.node) ?? null) !== (source ?? null)) {
         const marks = source?.querySelector(".orders-demo-face").cloneNode(true);
         marks?.querySelector(".orders-demo-tag")?.remove();
@@ -1383,7 +1446,7 @@
       plot.setAttribute(
         "aria-label",
         `Faithfulness (R²) by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition` +
-          (example.fits.at(-1)[1] < EXACT ? ", estimated: what its R² falls short of 1 is the estimation tax" : ""),
+          (estimated(example) ? ", estimated: what its R² falls short of 1 is the estimation tax" : ""),
       );
       plot.replaceChildren();
       const fits = example.fits;
@@ -1562,7 +1625,9 @@
     function mark() {
       if (!marker) return;
       const example = current();
-      const order = state.active !== null ? example.sheets[state.active].order : state.blank;
+      // (the mechanism has no fit of its own: it is the model)
+      const pointed = state.active !== null ? sheetItems()[state.active] : null;
+      const order = pointed ? (pointed.mechanism ? null : pointed.order) : state.blank;
       plot.classList.toggle("orders-demo-plot-pointing", order !== null);
       if (order === null) return;
       const r2 = fitOf(example, order)[1];
@@ -1615,7 +1680,7 @@
 
     // the slider: a stop's name, and bringing out its sheet (the rest puts every sheet back); a sheet
     // brought out by the slider stays out, as one tapped
-    const stopName = (item) => (item.sheet ? sheetName(item.sheet).name + (item.sheet.order > 1 && !item.sheet.full ? ` of order ${item.order}` : "") : `order ${item.order}`);
+    const stopName = (item) => (item.mechanism ? "The mechanism, the model itself" : item.sheet ? sheetName(item.sheet).name + (item.sheet.order > 1 && !item.sheet.full ? ` of order ${item.order}` : "") : `order ${item.order}`);
     function slideTo(stop) {
       state.pinned = stop.item !== null;
       if (stop.item === null) point(null, null);
@@ -1781,8 +1846,9 @@
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the view (a stack, a hologram, the mechanism or the exploded view) follows the demo's data-view
-    // attribute, and what the sheets show its data-show
-    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
+    // attribute, what the sheets show its data-show, and where the full decomposition lies its
+    // data-full
+    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show", "data-full"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");

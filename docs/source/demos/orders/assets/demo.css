@@ -1075,6 +1075,24 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   opacity: 0.85;
 }
 
+/* the mechanism apart from the explanations (data-full="both"): its row tells how complex it is, of
+   how complex it could be; estimated, it shows blurred, as only an estimate shows it */
+.orders-demo-mechanism-size {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orders-demo-power sup {
+  margin-left: 0.05em;
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+.orders-demo-estimated .orders-demo-face > :not(.orders-demo-tag) {
+  filter: blur(1.4px);
+}
+
 /* the parts list: every row's part number in a balloon, and its leader ending in a dot on the part */
 .orders-demo-balloon {
   display: inline-grid;

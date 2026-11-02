@@ -9,8 +9,8 @@ transform; for the houses, of order 5, the trees' depth, which equals it already
 every main effect, and the 300 strongest interactions of each order (of the molecule, with the
 centers of its groups where shapiq's SI graph plot places them); for the houses, the strongest rows
 of their heatmap. For every sheet but the first, also what it adds to the sheet above it (its
-values less theirs), kept as the sheet is. And the R^2 (beyond size, under the Shapley distribution) and the number of
-values of every order up to the highest with an interaction, and of order n, for the plot of the
+values less theirs): every main effect and its 150 strongest interactions, or rows as the sheet's.
+And the R^2 (beyond size, under the Shapley distribution) and the number of values of every order up to the highest with an interaction, and of order n, for the plot of the
 fit by order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from
 disk too, where the browser would not fetch a JSON file).
 
@@ -34,6 +34,7 @@ ORDERS = (1, 2, 3, 4)  # the sheets, above the one of order n (the full decompos
 # the interactions (of two or more players) drawn on a sheet, most of them weak: a haze around
 # the strongest
 STRONGEST = 300
+DELTA_STRONGEST = 150  # of what a sheet adds to the one above it: fewer, the data kept small
 # R^2 to nine decimals: enough to tell the exact full decomposition (R^2 = 1) from an order that
 # only nearly is (the house's order 4 misses by 3e-7)
 R2_DIGITS = 9
@@ -89,7 +90,7 @@ def sheets(
     is the full decomposition, of order ``full`` (n, the number of players, for ``None``). Every
     sheet but the first also has its ``delta``: what it adds to the sheet above it, its values less
     those of the sheet above (the interactions of its own order, and how the lower orders change),
-    as main effects and the strongest groups.
+    as main effects and the ``DELTA_STRONGEST`` strongest groups.
     """
     n = result["n_players"]
     full = full or n
@@ -111,7 +112,7 @@ def sheets(
                 key: values.get(key, 0.0) - above.get(key, 0.0)
                 for key in values.keys() | above.keys()
             }
-            delta_first, delta_groups = split(change, n, strongest)
+            delta_first, delta_groups = split(change, n, DELTA_STRONGEST)
             sheet["delta"] = {"first": delta_first, "groups": delta_groups}
         out.append(sheet)
         above = values
