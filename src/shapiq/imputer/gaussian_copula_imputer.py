@@ -29,6 +29,8 @@ class GaussianCopulaImputer(GaussianImputer):
     space, given the observed values in a coalition. These samples are finally transformed back to the original feature space
     using the inverse of the empirical CDFs.
 
+    The value of the empty coalition is not sampled: it is the model's mean prediction on the background data
+    (:attr:`empty_prediction`), as for the other imputers.
     """
 
     QUANTILE_CLIP_EPSILON = 1e-10
@@ -43,6 +45,7 @@ class GaussianCopulaImputer(GaussianImputer):
         x: npt.NDArray[np.floating] | None = None,
         *,
         sample_size: int = 100,
+        normalize: bool = True,
         random_state: int | None = None,
         verbose: bool = False,
     ) -> None:
@@ -61,6 +64,10 @@ class GaussianCopulaImputer(GaussianImputer):
             sample_size: The number of Monte Carlo samples to draw from the conditional background
                 data for imputation.
 
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
+
             random_state: An optional random seed for reproducibility.
 
             verbose: A flag to enable verbose imputation, which will print a progress bar for model
@@ -71,6 +78,7 @@ class GaussianCopulaImputer(GaussianImputer):
             data=data,
             x=x,
             sample_size=sample_size,
+            normalize=normalize,
             random_state=random_state,
             verbose=verbose,
         )

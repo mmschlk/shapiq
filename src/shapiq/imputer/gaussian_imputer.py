@@ -32,6 +32,9 @@ class GaussianImputer(Imputer):
 
     Note that only continuous features are supported, meaning that this imputer can't be used for datasets containing
     categorical or binary features.
+
+    The value of the empty coalition is not sampled: it is the model's mean prediction on the background data
+    (:attr:`empty_prediction`), as for the other imputers.
     """
 
     def __init__(
@@ -41,6 +44,7 @@ class GaussianImputer(Imputer):
         x: npt.NDArray[np.floating] | None = None,
         *,
         sample_size: int = 100,
+        normalize: bool = True,
         random_state: int | None = None,
         verbose: bool = False,
     ) -> None:
@@ -58,6 +62,10 @@ class GaussianImputer(Imputer):
 
             sample_size: The number of Monte Carlo samples to draw from the conditional background
                 data for imputation.
+
+            normalize: A flag to normalize the game values. If ``True``, then the game values are
+                normalized and centered to be zero for the empty set of features. Defaults to
+                ``True``.
 
             random_state: An optional random seed for reproducibility.
 
@@ -86,6 +94,28 @@ class GaussianImputer(Imputer):
 
         self._mean_per_feature: npt.NDArray[np.floating] | None = None
         self._cov_mat: npt.NDArray[np.floating] | None = None
+
+        # set empty value and normalization
+        self.calc_empty_prediction()
+        if normalize:
+            self.normalization_value = self.empty_prediction
+
+    def calc_empty_prediction(self) -> float:
+        """Runs the model on the background data to get the empty prediction.
+
+        With all features missing, nothing is conditioned on, and the value of the empty coalition
+        is the model's expected prediction under the distribution of the data. It is estimated by
+        the mean prediction on the background data (as for the other imputers) instead of by
+        Monte Carlo samples of the fitted distribution, so that it does not depend on the random
+        state.
+
+        Returns:
+            The empty prediction.
+
+        """
+        empty_prediction = float(np.mean(self.predict(self.data)))
+        self.empty_prediction = empty_prediction
+        return empty_prediction
 
     def _check_categorical_features(self) -> None:
         """Check if any features are categorical variables.
@@ -232,12 +262,14 @@ class GaussianImputer(Imputer):
             raise RuntimeError(msg)
 
         n_coalitions = coalitions.shape[0]
+        # samples are also drawn for empty coalitions, so the other coalitions' samples stay the same
         samples = self._draw_samples(self.x.flatten(), coalitions)
 
-        predictions = np.zeros((n_coalitions, self.sample_size))
-        for i in range(n_coalitions):
-            predictions[i] = self.predict(samples[i])
-        return cast("npt.NDArray[np.floating]", np.mean(predictions, axis=1))
+        outputs = np.zeros(n_coalitions)
+        for i, coalition in enumerate(coalitions):
+            if np.any(coalition):  # the value of the empty coalition is the empty prediction
+                outputs[i] = np.mean(self.predict(samples[i]))
+        return self.insert_empty_value(outputs, coalitions)
 
     def _draw_samples(
         self, x: npt.NDArray[np.floating], coalitions: npt.NDArray[np.bool]

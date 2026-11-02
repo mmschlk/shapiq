@@ -93,7 +93,7 @@ def test_tabular_local_explanation_takes_point_and_seed_from_an_imputer(data) ->
     model = DecisionTreeRegressor(max_depth=4, random_state=0).fit(
         data["x_train"], data["yr_train"]
     )
-    # the Gaussian imputer sets no empty prediction and draws samples coalition after coalition
+    # the Gaussian imputer draws samples coalition after coalition
     imputer = GaussianImputer(
         model=model.predict, data=data["x_train"], x=data["x_test"][3], sample_size=20,
         random_state=0,
@@ -102,6 +102,8 @@ def test_tabular_local_explanation_takes_point_and_seed_from_an_imputer(data) ->
     np.testing.assert_array_equal(game.x, data["x_test"][3])
     assert game.random_state == 0
     assert game(game.empty_coalition)[0] == 0.0
+    # the batched model calls for a tree model keep the imputer's value of the empty coalition
+    assert game.empty_value == imputer.empty_prediction
     coalition = np.array([[True, False, False, False]])
     alone = game(coalition)[0]
     assert game(np.vstack([[False, True, True, False], coalition[0]]))[1] == alone

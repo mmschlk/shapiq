@@ -116,3 +116,70 @@ class TestInputValidation:
         x = np.array([1, 2, 3])
         with pytest.raises(ValueError, match=r"data.*empty"):
             model_class(model=dummy_model, data=data, x=x)
+
+
+@pytest.fixture
+def linear_model_and_data():
+    """A linear model and correlated Gaussian background data with a non-zero mean prediction."""
+    rng = np.random.default_rng(seed=0)
+    mean = np.array([1.0, 2.0, -1.0, 0.0])
+    cov = 0.5 * np.eye(4) + 0.5
+    data = rng.multivariate_normal(mean, cov, size=2_000)
+    beta = np.array([1.0, -2.0, 0.5, 3.0])
+
+    def model(x: np.ndarray) -> np.ndarray:
+        return x @ beta
+
+    return model, data
+
+
+@pytest.mark.parametrize("model_class", [GaussianImputer, GaussianCopulaImputer])
+class TestEmptyPrediction:
+    """Tests that the Gaussian imputers set the empty prediction and center the game with it."""
+
+    def test_empty_prediction_is_mean_background_prediction(
+        self, linear_model_and_data, model_class
+    ) -> None:
+        """The empty prediction is the mean prediction on the background data (it was ``0``)."""
+        model, data = linear_model_and_data
+        imputer = model_class(model=model, data=data, x=data[0], sample_size=50, random_state=0)
+
+        expected = float(np.mean(model(data)))
+        assert expected == pytest.approx(-3.5, abs=0.1)  # far from the old value of 0
+        assert imputer.empty_prediction == pytest.approx(expected)
+        assert imputer.normalize
+        assert imputer.normalization_value == imputer.empty_prediction
+
+    def test_empty_coalition_is_zero_when_centered(
+        self, linear_model_and_data, model_class
+    ) -> None:
+        """The empty coalition is worth exactly ``0``, for every random state and batch."""
+        model, data = linear_model_and_data
+        imputer = model_class(model=model, data=data, x=data[0], sample_size=50, random_state=0)
+        empty = np.zeros((1, 4), dtype=bool)
+        coalitions = np.array(
+            [
+                [False, False, False, False],
+                [True, False, True, False],
+                [False, False, False, False],
+            ]
+        )
+        for random_state in (0, 1, None):
+            imputer.set_random_state(random_state)
+            values = imputer(coalitions)
+            assert values[0] == 0.0
+            assert values[2] == 0.0
+            assert values[1] != 0.0
+            assert imputer(empty)[0] == 0.0
+            assert imputer.value_function(empty)[0] == imputer.empty_prediction
+
+    def test_not_centered_without_normalize(self, linear_model_and_data, model_class) -> None:
+        """With ``normalize=False``, the empty coalition is worth the empty prediction."""
+        model, data = linear_model_and_data
+        imputer = model_class(
+            model=model, data=data, x=data[0], sample_size=50, random_state=0, normalize=False
+        )
+        assert not imputer.normalize
+        assert imputer.normalization_value == 0.0
+        assert imputer.empty_prediction == pytest.approx(np.mean(model(data)))
+        assert imputer(np.zeros((1, 4), dtype=bool))[0] == imputer.empty_prediction

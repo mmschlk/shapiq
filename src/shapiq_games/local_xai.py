@@ -200,7 +200,8 @@ class TabularLocalExplanation(Game):
         Its samples come from a generator seeded anew for every call and drawn coalition after
         coalition, so every coalition's samples are drawn alone, as the first of a batch. Only
         the model calls, which dominate the time, are batched (the imputer calls the model once
-        per coalition): a tree model's output for a row does not depend on the other rows.
+        per coalition): a tree model's output for a row does not depend on the other rows. As in
+        the imputer's value function, the value of the empty coalition is its empty prediction.
         """
         imputer = cast("GaussianImputer", self.imputer)
         x = np.asarray(imputer.x).reshape(-1)
@@ -214,7 +215,7 @@ class TabularLocalExplanation(Game):
             )
             predictions = np.asarray(imputer.predict(samples.reshape(-1, x.shape[0])), dtype=float)
             values[start : start + step] = np.mean(predictions.reshape(-1, n_samples), axis=1)
-        return values
+        return imputer.insert_empty_value(values, coalitions)
 
 
 def _baseline_row(baseline: float | np.ndarray, n_features: int) -> FloatVector:
