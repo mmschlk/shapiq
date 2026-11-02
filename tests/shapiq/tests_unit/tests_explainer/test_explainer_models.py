@@ -136,9 +136,12 @@ def test_sklearn_reg_forest(rf_reg_model, background_reg_data):
 
 
 def test_sklearn_clf_logistic_regression(lr_clf_model, background_clf_data):
-    """Test the explainer with a basic sklearn logistic regression model."""
+    """Test the explainer with a basic sklearn logistic regression model.
+
+    A logistic regression has a ``decision_function``, so its margins (log-odds) are explained.
+    """
     x_explain = background_clf_data[0]
-    prediction = lr_clf_model.predict_proba(x_explain.reshape(1, -1))[0]
+    prediction = lr_clf_model.decision_function(x_explain.reshape(1, -1))[0]
 
     explainer = TabularExplainer(model=lr_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain, budget=BUDGET_NR_FEATURES)
@@ -202,9 +205,13 @@ def test_lightgbm_reg(lightgbm_reg_model, background_reg_data):
 
 
 def test_lightgbm_clf(lightgbm_clf_model, background_clf_data):
-    """Test the explainer with a basic lightgbm classification model."""
+    """Test the explainer with a basic lightgbm classification model.
+
+    ``LGBMClassifier`` has a ``decision_function`` (its raw scores), so the tabular explainer
+    explains the log-odds, the space the tree explainer explains as well.
+    """
     x_explain = background_clf_data[0]
-    prediction = lightgbm_clf_model.predict_proba(x_explain.reshape(1, -1))[0]
+    prediction = lightgbm_clf_model.decision_function(x_explain.reshape(1, -1))[0]
 
     explainer = TabularExplainer(model=lightgbm_clf_model, data=background_clf_data, class_index=2)
     values = explainer.explain(x_explain, budget=BUDGET_NR_FEATURES)
@@ -226,17 +233,20 @@ def test_lightgbm_clf(lightgbm_clf_model, background_clf_data):
     values = explainer.explain(x_explain, budget=BUDGET_NR_FEATURES)
 
     assert isinstance(values, InteractionValues)
-    # note we do not check for efficiency here as the explanations are in log-odds space and
-    # it is not straightforward to compare them with the probabilities from the model
-    # https://github.com/shap/shap/issues/963
+    sum_of_values = sum(values.values)
+    assert prediction[2] == pytest.approx(sum_of_values, rel=0.001)
 
 
 def test_isoforest_clf(if_clf_model, if_clf_dataset):
-    """Test the explainer with a basic isolation forest classification model."""
+    """Test the explainer with a basic isolation forest classification model.
+
+    The tabular explainer explains the anomaly score (``decision_function``) of the forest, not
+    its ``-1``/``1`` labels.
+    """
     x_data = if_clf_dataset[0]
 
     x_explain = x_data[0]
-    prediction = if_clf_model.predict(x_explain.reshape(1, -1))[0]
+    prediction = if_clf_model.decision_function(x_explain.reshape(1, -1))[0]
 
     explainer = TabularExplainer(model=if_clf_model, data=x_data, class_index=2)
     values = explainer.explain(x_explain, budget=BUDGET_NR_FEATURES)

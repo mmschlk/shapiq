@@ -67,7 +67,11 @@ class TabularExplainer(Explainer):
 
             class_index: The class index of the model to explain. Defaults to ``None``, which will
                 set the class index to ``1`` per default for classification models and is ignored
-                for regression models.
+                for regression models. Classifiers of the scikit-learn API are explained in the
+                first output space they offer: ``predict_logits``, ``decision_function`` (raw
+                margins such as log-odds), ``predict_proba``, or ``predict``. The binary
+                ``decision_function`` is a single margin of class ``1``, which is negated for
+                ``class_index=0``.
 
             imputer: Either an :class:`~shapiq.games.imputer.Imputer` as implemented in the
                 :mod:`~shapiq.games.imputer` module, or a literal string from

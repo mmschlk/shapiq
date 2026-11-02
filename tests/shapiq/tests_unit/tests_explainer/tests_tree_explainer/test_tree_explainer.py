@@ -43,6 +43,36 @@ def test_baseline_and_efficiency(
     assert sum(explanation.values) + explanation.baseline_value == pytest.approx(prediction)
 
 
+@pytest.mark.parametrize("class_index", [0, 1, 2])
+def test_predict_is_explained_output_multiclass(gb_clf_model, background_clf_data, class_index):
+    """``predict`` returns the explained output: the margin of the class of a gradient boosting
+    classifier, which the explanation plus the baseline add up to."""
+    x = background_clf_data[0]
+    explainer = TreeExplainer(model=gb_clf_model, class_index=class_index, min_order=1)
+    explanation = explainer.explain(x)
+    margin = gb_clf_model.decision_function(x.reshape(1, -1))[0, class_index]
+    assert explainer.predict(x.reshape(1, -1))[0] == pytest.approx(margin)
+    assert sum(explanation.values) + explanation.baseline_value == pytest.approx(margin)
+
+
+@pytest.mark.parametrize("class_index", [None, 0, 1])
+def test_predict_is_explained_output_binary(background_clf_dataset_binary, class_index):
+    """The decision function of a binary gradient boosting classifier is the log-odds of class 1;
+    ``predict`` and the explanation of class 0 are its negative."""
+    from sklearn.ensemble import GradientBoostingClassifier
+
+    X, y = background_clf_dataset_binary
+    model = GradientBoostingClassifier(n_estimators=5, max_depth=2, random_state=42).fit(X, y)
+    x = X[0]
+    explainer = TreeExplainer(model=model, class_index=class_index, min_order=1)
+    explanation = explainer.explain(x)
+    margin = model.decision_function(x.reshape(1, -1))[0]
+    if class_index == 0:
+        margin = -margin
+    assert explainer.predict(x.reshape(1, -1))[0] == pytest.approx(margin)
+    assert sum(explanation.values) + explanation.baseline_value == pytest.approx(margin)
+
+
 def test_hand_tree_matches_shap():
     """Shapley values on a hand-built 3-feature tree equal ``shap.TreeExplainer``'s."""
     values = np.asarray([110, 105, 95, 20, 50, 100, 75, 10, 40]) / 110

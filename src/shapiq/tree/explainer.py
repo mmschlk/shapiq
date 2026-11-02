@@ -202,7 +202,7 @@ class TreeExplainer(Explainer):
             **kwargs: Additional keyword arguments are ignored.
 
         """
-        super().__init__(model, index=index, max_order=max_order)
+        super().__init__(model, class_index=class_index, index=index, max_order=max_order)
 
         if min_order < 0 or min_order > self._max_order:
             msg = (

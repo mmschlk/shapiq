@@ -76,6 +76,14 @@ def get_predict_function_and_model_type(
     The prediction function is used in the explainer to predict the model's output for a given data
     point. The function has the following signature: ``predict_function(model, data)``.
 
+    Models of the scikit-learn API are explained in the first output space they offer, in this
+    order: ``predict_logits`` (TabPFN), ``decision_function`` (the raw margins, i.e. the log-odds
+    of linear and gradient boosting classifiers, the margin of support vector machines, or the
+    anomaly score of an isolation forest), ``predict_proba``, and ``predict``. The ``class_index``
+    selects the explained column of a prediction with one column per class. A binary classifier's
+    ``decision_function`` is a single score per row, the margin of ``classes_[1]``: it is explained
+    as is for ``class_index=1`` and negated for ``class_index=0``.
+
     Args:
         model: The model to explain. Can be any model object or callable function. We try to infer
             the model type from the model object.
@@ -217,9 +225,12 @@ def get_predict_function_and_model_type(
     ]:
         _model_type = "product_kernel"
 
-    # default extraction (sklearn api) which tries logits, probabilities, and then predictions
+    # default extraction (sklearn api) which tries logits, the decision function (raw margins),
+    # probabilities, and then predictions
     if _predict_function is None and hasattr(model, "predict_logits"):
         _predict_function = predict_logits
+    elif _predict_function is None and hasattr(model, "decision_function"):
+        _predict_function = predict_decision_function
     elif _predict_function is None and hasattr(model, "predict_proba"):
         _predict_function = predict_proba
     elif _predict_function is None and hasattr(model, "predict"):
@@ -243,6 +254,10 @@ def get_predict_function_and_model_type(
     if class_index is None:
         class_index = 1
 
+    # a binary classifier's decision function is one score per row (the margin of ``classes_[1]``)
+    # and not one column per class: the class index cannot select a column from it
+    is_binary_margin = _predict_function is predict_decision_function and hasattr(model, "classes_")
+
     def _predict_function_with_class_index(model: Model, data: np.ndarray) -> np.ndarray:
         """A wrapper prediction function to retrieve class_index predictions for classifiers.
 
@@ -259,6 +274,8 @@ def get_predict_function_and_model_type(
         """
         predictions = _predict_function(model, data)  # type: ignore[call-arg, operator]  # predict_function takes at least two arguments
         if predictions.ndim == 1:  # type: ignore[union-attr]
+            if is_binary_margin:
+                return _binary_margin(predictions, class_index)  # type: ignore[arg-type]
             return predictions  # type: ignore[return-value]
         if predictions.shape[1] == 1:  # type: ignore[union-attr]
             return predictions[:, 0]  # type: ignore[index]
@@ -291,6 +308,39 @@ def predict_proba(model: Model, data: np.ndarray) -> np.ndarray:
 def predict_logits(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that has a `predict_logits` method."""
     return model.predict_logits(data)
+
+
+def predict_decision_function(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes raw-margin predictions with a model that has a ``decision_function`` method."""
+    return model.decision_function(data)
+
+
+def _binary_margin(margins: np.ndarray, class_index: int) -> np.ndarray:
+    """Return the margin of the explained class of a binary classifier's decision function.
+
+    The ``decision_function`` of a binary classifier of the scikit-learn API returns one score per
+    row, the margin of ``classes_[1]``, e.g. the log-odds of class ``1`` of a logistic regression
+    or a gradient boosting classifier. The margin of class ``0`` is its negative.
+
+    Args:
+        margins: The decision function values of shape ``(n_samples,)``.
+        class_index: The class to explain, ``0`` or ``1``.
+
+    Returns:
+        The margins of the explained class.
+
+    Raises:
+        ValueError: If ``class_index`` is neither ``0`` nor ``1``.
+    """
+    if class_index == 1:
+        return margins
+    if class_index == 0:
+        return -margins
+    msg = (
+        f"class_index={class_index} cannot be explained: the decision function of a binary "
+        "classifier is a single score per row, the margin of class 1 (its negative for class 0)."
+    )
+    raise ValueError(msg)
 
 
 def predict_xgboost(model: Model, data: np.ndarray) -> np.ndarray:

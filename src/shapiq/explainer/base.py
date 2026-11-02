@@ -130,7 +130,11 @@ class Explainer:
                 set the class index to ``1`` per default for classification models and is ignored
                 for regression models. Note, it is important to specify the class index for your
                 classification model. Ignored with a warning for a :class:`~shapiq.game.Game`,
-                which defines its own explained class.
+                which defines its own explained class. Classifiers of the scikit-learn API are
+                explained in the first output space they offer: ``predict_logits``,
+                ``decision_function`` (raw margins such as log-odds), ``predict_proba``, or
+                ``predict``. The binary ``decision_function`` is a single margin of class ``1``,
+                which is negated for ``class_index=0``.
 
             index: The type of Shapley interaction index to use. Defaults to ``"SV"``, which
                 computes the Shapley value. To compute interactions, pass an interaction index
