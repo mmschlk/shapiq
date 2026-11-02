@@ -34,16 +34,15 @@
 // data-reveal="click", the demo starts with the problem alone: a click on the chip explains it, and
 // the explanation comes out of it, the card, the sheets one after the other, and the plot.
 //
-// Another view, the mechanism (data-view="mechanism" on the demo; the docs show the stack): the
+// Another view, the unfolded view (data-view="unfolded" on the demo; the docs show the stack): the
 // example's input on a card, every explanation on a see-through layer above it, its marks only, the
 // full decomposition the last of them, and below the card the mechanism they explain, the model
 // itself, however complex: the explanations reveal more and more of it, order by order. At rest,
 // the layers lie on the card (the top one showing, on the input), the mechanism hidden under it;
-// while the pointer is over the stage (or after a tap), they float off it, apart, and the layer
-// pointed at casts its light onto the card, which wears its marks. The rows, the slider, the plot,
-// the stepper and the swipe work as in the stack. The exploded view (data-view="exploded") draws it
-// as a technical drawing: a block cut away at rest, the mechanism inside, whose parts come apart,
-// numbered. The mechanism tones down from glowing film to paper with data-tone="calm". Every view's
+// while the pointer is over the stage (or after a tap, or shortly after the model was clicked to
+// explain it), they unfold: they float off it, apart, and the layer pointed at casts its light onto
+// the card, which wears its marks. The rows, the slider, the plot, the stepper and the swipe work as
+// in the stack. Its layers tone down from glowing film to paper with data-tone="calm". Every view's
 // sheets can show, instead of all of an order, what it adds to the order above it
 // (data-show="delta"), and their rows and the plot what its R^2 gains.
 //
@@ -86,7 +85,6 @@
   // side; and the depth below the input at which the mechanism lies
   const AIR = 0.3;
   const DEPTH = 0.34;
-  const CUT = 0.09; // the exploded view's, at rest: how deep below the input the mechanism lies
   const PLOT = { height: 153, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 75
 
   const roundTo = (value, digits) => {
@@ -602,15 +600,12 @@
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
     const plotId = ++plots;
-    // the floating layers (data-view="mechanism"; the docs show the stack): the input on a card, the
-    // explanations on layers above it, which lie on the card at rest and float off it, apart, while
-    // the pointer is over the stage (or after a tap on the card), or a layer is pointed at; and below
-    // the card, apart from the full decomposition, the mechanism they explain, hidden at rest
-    const layered = () => root.dataset.view === "mechanism" || root.dataset.view === "exploded";
-    // the exploded view (data-view="exploded"): the mechanism as a technical drawing. At rest, its
-    // parts are put together, cut away at the front, where the mechanism shows inside (a cutaway);
-    // open, they come apart along their axis (an exploded view), each named in a parts list
-    const drawing = () => root.dataset.view === "exploded";
+    // the floating layers (data-view="unfolded"; the docs show the stack): the input on a card, the
+    // explanations on layers above it, which lie on the card at rest and unfold, float off it,
+    // apart, while the pointer is over the stage (or after a tap on the card), or a layer is
+    // pointed at; and below the card, apart from the full decomposition, the mechanism they explain,
+    // hidden at rest
+    const layered = () => root.dataset.view === "unfolded";
     // what every sheet shows (data-show="delta" on the demo): all of it, or what it adds to the
     // sheet above it, its R^2 as what it gains
     const delta = () => root.dataset.show === "delta";
@@ -619,7 +614,7 @@
     // other; once explained, every example is
     let revealed = root.dataset.reveal !== "click";
     let hovering = false;
-    const exploded = () => hovering || state.active !== null || state.blank !== null;
+    const unfolded = () => hovering || state.active !== null || state.blank !== null; // the layers, apart
 
     root.replaceChildren();
     const bar = el("div", "orders-demo-bar");
@@ -809,7 +804,7 @@
     // the place (center) of every item: stacked so that a strip of every sheet shows below the one
     // above it, and the one pointed at slid out to the side of the stack
     function layout(active) {
-      if (layered()) return layeredLayout(exploded());
+      if (layered()) return layeredLayout(unfolded());
       const g = geometry;
       const pointed = active === null ? null : sheetItems()[active];
       const h = g.sheetHeight;
@@ -841,10 +836,8 @@
         centers.push(bottom - h / 2);
       });
       const offset = (g.height - bottom) / 2;
-      // at rest, the mechanism lies just under the card, its edge showing below the card's (in the
-      // exploded view, as deep as its cutaway)
-      const under = drawing() ? CUT * g.side : 2 * THICKNESS;
-      return items.map((item, position) => ({ x: g.center, y: open ? centers[position] + offset : g.height / 2 + (item.deep ? under : 0) }));
+      // at rest, the mechanism lies just under the card, its edge showing below the card's
+      return items.map((item, position) => ({ x: g.center, y: open ? centers[position] + offset : g.height / 2 + (item.deep ? 2 * THICKNESS : 0) }));
     }
 
     // the corners of a sheet on the stage (left, top, right, bottom for the turn of -45 degrees)
@@ -1258,6 +1251,7 @@
     // light out of the chip first, then the card, the sheets one after the other, the rows and the
     // plot
     let revealing = 0;
+    let unfolding = 0;
     function reveal() {
       if (revealed) return;
       revealed = true;
@@ -1265,6 +1259,19 @@
       render();
       clearTimeout(revealing);
       revealing = setTimeout(() => root.classList.remove("orders-demo-revealing"), 2800);
+      // the floating layers, once they have come in, unfold, as for the pointer: they rest again
+      // once it has been over them and left (or a tap on the card closes them)
+      clearTimeout(unfolding);
+      if (layered()) {
+        unfolding = setTimeout(
+          () => {
+            if (!layered() || hovering || root.classList.contains("orders-demo-fading")) return;
+            hovering = true;
+            place(state.active);
+          },
+          reducedMotion() ? 600 : 1900,
+        );
+      }
     }
 
     // the light out of the chip, onto the card of the explanation: from the chip's bottom corners to
@@ -1290,30 +1297,6 @@
     add(glow, "stop", { offset: 1, class: "orders-demo-beam-bottom" });
     const beamHull = add(beam, "polygon", { fill: `url(#orders-beam-${plotId})` });
     const beamEdges = add(beam, "path", { class: "orders-demo-beam-edges" });
-    // the exploded view's cutaway, at rest: the parts put together are a block, with the input on
-    // top and the mechanism at its bottom; its front quarter is cut away (demo.css cuts the card and
-    // the layer on it), and the cut's faces are hatched, as a section is drawn
-    const section = document.createElementNS(SVG, "svg");
-    section.setAttribute("class", "orders-demo-section");
-    section.setAttribute("aria-hidden", "true");
-    const hatch = add(add(section, "defs"), "pattern", {
-      id: `orders-hatch-${plotId}`,
-      width: 5,
-      height: 5,
-      patternUnits: "userSpaceOnUse",
-      patternTransform: "rotate(45)",
-    });
-    add(hatch, "rect", { class: "orders-demo-section-ground", width: 5, height: 5 });
-    add(hatch, "line", { class: "orders-demo-section-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
-    const sides = add(section, "path", { class: "orders-demo-section-side" });
-    const cut = add(section, "path", { class: "orders-demo-section-cut", fill: `url(#orders-hatch-${plotId})` });
-    const strata = add(section, "path", { class: "orders-demo-section-strata" });
-    // open, the lines along which its parts came apart: through their corners, and their axis
-    const assembly = document.createElementNS(SVG, "svg");
-    assembly.setAttribute("class", "orders-demo-assembly");
-    assembly.setAttribute("aria-hidden", "true");
-    const axis = add(assembly, "path", { class: "orders-demo-assembly-axis" });
-    const guides = add(assembly, "path", { class: "orders-demo-assembly-lines" });
     // the examples not shown yet, drawn while the page is idle, a sheet at a time, so that choosing
     // one only has to show it
     const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 100));
@@ -1358,10 +1341,6 @@
       }
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
-      // the exploded view's parts list: every part's number, top to bottom, the input's among them,
-      // between the full decomposition and the mechanism
-      const inputPart = example.sheets.length + 1;
-      const partOf = (i) => (i < inputPart - 1 ? i + 1 : i + 2);
       // a row points at its sheet: hovered, focused or tapped, and the arrow keys go to the next row
       const wire = (row, i) => {
         row.addEventListener("pointerenter", (event) => {
@@ -1396,11 +1375,7 @@
             : `${names.name}, order ${sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`,
         );
         const title = el("span", "orders-demo-row-title");
-        if (drawing()) title.append(el("span", "orders-demo-balloon", String(partOf(i))));
-        // in the parts list, how many values a part has (the more, the more complex) in place of its
-        // name, which its face bears
-        const name = above ? `adds to ${sheetName(above).tag}` : drawing() ? `${sheet.count.toLocaleString("en")} values` : names.name;
-        title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", name));
+        title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", above ? `adds to ${sheetName(above).tag}` : names.name));
         const fitBox = el("span", "orders-demo-row-fit");
         const meter = el("span", "orders-demo-meter");
         const fill = el("span", "orders-demo-meter-fill");
@@ -1440,7 +1415,6 @@
           `The mechanism, the model itself: ${estimated(example) ? `up to 2^${n} terms, estimated` : `${full.count.toLocaleString("en")} of 2^${n} possible terms`}`,
         );
         const title = el("span", "orders-demo-row-title");
-        if (drawing()) title.append(el("span", "orders-demo-balloon", String(partOf(i))));
         title.append(el("strong", "", "Mechanism"), el("span", "orders-demo-row-name", "the model itself"));
         const power = el("span", "orders-demo-power", "2");
         power.append(el("sup", "", String(n)));
@@ -1460,7 +1434,6 @@
         cardRow = el("div", "orders-demo-row orders-demo-blank-row orders-demo-card-row");
         cardRow.setAttribute("aria-hidden", "true");
         const title = el("span", "orders-demo-row-title");
-        if (drawing()) title.append(el("span", "orders-demo-balloon", String(inputPart)));
         title.append(el("strong", "", "Input"), el("span", "orders-demo-row-name", example.label));
         cardRow.append(title);
         ladder.append(cardRow);
@@ -1488,7 +1461,6 @@
       place(null);
       stack.append(...items.map((item) => item.node));
       if (layered()) stack.append(beam);
-      if (drawing()) stack.append(section, assembly);
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
     }
@@ -1503,7 +1475,7 @@
       // the floating layers' rows, slider and beam keep to where they float, open or at rest
       const floating = layered();
       const anchors = floating ? layeredLayout(true) : places;
-      const open = floating && exploded();
+      const open = floating && unfolded();
       const opening = floating && open !== root.classList.contains("orders-demo-open");
       root.classList.toggle("orders-demo-floating", floating);
       root.classList.toggle("orders-demo-open", open);
@@ -1618,49 +1590,6 @@
             : `Orders ${first}–${last}`;
       }
       if (floating) project(out ? sheetItems()[active] : null, anchors);
-      if (drawing()) {
-        cutaway(layeredLayout(false));
-        assemble(anchors);
-      }
-    }
-
-    // the cutaway at rest: the block from the card's face down to the mechanism's, its front quarter
-    // cut away. Its sides (left and right of the cut), and the cut's two faces, which meet at the
-    // middle, hatched; the layers on the input as thin lines across their top
-    function cutaway(rest) {
-      const [card, deep] = [items.find((item) => item.base), items.find((item) => item.deep)];
-      const [top, floor] = [rest[items.indexOf(card)], rest[items.indexOf(deep)]];
-      const [left, , right, front] = corners(top);
-      const [leftBelow, , rightBelow, frontBelow] = corners(floor);
-      const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-      const f = ([x, y]) => `${roundTo(x, 1)},${roundTo(y, 1)}`;
-      const shape = (...points) => `M${points.map(f).join("L")}Z`;
-      const [cutLeft, cutRight, cutLeftBelow, cutRightBelow] = [mid(left, front), mid(front, right), mid(leftBelow, frontBelow), mid(frontBelow, rightBelow)];
-      const [middle, middleBelow] = [[top.x, top.y], [floor.x, floor.y]];
-      section.setAttribute("width", geometry.width);
-      section.setAttribute("height", geometry.height);
-      sides.setAttribute("d", shape(left, cutLeft, cutLeftBelow, leftBelow) + shape(cutRight, right, rightBelow, cutRightBelow));
-      cut.setAttribute("d", shape(cutLeft, middle, middleBelow, cutLeftBelow) + shape(middle, cutRight, cutRightBelow, middleBelow));
-      // a line under every explanation on the input, two pixels apart
-      let d = "";
-      for (let k = 1; k < sheetItems().length; k++) {
-        const down = ([x, y]) => [x, y + 2 * k];
-        d += `M${[cutLeft, middle, cutRight].map(down).map(f).join("L")}`;
-      }
-      strata.setAttribute("d", d);
-    }
-
-    // the exploded view's assembly lines, open: down through the parts' left, right and front
-    // corners, from the top part to the mechanism, and their axis through their middles, beyond them
-    function assemble(open) {
-      const [first, last] = [open[0], open.at(-1)];
-      const [upper, lower] = [corners(first), corners(last)];
-      const f = ([x, y]) => `${roundTo(x, 1)},${roundTo(y, 1)}`;
-      assembly.setAttribute("width", geometry.width);
-      assembly.setAttribute("height", geometry.height);
-      guides.setAttribute("d", [0, 2, 3].map((k) => `M${f(upper[k])}L${f(lower[k])}`).join(""));
-      const beyond = 0.1 * geometry.side;
-      axis.setAttribute("d", `M${f([first.x, first.y - beyond])}L${f([last.x, last.y + beyond])}`);
     }
 
     // the light from the layer pointed at down to the card (or from the mechanism up to it), whose
@@ -2094,7 +2023,7 @@
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
       if (performance.now() - swiped < 400) return; // the end of a swipe, not a tap
-      if (layered() && !exploded()) {
+      if (layered() && !unfolded()) {
         // a tap on the layers at rest opens them: they float off the card, none pointed at
         hovering = true;
         place(null);
@@ -2136,7 +2065,7 @@
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
     new ResizeObserver(() => castLightOut()).observe(plan);
-    // the view (a stack, the mechanism or the exploded view) follows the demo's data-view
+    // the view (a stack, or the unfolded view) follows the demo's data-view
     // attribute, what the sheets show its data-show, and whether it starts unexplained its
     // data-reveal
     new MutationObserver((records) => {
