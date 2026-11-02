@@ -912,6 +912,12 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   mix-blend-mode: normal;
 }
 
+/* while a layer is pointed at, the others' paper thins as their marks fade: the paper of the layers
+   above it would else veil it */
+.orders-demo[data-tone="calm"] .orders-demo-sheet.orders-demo-layer.orders-demo-receded:not(.orders-demo-deep) {
+  background: color-mix(in srgb, var(--orders-holo-film), transparent 85%);
+}
+
 /* -- the exploded view (data-view="exploded"): the mechanism as a technical drawing. At rest, a
    block cut away at the front (a cutaway), the mechanism inside; open, its parts apart along their
    axis (an exploded view), a parts list beside them ------------------------------------------- */
@@ -928,6 +934,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
   animation: none;
   transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* as the calm layers' (above), the paper of the parts not pointed at thins */
+.orders-demo[data-view="exploded"] .orders-demo-sheet.orders-demo-layer.orders-demo-receded:not(.orders-demo-deep) {
+  background: color-mix(in srgb, var(--orders-draft-paper), transparent 85%);
 }
 
 .orders-demo[data-view="exploded"] .orders-demo-sheet.orders-demo-blank {
