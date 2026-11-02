@@ -1590,6 +1590,26 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   fill: var(--orders-mech-edge);
 }
 
+/* the mechanism's row tells how complex it is, of how complex it could be */
+.orders-demo-mechanism-size {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orders-demo-power sup {
+  margin-left: 0.05em;
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+/* estimated, the mechanism shows blurred, as only an estimate shows it: its layer, its light on the
+   input's card, and the plan's face of it (demo.js marks them) */
+.orders-demo-estimated .orders-demo-face > :not(.orders-demo-tag),
+.orders-demo-plan-view.orders-demo-estimated .orders-demo-plan-face > * {
+  filter: blur(1.4px);
+}
+
 /* at rest, under the card: only its glowing edge shows below the card's */
 .orders-demo[data-view="unfolded"]:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;

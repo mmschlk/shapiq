@@ -1255,6 +1255,8 @@
       if (state.blank !== null) index = state.blank >= example.largest ? last : null;
       const face = planFace(example, index);
       if (planView.firstChild !== face) planView.replaceChildren(face);
+      // the mechanism, where only an estimate shows it, blurred
+      planView.classList.toggle("orders-demo-estimated", Boolean(pointed?.mechanism) && estimated(example));
 
       // the order shown, and the one pointed at
       for (const [i, button] of orderButtonOf.entries()) {
@@ -1712,7 +1714,9 @@
       if ((projected.get(card.node) ?? null) !== (source ?? null)) {
         const marks = source?.querySelector(".orders-demo-face").cloneNode(true);
         marks?.querySelector(".orders-demo-tag")?.remove();
-        card.node.querySelector(".orders-demo-projection").replaceChildren(...(marks ? [marks] : []));
+        const projection = card.node.querySelector(".orders-demo-projection");
+        projection.replaceChildren(...(marks ? [marks] : []));
+        projection.classList.toggle("orders-demo-estimated", Boolean(item?.mechanism) && estimated(current()));
         projected.set(card.node, source ?? null);
       }
       if (!item) return;
