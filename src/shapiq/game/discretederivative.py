@@ -5,7 +5,7 @@ from typing import ClassVar, override
 import jax
 import jax.numpy as jnp
 from jax.core import Tracer
-from jaxtyping import Bool, Shaped
+from jaxtyping import Bool, Shaped, UInt8
 from ndlike.jax_functions import jax_multiply, jax_sum
 from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
@@ -41,18 +41,18 @@ def powerset(coalition: Bool[jax.Array, "*batch n_players"], order: int) -> Bool
     return jnp.any(onehot & patterns, axis=-2)  # (*batch, 2**order, n_players)
 
 def broadcast_interaction(
-    game: FinitePlayerGame, interaction: jax.Array
-) -> Bool[jax.Array, "*interaction_batch n_players"]:
-    """Validate (packed) interactions, unpack and broadcast them with the game batch.
+    game: FinitePlayerGame, weights: DiscreteDerivativeWeight, interaction: jax.Array
+) -> Bool[jax.Array, "*batch n_players"]:
+    """Validate (packed) interactions, unpack and broadcast them with the game and weight batches.
 
-    The game itself is not broadcast; it stays compact via ``broadcasted_batch``.
+    The game and the weights are not broadcast; they stay compact via ``broadcasted_batch``.
     """
     if not game.is_valid(interaction):
         msg = "Interaction is inadmissible for this game."
         raise ValueError(msg)
     if interaction.dtype == jnp.uint8:
         interaction = unpack_bool_coalition(interaction, game.n_players)
-    shape = jnp.broadcast_shapes(game.shape, interaction.shape[:-1])
+    shape = jnp.broadcast_shapes(game.shape, weights.shape, interaction.shape[:-1])
     return jnp.broadcast_to(interaction, (*shape, interaction.shape[-1]))
 
 
@@ -61,27 +61,26 @@ class DiscreteDerivativeInteractionIndex[P, V: JaxLike](BoolFinitePlayerGame[P, 
                                                         JaxAxisProtected[jax.Array]):
     """Computes the discrete derivate of coalitions given an interaction."""
     game: FinitePlayerGame[P, V]
-    weights: DiscreteDerivativeWeight
-    interaction: Bool[jax.Array, "*interaction_batch {self.game.n_players}"]
-    # The interactions carry the full batch shape; the game is shared across them.
-    protected_axes: ClassVar[dict[str, int]] = {"interaction": 1, "game": 0}
-    broadcasted_batch: ClassVar[set[str]] = {"game"}
+    weights: Shaped[DiscreteDerivativeWeight, "#*batch"]
+    # Accepts packed interactions; __post_init__ stores them unpacked
+    interaction: (
+        Bool[jax.Array, "#*batch {game.n_players}"]
+        | UInt8[jax.Array, "#*batch ({game.n_players}+7)//8"]
+    )
+    # The interactions carry the full batch shape; game and weights stay compact and broadcast into it.
+    protected_axes: ClassVar[dict[str, int]] = {"interaction": 1, "game": 0, "weights": 0}
+    broadcasted_batch: ClassVar[set[str]] = {"game", "weights"}
     order: int
 
     def __post_init__(self) -> None:
-        """Validate the interaction and broadcast it to match the game batch shape."""
-        interaction = broadcast_interaction(self.game, self.interaction)
+        """Validate the interaction and broadcast it to match the game and weight batches."""
+        interaction = broadcast_interaction(self.game, self.weights, self.interaction)
         # Check if interaction has consistent order; inside jit the sizes are traced and cannot be checked
         sizes = jnp.sum(interaction, axis=-1)
         if not isinstance(sizes, Tracer) and sizes.size and not jnp.all(sizes == self.order):
             msg = "Interaction batch must have consistent order."
             raise ValueError(msg)
         object.__setattr__(self, "interaction", interaction)
-
-    @classmethod
-    def _pytree_child_names(cls) -> tuple[str, ...]:
-        # weights may hold arrays (e.g. the weighted Banzhaf p), so they are traced data, not static metadata
-        return (*cls.protected_axes, "weights")
 
     @property
     @typechecked
@@ -91,8 +90,8 @@ class DiscreteDerivativeInteractionIndex[P, V: JaxLike](BoolFinitePlayerGame[P, 
 
     @override
     def _eval_bool(
-        self, coalition: Bool[jax.Array, "*coalition_batch {self.game.n_players}"]
-    ) -> Shaped[JaxValue, "*coalition_batch *interaction_batch"]:
+        self, coalition: Bool[jax.Array, "#*batch {self.game.n_players}"]
+    ) -> Shaped[JaxValue, "*batch"]:
         # Broadcast the interaction to match the coalition batch shape
         broadcasted_shape = jnp.broadcast_shapes(coalition.shape[:-1], self.interaction.shape[:-1])
         interaction = jnp.broadcast_to(self.interaction, (*broadcasted_shape, self.interaction.shape[-1])) # (*coalition_batch, *interaction_batch, n_players)
@@ -122,21 +121,20 @@ class DiscreteDerivativeInteractionIndex[P, V: JaxLike](BoolFinitePlayerGame[P, 
 class WeightedGameInteractionIndex[P, V: JaxLike](BoolFinitePlayerGame[P, JaxValue],
                                                   JaxAxisProtected[jax.Array]):
     """Computes the weighted evaluation of a game given an interaction and weights using the SHAP-IQ representation."""
-    weights: DiscreteDerivativeWeight
+    weights: Shaped[DiscreteDerivativeWeight, "#*batch"]
     game: FinitePlayerGame[P, V]
-    interaction: Bool[jax.Array, "*interaction_batch {self.game.n_players}"]
-    # The interactions carry the full batch shape; the game is shared across them.
-    protected_axes: ClassVar[dict[str, int]] = {"interaction": 1, "game": 0}
-    broadcasted_batch: ClassVar[set[str]] = {"game"}
+    # Accepts packed interactions; __post_init__ stores them unpacked
+    interaction: (
+        Bool[jax.Array, "#*batch {game.n_players}"]
+        | UInt8[jax.Array, "#*batch ({game.n_players}+7)//8"]
+    )
+    # The interactions carry the full batch shape; game and weights stay compact and broadcast into it.
+    protected_axes: ClassVar[dict[str, int]] = {"interaction": 1, "game": 0, "weights": 0}
+    broadcasted_batch: ClassVar[set[str]] = {"game", "weights"}
 
     def __post_init__(self) -> None:
-        """Validate the interactions and broadcast them to match the game batch shape."""
-        object.__setattr__(self, "interaction", broadcast_interaction(self.game, self.interaction))
-
-    @classmethod
-    def _pytree_child_names(cls) -> tuple[str, ...]:
-        # weights may hold arrays (e.g. the weighted Banzhaf p), so they are traced data, not static metadata
-        return (*cls.protected_axes, "weights")
+        """Validate the interactions and broadcast them to match the game and weight batches."""
+        object.__setattr__(self, "interaction", broadcast_interaction(self.game, self.weights, self.interaction))
 
     @property
     @typechecked
@@ -146,8 +144,8 @@ class WeightedGameInteractionIndex[P, V: JaxLike](BoolFinitePlayerGame[P, JaxVal
 
     @override
     def _eval_bool(
-        self, coalition: Bool[jax.Array, "*coalition_batch {self.game.n_players}"]
-    ) -> Shaped[JaxValue, "*coalition_batch *interaction_batch"]:
+        self, coalition: Bool[jax.Array, "#*batch {self.game.n_players}"]
+    ) -> Shaped[JaxValue, "*batch"]:
         coalition_sizes = jnp.sum(coalition, axis=-1) # (*coalition_batch)
         interaction_sizes = jnp.sum(self.interaction, axis=-1) # (*interaction_batch)
         overlap_sizes = jnp.sum(coalition & self.interaction, axis=-1) # (*coalition_batch, *interaction_batch)
