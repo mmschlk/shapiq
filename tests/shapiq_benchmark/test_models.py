@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import pytest
 
-from shapiq_benchmark.datasets import load_dataset
-from shapiq_benchmark.models import MODEL_NAMES, TUNED_PRESETS, build_model, fit_model
+from shapiq_benchmark.datasets import DatasetSplit, load_dataset
+from shapiq_benchmark.models import MODEL_NAMES, TUNED_PRESETS, ModelName, build_model, fit_model
+
+if TYPE_CHECKING:
+    from shapiq_games.typing import Task
 from tests.shapiq_games.helpers import is_installed
 
 OPTIONAL = {
@@ -20,7 +25,7 @@ REGRESSION_ONLY = {"gaussian_process"}
 
 
 @pytest.fixture(scope="module")
-def splits() -> dict[str, object]:
+def splits() -> dict[Task, DatasetSplit]:
     return {
         "classification": load_dataset("xor", n_samples=200).split(random_state=0),
         "regression": load_dataset("independentlinear60", n_samples=200).split(random_state=0),
@@ -29,11 +34,13 @@ def splits() -> dict[str, object]:
 
 @pytest.mark.parametrize("task", ["classification", "regression"])
 @pytest.mark.parametrize("name", [name for name in MODEL_NAMES if name != "tabpfn"])
-def test_every_model_fits_and_is_reproducible(name: str, task: str, splits: dict) -> None:
+def test_every_model_fits_and_is_reproducible(
+    name: ModelName, task: Task, splits: dict[Task, DatasetSplit]
+) -> None:
     if name in OPTIONAL and not is_installed(OPTIONAL[name]):
         pytest.skip(f"{name} is not installed")
     split = splits[task]
-    params = {"radius": 100.0} if name == "threshold_nn" else {}
+    params: dict[str, Any] = {"radius": 100.0} if name == "threshold_nn" else {}
     if (name in CLASSIFICATION_ONLY and task == "regression") or (
         name in REGRESSION_ONLY and task == "classification"
     ):
@@ -64,7 +71,7 @@ def test_svm_classifiers_predict_probabilities(splits: dict) -> None:
 
 def test_unknown_model_and_task_raise() -> None:
     with pytest.raises(ValueError, match="Unknown model"):
-        build_model("not_a_model", "regression")
+        build_model("not_a_model", "regression")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="task must be"):
         build_model("decision_tree", "clustering")  # type: ignore[arg-type]
 
@@ -89,4 +96,4 @@ def test_tuned_presets() -> None:
     with pytest.raises(ValueError, match="No tuned preset"):
         build_model("decision_tree", "regression", preset="tuned", dataset="california_housing")
     with pytest.raises(ValueError, match="Unknown preset"):
-        build_model("random_forest", "regression", preset="best", dataset="california_housing")
+        build_model("random_forest", "regression", preset="best", dataset="california_housing")  # type: ignore[arg-type]
