@@ -192,11 +192,6 @@ exclude = [
     "INP",  # docs can be an implicit package (does not need to be imported)
     "I002",  # benchmark code does not have to import required modules
 ]
-"benchmark/*.py" = [
-    "INP", # imports can be different here
-    "I002",  # benchmark code does not have to import required modules
-    "PTH"  # in benchmark code we use a lot of os, which is okay
-]
 "__init__.py" = [
     "I002", # __init__.py does not have to import required modules
     "RUF022",  # we can have unsorted imports in __init__.py

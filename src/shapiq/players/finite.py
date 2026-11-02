@@ -24,6 +24,10 @@ from shapiq.typing import typechecked
 from .latent import LatentPlayers
 from .players import Players
 
+type _PlayerMetadata[P] = (
+    LatentPlayers[P] | list[P] | tuple[P, ...] | np.ndarray | JaxLike | NumpyLike
+)
+
 
 @typechecked
 def _validate_ids(ids: Int[jax.Array, "*batch n_players"]) -> Int[jax.Array, "*batch n_players"]:
@@ -346,14 +350,7 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected[jax.Array]):
     def __init__(
         self,
         ids: Int[jax.Array, "*batch n_players"],
-        players: LatentPlayers[P]
-        | list[P]
-        | tuple[P, ...]
-        | np.ndarray
-        | jax.Array
-        | JaxLike
-        | NumpyLike
-        | None = None,
+        players: _PlayerMetadata[P] | jax.Array | None = None,
         *,
         latent_n_players: int | None = None,
         sorted: bool = False,
@@ -362,7 +359,7 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected[jax.Array]):
     @overload
     def __init__(
         self,
-        players: LatentPlayers[P] | list[P] | tuple[P, ...] | np.ndarray | JaxLike | NumpyLike,
+        players: _PlayerMetadata[P],
         ids: Int[jax.Array, "*batch n_players"] | None = None,
         *,
         latent_n_players: int | None = None,
@@ -380,24 +377,9 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected[jax.Array]):
 
     def __init__(
         self,
-        *args: Int[jax.Array, "*batch n_players"]
-        | LatentPlayers[P]
-        | list[P]
-        | tuple[P, ...]
-        | np.ndarray
-        | JaxLike
-        | NumpyLike
-        | int
-        | None,
+        *args: Int[jax.Array, "*batch n_players"] | _PlayerMetadata[P] | int | None,
         ids: Int[jax.Array, "*batch n_players"] | None = None,
-        players: LatentPlayers[P]
-        | list[P]
-        | tuple[P, ...]
-        | np.ndarray
-        | jax.Array
-        | JaxLike
-        | NumpyLike
-        | None = None,
+        players: _PlayerMetadata[P] | jax.Array | None = None,
         n_players: int | None = None,
         latent_n_players: int | None = None,
         sorted: bool = False,  # noqa: A002 - public constructor flag

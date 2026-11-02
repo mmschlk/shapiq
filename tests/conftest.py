@@ -1,6 +1,7 @@
 """Opt in to exhaustive typeguard checking without changing normal runtime tests."""
 
 import sys
+from typing import TypeAliasType
 
 import pytest
 
@@ -25,10 +26,24 @@ def pytest_configure(config: pytest.Config) -> None:
     from jaxtyping import install_import_hook, jaxtyped  # noqa: PLC0415
 
     try:
+        import typeguard  # noqa: PLC0415
         from typeguard import typechecked  # noqa: PLC0415
     except ImportError as error:
         msg = "--typeguard requires the test-typeguard dependency group: uv run --group test-typeguard pytest --typeguard"
         raise pytest.UsageError(msg) from error
+
+    # Typeguard 2 predates `type` aliases and otherwise silently skips them.
+    # Its existing generic handling recurses through the alias's origin.
+    monkeypatch = pytest.MonkeyPatch()
+    config.add_cleanup(monkeypatch.undo)
+    check_type = typeguard.check_type
+
+    def check_alias_type(argname, value, expected_type, *args, **kwargs):
+        if isinstance(expected_type, TypeAliasType):
+            expected_type = expected_type.__value__
+        return check_type(argname, value, expected_type, *args, **kwargs)
+
+    monkeypatch.setattr(typeguard, "check_type", check_alias_type)
 
     if sys.version_info >= (3, 15):
         from importlib.util import cache_from_source  # noqa: PLC0415
@@ -41,11 +56,9 @@ def pytest_configure(config: pytest.Config) -> None:
             del debug_override
             return cache_from_source(path, **kwargs)
 
-        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(
             "jaxtyping._import_hook.cache_from_source", compatible_cache_from_source
         )
-        config.add_cleanup(monkeypatch.undo)
 
         # Python 3.15 also passes a new fullname argument to source_to_code.
         source_to_code = _import_hook._JaxtypingLoader.source_to_code

@@ -5,6 +5,7 @@ from typing import override
 
 import jax
 import jax.numpy as jnp
+from beartype.door import is_bearable
 from jaxtyping import Bool, Shaped, UInt8
 
 from shapiq.coalition import FiniteCoalition
@@ -29,6 +30,8 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
     ``eval`` validates coalitions against the players and game batch and checks
     that the returned value's logical shape is the broadcasted batch. Packed
     implementations must ignore unused bits in the final input byte.
+    Evaluation checks these contracts directly; ``is_valid`` is an explicit
+    predicate and is not called during evaluation.
     """
 
     @property
@@ -46,18 +49,21 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
     @override
     def _eval(
         self,
-        coalition: Bool[jax.Array, "*coalition_batch {self.n_players}"]
-        | UInt8[jax.Array, "*coalition_batch ({self.n_players}+7)//8"],
-    ) -> Shaped[V, "..."]:
+        coalition: Bool[jax.Array, "#*batch {self.n_players}"]
+        | UInt8[jax.Array, "#*batch ({self.n_players}+7)//8"],
+    ) -> Shaped[V, "*batch"]:
         """Validate and dispatch finite coalitions to the matching evaluation hook.
 
         Raises:
             ValueError: The coalition batch is inadmissible for this game.
+            TypeCheckError: The coalition representation or returned value is invalid.
         """
-        if not self.is_valid(coalition):
+        if not is_bearable(self, Shaped[FinitePlayerGame[P, V], "#*batch"]):
             msg = "Inadmissible coalition batch."
             raise ValueError(msg)
-        return _eval_valid_coalition(self, coalition)
+        if coalition.dtype == jnp.bool_:
+            return self._eval_bool(coalition)
+        return self._eval_packed(coalition)
 
     @abstractmethod
     def _eval_bool(
@@ -100,18 +106,3 @@ class PackedFinitePlayerGame[P, V: Value](FinitePlayerGame[P, V]):
     ) -> Shaped[V, "..."]:
         """Pack boolean membership and defer to packed evaluation."""
         return self._eval_packed(pack_bool_coalition(coalition))
-
-
-@typechecked
-def _eval_valid_coalition[P, V: Value](
-    game: Shaped[FinitePlayerGame[P, V], "#*batch"],
-    coalition: Shaped[jax.Array, "#*batch _"],
-) -> Shaped[V, "*batch"]:
-    """Dispatch an admissible coalition and check the logical result batch.
-
-    Keep this context separate from public admissibility checks so incompatible
-    batches still raise the domain-specific ``ValueError`` at that boundary.
-    """
-    if coalition.dtype == jnp.bool_:
-        return game._eval_bool(coalition)  # noqa: SLF001
-    return game._eval_packed(coalition)  # noqa: SLF001

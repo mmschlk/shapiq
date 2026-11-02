@@ -409,20 +409,33 @@ def test_evaluation_rejects_unshaped_values(result):
         game(jnp.ones(3, dtype=bool))
 
 
+def test_evaluation_rejects_values_without_dtype():
+    class MissingDtype:
+        shape = ()
+
+    class InvalidValueGame(_BooleanGame):
+        def _eval_bool(self, coalition):
+            return MissingDtype()
+
+    game = _array_game_class(InvalidValueGame)(jnp.zeros(1), FinitePlayers(3))
+    with pytest.raises(TypeCheckError):
+        game(jnp.ones(3, dtype=bool))
+
+
 @pytest.mark.parametrize(
-    "coalition",
+    ("coalition", "error"),
     [
-        jnp.ones(3),
-        jnp.ones(4, dtype=bool),
-        jnp.ones(2, dtype=jnp.uint8),
-        jnp.ones((), dtype=bool),
-        [True, False, True],
+        (jnp.ones(3), TypeCheckError),
+        (jnp.ones(4, dtype=bool), TypeCheckError),
+        (jnp.ones(2, dtype=jnp.uint8), TypeCheckError),
+        (jnp.ones((), dtype=bool), TypeCheckError),
+        ([True, False, True], TypeCheckError),
     ],
 )
-def test_evaluation_rejects_invalid_storage(game_class, coalition):
+def test_evaluation_rejects_invalid_storage(game_class, coalition, error):
     game = game_class(jnp.zeros(1), FinitePlayers(3))
     assert not game.is_valid(coalition)
-    with pytest.raises(TypeCheckError):
+    with pytest.raises(error):
         game(coalition)
 
 

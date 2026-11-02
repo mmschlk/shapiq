@@ -1,7 +1,7 @@
 """Base game class for shapiq."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, TypeIs
 
 from jaxtyping import Shaped
 from ndlike.jax_like import JaxLikeImplementation
@@ -33,7 +33,7 @@ class Game[C, V: Value](JaxLikeImplementation[Any], ABC):
     def players(self) -> Players[C]:
         """Return player sets whose logical shape broadcasts to ``shape``."""
 
-    def is_valid(self, coalition: object) -> bool:
+    def is_valid(self, coalition: object) -> TypeIs[C]:
         """Check coalition admissibility with the players and game batch shape."""
         return self.players.is_valid(coalition, batch_shape=self.shape)
 
@@ -55,8 +55,8 @@ class Game[C, V: Value](JaxLikeImplementation[Any], ABC):
 
         The returned values expose the broadcasted logical batch as ``shape``;
         their representations hide any internal value dimensions. Implementations
-        accept the coalition representations declared by ``players`` and use
-        ``is_valid`` to check admissibility at the evaluation boundary.
+        accept the coalition representations declared by ``players`` and
+        enforce admissibility at the evaluation boundary.
         """
         msg = "Game evaluation not implemented."
         raise NotImplementedError(msg)
