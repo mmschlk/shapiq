@@ -561,7 +561,9 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 /* the problem: the input and a wire into the chip at its left, a wire out of it to the prediction at
    its right, and the chip in the middle */
 .orders-demo-flow {
-  --orders-wire-height: 6.6rem; /* the height of its parts */
+  /* the size of its parts, one for all three */
+  --orders-wire-width: 11.5rem;
+  --orders-wire-height: 6.6rem;
   position: relative;
   z-index: 1;
   display: grid;
@@ -588,23 +590,25 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   justify-items: center;
   gap: 0.2rem;
   box-sizing: border-box;
+  width: var(--orders-wire-width);
   height: var(--orders-wire-height);
   border-radius: 10px;
   text-align: center;
 }
 
-/* what a part shows: a flap, which falls into its place about its top edge (demo.js) */
+/* what a part shows: a flap, which turns into its place (demo.js) */
 .orders-demo-wire-x,
 .orders-demo-wire-chip,
 .orders-demo-wire-out {
   perspective: 32rem;
 }
 
+/* (about its middle, as a split flap's; and scaled down about it, where it would not fit its box) */
 .orders-demo-wire-shows {
   display: grid;
   justify-items: center;
   gap: 0.2rem;
-  transform-origin: 50% 0;
+  max-width: 100%;
   backface-visibility: hidden;
 }
 
@@ -619,10 +623,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   box-shadow: 0 1px 3px var(--orders-shade);
 }
 
-/* its input clear of the symbol in its corner; as wide for every example as the prediction's box,
-   so that the frames stand still while what they show changes */
+/* its input clear of the symbol in its corner */
 .orders-demo-wire-x {
-  width: 13.5rem;
   padding-top: 1.1rem;
   background: var(--orders-sheet);
 }
@@ -701,7 +703,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
    --orders-clear, from 0 to the explanation's R^2) */
 .orders-demo-wire-chip {
   --orders-chip: #15171d;
-  width: 9rem;
   padding: 0.9rem 0.5rem 0.5rem;
   border: 1px solid var(--orders-edge);
   background: color-mix(in srgb, var(--orders-chip) calc((1 - var(--orders-clear, 0)) * 100%), var(--orders-glass));
@@ -930,7 +931,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 /* the prediction, in the red of what raises it: what the explanations explain */
 .orders-demo-wire-out {
-  width: 11.5rem;
   padding-top: 0.9rem;
   background: var(--orders-raised);
 }
@@ -1176,6 +1176,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   }
 
   .orders-demo-flow {
+    --orders-wire-width: 6.1rem;
     --orders-wire-height: 5.2rem;
   }
 
@@ -1194,7 +1195,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   }
 
   .orders-demo-wire-chip {
-    width: 5.4rem;
     padding: 0.8rem 0.35rem 0.4rem;
   }
 
@@ -1216,12 +1216,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     display: none;
   }
 
-  .orders-demo-wire-x {
-    width: 4.8rem;
-  }
-
   .orders-demo-wire-out {
-    width: 6.6rem;
     padding: 0.9rem 0.4rem 0.45rem;
   }
 

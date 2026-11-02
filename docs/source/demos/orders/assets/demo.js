@@ -1120,6 +1120,7 @@
           .map((letter, k) => (t >= settle[k] || letter === " " ? letter : LETTERS[Math.floor(Math.random() * LETTERS.length)]))
           .join("");
         if (t < duration) requestAnimationFrame(frame);
+        else fit(node.closest(".orders-demo-wire-shows"));
       };
       requestAnimationFrame(frame);
     }
@@ -1149,7 +1150,20 @@
       chipNote.textContent = model.title;
       say(outValue, problem.output, flip);
       outNote.textContent = problem.value;
+      for (const node of [xShows, chipShows, outShows]) fit(node);
       if (flip) [xShows, chipShows, outShows].forEach((node, k) => flap(node, k * 90));
+    }
+    // a part's face, scaled down about its middle where it would not fit its box (a house's table,
+    // a long prediction), as all three boxes have one size
+    function fit(node) {
+      node.style.scale = "";
+      const box = node.parentElement;
+      const style = getComputedStyle(box);
+      const width = box.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const height = box.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      if (!width || !node.scrollWidth) return; // not shown yet
+      const factor = Math.min(1, width / node.scrollWidth, height / node.scrollHeight);
+      if (factor < 0.99) node.style.scale = roundTo(factor, 3);
     }
     // unexplained, the chip calls to be clicked
     function showCall() {
@@ -1312,7 +1326,11 @@
       flow.style.setProperty("--orders-clear", roundTo(clear, 3));
       plan.classList.toggle("orders-demo-plan-lit", pointed !== null || state.blank !== null);
       chip.classList.toggle("orders-demo-chip-open", clear >= 0.6);
-      chipNote.textContent = pointed || state.blank !== null ? `R² ${fit2(r2)} explained` : example.model.title;
+      const note = pointed || state.blank !== null ? `R² ${fit2(r2)} explained` : example.model.title;
+      if (chipNote.textContent !== note) {
+        chipNote.textContent = note;
+        fit(chipShows);
+      }
     }
 
     // explain: the stage and the plot show, drawn anew for their room, and come in (demo.css), the
@@ -2162,7 +2180,11 @@
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
-    new ResizeObserver(() => castLightOut()).observe(plan);
+    new ResizeObserver(() => {
+      castLightOut();
+      for (const node of [xShows, chipShows, outShows]) fit(node);
+    }).observe(plan);
+    document.fonts?.ready.then(() => [xShows, chipShows, outShows].forEach(fit));
     // the view (a stack, or the unfolded view) follows the demo's data-view attribute, and what the
     // sheets show its data-show
     new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
