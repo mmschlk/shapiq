@@ -225,8 +225,7 @@ def get_predict_function_and_model_type(
     ]:
         _model_type = "product_kernel"
 
-    # default extraction (sklearn api) which tries logits, the decision function (raw margins),
-    # probabilities, and then predictions
+    # default extraction (sklearn api)
     if _predict_function is None and hasattr(model, "predict_logits"):
         _predict_function = predict_logits
     elif _predict_function is None and hasattr(model, "decision_function"):
