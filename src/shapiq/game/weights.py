@@ -37,6 +37,7 @@ class GameBasedWeight(Weight[
 ]):
     """Weights based on the maximum-sample-reuse representation of interaction indices introduced in SHAPIQ."""
 
+@jax.tree_util.register_dataclass
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class DDShapleyWeight(DiscreteDerivativeWeight):
     """Weights for the discrete derivative representation of the Shapley interaction index."""
@@ -50,10 +51,11 @@ class DDShapleyWeight(DiscreteDerivativeWeight):
         """Return the weights for a batch of coalitions and interactions."""
         return 1 / ((n_players - interaction + 1) * jsp.special.comb(n_players - interaction, coalition))
 
+@jax.tree_util.register_dataclass
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class DDWeightedBanzhafWeight(DiscreteDerivativeWeight):
     """Weights for the discrete derivative representation of the Banzhaf interaction index."""
-    weight: Float[jax.Array, "*interaction_batch"]
+    weight: float
 
     @override
     def compute(
@@ -65,6 +67,7 @@ class DDWeightedBanzhafWeight(DiscreteDerivativeWeight):
         """Return the weights for a batch of coalitions and interactions."""
         return self.weight**(coalition) * (1 - self.weight)**(n_players - coalition - interaction)
 
+@jax.tree_util.register_dataclass
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class DDBanzhafWeight(DiscreteDerivativeWeight):
     """Weights for the discrete derivative representation of the Banzhaf interaction index."""
