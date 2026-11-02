@@ -25,19 +25,20 @@
 // blank sheet of an order between. The slider is an arrow down the side of the stack, and one along
 // the plot's axis matches it: the explanations grow more complex, and more faithful, from order to
 // order. Where the examples do not fit in a row, a stepper goes from one to the next, and so does a
-// swipe across the stack.
+// swipe across the stack. Above the stack, the plan shows the example seen from above, flat: its
+// input with the explanation pointed at on it (at rest, the Shapley values), and in words what that
+// explanation shows, how well it fits, and how to read its marks.
 //
 // Another view, the mechanism (data-view="mechanism" on the demo; the docs show the stack): the
-// example's input on a card, every explanation on a see-through layer above it, its marks only, and
-// below the card the full decomposition, the mechanism under it all. At rest, the layers lie on the
-// card (the top one showing, on the input), the mechanism hidden under it; while the pointer is over
-// the stage (or after a tap), they float off it, apart, and the layer pointed at casts its light
-// onto the card, which wears its marks. The rows, the slider, the plot, the stepper and the swipe
-// work as in the stack. The exploded view (data-view="exploded") draws it as a technical drawing: a
-// block cut away at rest, the mechanism inside, whose parts come apart, numbered. In both, with
-// data-full="both", the full decomposition is also the last explanation above the input, and the
-// mechanism below it lies apart: the model itself, which the explanations reveal more of order by
-// order. The mechanism tones down from glowing film to paper with data-tone="calm". Every view's
+// example's input on a card, every explanation on a see-through layer above it, its marks only, the
+// full decomposition the last of them, and below the card the mechanism they explain, the model
+// itself, however complex: the explanations reveal more and more of it, order by order. At rest,
+// the layers lie on the card (the top one showing, on the input), the mechanism hidden under it;
+// while the pointer is over the stage (or after a tap), they float off it, apart, and the layer
+// pointed at casts its light onto the card, which wears its marks. The rows, the slider, the plot,
+// the stepper and the swipe work as in the stack. The exploded view (data-view="exploded") draws it
+// as a technical drawing: a block cut away at rest, the mechanism inside, whose parts come apart,
+// numbered. The mechanism tones down from glowing film to paper with data-tone="calm". Every view's
 // sheets can show, instead of all of an order, what it adds to the order above it
 // (data-show="delta"), and their rows and the plot what its R^2 gains.
 //
@@ -551,6 +552,13 @@
     if (r2 >= 0.6) return "workable";
     return "poor";
   };
+  // the players of an example, in words: what its explanations explain, and how its marks read
+  const PLAYERS = {
+    graph: { each: "Every atom", players: "atoms", read: "the stronger, the wider and darker" },
+    tree: { each: "Every feature of the house", players: "features", read: "a group hangs at the level of its size; the stronger, the larger" },
+    heatmap: { each: "Every feature of every house", players: "features", read: "a column per house, by its prediction; the stronger, the darker" },
+    "image-text": { each: "Every patch of the photo and word of the caption", players: "patches and words", read: "the stronger, the wider and darker" },
+  };
   // an example whose full decomposition is estimated (from a proxy of the model): it falls short of
   // R^2 = 1, the estimation tax
   const estimated = (example) => example.fits.at(-1)[1] < EXACT;
@@ -589,17 +597,13 @@
     const plotId = ++plots;
     // the floating layers (data-view="mechanism"; the docs show the stack): the input on a card, the
     // explanations on layers above it, which lie on the card at rest and float off it, apart, while
-    // the pointer is over the stage (or after a tap on the card), or a layer is pointed at; and the
-    // full decomposition below the card, the mechanism under it all, hidden at rest
+    // the pointer is over the stage (or after a tap on the card), or a layer is pointed at; and below
+    // the card, apart from the full decomposition, the mechanism they explain, hidden at rest
     const layered = () => root.dataset.view === "mechanism" || root.dataset.view === "exploded";
     // the exploded view (data-view="exploded"): the mechanism as a technical drawing. At rest, its
     // parts are put together, cut away at the front, where the mechanism shows inside (a cutaway);
     // open, they come apart along their axis (an exploded view), each named in a parts list
     const drawing = () => root.dataset.view === "exploded";
-    // in these two (data-full="both"): the full decomposition is also the last of the explanations
-    // above the input, as in the stack, and below it lies, apart, the mechanism they explain, the
-    // model itself, however complex: the explanations reveal more and more of it, order by order
-    const twin = () => layered() && root.dataset.full === "both";
     // what every sheet shows (data-show="delta" on the demo): all of it, or what it adds to the
     // sheet above it, its R^2 as what it gains
     const delta = () => root.dataset.show === "delta";
@@ -653,6 +657,18 @@
     about.append(badge);
     bar.append(switcher, stepper, about);
 
+    // above the stack, the plan: the example seen from above, flat, its input with the explanation
+    // pointed at on it (at rest, the top one), as the sheets at their slant cannot show it; and
+    // beside it, in words, what that explanation shows, how well it fits, and how to read it
+    const plan = el("figure", "orders-demo-plan");
+    const planView = el("div", "orders-demo-plan-view");
+    planView.setAttribute("aria-hidden", "true");
+    const planText = el("figcaption", "orders-demo-plan-text");
+    plan.append(planView, planText);
+    // its window: swiped aside, it goes out of view, not out of the page
+    const planWindow = el("div", "orders-demo-plan-window");
+    planWindow.append(plan);
+
     const stage = el("div", "orders-demo-stage");
     stage.setAttribute("role", "group");
     const stack = el("div", "orders-demo-stack");
@@ -702,7 +718,7 @@
     const dots = el("div", "orders-demo-dots");
     dots.setAttribute("aria-hidden", "true");
     dots.append(...data.examples.map(() => el("span")));
-    root.append(bar, stage, dots, footer);
+    root.append(bar, planWindow, stage, dots, footer);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
@@ -737,9 +753,8 @@
       // the same height for every example: the most sheets and blank sheets of any
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
       const blanks = Math.max(...data.examples.map((example) => between(example).length));
-      // the floating layers' card, below them, and the mechanism below it, in place of the full
-      // decomposition's strip (apart from it, it adds its depth to the strips)
-      const air = layered() ? (AIR + DEPTH - (twin() ? 0 : STRIP)) * side : 0;
+      // the floating layers' card, below them, and the mechanism below it
+      const air = layered() ? (AIR + DEPTH) * side : 0;
       const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side + air;
       // a sheet slides out to the left: the stack lies right of the middle by half of that (of the
       // floating layers, none does)
@@ -924,7 +939,7 @@
       root.classList.toggle("orders-demo-leaving", direction !== 0);
       shift(-direction * stage.clientWidth);
       // the fade out starts now, and the example is drawn when it ends (at once, if all is faded)
-      const fades = [stack, ladder, plot].flatMap((node) => {
+      const fades = [plan, stack, ladder, plot].flatMap((node) => {
         getComputedStyle(node).opacity;
         return node.getAnimations();
       });
@@ -950,15 +965,18 @@
     // (all of it, or, for a floating layer, its marks, or for their card, the input), or
     // (adding) what it adds to the sheet above it
     function drawSheet(example, i, layer = "all", adding = false) {
-      const sheet = faceOf(example, i, adding);
       const node = el("div", layer === "marks" ? "orders-demo-sheet orders-demo-layer" : "orders-demo-sheet");
       const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
+      drawFace(svg, example, faceOf(example, i, adding), layer, `orders-${plotId}-${example.id}-${layer}-${i}`);
+      add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, layer === "input" ? "Input" : faceName(example, i, adding));
+      return node;
+    }
+    // a face of an example's kind, into svg (id names what it defines, as the photo's clip)
+    function drawFace(svg, example, sheet, layer, id) {
       if (example.kind === "graph") moleculeFace(svg, example, sheet, layer);
       else if (example.kind === "tree") treeFace(svg, example, sheet, layer);
       else if (example.kind === "heatmap") heatmapFace(svg, example, sheet, layer);
-      else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, `orders-${plotId}-${example.id}-${layer}-${i}`, layer);
-      add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, layer === "input" ? "Input" : faceName(example, i, adding));
-      return node;
+      else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer);
     }
     // every example's sheets, drawn once: an example chosen again shows them as they were drawn (the
     // floating layers apart from the stack's sheets, and what they add apart from all of them)
@@ -982,8 +1000,8 @@
       }
       return cards.get(example.id);
     }
-    // the mechanism apart (data-full="both"): the full decomposition, all of it (never what it adds)
-    // and named as the mechanism; where it is estimated, blurred, as only an estimate shows it
+    // the mechanism, below the card: the full decomposition, all of it (never what it adds), named as
+    // the mechanism; where it is estimated, blurred, as only an estimate shows it
     const mechanisms = new Map();
     function mechanismOf(example) {
       if (!mechanisms.has(example.id)) {
@@ -996,6 +1014,91 @@
       }
       return mechanisms.get(example.id);
     }
+    // the plan's faces, drawn once: a sheet's, all of it, on the input; or the input alone (null)
+    const plans = new Map();
+    function planFace(example, index) {
+      const key = `${example.id} ${index}`;
+      if (!plans.has(key)) {
+        const svg = document.createElementNS(SVG, "svg");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.setAttribute("class", "orders-demo-plan-face");
+        drawFace(svg, example, example.sheets[index ?? 0], index === null ? "input" : "all", `orders-${plotId}-${example.id}-plan-${index}`);
+        plans.set(key, svg);
+      }
+      return plans.get(key);
+    }
+    // 2 to the power of n, as text
+    const power = (n) => {
+      const node = el("span", "orders-demo-power", "2");
+      node.append(el("sup", "", String(n)));
+      return node;
+    };
+    // the plan shows the sheet pointed at (all of it, where the sheets show what they add), the
+    // mechanism's as the full decomposition, and an order between as the full decomposition where
+    // it equals it, else as the input alone; at rest, the top sheet
+    const hovers = window.matchMedia("(hover: hover)");
+    function showPlan() {
+      const example = current();
+      const words = PLAYERS[example.kind];
+      const last = example.sheets.length - 1;
+      const pointed = state.active !== null ? sheetItems()[state.active] : null;
+      let index = pointed ? Math.min(pointed.index, last) : 0;
+      if (state.blank !== null) index = state.blank >= example.largest ? last : null;
+      const face = planFace(example, index);
+      if (planView.firstChild !== face) planView.replaceChildren(face);
+
+      const title = el("span", "orders-demo-plan-title");
+      const about = el("span", "orders-demo-plan-about");
+      const fit = el("span", "orders-demo-plan-fit");
+      if (pointed?.mechanism) {
+        const n = playersOf(example);
+        title.append(el("strong", "", "Mechanism"), " the model itself");
+        if (estimated(example)) about.append("What the explanations explain, which only an estimate shows: up to ", power(n), " terms.");
+        else about.append(`What the explanations explain, each a part of it: ${example.sheets[last].count.toLocaleString("en")} of `, power(n), " possible terms.");
+      } else if (state.blank !== null) {
+        title.append(el("strong", "", `Order ${state.blank}`), " no sheet of its own");
+        about.append(
+          state.blank >= example.largest
+            ? `From order ${example.largest} on, every order equals the full decomposition.`
+            : `An order between ${sheetName(example.sheets[last - 1]).tag} and the full decomposition.`,
+        );
+      } else {
+        const sheet = example.sheets[index];
+        const names = sheetName(sheet);
+        title.append(el("strong", "", names.tag), ` ${names.name}`);
+        about.append(
+          sheet.order === 1
+            ? `${words.each} on its own: its fair share of the prediction.`
+            : !sheet.full
+              ? `Groups of up to ${sheet.order} ${words.players}: what each adds beyond its parts, the most faithful explanation with groups of that size.`
+              : estimated(example)
+                ? `Groups of ${words.players} of every size, estimated: they fall short of the model by the estimation tax.`
+                : `Groups of ${words.players} of every size: together, they are the model exactly.`,
+        );
+      }
+      // how well it fits, and, where the sheets show what they add, what it gains
+      if (!pointed?.mechanism) {
+        const r2 = state.blank !== null ? fitOf(example, state.blank)[1] : example.sheets[index].r2;
+        fit.append(el("span", "orders-demo-r2", fit2(r2)), el("span", "orders-demo-verdict", verdict(r2)));
+        if (delta() && state.blank === null && index > 0) {
+          fit.append(el("span", "orders-demo-plan-gain", `${gain2(r2 - example.sheets[index - 1].r2)} over ${sheetName(example.sheets[index - 1]).tag}`));
+        }
+      }
+      // the colors, each beside its meaning, and how the marks read
+      const legend = el("span", "orders-demo-plan-legend");
+      for (const [color, meaning] of [["up", "raises the prediction"], ["down", "lowers it"]]) {
+        const key = el("span", "orders-demo-plan-key");
+        key.append(el("i", `orders-demo-plan-${color}`), meaning);
+        legend.append(key);
+      }
+      legend.append(el("span", "orders-demo-plan-read", words.read));
+      const parts = [el("span", "orders-demo-plan-eyebrow", "Seen from above"), title, about, fit, legend];
+      if (!pointed && state.blank === null) {
+        parts.push(el("span", "orders-demo-plan-hint", `${hovers.matches ? "Point at" : "Tap"} an explanation to see it here.`));
+      }
+      planText.replaceChildren(...parts);
+    }
+
     // the light between the layer pointed at and the card
     const beam = document.createElementNS(SVG, "svg");
     beam.setAttribute("class", "orders-demo-beam");
@@ -1077,23 +1180,16 @@
       }
       hovering = false;
       if (layered()) {
+        // below the card, the mechanism: a sheet of its own, after the example's sheets
+        const full = example.sheets.at(-1);
         const card = { order: 0, base: true, node: cardOf(example) };
-        if (twin()) {
-          // below the card, the mechanism: a sheet of its own, after the example's sheets
-          const full = example.sheets.at(-1);
-          const index = example.sheets.length;
-          items.push(card, { order: full.order, sheet: full, index, mechanism: true, deep: true, node: mechanismOf(example) });
-        } else {
-          // the full decomposition, below the card, is the mechanism
-          items.at(-1).deep = true;
-          items.splice(-1, 0, card);
-        }
+        items.push(card, { order: full.order, sheet: full, index: example.sheets.length, mechanism: true, deep: true, node: mechanismOf(example) });
       }
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
-      // the exploded view's parts list: every part's number, top to bottom, the input's among them
-      // (above the mechanism, which is the full decomposition, or apart from it)
-      const inputPart = twin() ? example.sheets.length + 1 : example.sheets.length;
+      // the exploded view's parts list: every part's number, top to bottom, the input's among them,
+      // between the full decomposition and the mechanism
+      const inputPart = example.sheets.length + 1;
       const partOf = (i) => (i < inputPart - 1 ? i + 1 : i + 2);
       // a row points at its sheet: hovered, focused or tapped, and the arrow keys go to the next row
       const wire = (row, i) => {
@@ -1160,7 +1256,7 @@
         ladder.append(row);
         return row;
       });
-      if (twin()) {
+      if (layered()) {
         // the mechanism's row: the model itself, which fits itself; how complex it is, of how
         // complex it could be, a term for every subset of the players (only an estimate shows it)
         const i = rows.length;
@@ -1211,6 +1307,7 @@
       }
 
       drawPlot();
+      showPlan();
       // a new example shows at rest at once: its sheets and rows take their places without moving.
       // Its sheets join the stack only now, placed: measuring the plot and the rows would else style
       // and lay out every element of their faces, and placing them (their size, and the custom
@@ -1328,15 +1425,14 @@
         const right = rightCorner(anchors[items.indexOf(target)]);
         if (!floating && target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
-        // beside the blank sheet, but clear of the rows above and below it
-        // (of floating layers, the row below is the card's, unless the full decomposition is apart)
+        // beside the blank sheet, but clear of the rows above and below it: of order 4 and of the full
+        // decomposition
         const below = current().sheets.length - 1;
         const above = below - 1;
-        const [belowRow, belowY] = floating && !twin() ? [cardRow, cardRowY] : [rows[below], rowY[below]];
         const half = (row) => row.offsetHeight / 2;
         const y = Math.min(
           Math.max(right[1], rowY[above] + half(rows[above]) + half(blankRow) + 2),
-          belowY - half(belowRow) - half(blankRow) - 2,
+          rowY[below] - half(rows[below]) - half(blankRow) - 2,
         );
         blankRow.style.left = `${g.ladderLeft}px`;
         blankRow.style.transform = `translateY(${roundTo(y, 2)}px) translateY(-50%)`;
@@ -1661,6 +1757,7 @@
       Object.assign(state, { active, blank });
       place(active);
       mark();
+      showPlan();
     }
 
     function toggle(active, blank) {
@@ -1841,9 +1938,8 @@
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the view (a stack, the mechanism or the exploded view) follows the demo's data-view
-    // attribute, what the sheets show its data-show, and where the full decomposition lies its
-    // data-full
-    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show", "data-full"] });
+    // attribute, and what the sheets show its data-show
+    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
