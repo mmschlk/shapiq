@@ -32,12 +32,12 @@ screen, tap a sheet, drag the handle, or tap an order on the plot). Where the ex
 a row, as on a phone, the arrows above the stack, or a swipe across it, step from one example to the
 next.
 
-Above the stack, the problem: the input :math:`x`, the model :math:`f` (its icon a tree for tree
-ensembles, a graph for graph neural networks, and a black box for any other model) and its
-prediction :math:`f(x)`. Under it, the input seen from above, flat, with the explanation pointed at
-on it, beside a button for every order, which points at that order's sheet as well, and what the
-explanation shows: its values add up to :math:`f(x) - f(\emptyset)`, the prediction less the
-model's output without any player.
+Above the stack, the problem: the input :math:`x` wired through the model :math:`f`, a chip (black
+for a black box, gray for a model whose structure the explanation uses), to its prediction
+:math:`f(x)`, in the red of what raises it. Out of the chip falls the explanation: the input seen
+from above, flat, with the explanation pointed at on it, a button for every order, which points at
+that order's sheet as well, and how well it fits. The chip clears as far as the explanation fits,
+its :math:`R^2`: the explanation opens the black box, all the way where it is exact.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
 the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output

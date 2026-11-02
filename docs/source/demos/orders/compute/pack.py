@@ -10,8 +10,7 @@ every main effect, and the 300 strongest interactions of each order (of the mole
 centers of its groups where shapiq's SI graph plot places them); for the houses, the strongest rows
 of their heatmap. For every sheet but the first, also what it adds to the sheet above it (its
 values less theirs): every main effect and its 150 strongest interactions, or rows as the sheet's.
-For every example, also its problem in words: its input, its model's score, its prediction, and
-the model's output without any player, which the explanations add up from.
+For every example, also its problem in words: its input, and its model's prediction.
 And the R^2 (beyond size, under the Shapley distribution) and the number of values of every order up to the highest with an interaction, and of order n, for the plot of the
 fit by order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from
 disk too, where the browser would not fetch a JSON file).
@@ -47,7 +46,6 @@ SHORT = ["Income", "Age", "Rooms", "Bedrooms", "Population", "Occupancy", "Lat",
 # the income and the occupancy, with which it interacts the most
 TREE_NAMES = ["Income", "Age", "Rooms", "Beds", "Pop.", "Occup.", "Lat", "Long"]
 TREE_LAYOUT = [1, 3, 0, 6, 7, 5, 2, 4]
-MINUS = "\N{MINUS SIGN}"  # of a negative number in a text, as the demo writes it
 # the models, as the demo's badge shows them: its icon, name, details, and how it was explained
 # the models, as the demo shows them: its icon, kind, details, how it was explained, and its name
 MODELS = {
@@ -78,17 +76,10 @@ def dollars(value: float) -> str:
 def problem(**fields: Any) -> dict[str, Any]:
     """Return the problem of an example, as the demo's plan shows it.
 
-    Its ``input`` x and ``detail``, the ``score`` of its model f, the prediction f(x) (``output``
-    and ``value``), and f of the empty input (``empty``), which the explanations add up from; the
-    two as numbers, ``f0`` and ``fx`` (``None`` for many inputs), in their ``unit`` ("logit",
-    "dollars" in $100,000, or "cosine"), and what they are, in a few words (``f0_note``,
-    ``fx_note``); and the problem as a ``sentence``, a list of its parts,
-    each a text and what it names: the model "f", the input "x", the prediction "fx", or nothing.
+    Its ``input`` x, and the prediction f(x) of its model f: the ``output``, and its ``value`` in a
+    few words.
     """
-    keys = (
-        *("input", "detail", "output", "value", "score", "empty"),
-        *("f0", "fx", "unit", "f0_note", "fx_note", "sentence"),
-    )
+    keys = ("input", "output", "value")
     if set(fields) != set(keys):
         msg = f"a problem has {', '.join(keys)}, not {', '.join(fields)}"
         raise ValueError(msg)
@@ -292,8 +283,6 @@ def main() -> None:
     for sheet in molecule_sheets:
         place_groups(sheet, molecule["coords"])
     fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
-    # of the proxy: what its Shapley values add up to is f(x) less its own f of the empty input
-    fixlip_sheets = sheets(fixlip)
     # the houses' predictions, from the lowest to the highest
     spread = f"{dollars(min(houses['predictions']))} to {dollars(max(houses['predictions']))}"
     (index,) = {result["index"] for result in (molecule, house, tabpfn, houses, fixlip)}
@@ -309,28 +298,8 @@ def main() -> None:
                 "model": model("graph"),
                 "problem": problem(
                     input="A molecule",
-                    detail=f"{len(molecule['atoms'])} atoms, from Mutagenicity",
                     output="Mutagenic",
                     value=f"p = {molecule['probability']:.3f}, logit {molecule['logit']:.2f}",
-                    score=f"{molecule['test_accuracy']:.0%} accurate on test molecules",
-                    empty=f"logit {molecule['empty']:.2f}, with no atom".replace("-", MINUS),
-                    f0=round(molecule["empty"], 4),
-                    fx=round(molecule["logit"], 4),
-                    unit="logit",
-                    f0_note="with no atom",
-                    fx_note=f"mutagenic, p = {molecule['probability']:.3f}",
-                    sentence=[
-                        ["A ", None],
-                        ["graph neural network", "f"],
-                        [" reads ", None],
-                        ["a molecule", "x"],
-                        [
-                            f" of {len(molecule['atoms'])} atoms, from Mutagenicity, and finds it ",
-                            None,
-                        ],
-                        ["mutagenic", "fx"],
-                        [f", with p = {molecule['probability']:.3f}.", None],
-                    ],
                 ),
                 "atoms": molecule["atoms"],
                 "bonds": molecule["bonds"],
@@ -350,25 +319,8 @@ def main() -> None:
                 "model": model("tree"),
                 "problem": problem(
                     input="A house",
-                    detail="8 features, from California housing",
                     output=dollars(house["prediction"]),
                     value="its value, predicted",
-                    score=f"R² {house['test_r2']:.2f} on test houses",
-                    empty=f"{dollars(house['baseline'])}, the average",
-                    f0=round(house["baseline"], 6),
-                    fx=round(house["prediction"], 6),
-                    unit="dollars",
-                    f0_note="the average",
-                    fx_note="the house",
-                    sentence=[
-                        ["A ", None],
-                        ["tree ensemble", "f"],
-                        [" values ", None],
-                        ["a house", "x"],
-                        [" of California housing, from its 8 features, at ", None],
-                        [dollars(house["prediction"]), "fx"],
-                        [".", None],
-                    ],
                 ),
                 "features": TREE_NAMES,
                 "values": house_values(house["x"]),
@@ -389,24 +341,8 @@ def main() -> None:
                 "model": model("tabpfn"),
                 "problem": problem(
                     input="A house",
-                    detail="8 features, from California housing",
                     output=dollars(tabpfn["prediction"]),
                     value="its value, predicted",
-                    score=f"R² {tabpfn['test_r2']:.2f} on test houses, {tabpfn['context']:,} in context",
-                    empty=f"{dollars(tabpfn['baseline'])}, the average",
-                    f0=round(tabpfn["baseline"], 6),
-                    fx=round(tabpfn["prediction"], 6),
-                    unit="dollars",
-                    f0_note="the average",
-                    fx_note="the house",
-                    sentence=[
-                        ["TabPFN", "f"],
-                        [", a black box, values ", None],
-                        ["the same house", "x"],
-                        [" at ", None],
-                        [dollars(tabpfn["prediction"]), "fx"],
-                        [f", with {tabpfn['context']:,} houses in its context.", None],
-                    ],
                 ),
                 "features": TREE_NAMES,
                 "values": house_values(tabpfn["x"]),
@@ -429,25 +365,8 @@ def main() -> None:
                 # the same model as the house's, with the same average
                 "problem": problem(
                     input=f"{len(houses['predictions'])} houses",
-                    detail="8 features each, from California housing",
                     output=spread,
                     value="their values, predicted",
-                    score=f"R² {house['test_r2']:.2f} on test houses",
-                    empty=f"{dollars(house['baseline'])}, the average",
-                    f0=round(house["baseline"], 6),
-                    fx=None,  # the houses' own, their predictions
-                    unit="dollars",
-                    f0_note="the average",
-                    fx_note="every house",
-                    sentence=[
-                        ["A ", None],
-                        ["tree ensemble", "f"],
-                        [" values ", None],
-                        [f"{len(houses['predictions'])} houses", "x"],
-                        [" of California housing, from ", None],
-                        [spread, "fx"],
-                        [".", None],
-                    ],
                 ),
                 "features": SHORT,
                 "largest": houses["largest_order"],
@@ -464,31 +383,15 @@ def main() -> None:
                 },
                 "problem": problem(
                     input="A photo and its caption",
-                    detail=f"{fixlip['grid'] ** 2} patches and {len(fixlip['tokens'])} words",
                     output=f"Similarity {fixlip['similarity']:.2f}",
                     value="cosine, of the photo and the caption",
-                    score="used as pretrained",
-                    empty="with all of the photo and the caption masked",
-                    f0=round(fixlip["similarity"] - sum(fixlip_sheets[0]["first"]), 4),
-                    fx=round(fixlip["similarity"], 4),
-                    unit="cosine",
-                    f0_note="all masked, by the proxy",
-                    fx_note="cosine similarity",
-                    sentence=[
-                        ["SigLIP 2", "f"],
-                        [", a vision-language model, matches ", None],
-                        ["a photo and its caption", "x"],
-                        [" with a cosine similarity of ", None],
-                        [f"{fixlip['similarity']:.2f}", "fx"],
-                        [".", None],
-                    ],
                 ),
                 "similarity": round(fixlip["similarity"], 4),
                 "image": "../fixlip/elephant.jpg",  # the FIxLIP demo's photo, next to its assets
                 "grid": fixlip["grid"],
                 "tokens": fixlip["tokens"],
                 "largest": fixlip["largest_order"],
-                "sheets": fixlip_sheets,
+                "sheets": sheets(fixlip),
                 "fits": fits(fixlip),
             },
         ],
