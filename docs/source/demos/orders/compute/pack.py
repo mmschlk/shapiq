@@ -49,11 +49,24 @@ TREE_NAMES = ["Income", "Age", "Rooms", "Beds", "Pop.", "Occup.", "Lat", "Long"]
 TREE_LAYOUT = [1, 3, 0, 6, 7, 5, 2, 4]
 MINUS = "\N{MINUS SIGN}"  # of a negative number in a text, as the demo writes it
 # the models, as the demo's badge shows them: its icon, name, details, and how it was explained
+# the models, as the demo shows them: its icon, kind, details, how it was explained, and its name
 MODELS = {
-    "graph": ["graph", "Graph neural network", "GCN with 2 layers", "exact with GraphSHAP-IQ"],
-    "tree": ["tree", "Tree ensemble", "XGBoost, 300 trees of depth 5", "exact with TreeExplainer"],
-    "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "ProxySHAP"],
-    "tabpfn": ["box", "Black box", "TabPFN", "exact with TabPFNImputer"],
+    "graph": [
+        "graph",
+        "Graph neural network",
+        "GCN with 2 layers",
+        "exact with GraphSHAP-IQ",
+        "GCN",
+    ],
+    "tree": [
+        "tree",
+        "Tree ensemble",
+        "XGBoost, 300 trees of depth 5",
+        "exact with TreeExplainer",
+        "XGBoost",
+    ],
+    "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "ProxySHAP", "SigLIP 2"],
+    "tabpfn": ["box", "Black box", "TabPFN", "exact with TabPFNImputer", "TabPFN"],
 }
 
 
@@ -62,13 +75,20 @@ def dollars(value: float) -> str:
     return f"${value * 100:,.0f}k"
 
 
-def problem(**fields: str) -> dict[str, str]:
+def problem(**fields: Any) -> dict[str, Any]:
     """Return the problem of an example, as the demo's plan shows it.
 
     Its ``input`` x and ``detail``, the ``score`` of its model f, the prediction f(x) (``output``
-    and ``value``), and f of the empty input (``empty``), which the explanations add up from.
+    and ``value``), and f of the empty input (``empty``), which the explanations add up from; the
+    two as numbers, ``f0`` and ``fx`` (``None`` for many inputs), in their ``unit`` ("logit",
+    "dollars" in $100,000, or "cosine"), and what they are, in a few words (``f0_note``,
+    ``fx_note``); and the problem as a ``sentence``, a list of its parts,
+    each a text and what it names: the model "f", the input "x", the prediction "fx", or nothing.
     """
-    keys = ("input", "detail", "output", "value", "score", "empty")
+    keys = (
+        *("input", "detail", "output", "value", "score", "empty"),
+        *("f0", "fx", "unit", "f0_note", "fx_note", "sentence"),
+    )
     if set(fields) != set(keys):
         msg = f"a problem has {', '.join(keys)}, not {', '.join(fields)}"
         raise ValueError(msg)
@@ -82,7 +102,7 @@ def explanation(result: dict[str, Any], order: int) -> dict[str, Any]:
 
 def model(kind: str) -> dict[str, str]:
     """Return the model of an example, as the demo's badge shows it."""
-    return dict(zip(("icon", "title", "detail", "method"), MODELS[kind], strict=True))
+    return dict(zip(("icon", "title", "detail", "method", "short"), MODELS[kind], strict=True))
 
 
 def split(
@@ -272,6 +292,10 @@ def main() -> None:
     for sheet in molecule_sheets:
         place_groups(sheet, molecule["coords"])
     fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
+    # of the proxy: what its Shapley values add up to is f(x) less its own f of the empty input
+    fixlip_sheets = sheets(fixlip)
+    # the houses' predictions, from the lowest to the highest
+    spread = f"{dollars(min(houses['predictions']))} to {dollars(max(houses['predictions']))}"
     (index,) = {result["index"] for result in (molecule, house, tabpfn, houses, fixlip)}
 
     data = {
@@ -290,6 +314,23 @@ def main() -> None:
                     value=f"p = {molecule['probability']:.3f}, logit {molecule['logit']:.2f}",
                     score=f"{molecule['test_accuracy']:.0%} accurate on test molecules",
                     empty=f"logit {molecule['empty']:.2f}, with no atom".replace("-", MINUS),
+                    f0=round(molecule["empty"], 4),
+                    fx=round(molecule["logit"], 4),
+                    unit="logit",
+                    f0_note="with no atom",
+                    fx_note=f"mutagenic, p = {molecule['probability']:.3f}",
+                    sentence=[
+                        ["A ", None],
+                        ["graph neural network", "f"],
+                        [" reads ", None],
+                        ["a molecule", "x"],
+                        [
+                            f" of {len(molecule['atoms'])} atoms, from Mutagenicity, and finds it ",
+                            None,
+                        ],
+                        ["mutagenic", "fx"],
+                        [f", with p = {molecule['probability']:.3f}.", None],
+                    ],
                 ),
                 "atoms": molecule["atoms"],
                 "bonds": molecule["bonds"],
@@ -314,6 +355,20 @@ def main() -> None:
                     value="its value, predicted",
                     score=f"R² {house['test_r2']:.2f} on test houses",
                     empty=f"{dollars(house['baseline'])}, the average",
+                    f0=round(house["baseline"], 6),
+                    fx=round(house["prediction"], 6),
+                    unit="dollars",
+                    f0_note="the average",
+                    fx_note="the house",
+                    sentence=[
+                        ["A ", None],
+                        ["tree ensemble", "f"],
+                        [" values ", None],
+                        ["a house", "x"],
+                        [" of California housing, from its 8 features, at ", None],
+                        [dollars(house["prediction"]), "fx"],
+                        [".", None],
+                    ],
                 ),
                 "features": TREE_NAMES,
                 "values": house_values(house["x"]),
@@ -339,6 +394,19 @@ def main() -> None:
                     value="its value, predicted",
                     score=f"R² {tabpfn['test_r2']:.2f} on test houses, {tabpfn['context']:,} in context",
                     empty=f"{dollars(tabpfn['baseline'])}, the average",
+                    f0=round(tabpfn["baseline"], 6),
+                    fx=round(tabpfn["prediction"], 6),
+                    unit="dollars",
+                    f0_note="the average",
+                    fx_note="the house",
+                    sentence=[
+                        ["TabPFN", "f"],
+                        [", a black box, values ", None],
+                        ["the same house", "x"],
+                        [" at ", None],
+                        [dollars(tabpfn["prediction"]), "fx"],
+                        [f", with {tabpfn['context']:,} houses in its context.", None],
+                    ],
                 ),
                 "features": TREE_NAMES,
                 "values": house_values(tabpfn["x"]),
@@ -362,10 +430,24 @@ def main() -> None:
                 "problem": problem(
                     input=f"{len(houses['predictions'])} houses",
                     detail="8 features each, from California housing",
-                    output=f"{dollars(min(houses['predictions']))} to {dollars(max(houses['predictions']))}",
+                    output=spread,
                     value="their values, predicted",
                     score=f"R² {house['test_r2']:.2f} on test houses",
                     empty=f"{dollars(house['baseline'])}, the average",
+                    f0=round(house["baseline"], 6),
+                    fx=None,  # the houses' own, their predictions
+                    unit="dollars",
+                    f0_note="the average",
+                    fx_note="every house",
+                    sentence=[
+                        ["A ", None],
+                        ["tree ensemble", "f"],
+                        [" values ", None],
+                        [f"{len(houses['predictions'])} houses", "x"],
+                        [" of California housing, from ", None],
+                        [spread, "fx"],
+                        [".", None],
+                    ],
                 ),
                 "features": SHORT,
                 "largest": houses["largest_order"],
@@ -387,13 +469,26 @@ def main() -> None:
                     value="cosine, of the photo and the caption",
                     score="used as pretrained",
                     empty="with all of the photo and the caption masked",
+                    f0=round(fixlip["similarity"] - sum(fixlip_sheets[0]["first"]), 4),
+                    fx=round(fixlip["similarity"], 4),
+                    unit="cosine",
+                    f0_note="all masked, by the proxy",
+                    fx_note="cosine similarity",
+                    sentence=[
+                        ["SigLIP 2", "f"],
+                        [", a vision-language model, matches ", None],
+                        ["a photo and its caption", "x"],
+                        [" with a cosine similarity of ", None],
+                        [f"{fixlip['similarity']:.2f}", "fx"],
+                        [".", None],
+                    ],
                 ),
                 "similarity": round(fixlip["similarity"], 4),
                 "image": "../fixlip/elephant.jpg",  # the FIxLIP demo's photo, next to its assets
                 "grid": fixlip["grid"],
                 "tokens": fixlip["tokens"],
                 "largest": fixlip["largest_order"],
-                "sheets": sheets(fixlip),
+                "sheets": fixlip_sheets,
                 "fits": fits(fixlip),
             },
         ],

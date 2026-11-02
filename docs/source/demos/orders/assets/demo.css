@@ -45,6 +45,13 @@
   --orders-draft-ink: rgba(27, 30, 39, 0.72);
   --orders-draft-paper: rgba(255, 255, 255, 0.74);
   --orders-draft-hatch: rgba(27, 30, 39, 0.3);
+  /* the problem as a sentence: its model, input and prediction marked as with a highlighter (not
+     in red or blue, which the explanations' marks mean) */
+  --orders-say-f: rgba(124, 92, 255, 0.22);
+  --orders-say-x: rgba(16, 163, 140, 0.22);
+  --orders-say-fx: rgba(255, 190, 0, 0.36);
+  /* the problem as an equation: mathematics' type */
+  --orders-serif: "STIX Two Text", "Cambria", "Latin Modern Roman", Georgia, "Times New Roman", serif;
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -65,6 +72,9 @@ body[data-theme="dark"] .orders-demo {
   --orders-draft-ink: rgba(222, 226, 236, 0.7);
   --orders-draft-paper: rgba(26, 28, 36, 0.74);
   --orders-draft-hatch: rgba(222, 226, 236, 0.24);
+  --orders-say-f: rgba(150, 125, 255, 0.32);
+  --orders-say-x: rgba(40, 200, 170, 0.26);
+  --orders-say-fx: rgba(255, 200, 40, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -86,6 +96,9 @@ body[data-theme="dark"] .orders-demo {
     --orders-draft-ink: rgba(222, 226, 236, 0.7);
     --orders-draft-paper: rgba(26, 28, 36, 0.74);
     --orders-draft-hatch: rgba(222, 226, 236, 0.24);
+    --orders-say-f: rgba(150, 125, 255, 0.32);
+    --orders-say-x: rgba(40, 200, 170, 0.26);
+    --orders-say-fx: rgba(255, 200, 40, 0.3);
   }
 }
 
@@ -481,8 +494,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   text-transform: uppercase;
 }
 
-/* the problem: three boxes, an arrow between them */
-.orders-demo-flow {
+/* the problem as boxes (data-problem, demo.js): three, an arrow between them */
+.orders-demo-flow-boxes {
   display: flex;
   align-items: stretch;
 }
@@ -519,7 +532,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   height: 1.15rem;
 }
 
-.orders-demo-flow-arrow {
+.orders-demo-flow-arrow,
+.orders-demo-line-arrow {
   display: grid;
   flex: none;
   place-items: center;
@@ -527,13 +541,614 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   color: var(--orders-muted);
 }
 
-.orders-demo-flow-arrow svg {
+.orders-demo-flow-arrow svg,
+.orders-demo-line-arrow svg {
   width: 1.4rem;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* the input, in the problem's designs: a face, a table of a house's features, a matrix of houses,
+   or (small) the glyph of a table */
+.orders-demo-input-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.orders-demo-input-glyph rect,
+.orders-demo-input-glyph path {
+  fill: none;
+  stroke: var(--orders-muted);
+  stroke-width: 6;
+  stroke-linejoin: round;
+}
+
+.orders-demo-input-matrix rect {
+  fill: var(--orders-line);
+}
+
+.orders-demo-input-matrix .orders-demo-input-head {
+  fill: var(--orders-muted);
+}
+
+.orders-demo-input-matrix text {
+  fill: var(--orders-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.orders-demo-input-table {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 0.05rem 0.8rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 6px;
+  background: var(--orders-sheet);
+  box-shadow: 0 1px 3px var(--orders-shade);
+  font-family: system-ui, sans-serif;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.orders-demo-input-cell {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+  color: var(--orders-muted);
+}
+
+.orders-demo-input-cell strong {
+  color: var(--orders-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* the problem as an equation: f, named by its model, of the input itself, equals the prediction;
+   under it, what every term is */
+.orders-demo-flow-equation {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.orders-demo-eq {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--orders-ink);
+}
+
+.orders-demo-eq-f,
+.orders-demo-eq-paren,
+.orders-demo-eq-is {
+  font-family: var(--orders-serif);
+  line-height: 1;
+}
+
+.orders-demo-eq-f {
+  font-size: 3rem;
+}
+
+.orders-demo-eq-f > .orders-demo-math {
+  font-family: inherit;
+}
+
+.orders-demo-eq-f sub {
+  position: relative;
+  bottom: -0.55em;
+  margin-left: 0.08em;
+  color: var(--orders-muted);
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: baseline;
+}
+
+.orders-demo-eq-paren {
+  margin: 0 -0.05em;
+  color: var(--orders-muted);
+  font-size: 4.4rem;
+  font-weight: 300;
+}
+
+.orders-demo-eq-x {
+  flex: none;
+  width: 4.6rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--orders-line);
+  border-radius: 6px;
+  background: var(--orders-sheet);
+  box-shadow: 0 1px 3px var(--orders-shade);
+}
+
+/* a house's table, or on a phone the glyph of a table, in its place */
+.orders-demo-input-small {
+  display: none;
+}
+
+.orders-demo-input-small .orders-demo-input-face {
+  width: 3rem;
+  height: 3rem;
+  box-sizing: border-box;
+  border: 1px solid var(--orders-line);
+  border-radius: 6px;
+  background: var(--orders-sheet);
+}
+
+.orders-demo-eq-x.orders-demo-eq-table,
+.orders-demo-wire-face.orders-demo-wire-table {
+  width: auto;
+  aspect-ratio: auto;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.orders-demo-eq-is {
+  margin: 0 0.3rem;
+  color: var(--orders-muted);
+  font-size: 2.6rem;
+}
+
+.orders-demo-eq-out {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.orders-demo-eq-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.3rem;
+  color: var(--orders-muted);
+  font-size: 0.78rem;
+}
+
+.orders-demo-eq-note strong {
+  color: var(--orders-ink);
+  font-weight: 600;
+}
+
+.orders-demo-eq-note > .orders-demo-math {
+  margin-right: 0.4em;
+  color: var(--orders-ink);
+  font-family: var(--orders-serif);
+  font-size: 1.1em;
+}
+
+/* the problem as a sentence: large, its model, input and prediction marked, each with its symbol */
+.orders-demo-flow-sentence {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.orders-demo-say {
+  max-width: 46rem;
+  margin: 0;
+  color: var(--orders-ink);
+  font-size: 1.32rem;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+  text-wrap: pretty;
+}
+
+.orders-demo-say mark {
+  padding: 0 0.12em;
+  border-radius: 0.2em;
+  background: linear-gradient(transparent 52%, var(--orders-say-tint) 52%);
+  color: inherit;
+  font-weight: 650;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.orders-demo-say-f {
+  --orders-say-tint: var(--orders-say-f);
+}
+
+mark.orders-demo-say-x {
+  --orders-say-tint: var(--orders-say-x);
+}
+
+.orders-demo-say-fx {
+  --orders-say-tint: var(--orders-say-fx);
+}
+
+.orders-demo-say sup {
+  margin-left: 0.15em;
+  color: var(--orders-muted);
+  font-family: var(--orders-serif);
+  font-size: 0.62em;
+  font-weight: 400;
+}
+
+.orders-demo-say-icon {
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.22em;
+  vertical-align: -0.16em;
+}
+
+/* the input, inline, as large as a line */
+span.orders-demo-say-x {
+  display: inline-block;
+  width: 1.45em;
+  height: 1.45em;
+  margin-right: 0.25em;
+  overflow: hidden;
+  border: 1px solid var(--orders-line);
+  border-radius: 4px;
+  background: var(--orders-sheet);
+  vertical-align: -0.38em;
+}
+
+.orders-demo-say-notes {
+  margin: 0;
+  color: var(--orders-muted);
+  font-size: 0.78rem;
+}
+
+/* the problem as a wire: the input, a wire into the model's chip (dark in both themes, as the black
+   box), and a wire out to the prediction's display; the wires' dashes flow from x to f(x) */
+.orders-demo-flow-wire {
+  display: flex;
+  align-items: center;
+}
+
+.orders-demo-wire-x,
+.orders-demo-wire-out {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.orders-demo-wire-tag {
+  color: var(--orders-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.orders-demo-wire-face {
+  width: 5rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--orders-line);
+  border-radius: 6px;
+  background: var(--orders-sheet);
+  box-shadow: 0 1px 3px var(--orders-shade);
+}
+
+.orders-demo-wire-name {
+  max-width: 9rem;
+  color: var(--orders-muted);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.orders-demo-wire-line {
+  position: relative;
+  flex: 1 1 2rem;
+  min-width: 1.5rem;
+  height: 2px;
+  margin: 0 0.75rem;
+  background: repeating-linear-gradient(90deg, var(--orders-muted) 0 6px, transparent 6px 12px);
+  animation: orders-demo-wire 0.9s linear infinite;
+}
+
+.orders-demo-wire-line::after {
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  border: 4.5px solid transparent;
+  border-right: 0;
+  border-left: 8px solid var(--orders-muted);
+  content: "";
+  translate: 0 -50%;
+}
+
+@keyframes orders-demo-wire {
+  to {
+    background-position: 12px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo-wire-line {
+    animation: none;
+  }
+}
+
+.orders-demo-wire-chip {
+  position: relative;
+  display: grid;
+  flex: none;
+  justify-items: center;
+  gap: 0.15rem;
+  min-width: 8.5rem;
+  padding: 0.95rem 1.1rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.1); /* on a dark page */
+  border-radius: 10px;
+  background: #15171d;
+  box-shadow:
+    0 8px 20px -8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f2f4f8;
+  text-align: center;
+}
+
+/* its pins, along both sides */
+.orders-demo-wire-chip::before,
+.orders-demo-wire-chip::after {
+  position: absolute;
+  top: 22%;
+  bottom: 22%;
+  width: 5px;
+  background: repeating-linear-gradient(180deg, #9aa1b4 0 2px, transparent 2px 7px);
+  content: "";
+}
+
+.orders-demo-wire-chip::before {
+  left: -5px;
+}
+
+.orders-demo-wire-chip::after {
+  right: -5px;
+}
+
+.orders-demo-wire-chip .orders-demo-wire-tag {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.6rem;
+  color: #9aa1b4;
+}
+
+.orders-demo-wire-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-bottom: 0.1rem;
+}
+
+.orders-demo-wire-chip strong {
+  font-size: 1.12rem;
+  letter-spacing: 0.01em;
+}
+
+.orders-demo-wire-chip span:last-child {
+  color: #9aa1b4;
+  font-size: 0.72rem;
+}
+
+.orders-demo-wire-out {
+  flex: 0 1 auto;
+  min-width: 7rem;
+  padding: 0.55rem 0.9rem 0.6rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 8px;
+  background: var(--orders-raised);
+}
+
+.orders-demo-wire-out strong {
+  color: var(--orders-ink);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.orders-demo-wire-out span:last-child {
+  max-width: 10rem;
+  color: var(--orders-muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+/* the problem on a number line: x through f, and the model's scale from f of the empty input to
+   f(x), the span the explanation splits up, red where the input raises f, blue where it lowers it */
+.orders-demo-flow-line {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.orders-demo-line-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--orders-muted);
+  font-size: 0.82rem;
+}
+
+.orders-demo-line-x {
+  flex: none;
+  width: 2.6rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--orders-line);
+  border-radius: 5px;
+  background: var(--orders-sheet);
+}
+
+.orders-demo-line-arrow {
+  width: 1.5rem;
+}
+
+.orders-demo-line-icon {
+  flex: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  color: var(--orders-ink);
+}
+
+.orders-demo-line-what strong {
+  color: var(--orders-ink);
+}
+
+.orders-demo-line-scale {
+  --orders-line-at: 2.5rem; /* the axis, below the span's words */
+  position: relative;
+  height: 5.8rem;
+  margin: 0 0.6rem;
+}
+
+.orders-demo-line-axis {
+  position: absolute;
+  top: var(--orders-line-at);
+  right: 0;
+  left: 0;
+  border-top: 1px solid var(--orders-edge);
+}
+
+.orders-demo-line-span {
+  position: absolute;
+  top: calc(var(--orders-line-at) - 2.5px);
+  height: 5px;
+  border-radius: 3px;
+}
+
+.orders-demo-line-span.orders-demo-line-up {
+  background: rgb(255, 13, 87);
+}
+
+.orders-demo-line-span.orders-demo-line-down {
+  background: rgb(30, 136, 229);
+}
+
+/* its arrowhead, at f(x) */
+.orders-demo-line-span::after {
+  position: absolute;
+  top: 50%;
+  border: 6px solid transparent;
+  content: "";
+  translate: 0 -50%;
+}
+
+.orders-demo-line-span.orders-demo-line-up::after {
+  right: -6px;
+  border-right: 0;
+  border-left: 9px solid rgb(255, 13, 87);
+}
+
+.orders-demo-line-span.orders-demo-line-down::after {
+  left: -6px;
+  border-left: 0;
+  border-right: 9px solid rgb(30, 136, 229);
+}
+
+.orders-demo-line-told {
+  position: absolute;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  color: var(--orders-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  translate: -50% 0;
+}
+
+.orders-demo-line-up .orders-demo-line-told strong {
+  color: rgb(255, 13, 87);
+}
+
+.orders-demo-line-down .orders-demo-line-told strong {
+  color: rgb(30, 136, 229);
+}
+
+.orders-demo-line-mark {
+  position: absolute;
+  top: var(--orders-line-at);
+}
+
+/* f of the empty input: a ring on the axis; f(x): a dot, in the span's color */
+.orders-demo-line-mark::before {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--orders-muted);
+  border-radius: 50%;
+  background: var(--orders-page);
+  content: "";
+}
+
+.orders-demo-line-output.orders-demo-line-up::before {
+  border-color: rgb(255, 13, 87);
+  background: rgb(255, 13, 87);
+}
+
+.orders-demo-line-output.orders-demo-line-down::before {
+  border-color: rgb(30, 136, 229);
+  background: rgb(30, 136, 229);
+}
+
+.orders-demo-line-label {
+  position: absolute;
+  top: 0.65rem;
+  display: grid;
+  color: var(--orders-ink);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+  translate: -50% 0;
+}
+
+.orders-demo-line-label small,
+.orders-demo-line-many small {
+  color: var(--orders-muted);
+  font-size: 0.72rem;
+}
+
+/* by the scale's ends, the labels lean inwards */
+.orders-demo-line-start .orders-demo-line-label {
+  text-align: left;
+  translate: -0.6rem 0;
+}
+
+.orders-demo-line-end .orders-demo-line-label {
+  text-align: right;
+  translate: calc(-100% + 0.6rem) 0;
+}
+
+.orders-demo-line-rug i {
+  position: absolute;
+  top: calc(var(--orders-line-at) - 9px);
+  width: 1.5px;
+  height: 18px;
+  opacity: 0.45;
+  translate: -50% 0;
+}
+
+.orders-demo-line-rug .orders-demo-line-up {
+  background: rgb(255, 13, 87);
+}
+
+.orders-demo-line-rug .orders-demo-line-down {
+  background: rgb(30, 136, 229);
+}
+
+/* of many inputs, no span: what their ticks are stands above the axis */
+.orders-demo-line-scale-many {
+  --orders-line-at: 3rem;
+  height: 6.1rem;
+}
+
+.orders-demo-line-many {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  color: var(--orders-ink);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  text-align: right;
 }
 
 /* why f(x): the face, and beside it the orders and the words */
@@ -728,6 +1343,65 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
   .orders-demo-flow-arrow svg {
     width: 0.9rem;
+  }
+
+  .orders-demo-eq-f {
+    font-size: 2rem;
+  }
+
+  .orders-demo-eq-paren {
+    font-size: 3rem;
+  }
+
+  .orders-demo-eq-x {
+    width: 3rem;
+  }
+
+  .orders-demo-eq-is {
+    font-size: 1.8rem;
+  }
+
+  .orders-demo-eq-out {
+    font-size: 1.3rem;
+  }
+
+  .orders-demo-say {
+    font-size: 1.05rem;
+  }
+
+  .orders-demo-input-large {
+    display: none;
+  }
+
+  .orders-demo-input-small {
+    display: block;
+  }
+
+  .orders-demo-wire-face {
+    width: 3.2rem;
+  }
+
+  .orders-demo-wire-line {
+    margin: 0 0.45rem;
+  }
+
+  .orders-demo-wire-chip {
+    min-width: 0;
+    padding: 0.8rem 0.6rem 0.6rem;
+  }
+
+  .orders-demo-wire-chip span:last-child,
+  .orders-demo-wire-name {
+    display: none;
+  }
+
+  .orders-demo-wire-out {
+    min-width: 0;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .orders-demo-wire-out strong {
+    font-size: 1rem;
   }
 
   /* on a phone, the model's icon and score go: the room is the words' */

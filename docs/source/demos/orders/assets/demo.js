@@ -29,7 +29,9 @@
 // it (the input x, the model f, its prediction f(x)), and under it the example seen from above,
 // flat: its input with the explanation pointed at on it (at rest, the Shapley values), a button for
 // every order, which points at its sheet, and in words what that explanation shows, how well it
-// fits, and how to read its marks.
+// fits, and how to read its marks. The problem's design follows data-problem: boxes (the default),
+// an equation, a sentence, a wire through the model, or a number line from f of the empty input to
+// f(x).
 //
 // Another view, the mechanism (data-view="mechanism" on the demo; the docs show the stack): the
 // example's input on a card, every explanation on a see-through layer above it, its marks only, the
@@ -568,6 +570,13 @@
   const estimated = (example) => example.fits.at(-1)[1] < EXACT;
   // the number of players: the features of a house, or what every sheet has a main effect of
   const playersOf = (example) => example.features?.length ?? example.sheets[0].first.length;
+  // a model's output in its unit: a logit, a house's value in $100,000 (in thousands of dollars), or
+  // a cosine similarity; signed, as a change
+  const amount = (unit, value, signed = false) => {
+    const sign = value < 0 ? "−" : signed ? "+" : "";
+    const size = Math.abs(value);
+    return unit === "dollars" ? `${sign}$${Math.round(size * 100)}k` : `${sign}${size.toFixed(2)}`;
+  };
   // a house's value in $100,000, as a change in thousands of dollars
   const dollars = (value) => `${value < 0 ? "−" : "+"}$${Math.round(Math.abs(value) * 100)}k`;
 
@@ -1049,30 +1058,13 @@
       }
       return plans.get(key);
     }
-    // the problem: a box for the input x, the model f and the prediction f(x), an arrow between them
+    // the problem, as data-problem on the demo draws it: as boxes (the input x, the model f and the
+    // prediction f(x), an arrow between them), as an equation, as a sentence, as a wire through the
+    // model, or on a number line, from f of the empty input to f(x)
     function showProblem(example) {
-      const { problem, model } = example;
-      const box = (name, symbol, ...parts) => {
-        const node = el("div", "orders-demo-flow-box");
-        const label = el("span", "orders-demo-plan-eyebrow");
-        label.append(`${name} `, math(symbol));
-        node.append(label, ...parts);
-        return node;
-      };
-      const arrow = () => {
-        const node = el("span", "orders-demo-flow-arrow");
-        add(add(node, "svg", { viewBox: "0 0 26 12", "aria-hidden": "true" }), "path", { d: "M1 6h22M17.5 1.5 23.5 6l-6 4.5" });
-        return node;
-      };
-      const head = el("strong", "orders-demo-flow-model");
-      head.append(icon(model.icon, "orders-demo-flow-icon"), model.title);
-      flow.replaceChildren(
-        box("Input", "x", el("strong", "", problem.input), el("span", "", problem.detail)),
-        arrow(),
-        box("Model", "f", head, el("span", "", model.detail), el("span", "orders-demo-flow-score", problem.score)),
-        arrow(),
-        box("Prediction", "f(x)", el("strong", "", problem.output), el("span", "", problem.value)),
-      );
+      const design = PROBLEMS[root.dataset.problem] ? root.dataset.problem : "boxes";
+      flow.className = `orders-demo-flow orders-demo-flow-${design}`;
+      flow.replaceChildren(...PROBLEMS[design](example));
       // the orders, the mechanism's after them (an order between stands for the blank sheets)
       orderButtonOf = [];
       const buttons = example.sheets.map((sheet, i) => orderButton(i, String(sheet.order), stopName({ sheet, order: sheet.order })));
@@ -1080,6 +1072,223 @@
       if (layered()) buttons.push(orderButton(example.sheets.length, "Mechanism", "The mechanism, the model itself"));
       orderButtons.replaceChildren(...buttons);
     }
+    // the input, without marks, for the problem's designs, drawn once per example and size: a graph,
+    // or a photo and its caption, as its face; a house as a table of its features, and many houses
+    // as a table of houses by features (small, either as the glyph of a table)
+    const inputs = new Map();
+    function inputOf(example, small = false) {
+      const key = `${example.id} ${small}`;
+      if (!inputs.has(key)) inputs.set(key, drawInput(example, small));
+      return inputs.get(key);
+    }
+    // a house's table, and for a phone, where it would not fit, the glyph of a table (demo.css)
+    const inputFitting = (example) => {
+      if (example.kind !== "tree") return [inputOf(example)];
+      const [large, small] = [el("span", "orders-demo-input-large"), el("span", "orders-demo-input-small")];
+      large.append(inputOf(example));
+      small.append(inputOf(example, true));
+      return [large, small];
+    };
+    function drawInput(example, small) {
+      const svg = document.createElementNS(SVG, "svg");
+      svg.setAttribute("viewBox", "0 0 100 100");
+      svg.setAttribute("class", "orders-demo-input-face");
+      const tabular = example.kind === "tree" || example.kind === "heatmap";
+      if (tabular && small) {
+        svg.classList.add("orders-demo-input-glyph");
+        add(svg, "rect", { x: 14, y: 20, width: 72, height: 60, rx: 7 });
+        add(svg, "path", { d: "M14 36H86M14 51H86M14 66H86M44 20V80" });
+      } else if (example.kind === "tree") {
+        const table = el("span", "orders-demo-input-table");
+        example.features.forEach((name, k) => {
+          const cell = el("span", "orders-demo-input-cell");
+          cell.append(el("span", "", name), el("strong", "", example.values[k]));
+          table.append(cell);
+        });
+        return table;
+      } else if (example.kind === "heatmap") {
+        // a head of the features, rows of houses, and how many
+        svg.classList.add("orders-demo-input-matrix");
+        const [left, top, cell] = [10, 10, 10];
+        for (let row = 0; row < 6; row++) {
+          for (let column = 0; column < 8; column++) {
+            add(svg, "rect", { x: left + column * cell, y: top + row * cell, width: cell - 1.5, height: cell - 1.5, rx: 1.2, class: row ? "" : "orders-demo-input-head" });
+          }
+        }
+        add(svg, "text", { x: 50, y: 86, "text-anchor": "middle" }, `${example.predictions.length} × ${example.features.length}`);
+      } else {
+        drawFace(svg, example, example.sheets[0], "input", `orders-${plotId}-${example.id}-input`);
+      }
+      return svg;
+    }
+    const arrowTo = (className) => {
+      const node = el("span", className);
+      add(add(node, "svg", { viewBox: "0 0 26 12", "aria-hidden": "true" }), "path", { d: "M1 6h22M17.5 1.5 23.5 6l-6 4.5" });
+      return node;
+    };
+    const PROBLEMS = {
+      // three boxes, an arrow between them
+      boxes(example) {
+        const { problem, model } = example;
+        const box = (name, symbol, ...parts) => {
+          const node = el("div", "orders-demo-flow-box");
+          const label = el("span", "orders-demo-plan-eyebrow");
+          label.append(`${name} `, math(symbol));
+          node.append(label, ...parts);
+          return node;
+        };
+        const head = el("strong", "orders-demo-flow-model");
+        head.append(icon(model.icon, "orders-demo-flow-icon"), model.title);
+        return [
+          box("Input", "x", el("strong", "", problem.input), el("span", "", problem.detail)),
+          arrowTo("orders-demo-flow-arrow"),
+          box("Model", "f", head, el("span", "", model.detail), el("span", "orders-demo-flow-score", problem.score)),
+          arrowTo("orders-demo-flow-arrow"),
+          box("Prediction", "f(x)", el("strong", "", problem.output), el("span", "", problem.value)),
+        ];
+      },
+      // f, named by the model, of the input itself, in parentheses, equals the prediction; and under
+      // the equation, what each of its terms is
+      equation(example) {
+        const { problem, model } = example;
+        const row = el("div", "orders-demo-eq");
+        const f = el("span", "orders-demo-eq-f");
+        f.append(math("f"), el("sub", "", model.short));
+        const x = el("span", example.kind === "tree" ? "orders-demo-eq-x orders-demo-eq-table" : "orders-demo-eq-x");
+        x.append(...inputFitting(example));
+        row.append(
+          f,
+          el("span", "orders-demo-eq-paren", "("),
+          x,
+          el("span", "orders-demo-eq-paren", ")"),
+          el("span", "orders-demo-eq-is", "="),
+          el("span", "orders-demo-eq-out", problem.output),
+        );
+        const notes = el("div", "orders-demo-eq-notes");
+        const note = (symbol, ...parts) => {
+          const node = el("span", "orders-demo-eq-note");
+          node.append(math(symbol), ...parts);
+          return node;
+        };
+        notes.append(
+          note("f", el("strong", "", model.title), `, ${model.detail}`, el("span", "orders-demo-flow-score", `, ${problem.score}`)),
+          note("x", el("strong", "", problem.input), `, ${problem.detail}`),
+          note("f(x)", problem.value),
+        );
+        return [row, notes];
+      },
+      // the problem in a sentence, its model, input and prediction marked, each with its symbol
+      sentence(example) {
+        const { problem, model } = example;
+        const symbols = { f: "f", x: "x", fx: "f(x)" };
+        const said = el("p", "orders-demo-say");
+        for (const [text, role] of problem.sentence) {
+          if (!role) {
+            said.append(text);
+            continue;
+          }
+          const mark = el("mark", `orders-demo-say-${role}`);
+          if (role === "f") mark.append(icon(model.icon, "orders-demo-say-icon"));
+          if (role === "x") {
+            const x = el("span", "orders-demo-say-x");
+            x.append(inputOf(example, true));
+            mark.append(x);
+          }
+          const symbol = el("sup", "");
+          symbol.append(math(symbols[role]));
+          mark.append(text, symbol);
+          said.append(mark);
+        }
+        const notes = el("p", "orders-demo-say-notes", `${model.detail}, ${problem.score} · ${problem.value}`);
+        return [said, notes];
+      },
+      // the input, a wire into the model, a chip, and a wire out of it to the prediction, read off a
+      // display; the wires carry the input through, as dashes flowing
+      wire(example) {
+        const { problem, model } = example;
+        const part = (className, symbol, ...parts) => {
+          const node = el("div", className);
+          node.append(el("span", "orders-demo-wire-tag", ""), ...parts);
+          node.firstChild.append(math(symbol));
+          return node;
+        };
+        const x = el("span", example.kind === "tree" ? "orders-demo-wire-face orders-demo-wire-table" : "orders-demo-wire-face");
+        x.append(...inputFitting(example));
+        const chip = part("orders-demo-wire-chip", "f", icon(model.icon, "orders-demo-wire-icon"), el("strong", "", model.short), el("span", "", model.title));
+        return [
+          part("orders-demo-wire-x", "x", x, el("span", "orders-demo-wire-name", problem.input)),
+          el("span", "orders-demo-wire-line"),
+          chip,
+          el("span", "orders-demo-wire-line"),
+          part("orders-demo-wire-out", "f(x)", el("strong", "", problem.output), el("span", "", problem.value)),
+        ];
+      },
+      // x through f, and the prediction on the model's scale: from f of the empty input to f(x), the
+      // span the explanation splits up, red where the input raises f, blue where it lowers it (of
+      // many inputs, a tick at each one's prediction)
+      line(example) {
+        const { problem, model } = example;
+        const head = el("div", "orders-demo-line-head");
+        const x = el("span", "orders-demo-line-x");
+        x.append(inputOf(example, true));
+        const what = el("span", "orders-demo-line-what");
+        what.append(el("strong", "", problem.input), `, ${problem.detail}, through `, el("strong", "", model.short), el("span", "orders-demo-flow-score", `, ${problem.score}`));
+        head.append(x, arrowTo("orders-demo-line-arrow"), icon(model.icon, "orders-demo-line-icon"), what);
+
+        const scale = el("div", problem.fx === null ? "orders-demo-line-scale orders-demo-line-scale-many" : "orders-demo-line-scale");
+        const outputs = problem.fx === null ? example.predictions : [problem.fx];
+        let [low, high] = [Math.min(problem.f0, ...outputs), Math.max(problem.f0, ...outputs)];
+        const margin = (high - low) * 0.14;
+        [low, high] = [low - margin, high + margin];
+        const at = (value) => ((value - low) / (high - low)) * 100;
+        const percent = (value) => `${roundTo(at(value), 2)}%`;
+        const raises = (value) => (value >= problem.f0 ? "orders-demo-line-up" : "orders-demo-line-down");
+        scale.append(el("span", "orders-demo-line-axis"));
+        if (problem.fx === null) {
+          const rug = el("span", "orders-demo-line-rug");
+          for (const value of outputs) {
+            const tick = el("i", raises(value));
+            tick.style.left = percent(value);
+            rug.append(tick);
+          }
+          scale.append(rug);
+        } else {
+          const span = el("span", `orders-demo-line-span ${raises(problem.fx)}`);
+          span.style.left = percent(Math.min(problem.f0, problem.fx));
+          span.style.width = `${roundTo(Math.abs(at(problem.fx) - at(problem.f0)), 2)}%`;
+          const told = el("span", "orders-demo-line-told");
+          told.append(el("strong", "", amount(problem.unit, problem.fx - problem.f0, true)), " the marks split up");
+          span.append(told);
+          scale.append(span);
+        }
+        const mark = (className, symbol, value, number, note) => {
+          const node = el("span", `orders-demo-line-mark ${className}`);
+          node.style.left = percent(value);
+          // beside the scale's ends, the label leans inwards
+          node.classList.toggle("orders-demo-line-start", at(value) < 20);
+          node.classList.toggle("orders-demo-line-end", at(value) > 80);
+          const label = el("span", "orders-demo-line-label");
+          const head = el("span", "");
+          head.append(math(symbol), ` ${number}`);
+          label.append(head, el("small", "", note));
+          node.append(label);
+          return node;
+        };
+        scale.append(mark("orders-demo-line-empty", "f(∅)", problem.f0, `${estimated(example) ? "≈ " : ""}${amount(problem.unit, problem.f0)}`, problem.f0_note));
+        if (problem.fx !== null) {
+          scale.append(mark(`orders-demo-line-output ${raises(problem.fx)}`, "f(x)", problem.fx, amount(problem.unit, problem.fx), problem.fx_note));
+        } else {
+          const label = el("span", "orders-demo-line-many");
+          const head = el("span", "");
+          head.append(math("f(x)"), ` ${problem.output}`);
+          const note = el("small", "");
+          note.append(`${problem.fx_note}: its own span from `, math("f(∅)"));
+          label.append(head, note);
+          scale.append(label);
+        }
+        return [head, scale];
+      },
+    };
     function orderButton(i, label, name) {
       const button = el("button", "orders-demo-order", label);
       button.type = "button";
@@ -2016,8 +2225,15 @@
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the view (a stack, the mechanism or the exploded view) follows the demo's data-view
-    // attribute, and what the sheets show its data-show
-    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
+    // attribute, what the sheets show its data-show, and the problem's design its data-problem
+    new MutationObserver((records) => {
+      if (records.some((record) => record.attributeName !== "data-problem")) {
+        render();
+      } else {
+        showProblem(current());
+        showPlan();
+      }
+    }).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show", "data-problem"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
