@@ -37,7 +37,10 @@ for a black box, gray for a model whose structure the explanation uses), to its 
 :math:`f(x)`, in the red of what raises it. Out of the chip falls the explanation: the input seen
 from above, flat, with the explanation pointed at on it, a button for every order, which points at
 that order's sheet as well, and how well it fits. The chip clears as far as the explanation fits,
-its :math:`R^2`: the explanation opens the black box, all the way where it is exact.
+its :math:`R^2`: the explanation opens the black box, all the way where it is exact. The demo
+starts with the problem alone: a click on the chip explains it, and the explanation is built
+below it, from the top down. As the examples change, the problem stays, and what its parts show
+flips over, as on a board of departures.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
 the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output

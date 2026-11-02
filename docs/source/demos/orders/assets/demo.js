@@ -30,9 +30,10 @@
 // the light of the explanation: the example seen from above, flat, its input with the explanation
 // pointed at on it (at rest, the Shapley values), a button for every order, which points at its
 // sheet, and in a few words what that explanation is and how well it fits. The chip clears as far
-// as the explanation fits: the black box opens, all the way where it is exact. With
-// data-reveal="click", the demo starts with the problem alone: a click on the chip explains it, and
-// the explanation comes out of it, the card, the sheets one after the other, and the plot.
+// as the explanation fits: the black box opens, all the way where it is exact. The demo starts with
+// the problem alone (unless data-reveal="open"): a click on the chip explains it, and the
+// explanation is built under it from the top down. The problem stays as the examples change: what
+// its parts show flips, as on a board of departures.
 //
 // Another view, the unfolded view (data-view="unfolded" on the demo; the docs show the stack): the
 // example's input on a card, every explanation on a see-through layer above it, its marks only, the
@@ -609,12 +610,14 @@
     // what every sheet shows (data-show="delta" on the demo): all of it, or what it adds to the
     // sheet above it, its R^2 as what it gains
     const delta = () => root.dataset.show === "delta";
-    // with data-reveal="click" on the demo, it starts with the problem alone: a click on the model's
-    // chip explains it, and the explanation comes out of it, card, sheets and plot one after the
-    // other; once explained, every example is
-    let revealed = root.dataset.reveal !== "click";
-    let hovering = false;
-    const unfolded = () => hovering || state.active !== null || state.blank !== null; // the layers, apart
+    // the demo starts with the problem alone (unless data-reveal="open"): a click on the model's chip
+    // explains it, and the explanation is built under it, from the top down; once explained, every
+    // example is
+    let revealed = root.dataset.reveal === "open";
+    // the floating layers unfold for good, once: after the model was clicked to explain it, once they
+    // have come in and are in view (or tapped at rest); before, only while one is pointed at
+    let unfoldedForGood = false;
+    const unfolded = () => unfoldedForGood || state.active !== null || state.blank !== null; // the layers, apart
 
     root.replaceChildren();
     const bar = el("div", "orders-demo-bar");
@@ -681,6 +684,39 @@
     const why = el("div", "orders-demo-why");
     why.append(planView, planText);
     plan.append(flow, cast, why);
+    // the problem's parts, made once: as the examples change, they stay where they are, and only what
+    // they show changes, flipping in as on a board of departures (the input, the model's chip, the
+    // prediction), their words running through letters before they settle
+    const tagged = (className, symbol, ...parts) => {
+      const node = el("div", className);
+      const tag = el("span", "orders-demo-wire-tag");
+      tag.append(math(symbol));
+      node.append(tag, ...parts);
+      return node;
+    };
+    const shows = () => el("span", "orders-demo-wire-shows");
+    const [xFace, xName, xShows] = [el("span", "orders-demo-wire-face"), el("span", "orders-demo-wire-name"), shows()];
+    xShows.append(xFace, xName);
+    const [chipIcon, chipName, chipNote, chipShows] = [el("span", "orders-demo-wire-icon-slot"), el("strong"), el("span", "orders-demo-chip-note"), shows()];
+    chipShows.append(chipIcon, chipName, chipNote);
+    const [outValue, outNote, outShows] = [el("strong"), el("span", "orders-demo-wire-note"), shows()];
+    outShows.append(outValue, outNote);
+    const chip = tagged("orders-demo-wire-chip", "f", chipShows);
+    const explainTab = el("span", "orders-demo-chip-explain", "Explain");
+    const into = el("div", "orders-demo-wire-side orders-demo-wire-into");
+    into.append(tagged("orders-demo-wire-x", "x", xShows), el("span", "orders-demo-wire-line"));
+    const onto = el("div", "orders-demo-wire-side orders-demo-wire-onto");
+    onto.append(el("span", "orders-demo-wire-line"), tagged("orders-demo-wire-out", "f(x)", outShows));
+    flow.append(into, chip, onto);
+    // unexplained, the chip is a button that explains the example
+    chip.addEventListener("click", () => {
+      if (!revealed) reveal();
+    });
+    chip.addEventListener("keydown", (event) => {
+      if (revealed || (event.key !== "Enter" && event.key !== " ")) return;
+      event.preventDefault();
+      reveal();
+    });
     // the orders to explain at, a button each: pointed at or tapped, as a sheet's row
     const orderButtons = el("span", "orders-demo-orders");
     orderButtons.setAttribute("role", "group");
@@ -956,6 +992,11 @@
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       movePill(false);
       showStep(example);
+      // the plan stays: what it shows flips to the example at once, the card after the problem
+      showProblem(example, true);
+      showOrders(example);
+      showPlan();
+      [planView, planText].forEach((node) => flap(node, 300));
       const choice = ++chosen;
       if (reducedMotion()) {
         shift(0);
@@ -967,7 +1008,7 @@
       root.classList.toggle("orders-demo-leaving", direction !== 0);
       shift(-direction * stage.clientWidth);
       // the fade out starts now, and the example is drawn when it ends (at once, if all is faded)
-      const fades = [plan, stack, ladder, plot].flatMap((node) => {
+      const fades = [stack, ladder, plot].flatMap((node) => {
         getComputedStyle(node).opacity;
         return node.getAnimations();
       });
@@ -1059,46 +1100,73 @@
     // whose structure the explanation uses), and a wire out of it to the prediction, in the red of
     // what raises it; the wires carry the input through, as dashes flowing. The chip lies in the
     // middle, the input and the prediction at either side
-    let chip = null;
-    function showProblem(example) {
-      const { problem, model } = example;
-      const tagged = (className, symbol, ...parts) => {
-        const node = el("div", className);
-        const tag = el("span", "orders-demo-wire-tag");
-        tag.append(math(symbol));
-        node.append(tag, ...parts);
-        return node;
+    let problemOf = null; // the example the problem shows
+    // a word, at once, or (flipping) running through letters before it settles, from the left
+    const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    function say(node, text, flip) {
+      const run = (node.run ?? 0) + 1;
+      node.run = run;
+      if (!flip || reducedMotion()) {
+        node.textContent = text;
+        return;
+      }
+      const start = performance.now();
+      const duration = 380 + 18 * text.length;
+      const settle = [...text].map((_, k) => 120 + (k / text.length) * (duration - 160) + 60 * Math.random());
+      const frame = (now) => {
+        if (node.run !== run) return;
+        const t = now - start;
+        node.textContent = [...text]
+          .map((letter, k) => (t >= settle[k] || letter === " " ? letter : LETTERS[Math.floor(Math.random() * LETTERS.length)]))
+          .join("");
+        if (t < duration) requestAnimationFrame(frame);
       };
-      const x = el("span", example.kind === "tree" ? "orders-demo-wire-face orders-demo-wire-table" : "orders-demo-wire-face");
-      x.append(...inputFitting(example));
-      const into = el("div", "orders-demo-wire-side orders-demo-wire-into");
-      into.append(tagged("orders-demo-wire-x", "x", x, el("span", "orders-demo-wire-name", problem.input)), el("span", "orders-demo-wire-line"));
-      chip = tagged(
-        `orders-demo-wire-chip ${model.icon === "box" ? "orders-demo-chip-black" : "orders-demo-chip-gray"}`,
-        "f",
-        icon(model.icon, "orders-demo-wire-icon"),
-        el("strong", "", model.short),
-        el("span", "orders-demo-chip-note", model.title),
-      );
-      const out = el("div", "orders-demo-wire-side orders-demo-wire-onto");
-      out.append(el("span", "orders-demo-wire-line"), tagged("orders-demo-wire-out", "f(x)", el("strong", "", problem.output), el("span", "", problem.value)));
+      requestAnimationFrame(frame);
+    }
+    // a part's new face, flipping down into its place as a flap does (from edge on, so that the old
+    // one is gone at once), after those to its left
+    const flap = (node, delay) =>
+      reducedMotion() ||
+      node.animate([{ transform: "rotateX(-90deg)" }, { transform: "none" }], {
+        duration: 320,
+        delay,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        fill: "backwards",
+      });
+    // the problem: the input, the model's chip (black for a black box, gray for a model whose
+    // structure the explanation uses), and the prediction, in the red of what raises it
+    function showProblem(example, flip = false) {
+      problemOf = example.id;
+      const { problem, model } = example;
+      xFace.className = example.kind === "tree" ? "orders-demo-wire-face orders-demo-wire-table" : "orders-demo-wire-face";
+      xFace.replaceChildren(...inputFitting(example));
+      say(xName, problem.input, flip);
+      chip.classList.toggle("orders-demo-chip-black", model.icon === "box");
+      chip.classList.toggle("orders-demo-chip-gray", model.icon !== "box");
       chip.title = `${model.title}: ${model.detail}`;
-      if (!revealed) {
-        // unexplained, the chip is a button that explains it
-        chip.classList.add("orders-demo-chip-call");
+      chipIcon.replaceChildren(icon(model.icon, "orders-demo-wire-icon"));
+      say(chipName, model.short, flip);
+      chipNote.textContent = model.title;
+      say(outValue, problem.output, flip);
+      outNote.textContent = problem.value;
+      if (flip) [xShows, chipShows, outShows].forEach((node, k) => flap(node, k * 90));
+    }
+    // unexplained, the chip calls to be clicked
+    function showCall() {
+      const model = current().model;
+      chip.classList.toggle("orders-demo-chip-call", !revealed);
+      if (revealed) {
+        for (const name of ["role", "tabindex", "aria-label"]) chip.removeAttribute(name);
+        explainTab.remove();
+      } else {
         chip.setAttribute("role", "button");
         chip.setAttribute("aria-label", `${model.title}, ${model.detail}: explain its prediction`);
         chip.tabIndex = 0;
-        chip.append(el("span", "orders-demo-chip-explain", "Explain"));
-        chip.addEventListener("click", reveal);
-        chip.addEventListener("keydown", (event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          event.preventDefault();
-          reveal();
-        });
+        chip.append(explainTab);
       }
-      flow.replaceChildren(into, chip, out);
-      // the orders, the mechanism's after them (an order between stands for the blank sheets)
+    }
+    // the orders' buttons, the mechanism's after them (an order between stands for the blank sheets)
+    function showOrders(example) {
       orderButtonOf = [];
       const buttons = example.sheets.map((sheet, i) => orderButton(i, String(sheet.order), stopName({ sheet, order: sheet.order })));
       if (between(example).length) buttons.splice(-1, 0, orderGap);
@@ -1241,43 +1309,76 @@
       const clear = pointed || state.blank !== null ? Math.max(0, Math.min(1, r2)) : 0;
       flow.style.setProperty("--orders-clear", roundTo(clear, 3));
       plan.classList.toggle("orders-demo-plan-lit", pointed !== null || state.blank !== null);
-      chip?.classList.toggle("orders-demo-chip-open", clear >= 0.6);
-      chip?.querySelector(".orders-demo-chip-note").replaceChildren(
-        pointed || state.blank !== null ? `R² ${fit2(r2)} explained` : example.model.title,
-      );
+      chip.classList.toggle("orders-demo-chip-open", clear >= 0.6);
+      chipNote.textContent = pointed || state.blank !== null ? `R² ${fit2(r2)} explained` : example.model.title;
     }
 
     // explain: the stage and the plot show, drawn anew for their room, and come in (demo.css), the
     // light out of the chip first, then the card, the sheets one after the other, the rows and the
     // plot
     let revealing = 0;
-    let unfolding = 0;
     function reveal() {
       if (revealed) return;
       revealed = true;
-      root.classList.toggle("orders-demo-revealing", !reducedMotion());
       render();
-      clearTimeout(revealing);
-      revealing = setTimeout(() => root.classList.remove("orders-demo-revealing"), 2800);
-      // the floating layers, once they have come in, unfold, as for the pointer: they rest again
-      // once it has been over them and left (or a tap on the card closes them)
-      clearTimeout(unfolding);
-      if (layered()) {
-        unfolding = setTimeout(
-          () => {
-            if (!layered() || hovering || root.classList.contains("orders-demo-fading")) return;
-            hovering = true;
-            place(state.active);
-          },
-          reducedMotion() ? 600 : 1900,
-        );
+      if (!reducedMotion()) buildUp();
+      // the floating layers unfold once they have come in, and are in view
+      unfoldAfter = performance.now() + (reducedMotion() ? 300 : building + 500);
+      unfold();
+    }
+    // the explanation built from the top down: a line runs down from the chip, and every part comes
+    // as it passes, the card, the sheets one after the other with their rows, and the plot, drawn
+    // from left to right (demo.css): each part's moment is how far below the chip it lies
+    let building = 0;
+    function buildUp() {
+      const box = root.getBoundingClientRect();
+      const from = flow.getBoundingClientRect().bottom - box.top;
+      const length = Math.max(1, box.height - from);
+      building = Math.round(Math.max(900, Math.min(2000, length * 2)));
+      const at = (node) => {
+        const part = node.getBoundingClientRect();
+        const y = part.top - box.top + Math.min(part.height * 0.25, 40);
+        return `${Math.round(Math.max(0, (y - from) / length) * building)}ms`;
+      };
+      for (const node of [why, rail, plotBox, dots, ...items.map((item) => item.node), ...ladder.children]) {
+        node.style.setProperty("--orders-at", at(node));
       }
+      root.style.setProperty("--orders-scan-from", `${roundTo(from, 1)}px`);
+      root.style.setProperty("--orders-scan-length", `${roundTo(length, 1)}px`);
+      root.style.setProperty("--orders-scan-time", `${building}ms`);
+      root.classList.remove("orders-demo-revealing");
+      root.getBoundingClientRect(); // anew
+      root.classList.add("orders-demo-revealing");
+      clearTimeout(revealing);
+      revealing = setTimeout(() => root.classList.remove("orders-demo-revealing"), building + 1200);
+    }
+    // the floating layers unfold, for good, once explained, once they have come in, and once the
+    // stage is in view (on a phone, scrolled to)
+    let unfoldAfter = Infinity;
+    let unfolding = 0;
+    let stageInView = false;
+    new IntersectionObserver(
+      ([entry]) => {
+        stageInView = entry.isIntersecting;
+        unfold();
+      },
+      { threshold: 0.45 },
+    ).observe(stage);
+    function unfold() {
+      clearTimeout(unfolding);
+      if (!layered() || unfoldedForGood || !revealed || !stageInView) return;
+      const wait = unfoldAfter - performance.now();
+      if (wait > 0) {
+        unfolding = setTimeout(unfold, wait);
+        return;
+      }
+      unfoldedForGood = true;
+      place(state.active);
     }
 
     // the light out of the chip, onto the card of the explanation: from the chip's bottom corners to
     // the card's top ones
     function castLightOut() {
-      if (!chip) return;
       const box = plan.getBoundingClientRect();
       const [from, to] = [chip.getBoundingClientRect(), why.getBoundingClientRect()];
       const f = (x, y) => `${roundTo(x - box.left, 1)},${roundTo(y - box.top, 1)}`;
@@ -1317,7 +1418,9 @@
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
       for (const row of [...rows, blankRow, cardRow]) row?.remove();
-      showProblem(example);
+      if (problemOf !== example.id) showProblem(example);
+      showCall();
+      showOrders(example);
       geometry = measure();
 
       const last = example.sheets.at(-1);
@@ -1332,7 +1435,6 @@
       for (const item of items) {
         if (!item.sheet) item.node = el("div", layered() ? "orders-demo-sheet orders-demo-blank orders-demo-layer" : "orders-demo-sheet orders-demo-blank");
       }
-      hovering = false;
       if (layered()) {
         // below the card, the mechanism: a sheet of its own, after the example's sheets
         const full = example.sheets.at(-1);
@@ -1453,6 +1555,8 @@
       drawPlot();
       showPlan();
       castLightOut();
+      if (revealed && unfoldAfter === Infinity) unfoldAfter = 0;
+      unfold();
       // a new example shows at rest at once: its sheets and rows take their places without moving.
       // Its sheets join the stack only now, placed: measuring the plot and the rows would else style
       // and lay out every element of their faces, and placing them (their size, and the custom
@@ -1487,7 +1591,6 @@
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
         node.style.zIndex = floating ? layerZ(item) : zIndex(item);
-        node.style.setProperty("--orders-order", position); // its entrance, after those above it (demo.css)
         if (floating) {
           // the layers peel off the card one after the other, the top one first, and settle back
           // onto it the lowest first; each floats a little, in a rhythm of its own
@@ -1924,23 +2027,16 @@
       return [event.clientX - box.left, event.clientY - box.top];
     };
     // the pointer over what points at the sheets (the plan's card, the stage, the plot) keeps what it
-    // points at, and the floating layers open: going from one to another, nothing goes back and comes
-    // out again. Only once the pointer has left them all, for a moment, does everything rest
+    // points at: going from one to another, nothing goes back and comes out again. Only once the
+    // pointer has left them all, for a moment, does it go back
     let resting = 0;
     function hold() {
       clearTimeout(resting);
-      if (layered() && !hovering) {
-        hovering = true;
-        place(state.active);
-      }
     }
     function rest() {
       clearTimeout(resting);
       resting = setTimeout(() => {
-        if (state.pinned) return;
-        hovering = false;
-        if (state.active !== null || state.blank !== null) point(null, null);
-        else if (layered()) place(null);
+        if (!state.pinned && (state.active !== null || state.blank !== null)) point(null, null);
       }, 280);
     }
     for (const zone of [why, stage, plotBox]) {
@@ -2024,18 +2120,16 @@
     stack.addEventListener("click", (event) => {
       if (performance.now() - swiped < 400) return; // the end of a swipe, not a tap
       if (layered() && !unfolded()) {
-        // a tap on the layers at rest opens them: they float off the card, none pointed at
-        hovering = true;
+        // a tap on the layers at rest unfolds them, for good, none pointed at
+        unfoldedForGood = true;
         place(null);
         return;
       }
       const item = itemAt(pointer(event));
       if (layered() && (item === null || item.base)) {
-        // open, a tap on the card, or beside the layers, closes it again
+        // unfolded, a tap on the card, or beside the layers, lets go of the layer pointed at
         state.pinned = false;
-        hovering = false;
-        if (state.active !== null || state.blank !== null) point(null, null);
-        else place(null);
+        point(null, null);
         return;
       }
       if (item === null) {
@@ -2065,13 +2159,9 @@
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
     new ResizeObserver(() => castLightOut()).observe(plan);
-    // the view (a stack, or the unfolded view) follows the demo's data-view
-    // attribute, what the sheets show its data-show, and whether it starts unexplained its
-    // data-reveal
-    new MutationObserver((records) => {
-      if (records.some((record) => record.attributeName === "data-reveal")) revealed = root.dataset.reveal !== "click";
-      render();
-    }).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show", "data-reveal"] });
+    // the view (a stack, or the unfolded view) follows the demo's data-view attribute, and what the
+    // sheets show its data-show
+    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");
