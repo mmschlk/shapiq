@@ -139,12 +139,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   will-change: opacity; /* a layer of its own already: a fade neither starts nor ends with a repaint */
 }
 
-/* the plan, the stack, the plot and the model above them, swiped (demo.js): aside by
-   --orders-shift, and fading with the swipe */
+/* the plan, the stack and the plot, swiped (demo.js): aside by --orders-shift, and fading with the
+   swipe */
 .orders-demo-plan,
 .orders-demo-stack,
-.orders-demo-plot-svg,
-.orders-demo-model {
+.orders-demo-plot-svg {
   translate: var(--orders-shift, 0px) 0;
   opacity: var(--orders-swipe-opacity, 1);
   transition:
@@ -155,7 +154,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 /* stepped from, they leave to the side, out of view, as a swipe carries them on: they keep their
    opacity, and speed up as they go */
-.orders-demo-fading.orders-demo-leaving :is(.orders-demo-plan, .orders-demo-stack, .orders-demo-plot-svg, .orders-demo-model) {
+.orders-demo-fading.orders-demo-leaving :is(.orders-demo-plan, .orders-demo-stack, .orders-demo-plot-svg) {
   opacity: var(--orders-swipe-opacity, 1);
   transition:
     opacity 240ms cubic-bezier(0.4, 0, 1, 1),
@@ -164,8 +163,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 /* while a finger swipes them, they follow at once; a new stack, plot and model take their side at
    once (over the leaving rule, which is still on then) */
-.orders-demo.orders-demo-swiping :is(.orders-demo-plan, .orders-demo-stack, .orders-demo-plot-svg, .orders-demo-model),
-.orders-demo.orders-demo-jump :is(.orders-demo-plan, .orders-demo-stack, .orders-demo-plot-svg, .orders-demo-model) {
+.orders-demo.orders-demo-swiping :is(.orders-demo-plan, .orders-demo-stack, .orders-demo-plot-svg),
+.orders-demo.orders-demo-jump :is(.orders-demo-plan, .orders-demo-stack, .orders-demo-plot-svg) {
   transition: none;
 }
 
@@ -183,13 +182,13 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 /* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
 @media (scripting: enabled) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 57.5rem;
+    min-height: 62rem;
   }
 }
 
 @media (scripting: enabled) and (max-width: 45em) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 48rem;
+    min-height: 57rem;
   }
 }
 
@@ -413,72 +412,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   touch-action: pan-y pinch-zoom;
 }
 
-/* the model of the example, under the examples (a model swiped aside does not widen the page) */
-.orders-demo-about {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  width: 100%;
-  overflow-x: clip;
-}
-
-.orders-demo-model {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
-  color: var(--orders-ink);
-}
-
-.orders-demo-model-enter {
-  animation: orders-demo-model-enter 420ms var(--orders-ease) both;
-}
-
-@keyframes orders-demo-model-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.orders-demo-model-icon {
-  flex: none;
-  width: 2.1rem;
-  height: 2.1rem;
-}
-
-.orders-demo-model-text {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.5rem;
-  color: var(--orders-muted);
-  font-size: 0.82rem;
-  line-height: 1.35;
-}
-
-.orders-demo-model-text strong {
-  color: var(--orders-ink);
-  font-size: 0.9rem;
-}
-
-/* the model and how it was explained, with a comma between them */
-.orders-demo-model-text span:not(:last-child)::after {
-  content: ",";
-}
-
-.orders-demo-model-method {
-  font-style: italic;
-}
-
-
 /* the icons: lines in the text's color; the black box solid, its sides shaded */
 .orders-demo-icon {
   fill: none;
@@ -517,19 +450,97 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   stroke-width: 2.2;
 }
 
-/* -- above the stack, the plan: the example seen from above, flat, with the explanation pointed at
-   on it, and beside it what that explanation shows ---------------------------------------------- */
+/* -- above the stack, the plan: the problem, as machine learning draws it (the input x, the model f
+   and its prediction f(x)), and under it why f(x): the input seen from above, flat, with the
+   explanation pointed at on it, the orders to explain at, and what that explanation shows ------ */
 
 .orders-demo-plan-window {
   overflow-x: clip;
 }
 
 .orders-demo-plan {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1rem 0 0;
+  padding: 0 0 4px 1px; /* its shadow, inside its window */
+}
+
+/* x, f, f(x): as mathematics sets them, also in a label in capitals */
+.orders-demo-math {
+  font-family: inherit;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.orders-demo-plan-eyebrow {
+  color: var(--orders-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* the problem: three boxes, an arrow between them */
+.orders-demo-flow {
+  display: flex;
+  align-items: stretch;
+}
+
+.orders-demo-flow-box {
+  display: grid;
+  flex: 1 1 0;
+  align-content: start;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.5rem 0.7rem 0.55rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 8px;
+  background: var(--orders-raised);
+  color: var(--orders-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.orders-demo-flow-box strong {
+  color: var(--orders-ink);
+  font-size: 0.92rem;
+}
+
+.orders-demo-flow-model {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.orders-demo-flow-icon {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.orders-demo-flow-arrow {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  color: var(--orders-muted);
+}
+
+.orders-demo-flow-arrow svg {
+  width: 1.4rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* why f(x): the face, and beside it the orders and the words */
+.orders-demo-why {
   display: flex;
   align-items: center;
   gap: 1.1rem;
-  margin: 1rem 0 0;
-  padding: 0 0 4px 1px; /* its shadow, inside its window */
 }
 
 .orders-demo-plan-view {
@@ -558,21 +569,83 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   }
 }
 
-.orders-demo-plan-text {
+.orders-demo-plan-text,
+.orders-demo-plan-words {
   display: grid;
   gap: 0.3rem;
   min-width: 0;
-  max-width: 34rem;
+}
+
+.orders-demo-plan-text {
+  gap: 0.55rem;
+  max-width: 36rem;
   color: var(--orders-muted);
   font-size: 0.85rem;
   line-height: 1.4;
 }
 
-.orders-demo-plan-eyebrow {
-  font-size: 0.68rem;
+.orders-demo-why-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+}
+
+/* the orders: a button each, the order shown outlined, the one pointed at filled */
+.orders-demo-orders {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.orders-demo-order {
+  min-width: 1.8rem;
+  height: 1.6rem;
+  padding: 0 0.45rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 999px;
+  background: var(--orders-sheet);
+  color: var(--orders-ink);
+  font: inherit;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--orders-duration) var(--orders-ease),
+    border-color var(--orders-duration) var(--orders-ease),
+    color var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-order.orders-demo-order-shown {
+  border-color: var(--orders-ink);
+}
+
+.orders-demo-order.orders-demo-order-on {
+  border-color: var(--orders-ink);
+  background: var(--orders-ink);
+  color: var(--orders-sheet);
+}
+
+.orders-demo-order:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 2px;
+}
+
+.orders-demo-orders-gap {
+  padding: 0 0.15rem;
+  color: var(--orders-muted);
+}
+
+.orders-demo-orders-gap.orders-demo-order-on {
+  color: var(--orders-ink);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+}
+
+.orders-demo-plan-hint {
+  font-size: 0.75rem;
+  font-style: italic;
 }
 
 .orders-demo-plan-title {
@@ -591,11 +664,21 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   font-variant-numeric: tabular-nums;
 }
 
-.orders-demo-plan-gain::before {
+.orders-demo-plan-gain::before,
+.orders-demo-plan-method::before {
   content: " · ";
 }
 
-/* red and blue, as the marks */
+/* the fit leads with the R^2; without one (the mechanism's), the method stands alone */
+.orders-demo-plan-fit > .orders-demo-plan-method:first-child::before {
+  content: none;
+}
+
+.orders-demo-plan-method {
+  font-style: italic;
+}
+
+/* red and blue, as the marks, and what they add up to */
 .orders-demo-plan-legend {
   display: flex;
   flex-wrap: wrap;
@@ -625,18 +708,41 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   background: rgb(30, 136, 229);
 }
 
-/* under the colors, how the marks read */
 .orders-demo-plan-read {
-  flex-basis: 100%;
-}
-
-.orders-demo-plan-hint {
   font-size: 0.75rem;
-  font-style: italic;
 }
 
 @container (max-width: 40rem) {
-  .orders-demo-plan {
+  .orders-demo-flow-box {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .orders-demo-flow-box strong {
+    font-size: 0.8rem;
+  }
+
+  .orders-demo-flow-arrow {
+    width: 1.1rem;
+  }
+
+  .orders-demo-flow-arrow svg {
+    width: 0.9rem;
+  }
+
+  /* on a phone, the model's icon and score go: the room is the words' */
+  .orders-demo-flow-icon,
+  .orders-demo-flow-score {
+    display: none;
+  }
+
+  .orders-demo-plan-eyebrow {
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+  }
+
+  .orders-demo-why {
+    align-items: start;
     gap: 0.8rem;
   }
 
@@ -652,7 +758,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     font-size: 0.88rem;
   }
 
-  /* on a phone, the colors only: the room is the sheets' */
+  /* and the colors only, without how the marks read */
   .orders-demo-plan-read {
     display: none;
   }

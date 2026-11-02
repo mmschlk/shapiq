@@ -25,9 +25,11 @@
 // blank sheet of an order between. The slider is an arrow down the side of the stack, and one along
 // the plot's axis matches it: the explanations grow more complex, and more faithful, from order to
 // order. Where the examples do not fit in a row, a stepper goes from one to the next, and so does a
-// swipe across the stack. Above the stack, the plan shows the example seen from above, flat: its
-// input with the explanation pointed at on it (at rest, the Shapley values), and in words what that
-// explanation shows, how well it fits, and how to read its marks.
+// swipe across the stack. Above the stack, the plan shows the problem, as machine learning draws
+// it (the input x, the model f, its prediction f(x)), and under it the example seen from above,
+// flat: its input with the explanation pointed at on it (at rest, the Shapley values), a button for
+// every order, which points at its sheet, and in words what that explanation shows, how well it
+// fits, and how to read its marks.
 //
 // Another view, the mechanism (data-view="mechanism" on the demo; the docs show the stack): the
 // example's input on a card, every explanation on a see-through layer above it, its marks only, the
@@ -94,6 +96,8 @@
     if (text !== undefined) node.textContent = text;
     return node;
   };
+  // a symbol of the problem, as mathematics sets it: x, f, f(x)
+  const math = (text) => el("var", "orders-demo-math", text);
   const add = (parent, tag, attributes = {}, text) => {
     const node = document.createElementNS(SVG, tag);
     for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
@@ -650,21 +654,39 @@
     const shown = el("span", "orders-demo-step-shown");
     shown.setAttribute("aria-live", "polite");
     stepper.append(stepButton(-1, "Previous example", "M10 3.5 5.5 8l4.5 4.5"), shown, stepButton(1, "Next example", "M6 3.5l4.5 4.5L6 12.5"));
-    // the model of the example: its icon, what it is, and how it was explained
-    const badge = el("div", "orders-demo-model");
-    badge.setAttribute("aria-live", "polite");
-    const about = el("div", "orders-demo-about");
-    about.append(badge);
-    bar.append(switcher, stepper, about);
+    bar.append(switcher, stepper);
 
-    // above the stack, the plan: the example seen from above, flat, its input with the explanation
-    // pointed at on it (at rest, the top one), as the sheets at their slant cannot show it; and
-    // beside it, in words, what that explanation shows, how well it fits, and how to read it
+    // above the stack, the plan: first the problem, as machine learning draws it, the input x, the
+    // model f and its prediction f(x); then why f(x): the input seen from above, flat, with the
+    // explanation pointed at on it (at rest, the top one), as the sheets at their slant cannot show
+    // it, the orders to explain it at, and in words what that explanation shows, how well it fits,
+    // and how to read it
     const plan = el("figure", "orders-demo-plan");
+    const flow = el("div", "orders-demo-flow");
+    flow.setAttribute("aria-live", "polite");
     const planView = el("div", "orders-demo-plan-view");
     planView.setAttribute("aria-hidden", "true");
     const planText = el("figcaption", "orders-demo-plan-text");
-    plan.append(planView, planText);
+    const why = el("div", "orders-demo-why");
+    why.append(planView, planText);
+    plan.append(flow, why);
+    // the orders to explain at, a button each: pointed at or tapped, as a sheet's row
+    const orderButtons = el("span", "orders-demo-orders");
+    orderButtons.setAttribute("role", "group");
+    orderButtons.setAttribute("aria-label", "Order of the explanation");
+    orderButtons.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse" && !state.pinned) point(null, null);
+    });
+    let orderButtonOf = []; // the button of every sheet, by its index
+    const orderGap = el("span", "orders-demo-orders-gap", "⋯"); // the orders between, of the blank sheets
+    // the caption: the orders to explain at, how to, and what the explanation shown shows
+    const hint = el("span", "orders-demo-plan-hint");
+    const whyHead = el("span", "orders-demo-why-head");
+    const whyName = el("span", "orders-demo-plan-eyebrow");
+    whyName.append("Why ", math("f(x)"), "? Explained at order");
+    whyHead.append(whyName, orderButtons, hint);
+    const planWords = el("span", "orders-demo-plan-words");
+    planText.append(whyHead, planWords);
     // its window: swiped aside, it goes out of view, not out of the page
     const planWindow = el("div", "orders-demo-plan-window");
     planWindow.append(plan);
@@ -1027,6 +1049,51 @@
       }
       return plans.get(key);
     }
+    // the problem: a box for the input x, the model f and the prediction f(x), an arrow between them
+    function showProblem(example) {
+      const { problem, model } = example;
+      const box = (name, symbol, ...parts) => {
+        const node = el("div", "orders-demo-flow-box");
+        const label = el("span", "orders-demo-plan-eyebrow");
+        label.append(`${name} `, math(symbol));
+        node.append(label, ...parts);
+        return node;
+      };
+      const arrow = () => {
+        const node = el("span", "orders-demo-flow-arrow");
+        add(add(node, "svg", { viewBox: "0 0 26 12", "aria-hidden": "true" }), "path", { d: "M1 6h22M17.5 1.5 23.5 6l-6 4.5" });
+        return node;
+      };
+      const head = el("strong", "orders-demo-flow-model");
+      head.append(icon(model.icon, "orders-demo-flow-icon"), model.title);
+      flow.replaceChildren(
+        box("Input", "x", el("strong", "", problem.input), el("span", "", problem.detail)),
+        arrow(),
+        box("Model", "f", head, el("span", "", model.detail), el("span", "orders-demo-flow-score", problem.score)),
+        arrow(),
+        box("Prediction", "f(x)", el("strong", "", problem.output), el("span", "", problem.value)),
+      );
+      // the orders, the mechanism's after them (an order between stands for the blank sheets)
+      orderButtonOf = [];
+      const buttons = example.sheets.map((sheet, i) => orderButton(i, String(sheet.order), stopName({ sheet, order: sheet.order })));
+      if (between(example).length) buttons.splice(-1, 0, orderGap);
+      if (layered()) buttons.push(orderButton(example.sheets.length, "Mechanism", "The mechanism, the model itself"));
+      orderButtons.replaceChildren(...buttons);
+    }
+    function orderButton(i, label, name) {
+      const button = el("button", "orders-demo-order", label);
+      button.type = "button";
+      button.setAttribute("aria-label", name);
+      button.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse" && !state.pinned) point(i, null);
+      });
+      button.addEventListener("focus", () => {
+        if (!state.pinned) point(i, null);
+      });
+      button.addEventListener("click", () => toggle(i, null));
+      orderButtonOf[i] = button;
+      return button;
+    }
     // 2 to the power of n, as text
     const power = (n) => {
       const node = el("span", "orders-demo-power", "2");
@@ -1047,6 +1114,15 @@
       const face = planFace(example, index);
       if (planView.firstChild !== face) planView.replaceChildren(face);
 
+      // the order shown, and the one pointed at
+      for (const [i, button] of orderButtonOf.entries()) {
+        button.classList.toggle("orders-demo-order-shown", i === (pointed ? state.active : state.blank === null ? 0 : -1));
+        button.classList.toggle("orders-demo-order-on", i === state.active);
+        button.setAttribute("aria-pressed", String(state.pinned && i === state.active));
+      }
+      orderGap.classList.toggle("orders-demo-order-on", state.blank !== null);
+      hint.textContent = pointed || state.blank !== null ? "" : `${hovers.matches ? "Point at" : "Tap"} one, or a sheet below`;
+
       const title = el("span", "orders-demo-plan-title");
       const about = el("span", "orders-demo-plan-about");
       const fit = el("span", "orders-demo-plan-fit");
@@ -1066,17 +1142,18 @@
         const sheet = example.sheets[index];
         const names = sheetName(sheet);
         title.append(el("strong", "", names.tag), ` ${names.name}`);
-        about.append(
+        const told =
           sheet.order === 1
-            ? `${words.each} on its own: its fair share of the prediction.`
+            ? [`${words.each} on its own: its fair share of `, math("f(x)"), "."]
             : !sheet.full
-              ? `Groups of up to ${sheet.order} ${words.players}: what each adds beyond its parts, the most faithful explanation with groups of that size.`
+              ? [`Groups of up to ${sheet.order} ${words.players}: what each adds beyond its parts, the most faithful explanation with groups of that size.`]
               : estimated(example)
-                ? `Groups of ${words.players} of every size, estimated: they fall short of the model by the estimation tax.`
-                : `Groups of ${words.players} of every size: together, they are the model exactly.`,
-        );
+                ? [`Groups of ${words.players} of every size, estimated: they fall short of the model by the estimation tax.`]
+                : [`Groups of ${words.players} of every size: together, they are the model exactly.`];
+        about.append(...told);
       }
-      // how well it fits, and, where the sheets show what they add, what it gains
+      // how well it fits (and, where the sheets show what they add, what it gains), and how it was
+      // computed
       if (!pointed?.mechanism) {
         const r2 = state.blank !== null ? fitOf(example, state.blank)[1] : example.sheets[index].r2;
         fit.append(el("span", "orders-demo-r2", fit2(r2)), el("span", "orders-demo-verdict", verdict(r2)));
@@ -1084,19 +1161,24 @@
           fit.append(el("span", "orders-demo-plan-gain", `${gain2(r2 - example.sheets[index - 1].r2)} over ${sheetName(example.sheets[index - 1]).tag}`));
         }
       }
-      // the colors, each beside its meaning, and how the marks read
+      fit.append(el("span", "orders-demo-plan-method", example.model.method));
+      // the colors, each beside its meaning, what the marks add up to, and how they read
       const legend = el("span", "orders-demo-plan-legend");
-      for (const [color, meaning] of [["up", "raises the prediction"], ["down", "lowers it"]]) {
+      for (const [color, meaning] of [["up", ["raises ", math("f(x)")]], ["down", ["lowers it"]]]) {
         const key = el("span", "orders-demo-plan-key");
-        key.append(el("i", `orders-demo-plan-${color}`), meaning);
+        key.append(el("i", `orders-demo-plan-${color}`), ...meaning);
         legend.append(key);
       }
-      legend.append(el("span", "orders-demo-plan-read", words.read));
-      const parts = [el("span", "orders-demo-plan-eyebrow", "Seen from above"), title, about, fit, legend];
-      if (!pointed && state.blank === null) {
-        parts.push(el("span", "orders-demo-plan-hint", `${hovers.matches ? "Point at" : "Tap"} an explanation to see it here.`));
-      }
-      planText.replaceChildren(...parts);
+      const sum = el("span", "orders-demo-plan-sum");
+      sum.append(
+        example.kind === "heatmap" ? "Every house's marks add up to its " : "The marks add up to ",
+        math("f(x) − f(∅)"),
+        "; ",
+        math("f(∅)"),
+        `: ${example.problem.empty}.`,
+      );
+      legend.append(sum);
+      planWords.replaceChildren(title, about, fit, legend, el("span", "orders-demo-plan-read", words.read));
     }
 
     // the light between the layer pointed at and the card
@@ -1151,19 +1233,7 @@
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
       for (const row of [...rows, blankRow, cardRow]) row?.remove();
-      const text = el("span", "orders-demo-model-text");
-      text.append(
-        el("strong", "", example.model.title),
-        el("span", "", example.model.detail),
-        el("span", "orders-demo-model-method", example.model.method),
-      );
-      badge.replaceChildren(icon(example.model.icon, "orders-demo-model-icon"), text);
-      // the badge's entrance, unless it is swiped in with the stack
-      badge.classList.remove("orders-demo-model-enter");
-      if (!root.classList.contains("orders-demo-leaving")) {
-        badge.getBoundingClientRect(); // restart the entrance
-        badge.classList.add("orders-demo-model-enter");
-      }
+      showProblem(example);
       geometry = measure();
 
       const last = example.sheets.at(-1);
@@ -1761,12 +1831,18 @@
     }
 
     function toggle(active, blank) {
-      if (state.pinned && state.active === active && state.blank === blank) {
+      const same = state.active === active && state.blank === blank;
+      if (state.pinned && same) {
         state.pinned = false;
         point(null, null);
       } else {
         state.pinned = true;
         point(active, blank);
+        // pointed at already (hovered, then tapped), it is pinned now: its row and button say so
+        if (same && !root.classList.contains("orders-demo-fading")) {
+          place(active);
+          showPlan();
+        }
       }
     }
 
@@ -1827,8 +1903,10 @@
       const item = itemAt(pointer(event));
       if (item?.base) return;
       if (item?.sheet) point(item.index, null);
-      // a blank sheet comes out only from the stack at rest, which it does not change
-      else if (item && state.active === null) point(null, item.order);
+      // a blank sheet comes out as a sheet does, and the sheet slid out goes back: the blank sheet's
+      // strip, where the stack at rest has it, stays under the pointer (over the sheet slid out,
+      // itemAt gives that sheet)
+      else if (item) point(null, item.order);
     });
     stage.addEventListener("pointerleave", (event) => {
       if (event.pointerType !== "mouse" || state.pinned) return;

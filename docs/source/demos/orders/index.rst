@@ -30,8 +30,14 @@ order below has more values, and fits the model more closely (see the fit, below
 to slide it out of the stack, or drag the slider's handle down through the orders (on a touch
 screen, tap a sheet, drag the handle, or tap an order on the plot). Where the examples do not fit in
 a row, as on a phone, the arrows above the stack, or a swipe across it, step from one example to the
-next. Above the stack, an icon shows the kind of model: a tree for tree ensembles, a graph for graph
-neural networks, and a black box for any other model.
+next.
+
+Above the stack, the problem: the input :math:`x`, the model :math:`f` (its icon a tree for tree
+ensembles, a graph for graph neural networks, and a black box for any other model) and its
+prediction :math:`f(x)`. Under it, the input seen from above, flat, with the explanation pointed at
+on it, beside a button for every order, which points at that order's sheet as well, and what the
+explanation shows: its values add up to :math:`f(x) - f(\emptyset)`, the prediction less the
+model's output without any player.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
 the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output
