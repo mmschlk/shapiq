@@ -31,7 +31,7 @@ of every size, which R^2 beyond size measures against, comes from all coalitions
 proxy's and the held-out ones: the held-out ones alone are too few for 73 sizes. FSII of a higher
 order fits the proxy at least as well, but SigLIP 2 not necessarily: from order 4 on, the fit stays
 at 0.91 within 0.001, as close as 512 coalitions can tell, and falls short of 1 by what the proxy
-misses of SigLIP 2, the estimation tax of the demo.
+misses of SigLIP 2, the estimation gap of the demo.
 
 Usage::
 

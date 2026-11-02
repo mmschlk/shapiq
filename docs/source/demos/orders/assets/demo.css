@@ -25,8 +25,8 @@
   --orders-shade: rgba(20, 28, 60, 0.14);
   /* the black box stays black in both themes; on a dark page, its edges show */
   --orders-box-edge: #ffffff;
-  /* the estimation tax in the plot: the fit an estimated full decomposition falls short of */
-  --orders-tax: #c2700a;
+  /* the estimation gap in the plot: the fit an estimated full decomposition falls short of */
+  --orders-gap: #c2700a;
   /* the mechanism's floating layers: their edge, glow, film and scan lines, the light down to the
      card, and how the projected marks lie on the card (multiplied on a light one, screened on a
      dark one) */
@@ -51,7 +51,7 @@ body[data-theme="dark"] .orders-demo {
   --orders-edge: #3b4152;
   --orders-shade: rgba(0, 0, 0, 0.45);
   --orders-box-edge: #9aa1b4;
-  --orders-tax: #f0a43a;
+  --orders-gap: #f0a43a;
   --orders-layer-edge: rgba(130, 176, 255, 0.7);
   --orders-layer-glow: rgba(90, 150, 255, 0.32);
   --orders-layer-film: rgba(120, 170, 255, 0.06);
@@ -72,7 +72,7 @@ body[data-theme="dark"] .orders-demo {
     --orders-edge: #3b4152;
     --orders-shade: rgba(0, 0, 0, 0.45);
     --orders-box-edge: #9aa1b4;
-    --orders-tax: #f0a43a;
+    --orders-gap: #f0a43a;
     --orders-layer-edge: rgba(130, 176, 255, 0.7);
     --orders-layer-glow: rgba(90, 150, 255, 0.32);
     --orders-layer-film: rgba(120, 170, 255, 0.06);
@@ -1771,20 +1771,20 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   font-style: italic;
 }
 
-/* the estimation tax: what an estimated full decomposition's fit falls short of 1, hatched */
-.orders-demo-plot-tax-fill {
-  fill: var(--orders-tax);
+/* the estimation gap: what an estimated full decomposition's fit falls short of 1, hatched */
+.orders-demo-plot-gap-fill {
+  fill: var(--orders-gap);
   opacity: 0.08;
 }
 
-.orders-demo-plot-tax-hatch {
-  stroke: var(--orders-tax);
+.orders-demo-plot-gap-hatch {
+  stroke: var(--orders-gap);
   stroke-width: 1.2;
   opacity: 0.5;
 }
 
-.orders-demo-plot-tax-label {
-  fill: var(--orders-tax);
+.orders-demo-plot-gap-label {
+  fill: var(--orders-gap);
   font-style: normal;
   font-weight: 600;
   paint-order: stroke;

@@ -7,7 +7,7 @@
 // coalitions (drawn from the distribution of the Shapley values) the explanation reproduces beyond
 // what their sizes alone predict; below the stack a plot of the R^2 of every order: it rises from
 // the Shapley values to the full decomposition, which reproduces the model exactly, unless it is
-// estimated: what it falls short of 1 is then shaded, the estimation tax.
+// estimated: what it falls short of 1 is then shaded, the estimation gap.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
@@ -564,7 +564,7 @@
     "image-text": { each: "Every patch of the photo and word of the caption", players: "patches and words", read: "the stronger, the wider and darker" },
   };
   // an example whose full decomposition is estimated (from a proxy of the model): it falls short of
-  // R^2 = 1, the estimation tax
+  // R^2 = 1, the estimation gap
   const estimated = (example) => example.fits.at(-1)[1] < EXACT;
   // the number of players: the features of a house, or what every sheet has a main effect of
   const playersOf = (example) => example.features?.length ?? example.sheets[0].first.length;
@@ -1148,7 +1148,7 @@
             : !sheet.full
               ? [`Groups of up to ${sheet.order} ${words.players}: what each adds beyond its parts, the most faithful explanation with groups of that size.`]
               : estimated(example)
-                ? [`Groups of ${words.players} of every size, estimated: they fall short of the model by the estimation tax.`]
+                ? [`Groups of ${words.players} of every size, estimated: they fall short of the model by the estimation gap.`]
                 : [`Groups of ${words.players} of every size: together, they are the model exactly.`];
         about.append(...told);
       }
@@ -1607,7 +1607,7 @@
       plot.setAttribute(
         "aria-label",
         `Faithfulness (R²) by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition` +
-          (estimated(example) ? ", estimated: what its R² falls short of 1 is the estimation tax" : ""),
+          (estimated(example) ? ", estimated: what its R² falls short of 1 is the estimation gap" : ""),
       );
       plot.replaceChildren();
       const fits = example.fits;
@@ -1662,14 +1662,14 @@
       add(arrow, "path", { d: `M${f(x0)},${arrowY}H${f(x1)}M${f(x1 - 5)},${arrowY - 3.5}L${f(x1)},${arrowY}L${f(x1 - 5)},${arrowY + 3.5}` });
       add(arrow, "text", { class: "orders-demo-plot-axis", x: f((x0 + x1) / 2), y: arrowY, "text-anchor": "middle" }, "more complex");
 
-      // the estimation tax: where even the full decomposition is estimated (from a proxy of the
+      // the estimation gap: where even the full decomposition is estimated (from a proxy of the
       // model, not from all 2^n coalitions), the R^2 it falls short of 1, hatched across the plot
       const full = fits.at(-1)[1];
       // the note on the full decomposition: above its point, or, over the band, on the line of the
       // band's label, at the other end
       let note = { x: f(x(n) + 4), y: f(y(full) - 15) };
       if (full < EXACT) {
-        const id = `orders-tax-${plotId}`;
+        const id = `orders-gap-${plotId}`;
         const hatch = add(add(plot, "defs", {}), "pattern", {
           id,
           width: 5,
@@ -1677,15 +1677,15 @@
           patternUnits: "userSpaceOnUse",
           patternTransform: "rotate(45)",
         });
-        add(hatch, "line", { class: "orders-demo-plot-tax-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
-        const tax = add(plot, "g", { class: "orders-demo-plot-tax" });
+        add(hatch, "line", { class: "orders-demo-plot-gap-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
+        const gap = add(plot, "g", { class: "orders-demo-plot-gap" });
         const band = { x: f(x0), y: f(y(1)), width: f(x1 - x0), height: f(y(full) - y(1)) };
-        add(tax, "rect", { ...band, class: "orders-demo-plot-tax-fill" });
-        add(tax, "rect", { ...band, fill: `url(#${id})` });
+        add(gap, "rect", { ...band, class: "orders-demo-plot-gap-fill" });
+        add(gap, "rect", { ...band, fill: `url(#${id})` });
         // its label inside the band, or above the plot where the band is too thin for it
         const inside = band.height >= 15;
         const line = inside ? f((y(1) + y(full)) / 2) : f(y(1) - 8);
-        add(tax, "text", { class: "orders-demo-plot-axis orders-demo-plot-tax-label", x: f(x0 + (inside ? 6 : 0)), y: line }, "estimation tax");
+        add(gap, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label", x: f(x0 + (inside ? 6 : 0)), y: line }, "estimation gap");
         note = { x: f(x1 - (inside ? 6 : 0)), y: line };
       }
 

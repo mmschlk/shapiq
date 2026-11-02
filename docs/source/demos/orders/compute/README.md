@@ -15,7 +15,7 @@ not against the spread of all of them: how much of what the number of players al
 predict the explanation reproduces (`faithfulness.py`). FSII of a higher order fits the game at
 least as well under it: for the examples explained exactly, the R^2 does not fall with the order. SigLIP 2 is explained through a proxy, to which FSII is faithful, and scored against the
 model itself: its R^2 rises to 0.91 at order 4 and stays there, up to the full decomposition,
-which falls short of 1 by the estimation tax the demo shades.
+which falls short of 1 by the estimation gap the demo shades.
 
 | File | What it does |
 |---|---|

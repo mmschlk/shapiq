@@ -61,7 +61,7 @@ model explained exactly, the fit never falls from one order to the next. The Sha
 do only together. Every order recovers more of it, and the full decomposition is the model itself,
 written as a sum over groups of players: :math:`R^2 = 1`. Unless it is estimated: for a black box of
 many players, the full decomposition, too, is fit to a sample of the coalitions, and what its fit
-falls short of 1, shaded in the plot, is the **estimation tax**. Many models have no interactions
+falls short of 1, shaded in the plot, is the **estimation gap**. Many models have no interactions
 above some order: the trees of a given depth, the receptive fields of a graph neural network. From
 that order on, FSII equals the full decomposition: the houses' stacks end there, at order 5, where
 the fit is exact, and the plot of the molecule breaks its axis before :math:`n = 30`. Point along
@@ -116,7 +116,7 @@ The Shapley values fit SigLIP 2 with :math:`R^2 = 0.68`; pairs, which link "bird
 egret's patch, lift the fit to 0.85, groups of three to 0.89, and of four to 0.91. From there, the
 fit stays at 0.91, up to the full decomposition, the proxy itself; a higher order fits the proxy
 better, but SigLIP 2 only as far as the proxy does. The full decomposition falls short of 1 by 0.09,
-the estimation tax: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
+the estimation gap: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
 SigLIP 2, which only all of them would spare.
 
 How it was computed
