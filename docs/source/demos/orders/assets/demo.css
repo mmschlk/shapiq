@@ -563,6 +563,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 /* the problem: the input and a wire into the chip at its left, a wire out of it to the prediction at
    its right, and the chip in the middle */
 .orders-demo-flow {
+  --orders-wire-height: 6.6rem; /* the height of its parts */
   position: relative;
   z-index: 1;
   display: grid;
@@ -577,43 +578,69 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   min-width: 0;
 }
 
+/* the problem's three parts, as tall as one another, their middles on the wires' line: the input,
+   the model's chip and the prediction, each with its symbol in its corner */
 .orders-demo-wire-x,
+.orders-demo-wire-chip,
 .orders-demo-wire-out {
+  position: relative;
   display: grid;
   flex: none;
+  align-content: center;
   justify-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
+  box-sizing: border-box;
+  height: var(--orders-wire-height);
+  border-radius: 10px;
   text-align: center;
 }
 
+.orders-demo-wire-x,
+.orders-demo-wire-out {
+  padding: 0.6rem 0.85rem 0.5rem;
+  border: 1px solid var(--orders-line);
+  box-shadow: 0 1px 3px var(--orders-shade);
+}
+
+/* its input clear of the symbol in its corner */
+.orders-demo-wire-x {
+  padding-top: 1.1rem;
+  background: var(--orders-sheet);
+}
+
 .orders-demo-wire-tag {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.6rem;
   color: var(--orders-muted);
   font-size: 0.8rem;
   line-height: 1;
 }
 
+/* the input, as large as the box allows above its name */
 .orders-demo-wire-face {
-  width: 5rem;
+  height: calc(var(--orders-wire-height) - 2.75rem);
   aspect-ratio: 1;
-  border: 1px solid var(--orders-line);
-  border-radius: 6px;
-  background: var(--orders-sheet);
-  box-shadow: 0 1px 3px var(--orders-shade);
 }
 
 .orders-demo-wire-face.orders-demo-wire-table {
-  width: auto;
+  height: auto;
   aspect-ratio: auto;
+}
+
+/* in the box, the table and its glyph have no frame of their own */
+.orders-demo-wire-x :is(.orders-demo-input-table, .orders-demo-input-small .orders-demo-input-face) {
+  padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
 }
 
 .orders-demo-wire-name {
-  max-width: 9rem;
   color: var(--orders-muted);
-  font-size: 0.75rem;
-  line-height: 1.3;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* the wires: dashes flowing from x to f(x), and an arrowhead where they arrive */
@@ -655,21 +682,14 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
    --orders-clear, from 0 to the explanation's R^2) */
 .orders-demo-wire-chip {
   --orders-chip: #15171d;
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 0.15rem;
-  box-sizing: border-box;
   width: 9rem;
-  padding: 0.95rem 0.6rem 0.8rem;
+  padding: 0.9rem 0.5rem 0.5rem;
   border: 1px solid var(--orders-edge);
-  border-radius: 10px;
   background: color-mix(in srgb, var(--orders-chip) calc((1 - var(--orders-clear, 0)) * 100%), var(--orders-glass));
   box-shadow:
     0 8px 20px -8px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   color: #f2f4f8;
-  text-align: center;
   transition:
     background 520ms var(--orders-ease),
     color 520ms var(--orders-ease);
@@ -684,29 +704,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   color: var(--orders-glass-ink);
 }
 
-/* its pins, along both sides */
-.orders-demo-wire-chip::before,
-.orders-demo-wire-chip::after {
-  position: absolute;
-  top: 22%;
-  bottom: 22%;
-  width: 5px;
-  background: repeating-linear-gradient(180deg, #9aa1b4 0 2px, transparent 2px 7px);
-  content: "";
-}
-
-.orders-demo-wire-chip::before {
-  left: -6px;
-}
-
-.orders-demo-wire-chip::after {
-  right: -6px;
-}
-
 .orders-demo-wire-chip .orders-demo-wire-tag {
-  position: absolute;
-  top: 0.4rem;
-  left: 0.6rem;
   color: #9aa1b4;
 }
 
@@ -878,9 +876,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 .orders-demo-wire-out {
   flex: 0 1 auto;
   min-width: 7rem;
-  padding: 0.55rem 0.9rem 0.6rem;
-  border: 1px solid var(--orders-line);
-  border-radius: 8px;
+  padding-top: 0.9rem;
   background: var(--orders-raised);
 }
 
@@ -1124,8 +1120,17 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     display: block;
   }
 
+  .orders-demo-flow {
+    --orders-wire-height: 5.2rem;
+  }
+
+  /* on a phone, without its name */
   .orders-demo-wire-face {
-    width: 3.2rem;
+    height: calc(var(--orders-wire-height) - 1.9rem);
+  }
+
+  .orders-demo-wire-x {
+    padding: 0.9rem 0.45rem 0.45rem;
   }
 
   .orders-demo-wire-line {
@@ -1135,11 +1140,21 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
   .orders-demo-wire-chip {
     width: 5.4rem;
-    padding: 0.8rem 0.4rem 0.6rem;
+    padding: 0.8rem 0.35rem 0.4rem;
+  }
+
+  .orders-demo-wire-icon {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   .orders-demo-wire-chip strong {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+  }
+
+  .orders-demo-chip-note {
+    font-size: 0.62rem;
+    line-height: 1.2;
   }
 
   .orders-demo-wire-name {
@@ -1149,7 +1164,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   /* no narrower than its longest word: the wire gives way */
   .orders-demo-wire-out {
     min-width: auto;
-    padding: 0.4rem 0.45rem;
+    padding: 0.9rem 0.5rem 0.45rem;
   }
 
   .orders-demo-wire-out strong {
