@@ -16,6 +16,7 @@ from shapiq.explainer.tabular import (
     TabularExplainerApproximators,
     TabularExplainerImputers,
 )
+from shapiq.imputer import GaussianCopulaImputer, GaussianImputer
 from tests.shapiq.fixtures.data import BUDGET_NR_FEATURES, NR_FEATURES
 from tests.shapiq.utils import get_expected_index_or_skip
 
@@ -164,6 +165,28 @@ def test_explain(dt_reg_model, background_reg_data, budget, max_order, imputer):
     sum_of_values = float(np.sum(interaction_values.values))
     assert pytest.approx(interaction_values[()]) == interaction_values.baseline_value
     assert pytest.approx(sum_of_values, 0.01) == prediction
+
+
+@pytest.mark.parametrize("imputer_class", [GaussianImputer, GaussianCopulaImputer])
+def test_explain_with_gaussian_imputers(imputer_class):
+    """The Gaussian imputers are valid imputers, and their empty prediction is the baseline."""
+    rng = np.random.default_rng(0)
+    data = rng.multivariate_normal([1.0, 2.0, -1.0], 0.5 * np.eye(3) + 0.5, size=500)
+    beta = np.array([1.0, -2.0, 0.5])
+
+    def model(x: np.ndarray) -> np.ndarray:
+        return x @ beta
+
+    imputer = imputer_class(model=model, data=data, sample_size=50, random_state=0)
+    explainer = TabularExplainer(model=model, data=data, imputer=imputer)
+    assert explainer.imputer is imputer
+
+    interaction_values = explainer.explain(data[0], budget=2**3)
+    assert interaction_values.baseline_value == pytest.approx(np.mean(model(data)))
+    assert interaction_values[()] == interaction_values.baseline_value
+    # efficiency: the values add up to the value of the grand coalition (before centering)
+    grand_value = imputer.value_function(np.ones((1, 3), dtype=bool))[0]
+    assert np.sum(interaction_values.values) == pytest.approx(grand_value)
 
 
 def test_against_shap_linear():

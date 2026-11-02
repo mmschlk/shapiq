@@ -112,6 +112,7 @@ class TabularExplainer(Explainer):
         """
         from shapiq.imputer import (
             BaselineImputer,
+            GaussianImputer,
             GenerativeConditionalImputer,
             MarginalImputer,
             TabPFNImputer,
@@ -162,7 +163,11 @@ class TabularExplainer(Explainer):
             )
         elif isinstance(
             imputer,
-            MarginalImputer | GenerativeConditionalImputer | BaselineImputer | TabPFNImputer,
+            MarginalImputer
+            | GenerativeConditionalImputer
+            | BaselineImputer
+            | GaussianImputer  # also the GaussianCopulaImputer
+            | TabPFNImputer,
         ):
             self._imputer = imputer
         else:
