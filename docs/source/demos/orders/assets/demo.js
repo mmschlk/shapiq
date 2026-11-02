@@ -27,20 +27,19 @@
 // order. Where the examples do not fit in a row, a stepper goes from one to the next, and so does a
 // swipe across the stack.
 //
-// Another view, the hologram (data-view="hologram" on the demo; the docs show the stack): the
-// example's input on a card at the bottom, and every explanation on a see-through layer above it,
-// its marks only. At rest, the layers lie on the card (the top one showing, on the input); while
-// the pointer is over the stage (or after a tap), they float off it, apart, and the layer pointed
-// at casts its light down onto the card, which wears its marks. The rows, the slider, the plot, the
-// stepper and the swipe work as in the stack. Two more views build on it: the mechanism
-// (data-view="mechanism"), where the full decomposition lies below the card, the mechanism under
-// the input; and the exploded view (data-view="exploded"), the mechanism as a technical drawing: a
-// block cut away at rest, the mechanism inside, whose parts come apart, numbered, as the hologram's
-// layers do. In both, with data-full="both", the full decomposition is also the last explanation
-// above the input, and the mechanism below it lies apart: the model itself, which the explanations
-// reveal more of order by order. The hologram and the mechanism tone down to paper with
-// data-tone="calm". Every view's sheets can show, instead of all of an order, what it adds to the
-// order above it (data-show="delta"), and their rows and the plot what its R^2 gains.
+// Another view, the mechanism (data-view="mechanism" on the demo; the docs show the stack): the
+// example's input on a card, every explanation on a see-through layer above it, its marks only, and
+// below the card the full decomposition, the mechanism under it all. At rest, the layers lie on the
+// card (the top one showing, on the input), the mechanism hidden under it; while the pointer is over
+// the stage (or after a tap), they float off it, apart, and the layer pointed at casts its light
+// onto the card, which wears its marks. The rows, the slider, the plot, the stepper and the swipe
+// work as in the stack. The exploded view (data-view="exploded") draws it as a technical drawing: a
+// block cut away at rest, the mechanism inside, whose parts come apart, numbered. In both, with
+// data-full="both", the full decomposition is also the last explanation above the input, and the
+// mechanism below it lies apart: the model itself, which the explanations reveal more of order by
+// order. The mechanism tones down from glowing film to paper with data-tone="calm". Every view's
+// sheets can show, instead of all of an order, what it adds to the order above it
+// (data-show="delta"), and their rows and the plot what its R^2 gains.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -77,8 +76,8 @@
   const RAIL_LINE = 28;
   const RAIL_REST = 24;
   const THICKNESS = 4; // pixels: the sheets' edge, below their face
-  // the hologram: the air between its lowest layer and the input below, in units of a sheet's side;
-  // and in the mechanism, the depth below the input at which the full decomposition lies
+  // the floating layers': the air between the lowest and the input below, in units of a sheet's
+  // side; and the depth below the input at which the mechanism lies
   const AIR = 0.3;
   const DEPTH = 0.34;
   const CUT = 0.09; // the exploded view's, at rest: how deep below the input the mechanism lies
@@ -211,8 +210,8 @@
   const extentOf = (points) =>
     Math.max(...[0, 1].map((axis) => Math.max(...points.map((p) => p[axis])) - Math.min(...points.map((p) => p[axis]))));
 
-  // a face's layers: "all" for a sheet of the stack, or, for the hologram, the "input" (what is
-  // explained, on the card at the bottom) or the "marks" (the explanation, on a layer above it)
+  // a face's layers: "all" for a sheet of the stack, or, for the floating layers, the "input" (what
+  // is explained, on the card) or the "marks" (the explanation, on a layer above it)
   const shows = (layer, part) => layer === "all" || layer === part;
 
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
@@ -588,14 +587,11 @@
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
     const plotId = ++plots;
-    // the hologram (data-view="hologram"; the docs show the stack): the input on a card at the
-    // bottom, and the explanations on layers above it, which lie on the card at rest and float off
-    // it, apart, while the pointer is over the stage (or after a tap on the card), or a layer is
-    // pointed at
-    const holo = () => ["hologram", "mechanism", "exploded"].includes(root.dataset.view);
-    // the mechanism (data-view="mechanism"): the hologram, but the full decomposition is no layer over
-    // the input: it lies below the card, the mechanism under it all, hidden at rest
-    const beneath = () => root.dataset.view === "mechanism" || root.dataset.view === "exploded";
+    // the floating layers (data-view="mechanism"; the docs show the stack): the input on a card, the
+    // explanations on layers above it, which lie on the card at rest and float off it, apart, while
+    // the pointer is over the stage (or after a tap on the card), or a layer is pointed at; and the
+    // full decomposition below the card, the mechanism under it all, hidden at rest
+    const layered = () => root.dataset.view === "mechanism" || root.dataset.view === "exploded";
     // the exploded view (data-view="exploded"): the mechanism as a technical drawing. At rest, its
     // parts are put together, cut away at the front, where the mechanism shows inside (a cutaway);
     // open, they come apart along their axis (an exploded view), each named in a parts list
@@ -603,7 +599,7 @@
     // in these two (data-full="both"): the full decomposition is also the last of the explanations
     // above the input, as in the stack, and below it lies, apart, the mechanism they explain, the
     // model itself, however complex: the explanations reveal more and more of it, order by order
-    const twin = () => beneath() && root.dataset.full === "both";
+    const twin = () => layered() && root.dataset.full === "both";
     // what every sheet shows (data-show="delta" on the demo): all of it, or what it adds to the
     // sheet above it, its R^2 as what it gains
     const delta = () => root.dataset.show === "delta";
@@ -715,7 +711,7 @@
     let rows = [];
     let stops = []; // the slider's: its rest, then every sheet and blank sheet, top to bottom
     let blankRow = null;
-    let cardRow = null; // the hologram's: the input's row, beside its card
+    let cardRow = null; // the floating layers': the input's row, beside its card
     let marker = null;
     let plotWidth = 0;
 
@@ -741,13 +737,13 @@
       // the same height for every example: the most sheets and blank sheets of any
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
       const blanks = Math.max(...data.examples.map((example) => between(example).length));
-      // the hologram's card, below its layers; the mechanism's full decomposition, below the card
-      // (apart from the explanation of order n, it adds its depth to the stack's strips)
-      const air = holo() ? (AIR + (beneath() ? DEPTH - (twin() ? 0 : STRIP) : 0)) * side : 0;
+      // the floating layers' card, below them, and the mechanism below it, in place of the full
+      // decomposition's strip (apart from it, it adds its depth to the strips)
+      const air = layered() ? (AIR + DEPTH - (twin() ? 0 : STRIP)) * side : 0;
       const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side + air;
-      // a sheet slides out to the left: the stack lies right of the middle by half of that (in the
-      // hologram, none does)
-      const slideBy = holo() ? 0 : SLIDE * side * spread;
+      // a sheet slides out to the left: the stack lies right of the middle by half of that (of the
+      // floating layers, none does)
+      const slideBy = layered() ? 0 : SLIDE * side * spread;
       return {
         width,
         narrow,
@@ -763,7 +759,7 @@
     // the place (center) of every item: stacked so that a strip of every sheet shows below the one
     // above it, and the one pointed at slid out to the side of the stack
     function layout(active) {
-      if (holo()) return holoLayout(exploded());
+      if (layered()) return layeredLayout(exploded());
       const g = geometry;
       const pointed = active === null ? null : sheetItems()[active];
       const h = g.sheetHeight;
@@ -781,9 +777,10 @@
       }));
     }
 
-    // the hologram's places: open, its layers as the stack's sheets, and the card a breath of air
-    // below the lowest; at rest, every layer on the card, in the middle of the stage
-    function holoLayout(open) {
+    // the floating layers' places: open, as the stack's sheets, the card a breath of air below the
+    // lowest, and the mechanism deeper below it; at rest, every layer on the card, in the middle of
+    // the stage
+    function layeredLayout(open) {
       const g = geometry;
       const h = g.sheetHeight;
       const centers = [];
@@ -831,17 +828,17 @@
 
     // the order of the sheets on top of each other, as stacked: a sheet slid out keeps its place
     const zIndex = (item) => items.length - items.indexOf(item);
-    // a hologram's: the card under its layers, and in the mechanism, the full decomposition under the
-    // card, and the light between them
-    const layerZ = (item) => (item.base ? (beneath() ? 2 : 0) : item.deep ? 0 : zIndex(item) + (beneath() ? 3 : 0));
+    // the floating layers': the card under its layers, the mechanism under the card, and the light
+    // between them
+    const layerZ = (item) => (item.base ? 2 : item.deep ? 0 : zIndex(item) + 3);
 
     // the item under a point of the stage, where the sheets are going (not where they are while
     // they move), the one on top first. While a sheet slides out, the sheets count where they lie
     // at rest, and the one slid out also where it shows: else the sheet would slide away from under
     // the pointer, hand it to the sheet below, and come back for it, over and over.
     function itemAt(point) {
-      if (holo()) {
-        const places = holoLayout(true);
+      if (layered()) {
+        const places = layeredLayout(true);
         const order = items.map((_, position) => position).sort((a, b) => layerZ(items[b]) - layerZ(items[a]));
         const position = order.find((p) => inside(point, corners(places[p])));
         return position === undefined ? null : items[position];
@@ -950,7 +947,7 @@
 
     // a sheet of an example: its face, and its name along the bottom edge, from the bottom corner
     // (the part of a sheet that shows)
-    // (all of it, or, for a layer of the hologram, its marks, or for its card, the input), or
+    // (all of it, or, for a floating layer, its marks, or for their card, the input), or
     // (adding) what it adds to the sheet above it
     function drawSheet(example, i, layer = "all", adding = false) {
       const sheet = faceOf(example, i, adding);
@@ -964,17 +961,17 @@
       return node;
     }
     // every example's sheets, drawn once: an example chosen again shows them as they were drawn (the
-    // hologram's layers apart from the stack's sheets, and what they add apart from all of them)
+    // floating layers apart from the stack's sheets, and what they add apart from all of them)
     const drawn = new Map();
     function sheetsOf(example, adding = delta()) {
-      const layer = holo() ? "marks" : "all";
-      const key = `${example.id}${holo() ? " hologram" : ""}${adding ? " delta" : ""}`;
+      const layer = layered() ? "marks" : "all";
+      const key = `${example.id}${layered() ? " layers" : ""}${adding ? " delta" : ""}`;
       const nodes = drawn.get(key) ?? [];
       for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i, layer, adding));
       drawn.set(key, nodes);
       return nodes;
     }
-    // the hologram's card: the input, and over it, the marks of the layer pointed at, projected
+    // the floating layers' card: the input, and over it, the marks of the layer pointed at, projected
     const cards = new Map();
     function cardOf(example) {
       if (!cards.has(example.id)) {
@@ -1076,21 +1073,20 @@
         items.push({ order: sheet.order, sheet, index: i, node: nodes[i] });
       });
       for (const item of items) {
-        if (!item.sheet) item.node = el("div", holo() ? "orders-demo-sheet orders-demo-blank orders-demo-layer" : "orders-demo-sheet orders-demo-blank");
+        if (!item.sheet) item.node = el("div", layered() ? "orders-demo-sheet orders-demo-blank orders-demo-layer" : "orders-demo-sheet orders-demo-blank");
       }
       hovering = false;
-      if (holo()) {
+      if (layered()) {
         const card = { order: 0, base: true, node: cardOf(example) };
         if (twin()) {
           // below the card, the mechanism: a sheet of its own, after the example's sheets
           const full = example.sheets.at(-1);
           const index = example.sheets.length;
           items.push(card, { order: full.order, sheet: full, index, mechanism: true, deep: true, node: mechanismOf(example) });
-        } else if (beneath()) {
+        } else {
+          // the full decomposition, below the card, is the mechanism
           items.at(-1).deep = true;
           items.splice(-1, 0, card);
-        } else {
-          items.push(card);
         }
       }
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
@@ -1191,9 +1187,9 @@
       }
       ticks.replaceChildren(...stopItems().map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
 
-      // the hologram's row of its card: the input, what the layers explain
+      // the floating layers' row of their card: the input, what the layers explain
       cardRow = null;
-      if (holo()) {
+      if (layered()) {
         cardRow = el("div", "orders-demo-row orders-demo-blank-row orders-demo-card-row");
         cardRow.setAttribute("aria-hidden", "true");
         const title = el("span", "orders-demo-row-title");
@@ -1222,7 +1218,7 @@
       root.classList.add("orders-demo-instant");
       place(null);
       stack.append(...items.map((item) => item.node));
-      if (holo()) stack.append(beam);
+      if (layered()) stack.append(beam);
       if (drawing()) stack.append(section, assembly);
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
@@ -1235,13 +1231,13 @@
       root.classList.toggle("orders-demo-narrow", g.narrow);
       const out = typeof active === "number";
       const places = layout(active);
-      // the hologram's rows, slider and beam keep to where its layers float, open or at rest
-      const hologram = holo();
-      const anchors = hologram ? holoLayout(true) : places;
-      const open = hologram && exploded();
-      const opening = hologram && open !== root.classList.contains("orders-demo-holo-open");
-      root.classList.toggle("orders-demo-holo", hologram); // a hologram, or the mechanism
-      root.classList.toggle("orders-demo-holo-open", open);
+      // the floating layers' rows, slider and beam keep to where they float, open or at rest
+      const floating = layered();
+      const anchors = floating ? layeredLayout(true) : places;
+      const open = floating && exploded();
+      const opening = floating && open !== root.classList.contains("orders-demo-open");
+      root.classList.toggle("orders-demo-floating", floating);
+      root.classList.toggle("orders-demo-open", open);
       const rowY = []; // the height of every sheet's row, for the row of the blank sheets
       let cardRowY = null;
       items.forEach((item, position) => {
@@ -1249,14 +1245,14 @@
         const node = item.node;
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
-        node.style.zIndex = hologram ? layerZ(item) : zIndex(item);
-        if (hologram) {
+        node.style.zIndex = floating ? layerZ(item) : zIndex(item);
+        if (floating) {
           // the layers peel off the card one after the other, the top one first, and settle back
           // onto it the lowest first; each floats a little, in a rhythm of its own
           const delay = opening ? (open ? position : items.length - position) * 45 : 0;
           node.style.transitionDelay = `${delay}ms`;
           node.style.animationDelay = `${-position * 0.9}s`;
-          node.classList.toggle("orders-demo-holo-top", position === 0);
+          node.classList.toggle("orders-demo-top", position === 0);
         }
         node.style.transform = `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scaleY(${TILT}) rotate(${(TURN * 180) / Math.PI}deg)`;
         // the edge below the face, in the face's own coordinates: straight down on the stage
@@ -1286,15 +1282,15 @@
 
       // the slider: its stops at the middles of the sheets at rest (without a blank sheet's peek), its
       // line from its rest down to the bottom sheet, and its handle at the sheet pointed at
-      const rest = hologram ? anchors : layout(null);
+      const rest = floating ? anchors : layout(null);
       stops = [
         { y: Math.max(10, rest[0].y - RAIL_REST), item: null },
-        ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y - (!hologram && item.order === state.blank ? PEEK * g.side : 0), item })),
+        ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y - (!floating && item.order === state.blank ? PEEK * g.side : 0), item })),
       ];
       const [top, bottom] = [stops[0].y, stops.at(-1).y];
-      // in the mechanism, the arrow ends at the input's surface, and below it, a dashed line goes
+      // with floating layers, the arrow ends at the input's surface, and below it, a dashed line goes
       // down to the mechanism
-      const surface = beneath() ? cardRowY : null;
+      const surface = floating ? cardRowY : null;
       const end = surface ?? bottom;
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
       railLine.style.height = `${roundTo(end - top - (surface === null ? 0 : 10), 2)}px`;
@@ -1330,13 +1326,13 @@
         const blanks = blankItems();
         const target = blanks[Math.floor((blanks.length - 1) / 2)];
         const right = rightCorner(anchors[items.indexOf(target)]);
-        if (!hologram && target.order === state.blank) right[1] -= PEEK * g.side;
+        if (!floating && target.order === state.blank) right[1] -= PEEK * g.side;
         blankRow.classList.toggle("orders-demo-active", state.blank !== null);
         // beside the blank sheet, but clear of the rows above and below it
-        // (in the mechanism, the row below is the card's, unless the full decomposition is apart)
+        // (of floating layers, the row below is the card's, unless the full decomposition is apart)
         const below = current().sheets.length - 1;
         const above = below - 1;
-        const [belowRow, belowY] = beneath() && !twin() ? [cardRow, cardRowY] : [rows[below], rowY[below]];
+        const [belowRow, belowY] = floating && !twin() ? [cardRow, cardRowY] : [rows[below], rowY[below]];
         const half = (row) => row.offsetHeight / 2;
         const y = Math.min(
           Math.max(right[1], rowY[above] + half(rows[above]) + half(blankRow) + 2),
@@ -1352,9 +1348,9 @@
             ? `Order ${state.blank}: R² ${fit2(blanks.find((item) => item.order === state.blank).fit[1])}`
             : `Orders ${first}–${last}`;
       }
-      if (hologram) project(out ? sheetItems()[active] : null, anchors);
+      if (floating) project(out ? sheetItems()[active] : null, anchors);
       if (drawing()) {
-        cutaway(holoLayout(false));
+        cutaway(layeredLayout(false));
         assemble(anchors);
       }
     }
@@ -1398,15 +1394,14 @@
       axis.setAttribute("d", `M${f([first.x, first.y - beyond])}L${f([last.x, last.y + beyond])}`);
     }
 
-    // the hologram's light: from the layer pointed at down to the card, whose input then wears the
-    // layer's marks (or none)
+    // the light from the layer pointed at down to the card (or from the mechanism up to it), whose
+    // input then wears the layer's marks (or none)
     const projected = new WeakMap(); // every card's projection: the node of the layer it wears
     function project(item, anchors) {
       const card = items.find((other) => other.base);
       beam.classList.toggle("orders-demo-beam-on", Boolean(item));
-      // in the mechanism, the light is over the card, under the layers; the mechanism's own rises under
-      // the card
-      beam.style.zIndex = beneath() ? (item?.deep ? 1 : 3) : "";
+      // the light is over the card, under the layers; the mechanism's own rises under the card
+      beam.style.zIndex = item?.deep ? 1 : 3;
       // brightest at the layer it comes from: above the card, or the mechanism's, amber, below it
       beam.classList.toggle("orders-demo-beam-deep", Boolean(item?.deep));
       glow.setAttribute("y1", item?.deep ? 1 : 0);
@@ -1728,7 +1723,7 @@
     };
     stage.addEventListener("pointermove", (event) => {
       if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail")) return;
-      if (holo() && !hovering) {
+      if (layered() && !hovering) {
         hovering = true;
         place(state.active);
       }
@@ -1742,7 +1737,7 @@
       if (event.pointerType !== "mouse" || state.pinned) return;
       hovering = false;
       if (state.active !== null || state.blank !== null) point(null, null);
-      else if (holo()) place(null);
+      else if (layered()) place(null);
     });
     // on a touch screen, a swipe sideways across the stack goes to the next example or the previous
     // one, as the stepper does: the stack follows the finger, fading, and past a fifth of its width,
@@ -1805,14 +1800,14 @@
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
       if (performance.now() - swiped < 400) return; // the end of a swipe, not a tap
-      if (holo() && !exploded()) {
-        // a tap on the hologram at rest opens it: its layers float off the card, none pointed at
+      if (layered() && !exploded()) {
+        // a tap on the layers at rest opens them: they float off the card, none pointed at
         hovering = true;
         place(null);
         return;
       }
       const item = itemAt(pointer(event));
-      if (holo() && (item === null || item.base)) {
+      if (layered() && (item === null || item.base)) {
         // open, a tap on the card, or beside the layers, closes it again
         state.pinned = false;
         hovering = false;
@@ -1845,7 +1840,7 @@
       if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
-    // the view (a stack, a hologram, the mechanism or the exploded view) follows the demo's data-view
+    // the view (a stack, the mechanism or the exploded view) follows the demo's data-view
     // attribute, what the sheets show its data-show, and where the full decomposition lies its
     // data-full
     new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show", "data-full"] });

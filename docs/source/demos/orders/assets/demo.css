@@ -27,14 +27,15 @@
   --orders-box-edge: #ffffff;
   /* the estimation tax in the plot: the fit an estimated full decomposition falls short of */
   --orders-tax: #c2700a;
-  /* the hologram: its layers' edge, glow, film and scan lines, the light down to the card, and how
-     the projected marks lie on the card (multiplied on a light one, screened on a dark one) */
-  --orders-holo-edge: rgba(64, 112, 224, 0.6);
-  --orders-holo-glow: rgba(86, 136, 255, 0.2);
-  --orders-holo-film: rgba(120, 160, 255, 0.04);
-  --orders-holo-line: rgba(86, 128, 232, 0.08);
-  --orders-holo-beam: rgba(110, 160, 255, 0.15);
-  --orders-holo-blend: multiply;
+  /* the mechanism's floating layers: their edge, glow, film and scan lines, the light down to the
+     card, and how the projected marks lie on the card (multiplied on a light one, screened on a
+     dark one) */
+  --orders-layer-edge: rgba(64, 112, 224, 0.6);
+  --orders-layer-glow: rgba(86, 136, 255, 0.2);
+  --orders-layer-film: rgba(120, 160, 255, 0.04);
+  --orders-layer-line: rgba(86, 128, 232, 0.08);
+  --orders-layer-beam: rgba(110, 160, 255, 0.15);
+  --orders-layer-blend: multiply;
   /* the mechanism: amber, as a blueprint's lines */
   --orders-mech-edge: rgba(196, 122, 26, 0.75);
   --orders-mech-glow: rgba(232, 150, 40, 0.22);
@@ -51,12 +52,12 @@ body[data-theme="dark"] .orders-demo {
   --orders-shade: rgba(0, 0, 0, 0.45);
   --orders-box-edge: #9aa1b4;
   --orders-tax: #f0a43a;
-  --orders-holo-edge: rgba(130, 176, 255, 0.7);
-  --orders-holo-glow: rgba(90, 150, 255, 0.32);
-  --orders-holo-film: rgba(120, 170, 255, 0.06);
-  --orders-holo-line: rgba(140, 180, 255, 0.1);
-  --orders-holo-beam: rgba(120, 170, 255, 0.18);
-  --orders-holo-blend: screen;
+  --orders-layer-edge: rgba(130, 176, 255, 0.7);
+  --orders-layer-glow: rgba(90, 150, 255, 0.32);
+  --orders-layer-film: rgba(120, 170, 255, 0.06);
+  --orders-layer-line: rgba(140, 180, 255, 0.1);
+  --orders-layer-beam: rgba(120, 170, 255, 0.18);
+  --orders-layer-blend: screen;
   --orders-mech-edge: rgba(255, 190, 100, 0.75);
   --orders-mech-glow: rgba(255, 170, 60, 0.3);
   --orders-mech-film: rgba(255, 180, 80, 0.06);
@@ -72,12 +73,12 @@ body[data-theme="dark"] .orders-demo {
     --orders-shade: rgba(0, 0, 0, 0.45);
     --orders-box-edge: #9aa1b4;
     --orders-tax: #f0a43a;
-    --orders-holo-edge: rgba(130, 176, 255, 0.7);
-    --orders-holo-glow: rgba(90, 150, 255, 0.32);
-    --orders-holo-film: rgba(120, 170, 255, 0.06);
-    --orders-holo-line: rgba(140, 180, 255, 0.1);
-    --orders-holo-beam: rgba(120, 170, 255, 0.18);
-    --orders-holo-blend: screen;
+    --orders-layer-edge: rgba(130, 176, 255, 0.7);
+    --orders-layer-glow: rgba(90, 150, 255, 0.32);
+    --orders-layer-film: rgba(120, 170, 255, 0.06);
+    --orders-layer-line: rgba(140, 180, 255, 0.1);
+    --orders-layer-beam: rgba(120, 170, 255, 0.18);
+    --orders-layer-blend: screen;
     --orders-mech-edge: rgba(255, 190, 100, 0.75);
     --orders-mech-glow: rgba(255, 170, 60, 0.3);
     --orders-mech-film: rgba(255, 180, 80, 0.06);
@@ -88,14 +89,14 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-/* the hologram and the mechanism, toned down (data-tone="calm" on the demo): their layers paper, as
-   the stack's sheets, with neither glow nor scan lines, and the light down to the card a shadow */
+/* the mechanism, toned down (data-tone="calm" on the demo): its layers paper, as the stack's
+   sheets, with neither glow nor scan lines, and the light down to the card a shadow */
 .orders-demo[data-tone="calm"] {
-  --orders-holo-edge: rgba(91, 98, 117, 0.45);
-  --orders-holo-glow: transparent;
-  --orders-holo-film: rgba(255, 255, 255, 0.55);
-  --orders-holo-line: transparent;
-  --orders-holo-beam: rgba(91, 98, 117, 0.08);
+  --orders-layer-edge: rgba(91, 98, 117, 0.45);
+  --orders-layer-glow: transparent;
+  --orders-layer-film: rgba(255, 255, 255, 0.55);
+  --orders-layer-line: transparent;
+  --orders-layer-beam: rgba(91, 98, 117, 0.08);
   --orders-mech-edge: rgba(150, 112, 60, 0.6);
   --orders-mech-glow: transparent;
   --orders-mech-film: rgba(252, 248, 240, 0.85);
@@ -103,11 +104,11 @@ body[data-theme="dark"] .orders-demo {
 }
 
 body[data-theme="dark"] .orders-demo[data-tone="calm"] {
-  --orders-holo-edge: rgba(170, 178, 196, 0.4);
-  --orders-holo-glow: transparent;
-  --orders-holo-film: rgba(30, 33, 42, 0.55);
-  --orders-holo-line: transparent;
-  --orders-holo-beam: rgba(170, 178, 196, 0.06);
+  --orders-layer-edge: rgba(170, 178, 196, 0.4);
+  --orders-layer-glow: transparent;
+  --orders-layer-film: rgba(30, 33, 42, 0.55);
+  --orders-layer-line: transparent;
+  --orders-layer-beam: rgba(170, 178, 196, 0.06);
   --orders-mech-edge: rgba(210, 175, 120, 0.5);
   --orders-mech-glow: transparent;
   --orders-mech-film: rgba(40, 36, 30, 0.85);
@@ -116,11 +117,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 @media (prefers-color-scheme: dark) {
   body:not([data-theme="light"]) .orders-demo[data-tone="calm"] {
-    --orders-holo-edge: rgba(170, 178, 196, 0.4);
-    --orders-holo-glow: transparent;
-    --orders-holo-film: rgba(30, 33, 42, 0.55);
-    --orders-holo-line: transparent;
-    --orders-holo-beam: rgba(170, 178, 196, 0.06);
+    --orders-layer-edge: rgba(170, 178, 196, 0.4);
+    --orders-layer-glow: transparent;
+    --orders-layer-film: rgba(30, 33, 42, 0.55);
+    --orders-layer-line: transparent;
+    --orders-layer-beam: rgba(170, 178, 196, 0.06);
     --orders-mech-edge: rgba(210, 175, 120, 0.5);
     --orders-mech-glow: transparent;
     --orders-mech-film: rgba(40, 36, 30, 0.85);
@@ -703,18 +704,19 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   font-weight: 600;
 }
 
-/* -- the hologram view (data-view="hologram"): the input on a card at the bottom, and every
-   explanation on a glowing, see-through layer above it, which floats off the card while open --- */
+/* -- the mechanism view (data-view="mechanism"; the exploded view draws it again, below): the input
+   on a card, every explanation on a glowing, see-through layer above it, which floats off the card
+   while open, and the full decomposition below the card, the mechanism under it all ----------- */
 
 /* a layer: film with scan lines and a glowing edge, nothing but the explanation's marks on it */
 .orders-demo-sheet.orders-demo-layer {
-  border-color: var(--orders-holo-edge);
+  border-color: var(--orders-layer-edge);
   background:
-    repeating-linear-gradient(0deg, var(--orders-holo-line) 0 1px, transparent 1px 6px),
-    var(--orders-holo-film);
+    repeating-linear-gradient(0deg, var(--orders-layer-line) 0 1px, transparent 1px 6px),
+    var(--orders-layer-film);
   box-shadow:
-    0 0 14px var(--orders-holo-glow),
-    inset 0 0 20px var(--orders-holo-glow);
+    0 0 14px var(--orders-layer-glow),
+    inset 0 0 20px var(--orders-layer-glow);
   transition:
     transform var(--orders-move) var(--orders-settle),
     opacity 360ms var(--orders-ease),
@@ -724,11 +726,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 }
 
 .orders-demo-layer .orders-demo-tag {
-  fill: var(--orders-holo-edge);
+  fill: var(--orders-layer-edge);
 }
 
 /* open, the layers hang in the air, each floating a little (demo.js staggers them) */
-.orders-demo-holo-open .orders-demo-layer {
+.orders-demo-open .orders-demo-layer {
   animation: orders-demo-float 3.6s ease-in-out infinite alternate;
 }
 
@@ -743,11 +745,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 }
 
 /* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
-.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-layer {
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-layer {
   opacity: 0;
 }
 
-.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-holo-top {
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-layer.orders-demo-top {
   border-color: transparent;
   background: none;
   box-shadow: none;
@@ -755,16 +757,16 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 }
 
 /* at rest, the card's name gives way to the top layer's, which lies on it */
-.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-card .orders-demo-tag {
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-card .orders-demo-tag {
   opacity: 0;
 }
 
-/* the card wears the marks of the layer pointed at, projected (and a rested hologram's rows point
-   at nothing: their lines show only while the layers float) */
+/* the card wears the marks of the layer pointed at, projected (and the rows of layers at rest
+   point at nothing: their lines show only while the layers float) */
 .orders-demo-projection {
   position: absolute;
   inset: 0;
-  mix-blend-mode: var(--orders-holo-blend);
+  mix-blend-mode: var(--orders-layer-blend);
   pointer-events: none;
 }
 
@@ -776,13 +778,13 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   opacity: 0.85;
 }
 
-.orders-demo.orders-demo-holo .orders-demo-row::before {
+.orders-demo.orders-demo-floating .orders-demo-row::before {
   transition:
     width var(--orders-move) var(--orders-settle),
     opacity 360ms var(--orders-ease);
 }
 
-.orders-demo.orders-demo-holo:not(.orders-demo-holo-open) .orders-demo-row::before {
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-row::before {
   opacity: 0;
 }
 
@@ -808,25 +810,23 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 }
 
 .orders-demo-beam-top {
-  stop-color: var(--orders-holo-beam);
+  stop-color: var(--orders-layer-beam);
 }
 
 .orders-demo-beam-bottom {
-  stop-color: var(--orders-holo-beam);
+  stop-color: var(--orders-layer-beam);
   stop-opacity: 0.25;
 }
 
 .orders-demo-beam-edges {
   fill: none;
-  stroke: var(--orders-holo-edge);
+  stroke: var(--orders-layer-edge);
   stroke-width: 0.75;
   stroke-dasharray: 2 3;
   opacity: 0.6;
 }
 
-/* -- the mechanism view (data-view="mechanism"): the hologram, but the full decomposition lies
-   below the input, the mechanism under it all: blueprint-like, amber, hidden under the card at
-   rest ---------------------------------------------------------------------------------------- */
+/* the mechanism: blueprint-like, amber, hidden under the card at rest */
 
 .orders-demo-sheet.orders-demo-layer.orders-demo-deep {
   border-color: var(--orders-mech-edge);
@@ -845,11 +845,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 /* at rest, under the card: only its glowing edge shows below the card's (in the exploded view, it
    shows inside the cutaway) */
-.orders-demo:is([data-view="mechanism"], [data-view="exploded"]):not(.orders-demo-holo-open) .orders-demo-layer.orders-demo-deep {
+.orders-demo:is([data-view="mechanism"], [data-view="exploded"]):not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;
 }
 
-.orders-demo[data-view="mechanism"]:not(.orders-demo-holo-open) .orders-demo-deep .orders-demo-face {
+.orders-demo[data-view="mechanism"]:not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
   opacity: 0;
 }
 
@@ -897,8 +897,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   border-left: 2px dashed var(--orders-mech-edge);
 }
 
-/* -- the calm tone (data-tone="calm"): the hologram's and the mechanism's layers lie still, with an
-   edge below them, as the stack's sheets -------------------------------------------------------- */
+/* -- the calm tone (data-tone="calm"): the mechanism's layers lie still, with an edge below them, as
+   the stack's sheets ---------------------------------------------------------------------------- */
 
 .orders-demo[data-tone="calm"] .orders-demo-layer {
   animation: none;
@@ -915,7 +915,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 /* while a layer is pointed at, the others' paper thins as their marks fade: the paper of the layers
    above it would else veil it */
 .orders-demo[data-tone="calm"] .orders-demo-sheet.orders-demo-layer.orders-demo-receded:not(.orders-demo-deep) {
-  background: color-mix(in srgb, var(--orders-holo-film), transparent 85%);
+  background: color-mix(in srgb, var(--orders-layer-film), transparent 85%);
 }
 
 /* -- the exploded view (data-view="exploded"): the mechanism as a technical drawing. At rest, a
@@ -970,7 +970,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   animation: orders-demo-heal 300ms var(--orders-ease) both;
 }
 
-.orders-demo[data-view="exploded"]:not(.orders-demo-holo-open) :is(.orders-demo-card, .orders-demo-layer:not(.orders-demo-deep)) {
+.orders-demo[data-view="exploded"]:not(.orders-demo-open) :is(.orders-demo-card, .orders-demo-layer:not(.orders-demo-deep)) {
   clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, 50% 120%, 50% 50%, -20% 50%);
   animation: orders-demo-cut 560ms var(--orders-settle) 480ms both;
 }
@@ -1011,7 +1011,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   transition: opacity 360ms var(--orders-ease) 520ms;
 }
 
-.orders-demo-holo-open .orders-demo-section {
+.orders-demo-open .orders-demo-section {
   opacity: 0;
   transition: opacity 140ms var(--orders-ease);
 }
@@ -1053,7 +1053,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     clip-path 0s 160ms;
 }
 
-.orders-demo-holo-open .orders-demo-assembly {
+.orders-demo-open .orders-demo-assembly {
   opacity: 1;
   clip-path: inset(0);
   transition:
@@ -1146,7 +1146,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     opacity 360ms var(--orders-ease);
 }
 
-.orders-demo[data-view="exploded"]:not(.orders-demo-holo-open) .orders-demo-row::after {
+.orders-demo[data-view="exploded"]:not(.orders-demo-open) .orders-demo-row::after {
   opacity: 0;
 }
 
