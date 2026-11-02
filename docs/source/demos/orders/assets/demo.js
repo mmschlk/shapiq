@@ -1120,7 +1120,7 @@
           .map((letter, k) => (t >= settle[k] || letter === " " ? letter : LETTERS[Math.floor(Math.random() * LETTERS.length)]))
           .join("");
         if (t < duration) requestAnimationFrame(frame);
-        else fit(node.closest(".orders-demo-wire-shows"));
+        else fitPart(node.closest(".orders-demo-wire-shows"));
       };
       requestAnimationFrame(frame);
     }
@@ -1150,12 +1150,12 @@
       chipNote.textContent = model.title;
       say(outValue, problem.output, flip);
       outNote.textContent = problem.value;
-      for (const node of [xShows, chipShows, outShows]) fit(node);
+      for (const node of [xShows, chipShows, outShows]) fitPart(node);
       if (flip) [xShows, chipShows, outShows].forEach((node, k) => flap(node, k * 90));
     }
     // a part's face, scaled down about its middle where it would not fit its box (a house's table,
     // a long prediction), as all three boxes have one size
-    function fit(node) {
+    function fitPart(node) {
       node.style.scale = "";
       const box = node.parentElement;
       const style = getComputedStyle(box);
@@ -1329,7 +1329,7 @@
       const note = pointed || state.blank !== null ? `R² ${fit2(r2)} explained` : example.model.title;
       if (chipNote.textContent !== note) {
         chipNote.textContent = note;
-        fit(chipShows);
+        fitPart(chipShows);
       }
     }
 
@@ -2182,9 +2182,9 @@
     // the light out of the chip follows the plan's layout (its width, its fonts)
     new ResizeObserver(() => {
       castLightOut();
-      for (const node of [xShows, chipShows, outShows]) fit(node);
+      for (const node of [xShows, chipShows, outShows]) fitPart(node);
     }).observe(plan);
-    document.fonts?.ready.then(() => [xShows, chipShows, outShows].forEach(fit));
+    document.fonts?.ready.then(() => [xShows, chipShows, outShows].forEach(fitPart));
     // the view (a stack, or the unfolded view) follows the demo's data-view attribute, and what the
     // sheets show its data-show
     new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-show"] });
