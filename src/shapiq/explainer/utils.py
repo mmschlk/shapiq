@@ -212,9 +212,12 @@ def get_predict_function_and_model_type(
 
     if model_class in [
         "sklearn.svm.SVR",
+        "sklearn.svm._classes.SVR",
         "sklearn.svm.SVC",
+        "sklearn.svm._classes.SVC",
         "sklearn.gaussian_process.GaussianProcessRegressor",
-    ]:
+        "sklearn.gaussian_process._gpr.GaussianProcessRegressor",
+    ] and not has_unsupported_product_kernel(model):
         _model_type = "product_kernel"
 
     # default extraction (sklearn api) which tries logits, probabilities, and then predictions
@@ -382,3 +385,21 @@ def is_graph_neural_network(model: object) -> bool:
         return False
     modules = cast("Any", model).modules()
     return any(safe_isinstance(module, "torch_geometric.nn.MessagePassing") for module in modules)
+
+
+def has_unsupported_product_kernel(model: object) -> bool:
+    """Return whether the model is an SVM or GP that the ProductKernelExplainer cannot explain.
+
+    The ProductKernelExplainer supports only RBF kernels and binary SVM classifiers. Other SVMs
+    and Gaussian processes (e.g. a ``GaussianProcessRegressor`` with its default kernel) are
+    explained by the TabularExplainer instead. Does not import scikit-learn.
+    """
+    if safe_isinstance(model, ["sklearn.svm.SVC", "sklearn.svm.SVR"]):
+        if getattr(model, "kernel", None) != "rbf":
+            return True
+        classes = getattr(model, "classes_", None)
+        return classes is not None and len(classes) != 2
+    if safe_isinstance(model, "sklearn.gaussian_process.GaussianProcessRegressor"):
+        kernel = getattr(model, "kernel_", None)
+        return kernel is not None and type(kernel).__name__ != "RBF"
+    return False
