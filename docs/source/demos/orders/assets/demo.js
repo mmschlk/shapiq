@@ -1636,6 +1636,7 @@
       beam.style.zIndex = item?.deep ? 1 : 3;
       // brightest at the layer it comes from: above the card, or the mechanism's, amber, below it
       beam.classList.toggle("orders-demo-beam-deep", Boolean(item?.deep));
+      card.node.classList.toggle("orders-demo-lit", Boolean(item) && !item.deep);
       glow.setAttribute("y1", item?.deep ? 1 : 0);
       glow.setAttribute("y2", item?.deep ? 0 : 1);
       const source = item?.node;

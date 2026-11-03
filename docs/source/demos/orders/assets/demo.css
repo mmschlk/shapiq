@@ -29,11 +29,13 @@
   /* the estimation gap in the plot: the fit an estimated full decomposition falls short of */
   --orders-gap: #c2700a;
   /* the floating layers: paper, as the card's, near opaque (what a layer
-     covers of the layers below it barely shows through, until a layer is pointed at), their edge,
-     and the shadow of the light down to the card */
+     covers of the layers below it barely shows through, until a layer is pointed at), and their
+     edge */
   --orders-layer-edge: rgba(91, 98, 117, 0.45);
   --orders-layer-film: rgba(255, 255, 255, 0.92);
-  --orders-layer-beam: rgba(91, 98, 117, 0.08);
+  /* projected, the light of the explanation pointed at down onto the input: green */
+  --orders-xai-edge: rgba(22, 163, 74, 0.8);
+  --orders-xai-beam: rgba(22, 163, 74, 0.16);
   /* the mechanism: orange, its paper with a blueprint's lines, the box it casts up to the card, and
      its name */
   --orders-mech-edge: rgba(240, 118, 0, 0.75);
@@ -56,7 +58,8 @@ body[data-theme="dark"] .orders-demo {
   --orders-gap: #f0a43a;
   --orders-layer-edge: rgba(170, 178, 196, 0.4);
   --orders-layer-film: rgba(30, 33, 42, 0.92);
-  --orders-layer-beam: rgba(170, 178, 196, 0.06);
+  --orders-xai-edge: rgba(74, 222, 128, 0.75);
+  --orders-xai-beam: rgba(74, 222, 128, 0.14);
   --orders-mech-edge: rgba(255, 150, 40, 0.7);
   --orders-mech-film: rgba(46, 32, 18, 0.9);
   --orders-mech-line: rgba(255, 150, 40, 0.08);
@@ -76,7 +79,8 @@ body[data-theme="dark"] .orders-demo {
     --orders-gap: #f0a43a;
     --orders-layer-edge: rgba(170, 178, 196, 0.4);
     --orders-layer-film: rgba(30, 33, 42, 0.92);
-    --orders-layer-beam: rgba(170, 178, 196, 0.06);
+    --orders-xai-edge: rgba(74, 222, 128, 0.75);
+    --orders-xai-beam: rgba(74, 222, 128, 0.14);
     --orders-mech-edge: rgba(255, 150, 40, 0.7);
     --orders-mech-film: rgba(46, 32, 18, 0.9);
     --orders-mech-line: rgba(255, 150, 40, 0.08);
@@ -1546,21 +1550,31 @@ body[data-theme="dark"] .orders-demo {
   opacity: 1;
 }
 
+/* the light of the explanation pointed at down onto the input: a green box, as the mechanism's is
+   orange, its edges drawn */
 .orders-demo-beam-top {
-  stop-color: var(--orders-layer-beam);
+  stop-color: var(--orders-xai-beam);
 }
 
 .orders-demo-beam-bottom {
-  stop-color: var(--orders-layer-beam);
-  stop-opacity: 0.25;
+  stop-color: var(--orders-xai-beam);
+  stop-opacity: 0.45;
 }
 
 .orders-demo-beam-edges {
   fill: none;
-  stroke: var(--orders-layer-edge);
-  stroke-width: 0.75;
-  stroke-dasharray: 2 3;
-  opacity: 0.6;
+  stroke: var(--orders-xai-edge);
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+/* and the input it falls on, edged in green, wearing the explanation's marks */
+.orders-demo-card.orders-demo-lit {
+  border-color: var(--orders-xai-edge);
+  box-shadow:
+    var(--orders-edge-x, 0) var(--orders-edge-y, 4px) 0 0 var(--orders-edge),
+    0 0 0 1px var(--orders-xai-edge),
+    calc(var(--orders-edge-x, 0) * 2.5) calc(var(--orders-edge-y, 4px) * 2.5) 18px 0 var(--orders-shade);
 }
 
 /* the mechanism: blueprint-like, amber, hidden under the card at rest */
