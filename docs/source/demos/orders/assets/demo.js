@@ -788,7 +788,9 @@
     const current = () => data.examples.find((example) => example.id === state.example);
     const sheetItems = () => items.filter((item) => item.sheet);
     const blankItems = () => items.filter((item) => !item.sheet && !item.base);
-    const stopItems = () => items.filter((item) => !item.base); // the slider's: no stop at the card
+    // the slider's: no stop at the card, and, with the plot beside the sheets, none at the mechanism:
+    // there the slider, as the plot, goes through the explanations only
+    const stopItems = () => items.filter((item) => !item.base && !(item.mechanism && beside()));
 
     // -- geometry: the size of the sheets, the stage, and every sheet's place ------------------------
 
@@ -1640,8 +1642,8 @@
       ];
       const [top, bottom] = [stops[0].y, stops.at(-1).y];
       // with floating layers, the arrow ends at the input's surface, and below it, a dashed line goes
-      // down to the mechanism
-      const surface = floating ? cardRowY : null;
+      // down to the mechanism; with the plot beside them, it ends at the last explanation
+      const surface = floating && !beside() ? cardRowY : null;
       const end = surface ?? bottom;
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
       railLine.style.height = `${roundTo(end - top - (surface === null ? 0 : 10), 2)}px`;

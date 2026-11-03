@@ -1628,6 +1628,12 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   display: block;
 }
 
+/* with the plot beside the sheets, the slider goes through the explanations only (demo.js): the
+   input and the mechanism are named beside them, under the plot */
+.orders-demo[data-view="unfolded"][data-plot="beside"] :is(.orders-demo-rail-surface, .orders-demo-rail-deep, .orders-demo-rail-deep-label) {
+  display: none;
+}
+
 .orders-demo-rail-surface {
   position: absolute;
   top: -1.5px;
@@ -2145,9 +2151,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 }
 
 /* the plot below goes, and of the rows, only their lines from the sheets stay: the card above
-   speaks for them (the rows stay buttons for the keyboard, the ring on the plot their focus). The
-   plot ends at the last explanation, so the mechanism's row goes too */
-.orders-demo[data-plot="beside"] :is(.orders-demo-footer, .orders-demo-blank-row, .orders-demo-card-row, .orders-demo-mechanism-row) {
+   speaks for them (the rows stay buttons for the keyboard, the ring on the plot their focus) */
+.orders-demo[data-plot="beside"] :is(.orders-demo-footer, .orders-demo-blank-row:not(.orders-demo-card-row)) {
   display: none;
 }
 
@@ -2162,6 +2167,40 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 .orders-demo[data-plot="beside"] .orders-demo-row > * {
   display: none;
+}
+
+/* unfolded, the plot ends at the last explanation: below it, the rows of the input and of the
+   mechanism only name them, as the plot names its axis */
+.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) {
+  padding-left: 0.4rem;
+}
+
+.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) > .orders-demo-row-title {
+  display: flex;
+}
+
+.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) .orders-demo-row-name {
+  display: none;
+}
+
+.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) strong {
+  font-size: 11.5px;
+  text-transform: lowercase;
+}
+
+/* on narrow screens, smaller, to fit the narrow column, and should they not, into the gap left of
+   it rather than off the stage */
+.orders-demo-narrow[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) {
+  grid-template-columns: minmax(0, 1fr); /* the name kept to the row's width, overflowing left */
+  padding-left: 0.15rem;
+}
+
+.orders-demo-narrow[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) > .orders-demo-row-title {
+  justify-content: flex-end;
+}
+
+.orders-demo-narrow[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) strong {
+  font-size: 10px;
 }
 
 /* the frame: its rules drawn a unit long and stretched to the stack (their stroke unstretched), so
