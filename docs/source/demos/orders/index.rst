@@ -11,28 +11,29 @@ explained exactly with ``shapiq``.
 
 .. shapiq-demo:: orders
    :fallback: images/hero_orders.png
-   :alt: Sheets stacked on top of each other, each a molecule explained at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank sheets for the orders 5 to 29, and the full decomposition of all 30 atoms at the bottom. Beside the stack, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every sheet.
+   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers for the orders 5 to 29, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
 
 What you see
 ------------
 
-**The sheets.** Every sheet explains the same prediction. The top one holds the **Shapley values**:
-one number per player, its main effect. Every sheet below holds the **Shapley interactions** of one
-order more, FSII, the Faithful Shapley Interactions :cite:p:`Tsai.2022`: of all explanations with
-values for the players and for groups of up to :math:`k` of them, the one that fits the model best
-(see the fit, below); FSII of order 1 is the Shapley values. Blank sheets stand for the orders
-between order 4 and the bottom sheet, which holds the **full decomposition**: FSII of order
-:math:`n`, the number of players, which gives every group of players its own value, the Möbius
-transform :cite:p:`Grabisch.1999`; for trees of depth 5, FSII of order 5, which already is. Red
-raises the prediction, blue lowers it; the larger and the more opaque, the stronger. The slider
-left of the stack, an arrow down, points to the more complex and more faithful explanations: every
-order below has more values, and fits the model more closely (see the fit, below). Point at a sheet
-to slide it out of the stack, or drag the slider's handle down through the orders (on a touch
-screen, tap a sheet, drag the handle, or tap an order on the plot). Where the examples do not fit in
-a row, as on a phone, the arrows above the stack, or a swipe across it, step from one example to the
-next.
+**The layers.** Every layer explains the same prediction, of the input on the card below them. The
+top one holds the **Shapley values**: one number per player, its main effect. Every layer below
+holds the **Shapley interactions** of one order more, FSII, the Faithful Shapley Interactions
+:cite:p:`Tsai.2022`: of all explanations with values for the players and for groups of up to
+:math:`k` of them, the one that fits the model best (see the fit, below); FSII of order 1 is the
+Shapley values. Blank layers stand for the orders between order 4 and the last layer, which holds
+the **full decomposition**: FSII of order :math:`n`, the number of players, which gives every group
+of players its own value, the Möbius transform :cite:p:`Grabisch.1999`; for trees of depth 5, FSII
+of order 5, which already is. Below the card lies the **mechanism** they explain, the model itself.
+Red raises the prediction, blue lowers it; the larger and the more opaque, the stronger. The slider
+left of the layers, an arrow down, points to the more complex and more faithful explanations: every
+order below has more values, and fits the model more closely (see the fit, below). Point at a layer
+to slide it out, or drag the slider's handle down through the orders (on a touch screen, tap a
+layer, drag the handle, or tap an order on the plot); point at the card for the input alone. Where
+the examples do not fit in a row, as on a phone, the arrows above the layers, or a swipe across
+them, step from one example to the next.
 
-Above the stack, the problem: the input :math:`x` wired through the model :math:`f`, a chip (black
+Above the layers, the problem: the input :math:`x` wired through the model :math:`f`, a chip (black
 for a black box, gray for a model whose structure the explanation uses), to its prediction
 :math:`f(x)`, in the red of what raises it. Out of the chip falls the explanation: the input seen
 from above, flat, with the explanation pointed at on it, what that explanation is, how well it
@@ -43,8 +44,8 @@ below it, from the top down. As the examples change, the problem stays, and what
 flips over, as on a board of departures.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
-the values of their groups. Beside the stack, a plot stands upright, a point at the height of every
-sheet: its :math:`R^2`, how much of the model's output on random coalitions this prediction
+the values of their groups. Beside the layers, a plot stands upright, a point at the height of every
+layer: its :math:`R^2`, how much of the model's output on random coalitions this prediction
 reproduces, its faithfulness. The coalitions are drawn from
 the distribution of the Shapley values: a size :math:`s` from 1 to :math:`n - 1` with probability
 proportional to :math:`1 / (s (n - s))`, and every coalition of that size alike, the weights of
@@ -67,9 +68,9 @@ written as a sum over groups of players: :math:`R^2 = 1`. Unless it is estimated
 many players, the full decomposition, too, is fit to a sample of the coalitions, and what its fit
 falls short of 1, shaded in the plot, is the **estimation gap**. Many models have no interactions
 above some order: the trees of a given depth, the receptive fields of a graph neural network. From
-that order on, FSII equals the full decomposition: the houses' stacks end there, at order 5, where
+that order on, FSII equals the full decomposition: the houses' layers end there, at order 5, where
 the fit is exact, and the molecule's plot runs dashed from order 10 to :math:`n = 30`. Point along
-the plot to bring out the sheet of an order.
+the plot to bring out the layer of an order.
 
 **The molecule** is graph 71 of the Mutagenicity dataset of the TUDataset collection
 :cite:p:`Morris.2020`, 30 atoms with three nitro groups (NO\ :sub:`2`), which a graph convolutional
@@ -84,11 +85,11 @@ carbon, :math:`R^2 = 0.998`: the explanation fits the model almost exactly. No g
 of the house; an absent feature takes its values from 100 training houses (interventional
 explanations). The Shapley values split the location into a negative longitude and a positive
 latitude and fit the model with :math:`R^2 = 0.36`. Latitude and longitude only together locate the
-house: with their interaction, the explanation of order 2 fits with :math:`R^2 = 0.995`. Every sheet
+house: with their interaction, the explanation of order 2 fits with :math:`R^2 = 0.995`. Every layer
 draws the explanation as a tree that grows one level per order: the features on top, and every group
 of :math:`k` features at level :math:`k`, joined to its features. The full decomposition is a tree
-of depth 5, as deep as the model's trees, whose paths split on at most 5 features: no filler sheets,
-the stack ends at 5-FSII, exact. Of the 494 test houses near downtown Los Angeles, the Shapley
+of depth 5, as deep as the model's trees, whose paths split on at most 5 features: no blank layers,
+they end at 5-FSII, exact. Of the 494 test houses near downtown Los Angeles, the Shapley
 values of this one fit worse than those of 94 %.
 
 **One house, TabPFN**: the same house, valued by TabPFN :cite:p:`Hollmann.2025`, a transformer

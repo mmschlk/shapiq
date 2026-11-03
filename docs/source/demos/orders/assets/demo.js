@@ -1,14 +1,19 @@
-// The orders demo (demos/orders): one prediction, explained at every order of interaction, as a
-// stack of sheets. The top sheet holds the Shapley values (order 1); every sheet below adds the
-// interactions of one more order (FSII, the Faithful Shapley Interactions, or k-SII, as the data
-// says), up to order 4. Below them, blank sheets stand for the orders that follow, up to the bottom
-// sheet: the full decomposition, the interactions of all orders, which add up to the model itself.
-// Beside the stack, upright, a plot of every order's R^2, its faithfulness: how much of the model's
+// The orders demo (demos/orders): one prediction, explained at every order of interaction, as
+// layers of paper floating above the example's input, on a card. The top layer holds the Shapley
+// values (order 1); every layer below adds the interactions of one more order (FSII, the Faithful
+// Shapley Interactions, or k-SII, as the data says), up to order 4. Below them, blank layers stand
+// for the orders that follow, up to the last one: the full decomposition, the interactions of all
+// orders, which add up to the model itself. Below the card lies the mechanism they explain, the
+// model itself, however complex: the explanations reveal more and more of it, order by order. Every
+// layer holds an explanation's marks only; the card, the input.
+//
+// Beside them, upright, a plot of every order's R^2, its faithfulness: how much of the model's
 // output on random coalitions (drawn from the distribution of the Shapley values) the explanation
 // reproduces beyond what their sizes alone predict. Every order's point lies at the height of its
-// sheet, a line leading to it from the sheet's corner, and the line through them runs down from the
+// layer, a line leading to it from the layer's corner, and the line through them runs down from the
 // Shapley values to the full decomposition, which reproduces the model exactly, unless it is
-// estimated: what it falls short of 1 is then shaded, the estimation gap.
+// estimated: what it falls short of 1 is then shaded, the estimation gap. The input and the
+// mechanism are named below the plot.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
@@ -19,37 +24,34 @@
 // The full decomposition is the interactions of order n, the number of players (or of the trees'
 // depth, which already are); the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
-// precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, a
-// tap that pins it, or the slider left of the stack) slides it out to the side of the stack as it
-// lies, under the sheets above it, and the others stay where they are. A ring marks its order on the
-// plot; pointing along the plot brings out the sheet of the order pointed at, or the blank sheet of
-// an order between. The slider is an arrow down the side of the stack: the explanations grow more
-// complex, and more faithful, from order to order. Where the examples do not fit in a row, a stepper
-// goes from one to the next, and so does a swipe across the stack. Above the stack, the plan shows
-// the problem, as machine learning draws it: the input x wired through the model f, a chip, to its
-// prediction f(x). Out of the chip falls the light of the explanation: the example seen from above,
-// flat, its input with the explanation pointed at on it (at rest, the Shapley values), and in a few
-// words what that explanation is, with a bar by its R^2, and how well it fits. The chip clears as far
-// as the explanation fits: the black box opens, all the way where it is exact. The demo starts with
-// the problem alone (unless data-reveal="open"): a click on the chip explains it, and the
-// explanation is built under it from the top down. The problem stays as the examples change: what
-// its parts show flips, as on a board of departures.
+// precomputed (../compute) into data.js.
 //
-// Two more views (data-view on the demo; the docs show the stack) float the explanations as layers
-// of paper, their marks only, above the example's input on a card, the full decomposition the last
-// of them, and below the card the mechanism they explain, the model itself, however complex: the
-// explanations reveal more and more of it, order by order. Unfolded ("unfolded"), the layers float
-// apart, and the one pointed at, its marks only (or the input's card), slides out, as the stack's
-// sheets do. Projected ("projected"), they lie on the card at rest (the top one showing, on the input),
-// the mechanism hidden under it; once explained and in view (or after a tap), they unfold, for good,
-// and the layer pointed at casts its light onto the card, which wears its marks (the mechanism's
-// rises to it, a box of orange light). In both, the others fade as the stack's do; the slider and
-// the plot go through the explanations only, the input and the mechanism named under the plot; the
-// stepper and the swipe work as in the stack.
+// Two views (data-view on the demo). Unfolded (the default, as the docs show it), the layers float
+// apart, and pointing at one (hover, keyboard focus on its row, a tap that pins it, or the slider
+// left of the layers) slides it out to the side as it lies, under the layers above it; the card
+// slides out too, pointed at. Projected ("projected"), the layers lie on the card at rest (the top
+// one showing, on the input), the mechanism hidden under it; once explained and in view (or after a
+// tap), they unfold, for good, and the layer pointed at stays where it floats and casts its light
+// onto the card, which wears its marks (the mechanism's rises to it, a box of orange light). In
+// both, the others fade; a ring marks the order pointed at on the plot, and pointing along the plot
+// brings out the layer of an order, or the blank layer of an order between, which peeks out. The
+// slider is an arrow down the side of the layers, through the explanations: they grow more complex,
+// and more faithful, from order to order. Where the examples do not fit in a row, a stepper goes
+// from one to the next, and so does a swipe across the layers.
 //
-// The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
-// vertically, so that every corner of every sheet is known here exactly. The script uses them to
-// find the sheet under the pointer and to lead every row of the ladder to its sheet.
+// Above them, the plan shows the problem, as machine learning draws it: the input x wired through
+// the model f, a chip, to its prediction f(x). Out of the chip falls the light of the explanation:
+// the example seen from above, flat, its input with the explanation pointed at on it (at rest, the
+// Shapley values), and in a few words what that explanation is, with a bar by its R^2, how well it
+// fits, and what it was explained with (the input alone, the card pointed at; the mechanism's, in
+// its orange). The chip clears as far as the explanation fits: the black box opens, all the way
+// where it is exact. The demo starts with the problem alone (unless data-reveal="open"): a click on
+// the chip explains it, and the explanation is built under it from the top down. The problem stays
+// as the examples change: what its parts show flips, as on a board of departures.
+//
+// The layers are drawn in an axonometric view: a square face, turned in its plane and squashed
+// vertically, so that every corner of every layer is known here exactly. The script uses them to
+// find the layer under the pointer and to lead every row of the ladder to its layer.
 //
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
 // demo cannot start, the script shows that figure itself.
@@ -216,8 +218,8 @@
   const extentOf = (points) =>
     Math.max(...[0, 1].map((axis) => Math.max(...points.map((p) => p[axis])) - Math.min(...points.map((p) => p[axis]))));
 
-  // a face's layers: "all" for a sheet of the stack, or, for the floating layers, the "input" (what
-  // is explained, on the card) or the "marks" (the explanation, on a layer above it)
+  // a face's layers: "all" for the plan's face, or, for the floating layers, the "input" (what is
+  // explained, on the card) or the "marks" (the explanation, on a layer above it)
   const shows = (layer, part) => layer === "all" || layer === part;
 
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
@@ -582,15 +584,12 @@
     const state = { example: data.examples[0].id, active: null, blank: null, card: false, pinned: false };
     let geometry = null;
     const plotId = ++plots;
-    // the views (data-view): the stack ("stack", the default, as the docs show it), its sheets
-    // stacked, the one pointed at sliding out of it; and two of floating layers, the input on a card,
-    // the explanations on layers above it, and below the card, apart from the full decomposition,
-    // the mechanism they explain. Unfolded ("unfolded"), the layers float apart, and the one pointed
-    // at (or the input's card) slides out, as the stack's sheets do. Projected
-    // ("projected"), they lie on the card at rest, the mechanism hidden under it, and unfold, float
-    // off it, once explained (or after a tap on the card), or while a layer is pointed at, which
-    // casts its marks onto the card
-    const layered = () => root.dataset.view === "unfolded" || root.dataset.view === "projected";
+    // the views (data-view), both of floating layers: the input on a card, the explanations on
+    // layers above it, and below the card, apart from the full decomposition, the mechanism they
+    // explain. Unfolded (the default, as the docs show it), the layers float apart, and the one
+    // pointed at (or the input's card) slides out to the side. Projected ("projected"), they lie on
+    // the card at rest, the mechanism hidden under it, and unfold, float off it, once explained (or
+    // after a tap on the card), or while a layer is pointed at, which casts its marks onto the card
     const projecting = () => root.dataset.view === "projected";
     // the demo starts with the problem alone (unless data-reveal="open"): a click on the model's chip
     // explains it, and the explanation is built under it, from the top down; once explained, every
@@ -785,10 +784,10 @@
       const n = Math.max(...data.examples.map((example) => example.sheets.length));
       const blanks = Math.max(...data.examples.map((example) => between(example).length));
       // the floating layers' card, below them, and the mechanism below it
-      const air = layered() ? (AIR + DEPTH) * side : 0;
+      const air = (AIR + DEPTH) * side;
       const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side + air;
-      // a sheet slides out to the left: the stack lies right of the middle by half of that (of the
-      // floating layers, none does)
+      // a layer slides out to the left: the layers lie right of the middle by half of that (projected,
+      // none does)
       const slideBy = projecting() ? 0 : SLIDE * side * spread;
       return {
         width,
@@ -802,39 +801,24 @@
       };
     }
 
-    // the place (center) of every item: stacked so that a strip of every sheet shows below the one
-    // above it (or, unfolded, as the floating layers lie), and the one pointed at slid out to the
-    // side, a blank sheet pointed at peeking out below its strip
+    // the place (center) of every item, as the floating layers lie: unfolded, the one pointed at (or
+    // the input's card) slid out to the side; and a blank sheet pointed at peeking out below its
+    // strip
     function layout(active, card = false) {
       const g = geometry;
       const peek = (item) => (!item.sheet && !item.base && item.order === state.blank ? PEEK * g.side : 0);
       if (projecting()) return layeredLayout(unfolded()).map(({ x, y }, position) => ({ x, y: y + peek(items[position]) }));
       // (unfolded, the input's card too, pointed at)
       const pointed = active === null ? (card ? items.find((item) => item.base) : null) : sheetItems()[active];
-      const rest = layered() ? layeredLayout(true) : stackLayout();
+      const rest = layeredLayout(true);
       return rest.map(({ x, y }, position) => {
         const item = items[position];
         return { x: x - (item === pointed ? g.slideBy : 0), y: y + peek(item) };
       });
     }
-    // the stack's places at rest
-    function stackLayout() {
-      const g = geometry;
-      const h = g.sheetHeight;
-      const centers = [];
-      let bottom = 0;
-      items.forEach((item, position) => {
-        if (position === 0) bottom = h;
-        else bottom += (item.sheet ? STRIP : BLANK_STRIP) * g.side;
-        centers.push(bottom - h / 2);
-      });
-      const offset = (g.height - bottom) / 2;
-      return items.map((_, position) => ({ x: g.center, y: centers[position] + offset }));
-    }
-
-    // the floating layers' places: open, as the stack's sheets, the card a breath of air below the
-    // lowest, and the mechanism deeper below it; at rest, every layer on the card, in the middle of
-    // the stage
+    // the floating layers' places: open, a strip of every layer showing below the one above it, the
+    // card a breath of air below the lowest, and the mechanism deeper below it; at rest (projected),
+    // every layer on the card, in the middle of the stage
     function layeredLayout(open) {
       const g = geometry;
       const h = g.sheetHeight;
@@ -879,10 +863,9 @@
       return true;
     };
 
-    // the order of the sheets on top of each other, as stacked: a sheet slid out keeps its place
+    // the order of the layers on top of each other: a layer slid out keeps its place; the card under
+    // its layers, the mechanism under the card, and the light between them
     const zIndex = (item) => items.length - items.indexOf(item);
-    // the floating layers': the card under its layers, the mechanism under the card, and the light
-    // between them
     const layerZ = (item) => (item.base ? 2 : item.deep ? 0 : zIndex(item) + 3);
 
     // the item under a point of the stage, where the sheets are going (not where they are while
@@ -890,8 +873,7 @@
     // at rest, and the one slid out also where it shows: else the sheet would slide away from under
     // the pointer, hand it to the sheet below, and come back for it, over and over.
     function itemAt(point) {
-      const z = layered() ? layerZ : zIndex;
-      const order = items.map((_, position) => position).sort((a, b) => z(items[b]) - z(items[a]));
+      const order = items.map((_, position) => position).sort((a, b) => layerZ(items[b]) - layerZ(items[a]));
       if (projecting()) {
         const places = layeredLayout(true);
         const position = order.find((p) => inside(point, corners(places[p])));
@@ -1003,8 +985,8 @@
 
     // a sheet of an example: its face, and its name along the bottom edge, from the bottom corner
     // (the part of a sheet that shows)
-    // (all of it, or, for a floating layer, its marks, or for their card, the input)
-    function drawSheet(example, i, layer = "all") {
+    // (a floating layer's: its marks; or their card's: the input)
+    function drawSheet(example, i, layer = "marks") {
       const node = el("div", layer === "marks" ? "orders-demo-sheet orders-demo-layer" : "orders-demo-sheet");
       const svg = add(node, "svg", { viewBox: "0 0 100 100", class: "orders-demo-face" });
       const sheet = example.sheets[i];
@@ -1019,15 +1001,12 @@
       else if (example.kind === "heatmap") heatmapFace(svg, example, sheet, layer);
       else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer);
     }
-    // every example's sheets, drawn once: an example chosen again shows them as they were drawn (the
-    // floating layers apart from the stack's sheets)
+    // every example's layers, drawn once: an example chosen again shows them as they were drawn
     const drawn = new Map();
     function sheetsOf(example) {
-      const layer = layered() ? "marks" : "all";
-      const key = `${example.id}${layered() ? " layers" : ""}`;
-      const nodes = drawn.get(key) ?? [];
-      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i, layer));
-      drawn.set(key, nodes);
+      const nodes = drawn.get(example.id) ?? [];
+      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i));
+      drawn.set(example.id, nodes);
       return nodes;
     }
     // the floating layers' card: the input, and over it, the marks of the layer pointed at, projected
@@ -1283,7 +1262,7 @@
     let settled = "";
     function settleCard() {
       const width = planText.clientWidth;
-      const key = `${width} ${layered()}`;
+      const key = `${width}`;
       if (!width || key === settled) return;
       settled = key;
       const probe = el("span", "orders-demo-plan-text orders-demo-plan-probe");
@@ -1300,7 +1279,8 @@
         const picks = [
           ...example.sheets.map((_, index) => ({ index })),
           ...between(example).map(([blank]) => ({ blank })),
-          ...(layered() ? [{ mechanism: true }, { card: true }] : []),
+          { mechanism: true },
+          { card: true },
         ];
         for (const pick of picks) {
           words.replaceChildren(...wordsOf(example, pick).nodes);
@@ -1459,7 +1439,7 @@
       root.classList.toggle("orders-demo-veiled", !revealed);
       Object.assign(state, { active: null, blank: null, card: false, pinned: false }); // a new example shows at rest
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
-      stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
+      stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, as layers above its input, with their fit`);
       stack.replaceChildren();
       for (const row of [...rows, cardRow]) row?.remove();
       if (problemOf !== example.id) showProblem(example);
@@ -1476,14 +1456,12 @@
         items.push({ order: sheet.order, sheet, index: i, node: nodes[i] });
       });
       for (const item of items) {
-        if (!item.sheet) item.node = el("div", layered() ? "orders-demo-sheet orders-demo-blank orders-demo-layer" : "orders-demo-sheet orders-demo-blank");
+        if (!item.sheet) item.node = el("div", "orders-demo-sheet orders-demo-blank orders-demo-layer");
       }
-      if (layered()) {
-        // below the card, the mechanism: a sheet of its own, after the example's sheets
-        const full = example.sheets.at(-1);
-        const card = { order: 0, base: true, node: cardOf(example) };
-        items.push(card, { order: full.order, sheet: full, index: example.sheets.length, mechanism: true, deep: true, node: mechanismOf(example) });
-      }
+      // below the layers, the input's card, and below it the mechanism: a sheet of its own, after the
+      // example's sheets
+      const card = { order: 0, base: true, node: cardOf(example) };
+      items.push(card, { order: last.order, sheet: last, index: example.sheets.length, mechanism: true, deep: true, node: mechanismOf(example) });
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
       // a row points at its sheet: hovered, focused or tapped, and the arrow keys go to the next row
@@ -1517,7 +1495,7 @@
         ladder.append(row);
         return row;
       });
-      if (layered()) {
+      {
         // the mechanism's row, below the plot, which ends at the last explanation: its name (and, for
         // the keyboard, how complex it is, of how complex it could be, a term for every subset of the
         // players, which only an estimate shows)
@@ -1538,17 +1516,14 @@
       ticks.replaceChildren(...stopItems().map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
 
       // the floating layers' row of their card: the input, what the layers explain, named
-      cardRow = null;
-      if (layered()) {
-        cardRow = el("div", "orders-demo-row orders-demo-card-row");
-        cardRow.setAttribute("aria-hidden", "true");
-        cardRow.append(el("span", "orders-demo-row-label", "Input"));
-        cardRow.addEventListener("pointerenter", (event) => {
-          if (event.pointerType === "mouse" && !state.pinned) point(null, null, true);
-        });
-        cardRow.addEventListener("click", () => toggle(null, null, true));
-        ladder.append(cardRow);
-      }
+      cardRow = el("div", "orders-demo-row orders-demo-card-row");
+      cardRow.setAttribute("aria-hidden", "true");
+      cardRow.append(el("span", "orders-demo-row-label", "Input"));
+      cardRow.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse" && !state.pinned) point(null, null, true);
+      });
+      cardRow.addEventListener("click", () => toggle(null, null, true));
+      ladder.append(cardRow);
 
       drawSide();
       showPlan();
@@ -1575,13 +1550,12 @@
       root.classList.toggle("orders-demo-narrow", g.narrow);
       const out = typeof active === "number";
       const places = layout(active, state.card);
-      // the projected layers' rows, slider and beam keep to where they float, open or at rest; the
-      // others' follow their sheets
-      const floating = layered();
+      // the rows (and, projected, the beam) follow the layers; projected, they keep to where the layers
+      // float, open or at rest
       const anchors = projecting() ? layeredLayout(true) : places;
-      const open = floating && unfolded();
-      const opening = floating && open !== root.classList.contains("orders-demo-open");
-      root.classList.toggle("orders-demo-floating", floating);
+      const open = unfolded();
+      const opening = open !== root.classList.contains("orders-demo-open");
+      root.classList.add("orders-demo-floating");
       root.classList.toggle("orders-demo-open", open);
       const pointedAt = out ? items.indexOf(sheetItems()[active]) : -1;
       items.forEach((item, position) => {
@@ -1589,14 +1563,12 @@
         const node = item.node;
         node.style.width = node.style.height = `${g.side}px`;
         node.style.marginLeft = node.style.marginTop = `${-g.side / 2}px`;
-        node.style.zIndex = floating ? layerZ(item) : zIndex(item);
-        if (floating) {
-          // the layers peel off the card one after the other, the top one first, and settle back
-          // onto it the lowest first
-          const delay = opening ? (open ? position : items.length - position) * 45 : 0;
-          node.style.transitionDelay = `${delay}ms`;
-          node.classList.toggle("orders-demo-top", position === 0);
-        }
+        node.style.zIndex = layerZ(item);
+        // the layers peel off the card one after the other, the top one first, and settle back onto
+        // it the lowest first
+        const delay = opening ? (open ? position : items.length - position) * 45 : 0;
+        node.style.transitionDelay = `${delay}ms`;
+        node.classList.toggle("orders-demo-top", position === 0);
         node.style.transform = `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scaleY(${TILT}) rotate(${(TURN * 180) / Math.PI}deg)`;
         // the edge below the face, in the face's own coordinates: straight down on the stage
         const depth = (item.sheet ? THICKNESS : THICKNESS / 2) / TILT;
@@ -1625,13 +1597,10 @@
         row.setAttribute("aria-pressed", String(state.pinned && out && item.index === active));
       });
 
-      // the slider: its stops at the middles of the sheets at rest (without a blank sheet's peek), its
-      // line from its rest down to the last explanation, and its handle at the sheet pointed at
-      const rest = floating ? anchors : layout(null);
-      stops = [
-        { y: Math.max(10, rest[0].y - RAIL_REST), item: null },
-        ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y - (!floating && item.order === state.blank ? PEEK * g.side : 0), item })),
-      ];
+      // the slider: its stops at the middles of the layers at rest (without a blank sheet's peek), its
+      // line from its rest down to the last explanation, and its handle at the layer pointed at
+      const rest = layeredLayout(true);
+      stops = [{ y: Math.max(10, rest[0].y - RAIL_REST), item: null }, ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y, item }))];
       const [top, bottom] = [stops[0].y, stops.at(-1).y];
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
       railLine.style.height = `${roundTo(bottom - top, 2)}px`;
@@ -1654,7 +1623,7 @@
       thumb.setAttribute("aria-valuenow", String(at));
       thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
 
-      if (floating) project(projecting() && out ? sheetItems()[active] : null, anchors);
+      project(projecting() && out ? sheetItems()[active] : null, anchors);
     }
 
     // the light from the layer pointed at down to the card (or from the mechanism up to it), whose
@@ -1709,7 +1678,7 @@
       side.setAttribute("height", g.height);
       // every layer's point at the height of its right corner, where the stack (or the unfolded
       // layers) lies at rest
-      const rest = layered() ? layeredLayout(true) : layout(null);
+      const rest = layeredLayout(true);
       const points = items
         .filter((item) => !item.base && !item.mechanism)
         .map((item) => ({
@@ -2022,7 +1991,7 @@
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
     stack.addEventListener("click", (event) => {
       if (performance.now() - swiped < 400) return; // the end of a swipe, not a tap
-      if (layered() && !unfolded()) {
+      if (!unfolded()) {
         // a tap on the layers at rest unfolds them, for good, none pointed at
         unfoldedForGood = true;
         place(null);
@@ -2034,13 +2003,8 @@
         toggle(null, null, true);
         return;
       }
-      if (layered() && item === null) {
-        // a tap beside the layers lets go of the one pointed at
-        state.pinned = false;
-        point(null, null);
-        return;
-      }
       if (item === null) {
+        // a tap beside the layers lets go of the one pointed at
         state.pinned = false;
         point(null, null);
       } else if (item.sheet) {

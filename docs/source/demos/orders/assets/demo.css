@@ -1,6 +1,6 @@
-/* The explanation of every order (demo.js; see demos/orders/index.rst): a stack of sheets, the
-   Shapley values on top and the full decomposition at the bottom, and beside them, upright, a plot
-   of their fit. */
+/* The explanation of every order (demo.js; see demos/orders/index.rst): layers of paper above the
+   input's card, the Shapley values on top and the full decomposition the last, the mechanism below
+   the card, and beside them, upright, a plot of their fit. */
 
 .orders-demo {
   position: relative; /* for the line that builds the explanation */
@@ -28,7 +28,7 @@
   --orders-box-edge: #ffffff;
   /* the estimation gap in the plot: the fit an estimated full decomposition falls short of */
   --orders-gap: #c2700a;
-  /* the unfolded view's floating layers: paper, as the stack's sheets, near opaque (what a layer
+  /* the floating layers: paper, as the card's, near opaque (what a layer
      covers of the layers below it barely shows through, until a layer is pointed at), their edge,
      and the shadow of the light down to the card */
   --orders-layer-edge: rgba(91, 98, 117, 0.45);
@@ -370,7 +370,7 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-/* -- the stage: the stack of sheets, and the ladder of their fits ------------------------------ */
+/* -- the stage: the layers (in .orders-demo-stack), and the ladder of their fits -------------- */
 
 .orders-demo-stage {
   position: relative;
@@ -1450,12 +1450,11 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
-/* -- the floating layers (data-view="unfolded" or "projected"): the input on a card, every
+/* -- the floating layers (unfolded, or data-view="projected"): the input on a card, every
    explanation on a layer of paper above it, apart (projected, they lie on the card at rest, and
    float off it, unfold, while open), and below the card the mechanism under it all ------------ */
 
-/* a layer: paper with an edge below, as the stack's sheets, nothing but the explanation's marks on
-   it */
+/* a layer: paper with an edge below, nothing but the explanation's marks on it */
 .orders-demo-sheet.orders-demo-layer {
   border-color: var(--orders-layer-edge);
   background: var(--orders-layer-film);
