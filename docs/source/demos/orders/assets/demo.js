@@ -55,6 +55,13 @@
 // vertically, so that every corner of every layer is known here exactly. The script uses them to
 // find the layer under the pointer and to lead every row of the ladder to its layer.
 //
+// A post that explains the figure builds it up step by step, a demo for every step (data-step): the
+// problem alone ("problem"); the input, and below it the mechanism ("mechanism"); the Shapley values
+// above them, with the plot of their fit ("shapley"); the explanations of the orders up to 4
+// ("interactions"); and, without data-step, all of it. The demos of a page show the same example:
+// choosing one in any of them chooses it in all. The page hears every choice, and can make one, as
+// the event "orders-demo-example" on the document, its detail { example: <id> }.
+//
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
 // demo cannot start, the script shows that figure itself.
 (() => {
@@ -576,6 +583,10 @@
 
   // -- the demo -------------------------------------------------------------------------------------
 
+  // the steps of the figure, as a post builds it up (without one, a demo shows all of it)
+  const PARTS = ["problem", "mechanism", "shapley", "interactions"];
+  // the example chosen, on the document: every demo of the page hears it, and follows
+  const EXAMPLE_EVENT = "orders-demo-example";
   // the explanations' index, as the sheets' tags name it: FSII (2-FSII), or k-SII (2-SII)
   let INDEX = "SII";
   let plots = 0; // the demos' plots on the page, for ids of their own
@@ -584,6 +595,14 @@
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
     // what is pointed at: a layer (its index), or the blank layer of an order between
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
+    // the step of the figure it shows (data-step), or all of it
+    const part = PARTS.includes(root.dataset.step) ? root.dataset.step : "all";
+    // of an example, the layers a step shows: how many of its sheets, from the top (none, the
+    // Shapley values, all but the full decomposition, or all), and the blank layers between them
+    const shownSheets = (example) =>
+      ({ problem: 0, mechanism: 0, shapley: 1, interactions: example.sheets.filter((sheet) => !sheet.full).length })[part] ??
+      example.sheets.length;
+    const shownBlanks = (example) => (part === "all" ? between(example) : []);
     let geometry = null;
     const plotId = ++plots;
     // the views (data-view), both of floating layers: the input on a card, the explanations on
@@ -595,8 +614,8 @@
     const projecting = () => root.dataset.view === "projected";
     // the demo starts with the problem alone (unless data-reveal="open"): a click on the model's chip
     // explains it, and the explanation is built under it, from the top down; once explained, every
-    // example is
-    let revealed = root.dataset.reveal === "open";
+    // example is. A step shows its part at once (the problem's, the problem alone, for good)
+    let revealed = root.dataset.reveal === "open" || (part !== "all" && part !== "problem");
     // the floating layers unfold for good, once: after the model was clicked to explain it, once they
     // have come in and are in view (or tapped at rest); before, only while one is pointed at
     let unfoldedForGood = false;
@@ -693,10 +712,10 @@
     flow.append(into, chip, onto);
     // unexplained, the chip is a button that explains the example
     chip.addEventListener("click", () => {
-      if (!revealed) reveal();
+      if (!revealed && part === "all") reveal();
     });
     chip.addEventListener("keydown", (event) => {
-      if (revealed || (event.key !== "Enter" && event.key !== " ")) return;
+      if (revealed || part !== "all" || (event.key !== "Enter" && event.key !== " ")) return;
       event.preventDefault();
       reveal();
     });
@@ -812,12 +831,13 @@
       // the room holds the stack and the sheet slid out of it
       const side = Math.max(110, Math.min(360, room / ((1 + SLIDE) * spread)));
       const sheetHeight = side * TILT * spread;
-      // the same height for every example: the most sheets and blank sheets of any
-      const n = Math.max(...data.examples.map((example) => example.sheets.length));
-      const blanks = Math.max(...data.examples.map((example) => between(example).length));
-      // the floating layers' card, below them, and the mechanism below it
-      const air = (AIR + DEPTH) * side;
-      const stack = sheetHeight + (n - 1) * STRIP * side + blanks * BLANK_STRIP * side + air;
+      // the same height for every example: the most sheets and blank sheets of any, of those the
+      // step shows
+      const n = Math.max(...data.examples.map(shownSheets));
+      const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
+      // the floating layers' card, below them (without them, on top), and the mechanism below it
+      const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
+      const stack = sheetHeight + (layers + DEPTH) * side;
       // a layer slides out to the left: the layers lie right of the middle by half of that (projected,
       // none does)
       const slideBy = projecting() ? 0 : SLIDE * side * spread;
@@ -972,7 +992,7 @@
     // from the other. Without motion, it shows at once
     let chosen = 0; // the examples chosen so far: only the last one chosen is drawn
     const shift = (pixels) => root.style.setProperty("--orders-shift", `${roundTo(pixels, 1)}px`);
-    function choose(example, direction = 0) {
+    function choose(example, direction = 0, tell = true) {
       if (state.example === example.id) return;
       Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
@@ -983,7 +1003,9 @@
       showPlan();
       [planView, planText].forEach((node) => flap(node, 300));
       const choice = ++chosen;
-      if (reducedMotion()) {
+      // every demo of the page follows (out of view, at once)
+      if (tell) document.dispatchEvent(new CustomEvent(EXAMPLE_EVENT, { detail: { example: example.id } }));
+      if (reducedMotion() || (!tell && !inView)) {
         shift(0);
         root.style.removeProperty("--orders-swipe-opacity");
         render();
@@ -1168,8 +1190,10 @@
     // unexplained, the chip calls to be clicked
     function showCall() {
       const model = current().model;
-      chip.classList.toggle("orders-demo-chip-call", !revealed);
-      if (revealed) {
+      // (the problem alone, as a step, does not call)
+      const calls = !revealed && part === "all";
+      chip.classList.toggle("orders-demo-chip-call", calls);
+      if (!calls) {
         for (const name of ["role", "tabindex", "aria-label"]) chip.removeAttribute(name);
         explainTab.remove();
       } else {
@@ -1347,14 +1371,19 @@
       const example = current();
       const last = example.sheets.length - 1;
       const pointed = state.active !== null ? sheetItems()[state.active] : null;
-      const index = pointed ? Math.min(pointed.index, last) : 0;
+      // at rest, the top layer's explanation; where the step shows none, the mechanism
+      const mechanism = pointed ? pointed.mechanism : part === "mechanism" || part === "problem";
+      const index = pointed && !mechanism ? Math.min(pointed.index, last) : 0;
       // (an order between: its own explanation, or, where the data has none, the input alone)
-      const face = planFace(example, state.blank !== null ? betweenOf(example, state.blank) : example.sheets[index]);
+      const face = planFace(
+        example,
+        state.blank !== null ? betweenOf(example, state.blank) : mechanism ? example.sheets[last] : example.sheets[index],
+      );
       if (planView.firstChild !== face) planView.replaceChildren(face);
       // the mechanism, where only an estimate shows it, blurred
-      planView.classList.toggle("orders-demo-estimated", Boolean(pointed?.mechanism) && estimated(example));
+      planView.classList.toggle("orders-demo-estimated", Boolean(mechanism) && state.blank === null && estimated(example));
 
-      const pick = pointed?.mechanism ? { mechanism: true } : state.blank !== null ? { blank: state.blank } : { index };
+      const pick = state.blank !== null ? { blank: state.blank } : mechanism ? { mechanism: true } : { index };
       const { nodes, r2 } = wordsOf(example, pick);
       planWords.replaceChildren(...nodes);
       // the mechanism's, in its orange
@@ -1495,11 +1524,12 @@
       geometry = measure();
 
       const last = example.sheets.at(-1);
+      const shown = shownSheets(example);
       items = [];
       const nodes = sheetsOf(example);
-      example.sheets.forEach((sheet, i) => {
+      example.sheets.slice(0, shown).forEach((sheet, i) => {
         if (sheet === last) {
-          for (const fit of between(example)) items.push({ order: fit[0], fit });
+          for (const fit of shownBlanks(example)) items.push({ order: fit[0], fit });
         }
         items.push({ order: sheet.order, sheet, index: i, node: nodes[i] });
       });
@@ -1507,9 +1537,9 @@
         if (!item.sheet) item.node = el("div", "orders-demo-sheet orders-demo-blank orders-demo-layer");
       }
       // below the layers, the input's card, and below it the mechanism: a sheet of its own, after the
-      // example's sheets
+      // sheets shown (its index, as its row's, theirs and one)
       const card = { order: 0, base: true, node: cardOf(example) };
-      items.push(card, { order: last.order, sheet: last, index: example.sheets.length, mechanism: true, deep: true, node: mechanismOf(example) });
+      items.push(card, { order: last.order, sheet: last, index: shown, mechanism: true, deep: true, node: mechanismOf(example) });
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
       // a row points at its sheet: hovered, focused or tapped, and the arrow keys go to the next row
@@ -1534,7 +1564,7 @@
       };
       // a sheet's row: its line on to its point in the plot, and a button for the keyboard (the card
       // above says what the row would)
-      rows = example.sheets.map((sheet, i) => {
+      rows = example.sheets.slice(0, shown).map((sheet, i) => {
         const names = sheetName(sheet);
         const row = el("button", "orders-demo-row");
         row.type = "button";
@@ -1642,10 +1672,6 @@
         row.setAttribute("aria-pressed", String(state.pinned && out && item.index === active));
       });
 
-      // the invitation over the top layer, a little above its middle
-      hint.style.left = `${roundTo(places[0].x, 2)}px`;
-      hint.style.top = `${roundTo(places[0].y - g.sheetHeight * 0.12, 2)}px`;
-
       // the slider: its stops at the middles of the layers at rest (without a blank sheet's peek), and
       // its invitation at the first layer's (placed below, once the stops are)
       // past the last explanation, the mechanism's, on its own handle; its line from its rest down to
@@ -1659,6 +1685,15 @@
       ];
       const [top, bottom] = [stops[0].y, stops.at(-2).y];
       railNudge.style.translate = `0 ${roundTo(stops[1].y, 2)}px`;
+      // the invitation over the first layer to point at (the top one; where the step shows no
+      // explanation, the mechanism), a little above its middle
+      const first = places[items.indexOf(stops[1].item)];
+      hint.style.left = `${roundTo(first.x, 2)}px`;
+      hint.style.top = `${roundTo(first.y - g.sheetHeight * 0.12, 2)}px`;
+      // the arrow goes through the explanations (where the step shows none, there is none), and its
+      // label along two of them at least
+      railLine.hidden = stops.length < 3;
+      railLabel.hidden = stops.length < 4;
       // the arrow goes on past the explanations, down to the input's height, which it points at from
       // above, as the mechanism's does from below (each tip a few pixels short of it)
       const [mechY, cardY] = [rest[items.indexOf(mechanism)].y, rest[items.findIndex((item) => item.base)].y];
@@ -1778,13 +1813,23 @@
           r2: item.sheet ? item.sheet.r2 : item.fit[1],
           y: rightCorner(rest[items.indexOf(item)])[1],
         }));
+      // (where the step shows no explanation, no plot)
+      side.classList.toggle("orders-demo-side-none", !points.length);
+      if (!points.length) {
+        side.removeAttribute("aria-label");
+        sideFrame.replaceChildren();
+        delete sideFrame.dataset.width;
+        return;
+      }
       side.setAttribute(
         "aria-label",
         `Faithfulness (R²) of the explanations, top to bottom: ${points.map((p) => `order ${p.order}: ${fit2(p.r2)}`).join(", ")}` +
           (estimated(example) ? "; what the full decomposition falls short of 1 is the estimation gap" : ""),
       );
-      // R^2 from 0, or from 0.5 when every order fits better, so that the rise shows
-      const low = Math.min(...points.map((p) => p.r2)) >= 0.5 ? 0.5 : 0;
+      // R^2 from 0, or from 0.5 when every order fits better, so that the rise shows (every order's,
+      // those the step shows or not: every step's axis is the same)
+      const fits = [...example.sheets.map((sheet) => sheet.r2), ...between(example).map((fit) => fit[1])];
+      const low = Math.min(...fits) >= 0.5 ? 0.5 : 0;
       const [x0, x1] = [g.ladderLeft + (g.narrow ? 6 : 10), g.width - (g.narrow ? 8 : 12)];
       const x = (r2) => x0 + ((Math.max(low, Math.min(1, r2)) - low) / (1 - low)) * (x1 - x0);
       const f = (value) => roundTo(value, 1);
@@ -1821,7 +1866,7 @@
       // the estimation gap: what an estimated full decomposition falls short of 1, a hatched band
       // down the plot, its name along it
       const full = points.at(-1);
-      if (full.r2 < EXACT) {
+      if (full.item.sheet?.full && full.r2 < EXACT) {
         const id = `orders-side-gap-${plotId}`;
         const hatch = add(add(sideData, "defs"), "pattern", { id, width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
         add(hatch, "line", { class: "orders-demo-plot-gap-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
@@ -2135,6 +2180,15 @@
       settled = ""; // measured anew in the fonts loaded
       settleCard();
       castLightOut();
+    });
+    // the example chosen in another demo of the page, or by the page
+    let inView = false;
+    new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+    }).observe(root);
+    document.addEventListener(EXAMPLE_EVENT, (event) => {
+      const example = data.examples.find((other) => other.id === event.detail?.example);
+      if (example) choose(example, 0, false);
     });
     // the view (a stack, or the unfolded view) follows the demo's data-view attribute
     new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view"] });

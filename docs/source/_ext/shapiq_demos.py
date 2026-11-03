@@ -17,8 +17,10 @@ embeds the FIxLIP demo)::
        :fallback: images/hero_siglip2.png
        :alt: What the fallback image shows.
 
-A demo of several parts shows the one its ``:part:`` names (the story demo's ``credit`` and
-``fit``), as the container's ``data-part``.
+A demo that builds up step by step shows the step its ``:step:`` names, as the container's
+``data-step`` (the orders demo's ``problem``, ``mechanism``, ``shapley`` and ``interactions``; without
+it, all of it). The demos of one page show the same example: choosing one in any of them chooses it
+in all.
 
 It writes the demo's container, ``<div class="<name>-demo" data-root="..." data-version="...">``,
 whose ``data-root`` is the URL of the demo's assets relative to the page and ``data-version`` a
@@ -65,7 +67,7 @@ class DemoDirective(SphinxDirective):
         "anchor": directives.unchanged_required,  # the container's id, to link to it
         "fallback": directives.unchanged_required,  # an image of _static, shown without scripts
         "alt": directives.unchanged_required,  # the fallback image's text
-        "part": directives.unchanged_required,  # of a demo of several parts, the one to show
+        "step": directives.unchanged_required,  # of a demo built up step by step, the one to show
     }
 
     def run(self) -> list[nodes.Node]:
@@ -82,7 +84,7 @@ class DemoDirective(SphinxDirective):
         version = f"{zlib.crc32(data.read_bytes()):08x}" if data.is_file() else ""
         node = DemoNode(demo=name, fallback=self.options.get("fallback"), version=version)
         node["alt"] = self.options.get("alt", "")
-        node["part"] = self.options.get("part", "")
+        node["step"] = self.options.get("step", "")
         if "anchor" in self.options:
             node["ids"].append(self.options["anchor"])
         return [node]
@@ -92,8 +94,8 @@ def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     root = relative_uri(page, f"_static/demos/{node['demo']}/")
     attributes = {"data-root": root, "data-version": node.get("version", "")}
-    if node.get("part"):
-        attributes["data-part"] = node["part"]
+    if node.get("step"):
+        attributes["data-step"] = node["step"]
     self.body.append(self.starttag(node, "div", CLASS=f"{node['demo']}-demo", **attributes))
     if node["fallback"]:
         src = relative_uri(page, f"_static/{node['fallback']}")

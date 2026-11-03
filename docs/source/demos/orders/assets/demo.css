@@ -755,6 +755,11 @@ body[data-theme="dark"] .orders-demo {
   padding-bottom: 3.2rem; /* the tab's room */
 }
 
+/* the problem alone, as a step of a post (data-step="problem"): no tab, nothing to call for */
+.orders-demo-veiled[data-step="problem"] .orders-demo-plan {
+  padding-bottom: 4px;
+}
+
 .orders-demo-wire-chip.orders-demo-chip-call {
   cursor: pointer;
   animation: orders-demo-call 2.2s var(--orders-ease) infinite;
