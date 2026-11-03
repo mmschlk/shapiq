@@ -35,8 +35,10 @@
 // onto the card, which wears its marks (the mechanism's rises to it, a box of orange light). In
 // both, the others fade; a ring marks the order pointed at on the plot, and pointing along the plot
 // brings out the layer of an order, or the blank layer of an order between, which peeks out. The
-// slider is an arrow down the side of the layers, through the explanations: they grow more complex,
-// and more faithful, from order to order. Where the examples do not fit in a row, a stepper goes
+// slider is an arrow down the side of the layers, a circle at every one, through the explanations:
+// they grow more complex, and more faithful, from order to order; below the input, the mechanism's
+// orange circle on its own arrow up to the input. Until a layer is first pointed at, an invitation
+// lies over the top one: tap a layer (with a mouse, hover one) to explain. Where the examples do not fit in a row, a stepper goes
 // from one to the next, and so does a swipe across the layers.
 //
 // Above them, the plan shows the problem, as machine learning draws it: the input x wired through
@@ -748,7 +750,12 @@
     const side = document.createElementNS(SVG, "svg");
     side.setAttribute("class", "orders-demo-side");
     side.setAttribute("role", "img");
-    stage.append(rail, railLead, view, ladder, side);
+    // an invitation, over the top layer, until a layer is first pointed at: tap one (or, with a
+    // mouse, hover one) to explain the prediction by it
+    const hint = el("span", "orders-demo-hint");
+    hint.setAttribute("aria-hidden", "true");
+    hint.append(el("span", "orders-demo-hint-touch", "Tap a layer to explain"), el("span", "orders-demo-hint-hover", "Hover a layer to explain"));
+    stage.append(rail, railLead, view, ladder, side, hint);
     // its frame stays as the examples change (its grid, its ticks and the name of its axis), and what
     // it plots fades
     const sideFrame = add(side, "g", { class: "orders-demo-side-frame" });
@@ -1629,6 +1636,10 @@
         row.setAttribute("aria-pressed", String(state.pinned && out && item.index === active));
       });
 
+      // the invitation over the top layer, a little above its middle
+      hint.style.left = `${roundTo(places[0].x, 2)}px`;
+      hint.style.top = `${roundTo(places[0].y - g.sheetHeight * 0.12, 2)}px`;
+
       // the slider: its stops at the middles of the layers at rest (without a blank sheet's peek), and
       // past the last explanation, the mechanism's, on its own handle; its line from its rest down to
       // the last explanation, and its handle at the layer pointed at
@@ -1902,6 +1913,8 @@
       if (root.classList.contains("orders-demo-fading")) return;
       if (state.active === active && state.blank === blank) return;
       Object.assign(state, { active, blank });
+      // a layer pointed at, the invitation goes, for good
+      if (active !== null || blank !== null) root.classList.add("orders-demo-hinted");
       place(active);
       mark();
       showPlan();

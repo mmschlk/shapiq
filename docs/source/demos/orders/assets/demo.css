@@ -1659,12 +1659,13 @@ body[data-theme="dark"] .orders-demo {
   touch-action: none; /* dragging the handle does not scroll the page */
 }
 
-/* the line darkens downwards, to its arrowhead: the explanations grow more complex */
+/* the line darkens downwards, to its arrowhead: the explanations grow more complex (thin, as the
+   mechanism's) */
 .orders-demo-rail-line {
   position: absolute;
   top: 0;
-  left: calc(var(--orders-rail-line) - 0.5px);
-  width: 2px;
+  left: calc(var(--orders-rail-line) - 0.25px);
+  width: 1.5px;
   border-radius: 1px;
   /* (projected, from the layer pointed at down, --orders-split on, green: demo.js) */
   background: linear-gradient(var(--orders-edge), var(--orders-muted) var(--orders-split, 100%), var(--orders-xai-edge) var(--orders-split, 100%));
@@ -1672,10 +1673,10 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-rail-line::after {
   position: absolute;
-  bottom: -8px;
-  left: -5px;
-  border: 6px solid transparent;
-  border-top: 9px solid var(--orders-muted);
+  bottom: -6px;
+  left: -4.25px;
+  border: 5px solid transparent;
+  border-top: 7px solid var(--orders-muted);
   border-bottom: 0;
   content: "";
 }
@@ -1701,51 +1702,70 @@ body[data-theme="dark"] .orders-demo {
   font-style: italic;
 }
 
+/* a hollow circle at every layer, as the mechanism's handle; a small one at every blank layer,
+   behind the large ones where they meet (on a phone, smaller still, the blank layers lying close) */
 .orders-demo-tick {
   position: absolute;
+  z-index: 1;
   top: 0;
-  left: calc(var(--orders-rail-line) - 5px);
-  width: 11px;
-  border-top: 2px solid var(--orders-muted);
-  margin-top: -1px;
-  opacity: 0.7;
+  left: calc(var(--orders-rail-line) - 6.5px);
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--orders-muted);
+  border-radius: 50%;
+  margin-top: -7px;
+  background: var(--orders-page);
 }
 
 .orders-demo-tick-blank {
+  z-index: 0;
   left: calc(var(--orders-rail-line) - 2.5px);
   width: 6px;
-  border-top-width: 1px;
-  margin-top: -0.5px;
-  opacity: 0.55;
+  height: 6px;
+  border-width: 1.5px;
+  margin-top: -3px;
 }
 
+.orders-demo-narrow .orders-demo-tick-blank {
+  left: calc(var(--orders-rail-line) - 1.5px);
+  width: 4px;
+  height: 4px;
+  border-width: 1px;
+  margin-top: -2px;
+}
+
+/* the handle: the circle of the order pointed at, filled, over the others */
 .orders-demo-thumb {
   position: absolute;
-  top: -8px;
-  left: calc(var(--orders-rail-line) - 7.5px);
+  z-index: 2;
+  top: -7px;
+  left: calc(var(--orders-rail-line) - 6.5px);
   box-sizing: border-box;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--orders-sheet);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--orders-ink);
   border-radius: 50%;
   background: var(--orders-ink);
-  box-shadow:
-    0 0 0 1px var(--orders-ink),
-    0 1px 4px var(--orders-shade);
+  box-shadow: 0 1px 4px var(--orders-shade);
   cursor: grab;
   transition:
     translate 320ms var(--orders-settle),
     scale var(--orders-duration) var(--orders-ease),
+    opacity var(--orders-duration) var(--orders-ease),
     background var(--orders-duration) var(--orders-ease),
     box-shadow var(--orders-duration) var(--orders-ease);
 }
 
-/* at rest, above the top sheet, the handle is hollow */
+/* at rest, no circle is filled, and no handle shows above them (but for the keyboard's focus) */
 .orders-demo-thumb-rest {
-  background: var(--orders-sheet);
-  box-shadow:
-    0 0 0 1.5px var(--orders-muted),
-    0 1px 4px var(--orders-shade);
+  border-color: var(--orders-muted);
+  background: var(--orders-page);
+  box-shadow: none;
+}
+
+.orders-demo-thumb-rest:not(:focus-visible) {
+  opacity: 0;
 }
 
 @media (hover: hover) {
@@ -1844,80 +1864,63 @@ body[data-theme="dark"] .orders-demo {
 
 /* the slider's handle, brought down to the mechanism, on its handle, in its orange */
 .orders-demo-thumb.orders-demo-thumb-mechanism {
+  border-color: var(--orders-mech-edge);
   background: var(--orders-mech-edge);
-  box-shadow:
-    0 0 0 1px var(--orders-mech-edge),
-    0 1px 4px var(--orders-shade);
 }
 
-/* the slider with dots (data-rail="dots"), as the mechanism's: a thinner arrow, a hollow circle at
-   every layer (smaller at a blank one), and the handle the circle of the order pointed at, filled */
-.orders-demo[data-rail="dots"] .orders-demo-rail-line {
-  left: calc(var(--orders-rail-line) - 0.25px);
-  width: 1.5px;
-}
-
-.orders-demo[data-rail="dots"] .orders-demo-rail-line::after {
-  bottom: -6px;
-  left: -4.25px;
-  border-width: 5px;
-  border-top-width: 7px;
-  border-bottom: 0;
-}
-
-.orders-demo[data-rail="dots"] .orders-demo-tick {
-  left: calc(var(--orders-rail-line) - 6.5px);
-  box-sizing: border-box;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--orders-muted);
-  border-radius: 50%;
-  margin-top: -7px;
-  background: var(--orders-page);
-  opacity: 1;
-}
-
-.orders-demo[data-rail="dots"] .orders-demo-tick-blank {
-  left: calc(var(--orders-rail-line) - 2.5px);
-  width: 6px;
-  height: 6px;
-  border-width: 1.5px;
-  margin-top: -3px;
-}
-
-/* (on a phone, where the blank layers lie close, smaller still) */
-.orders-demo-narrow[data-rail="dots"] .orders-demo-tick-blank {
-  left: calc(var(--orders-rail-line) - 1.5px);
-  width: 4px;
-  height: 4px;
-  border-width: 1px;
-  margin-top: -2px;
-}
-
-.orders-demo[data-rail="dots"] .orders-demo-thumb {
-  top: -7px;
-  left: calc(var(--orders-rail-line) - 6.5px);
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--orders-ink);
+/* the invitation over the top layer (demo.js places it), as the Explain tab under the chip: tap a
+   layer, or with a mouse, hover one; it goes once a layer is pointed at, and while the explanation
+   is built, or the layers are swiped or change */
+.orders-demo-hint {
+  position: absolute;
+  z-index: 90;
+  padding: 0.38rem 0.95rem 0.42rem;
+  border-radius: 999px;
   background: var(--orders-ink);
-  box-shadow: 0 1px 4px var(--orders-shade);
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.45);
+  color: var(--orders-sheet);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: orders-demo-hint-bob 2.2s ease-in-out infinite;
+  transition: opacity 360ms var(--orders-ease);
 }
 
-/* at rest, no circle filled, and no handle above them (but for the keyboard's focus) */
-.orders-demo[data-rail="dots"] .orders-demo-thumb.orders-demo-thumb-rest {
-  border-color: var(--orders-muted);
-  background: var(--orders-page);
-  box-shadow: none;
+@keyframes orders-demo-hint-bob {
+  50% {
+    translate: 0 3px;
+  }
 }
 
-.orders-demo[data-rail="dots"] .orders-demo-thumb.orders-demo-thumb-rest:not(:focus-visible) {
+.orders-demo-hint-hover {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .orders-demo-hint-touch {
+    display: none;
+  }
+
+  .orders-demo-hint-hover {
+    display: inline;
+  }
+}
+
+.orders-demo-hinted .orders-demo-hint,
+.orders-demo-revealing .orders-demo-hint,
+.orders-demo-swiping .orders-demo-hint,
+.orders-demo-fading .orders-demo-hint {
   opacity: 0;
 }
 
-.orders-demo[data-rail="dots"] .orders-demo-thumb.orders-demo-thumb-mechanism {
-  border-color: var(--orders-mech-edge);
-  background: var(--orders-mech-edge);
+@container (max-width: 40rem) {
+  .orders-demo-hint {
+    padding: 0.3rem 0.75rem 0.34rem;
+    font-size: 0.78rem;
+  }
 }
 
 /* the ladder: a row per sheet, beside its right corner: its line from the corner, on to the sheet's
