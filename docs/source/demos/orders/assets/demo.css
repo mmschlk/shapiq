@@ -95,11 +95,13 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* the unfolded view, toned down (data-tone="calm" on the demo): its layers paper, as the stack's
-   sheets, with neither glow nor scan lines, and the light down to the card a shadow */
+   sheets, with neither glow nor scan lines, and the light down to the card a shadow. Their paper is
+   near opaque: what a layer covers of the layers below it barely shows through, until a layer is
+   pointed at, when the paper of the others thins (below) */
 .orders-demo[data-tone="calm"] {
   --orders-layer-edge: rgba(91, 98, 117, 0.45);
   --orders-layer-glow: transparent;
-  --orders-layer-film: rgba(255, 255, 255, 0.55);
+  --orders-layer-film: rgba(255, 255, 255, 0.92);
   --orders-layer-line: transparent;
   --orders-layer-beam: rgba(91, 98, 117, 0.08);
   --orders-mech-edge: rgba(150, 112, 60, 0.6);
@@ -111,7 +113,7 @@ body[data-theme="dark"] .orders-demo {
 body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   --orders-layer-edge: rgba(170, 178, 196, 0.4);
   --orders-layer-glow: transparent;
-  --orders-layer-film: rgba(30, 33, 42, 0.55);
+  --orders-layer-film: rgba(30, 33, 42, 0.92);
   --orders-layer-line: transparent;
   --orders-layer-beam: rgba(170, 178, 196, 0.06);
   --orders-mech-edge: rgba(210, 175, 120, 0.5);
@@ -124,7 +126,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   body:not([data-theme="light"]) .orders-demo[data-tone="calm"] {
     --orders-layer-edge: rgba(170, 178, 196, 0.4);
     --orders-layer-glow: transparent;
-    --orders-layer-film: rgba(30, 33, 42, 0.55);
+    --orders-layer-film: rgba(30, 33, 42, 0.92);
     --orders-layer-line: transparent;
     --orders-layer-beam: rgba(170, 178, 196, 0.06);
     --orders-mech-edge: rgba(210, 175, 120, 0.5);
@@ -210,6 +212,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 /* -- the examples ------------------------------------------------------------------------------ */
 
+/* as wide as the problem below it, from the input's left edge to the prediction's right one */
 .orders-demo-bar {
   display: flex;
   flex-wrap: wrap;
@@ -217,11 +220,14 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   justify-content: space-between;
   gap: 0.5rem 1rem;
   margin-bottom: 0.5rem;
+  padding: 0 1px;
 }
 
+/* the examples share the bar's width */
 .orders-demo-switch {
   position: relative; /* the pill's place */
-  display: inline-flex;
+  display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   padding: 3px;
   border: 1px solid var(--orders-line);
@@ -232,7 +238,9 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 .orders-demo-option {
   box-sizing: border-box;
   display: inline-flex;
+  flex: 1 1 auto;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   height: calc(var(--orders-control) - 8px); /* the switch, one row high, as high as a control */
   padding: 0 0.85rem;
@@ -1151,8 +1159,9 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     display: block;
   }
 
+  /* the three parts and the shortest wires fit the demo's width, as the bar above does */
   .orders-demo-flow {
-    --orders-wire-width: 6.1rem;
+    --orders-wire-width: min(6.1rem, calc((100cqw - 2.4rem - 2px) / 3));
     --orders-wire-height: 5.2rem;
   }
 
@@ -1166,8 +1175,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   }
 
   .orders-demo-wire-line {
-    min-width: 0.8rem;
-    margin: 0 0.4rem;
+    min-width: 0.6rem;
+    margin: 0 0.3rem;
   }
 
   .orders-demo-wire-chip {
