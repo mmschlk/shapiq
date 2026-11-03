@@ -738,8 +738,8 @@
     const railMechLine = el("span", "orders-demo-rail-mech-line");
     const railMech = el("span", "orders-demo-rail-mech");
     railMech.setAttribute("aria-hidden", "true"); // (the mechanism's row serves the keyboard)
-    // with data-nudge="slider", on a narrow screen, the invitation is a smaller one, at the slider:
-    // its first circle calls, "Tap" beside it
+    // on a narrow screen, the invitation is a smaller one, at the slider: its first circle calls,
+    // "Tap" beside it
     const railNudge = el("span", "orders-demo-rail-nudge");
     railNudge.setAttribute("aria-hidden", "true");
     railNudge.append(el("span", "orders-demo-rail-nudge-word", "Tap"));
@@ -756,7 +756,8 @@
     side.setAttribute("class", "orders-demo-side");
     side.setAttribute("role", "img");
     // an invitation, over the top layer, until a layer is first pointed at: tap one (or, with a
-    // mouse, hover one) to explain the prediction by it
+    // mouse, hover one) to explain the prediction by it. On a narrow screen, the slider's speaks
+    // instead
     const hint = el("span", "orders-demo-hint");
     hint.setAttribute("aria-hidden", "true");
     hint.append(el("span", "orders-demo-hint-touch", "Tap a layer to explain"), el("span", "orders-demo-hint-hover", "Hover a layer to explain"));

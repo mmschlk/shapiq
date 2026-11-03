@@ -1923,7 +1923,7 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-/* with data-nudge="slider", on a narrow screen, the invitation is at the slider instead: its first
+/* on a narrow screen, the invitation is at the slider instead, small, not over the layers: its first
    circle calls, as the chip does before it is explained, and "Tap" beside it points at it */
 .orders-demo-rail-nudge {
   position: absolute;
@@ -1939,11 +1939,11 @@ body[data-theme="dark"] .orders-demo {
   transition: opacity 360ms var(--orders-ease);
 }
 
-.orders-demo-narrow[data-nudge="slider"] .orders-demo-rail-nudge {
+.orders-demo-narrow .orders-demo-rail-nudge {
   display: block;
 }
 
-.orders-demo-narrow[data-nudge="slider"] .orders-demo-hint {
+.orders-demo-narrow .orders-demo-hint {
   display: none;
 }
 
