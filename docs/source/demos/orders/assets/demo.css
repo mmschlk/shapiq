@@ -108,6 +108,7 @@ body[data-theme="dark"] .orders-demo {
   --orders-mech-glow: transparent;
   --orders-mech-film: rgba(252, 248, 240, 0.85);
   --orders-mech-line: rgba(150, 112, 60, 0.07);
+  --orders-mech-beam: rgba(150, 112, 60, 0.2);
 }
 
 body[data-theme="dark"] .orders-demo[data-tone="calm"] {
@@ -120,6 +121,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   --orders-mech-glow: transparent;
   --orders-mech-film: rgba(40, 36, 30, 0.85);
   --orders-mech-line: rgba(210, 175, 120, 0.06);
+  --orders-mech-beam: rgba(210, 175, 120, 0.2);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -133,6 +135,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     --orders-mech-glow: transparent;
     --orders-mech-film: rgba(40, 36, 30, 0.85);
     --orders-mech-line: rgba(210, 175, 120, 0.06);
+    --orders-mech-beam: rgba(210, 175, 120, 0.2);
   }
 }
 
@@ -1600,10 +1603,10 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   opacity: 0;
 }
 
-/* its light, rising under the card */
+/* its light, rising under the card (calm, a wash of the mechanism's paper: the box between them) */
 .orders-demo-beam-deep .orders-demo-beam-top,
 .orders-demo-beam-deep .orders-demo-beam-bottom {
-  stop-color: var(--orders-mech-glow);
+  stop-color: var(--orders-mech-beam, var(--orders-mech-glow));
 }
 
 .orders-demo-beam-deep .orders-demo-beam-edges {
@@ -1663,6 +1666,13 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 .orders-demo[data-tone="calm"] .orders-demo-projection {
   mix-blend-mode: normal;
+}
+
+/* the box between the mechanism and the card, pointed at: drawn, its edges solid */
+.orders-demo[data-tone="calm"] .orders-demo-beam-deep .orders-demo-beam-edges {
+  stroke-width: 1;
+  stroke-dasharray: none;
+  opacity: 0.85;
 }
 
 /* while a layer is pointed at, the others' paper thins as their marks fade: the paper of the layers
