@@ -74,10 +74,11 @@
   // the blank sheets of an example: as many for every example (where it skips as many orders), so
   // that every stack looks as deep
   const BLANKS = 6;
-  // the sheet pointed at slides out of the stack to the side, as it lies and keeping its place in
-  // the stack (the sheets above it still lie over it), and the others and the rows of the ladder
-  // stay where they are: how far it slides, in units of its width
-  const SLIDE = 0.32;
+  // unfolded, the layer pointed at slides out to the side, as it lies and keeping its place among
+  // them (the layers above it still lie over it), and the others and the rows of the ladder stay
+  // where they are: how far it slides, in units of its width; less than would carry its edge onto
+  // the line of the layer's below, which it would then seem to continue
+  const SLIDE = 0.22;
   // pixels: the column of the slider, left of the stack; its line in it; how far above the top
   // sheet its handle rests, when no sheet is out
   const RAIL = 42;
@@ -732,6 +733,9 @@
     thumb.setAttribute("aria-orientation", "vertical");
     thumb.setAttribute("aria-label", "Order of the explanation");
     rail.append(railLine, railLabel, ticks, thumb);
+    // the line of the layer pointed at, on from its left corner to the slider's handle, as its row's
+    // goes on from its right corner to its point in the plot
+    const railLead = el("span", "orders-demo-rail-lead");
     // the stack's window: it starts at the slider's column, so that a stack swiped or slid aside goes
     // out of view there, not under the slider
     const view = el("div", "orders-demo-view");
@@ -740,7 +744,7 @@
     const side = document.createElementNS(SVG, "svg");
     side.setAttribute("class", "orders-demo-side");
     side.setAttribute("role", "img");
-    stage.append(rail, view, ladder, side);
+    stage.append(rail, railLead, view, ladder, side);
     // its frame stays as the examples change (its grid, its ticks and the name of its axis), and what
     // it plots fades
     const sideFrame = add(side, "g", { class: "orders-demo-side-frame" });
@@ -776,7 +780,9 @@
       const ladderWidth = Math.min(narrow ? 71 : 120, width * 0.17);
       const gap = narrow ? 10 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
-      const room = width - ladderWidth - gap - RAIL;
+      // between the slider and a layer slid out, room for the line from the handle to it
+      const lead = narrow ? 14 : 24;
+      const room = width - ladderWidth - gap - RAIL - lead;
       // the room holds the stack and the sheet slid out of it
       const side = Math.max(110, Math.min(360, room / ((1 + SLIDE) * spread)));
       const sheetHeight = side * TILT * spread;
@@ -795,7 +801,7 @@
         side,
         slideBy,
         ladderLeft: width - ladderWidth,
-        center: RAIL + room / 2 + slideBy / 2,
+        center: RAIL + lead + room / 2 + slideBy / 2,
         height: Math.ceil(stack + 2 * THICKNESS + 16),
         sheetHeight,
       };
@@ -1622,6 +1628,15 @@
       thumb.setAttribute("aria-valuemax", String(stops.length - 1));
       thumb.setAttribute("aria-valuenow", String(at));
       thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
+      // the handle's line on to the layer it brought out, at the height of the layer's left corner
+      const led = at === 0 ? null : stops[at].item;
+      railLead.classList.toggle("orders-demo-rail-lead-on", Boolean(led));
+      if (led) {
+        const [lx, ly] = corners(places[items.indexOf(led)]).reduce((a, b) => (b[0] < a[0] ? b : a));
+        const from = RAIL_LINE + 10;
+        railLead.style.translate = `${roundTo(from, 2)}px ${roundTo(ly, 2)}px`;
+        railLead.style.width = `${roundTo(Math.max(0, lx - from - 4), 2)}px`;
+      }
 
       project(projecting() && out ? sheetItems()[active] : null, anchors);
     }

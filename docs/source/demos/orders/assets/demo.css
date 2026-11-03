@@ -1745,6 +1745,27 @@ body[data-theme="dark"] .orders-demo {
   transition: none;
 }
 
+/* the line of the layer pointed at, from the slider's handle to its left corner (demo.js), solid as
+   its row's on the right */
+.orders-demo-rail-lead {
+  position: absolute;
+  z-index: 60;
+  top: 0;
+  left: 0;
+  width: 0;
+  border-top: 1px solid var(--orders-ink);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    translate var(--orders-move) var(--orders-settle),
+    width var(--orders-move) var(--orders-settle),
+    opacity var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-rail-lead-on {
+  opacity: 1;
+}
+
 /* the ladder: a row per sheet, beside its right corner: its line from the corner, on to the sheet's
    point in the plot (demo.js), and a button for the keyboard, which the card above speaks for (the
    ring on the plot its focus). Unfolded, the rows of the input and of the mechanism name them,
