@@ -758,7 +758,16 @@
     const dots = el("div", "orders-demo-dots");
     dots.setAttribute("aria-hidden", "true");
     dots.append(...data.examples.map(() => el("span")));
-    root.append(bar, planWindow, stage, dots);
+    // the blur of an estimated mechanism: an SVG filter, which every browser draws on SVG's shapes (a
+    // CSS blur() it is not, in Safari), named for this demo (demo.css takes it through
+    // --orders-blur)
+    const blurs = document.createElementNS(SVG, "svg");
+    blurs.setAttribute("class", "orders-demo-defs");
+    blurs.setAttribute("aria-hidden", "true");
+    const blur = add(add(blurs, "defs"), "filter", { id: `orders-blur-${plotId}`, x: "-20%", y: "-20%", width: "140%", height: "140%" });
+    add(blur, "feGaussianBlur", { stdDeviation: 1.6 });
+    root.style.setProperty("--orders-blur", `url(#orders-blur-${plotId})`);
+    root.append(bar, planWindow, stage, dots, blurs);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to

@@ -1601,10 +1601,19 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* estimated, the mechanism shows blurred, as only an estimate shows it: its layer, its light on the
-   input's card, and the plan's face of it (demo.js marks them) */
+   input's card, and the plan's face of it (demo.js marks them, and defines the blur: an SVG
+   filter, which Safari draws on SVG's shapes, as it does not a CSS blur()) */
 .orders-demo-estimated .orders-demo-face > :not(.orders-demo-tag),
 .orders-demo-plan-view.orders-demo-estimated .orders-demo-plan-face > * {
-  filter: blur(1.4px);
+  filter: var(--orders-blur, blur(1.6px));
+}
+
+/* the filter's own svg takes no room */
+.orders-demo-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 /* at rest, under the card: only its edge shows below the card's */
