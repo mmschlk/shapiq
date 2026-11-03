@@ -1699,16 +1699,17 @@
       const f = (value) => roundTo(value, 1);
       const [top, bottom] = [points[0].y - 12, points.at(-1).y + 12];
 
-      // the frame, made for the stage's width: the grid, and at the top, the axis's ticks and over
-      // them its name (over the plot's middle, or, where the plot is narrower than its name, ending
+      // the frame, made for the stage's width: three rules, and at the top, a tick at each, the
+      // axis's lowest R^2, its middle and 1, and over them its name (over the plot's middle, or, where the plot is narrower than its name, ending
       // at its right). It spans the stack: for the next example's, it stretches or shrinks (demo.css)
       if (sideFrame.dataset.width !== String(g.width)) {
         sideFrame.dataset.width = g.width;
         sideFrame.replaceChildren();
         const grid = add(sideFrame, "g", { class: "orders-demo-plot-grid" });
-        for (let k = 0; k <= 4; k++) {
-          add(grid, "line", { class: "orders-demo-side-rule", "data-x": f(x0 + (k / 4) * (x1 - x0)), x1: 0, x2: 0, y1: 0, y2: 1 });
-          if (k % 2 === 0) add(sideFrame, "text", { class: "orders-demo-plot-tick orders-demo-side-level", "data-x": f(x0 + (k / 4) * (x1 - x0)), "text-anchor": "middle" });
+        for (let k = 0; k <= 2; k++) {
+          const at = f(x0 + (k / 2) * (x1 - x0));
+          add(grid, "line", { class: "orders-demo-side-rule", "data-x": at, x1: 0, x2: 0, y1: 0, y2: 1 });
+          add(sideFrame, "text", { class: "orders-demo-plot-tick orders-demo-side-level", "data-x": at, "text-anchor": "middle" });
         }
         const roomy = x1 - x0 >= 104;
         add(sideFrame, "text", { class: "orders-demo-plot-label orders-demo-side-name", "data-x": f(roomy ? (x0 + x1) / 2 : x1), "text-anchor": roomy ? "middle" : "end" }, "faithfulness (R²)");
@@ -1719,8 +1720,9 @@
       for (const rule of sideFrame.querySelectorAll(".orders-demo-side-rule")) to(rule, top, ` scale(1, ${f(bottom - top)})`);
       [...sideFrame.querySelectorAll(".orders-demo-side-level")].forEach((tick, k) => {
         to(tick, top - 9);
+        // (on a narrow screen, without the leading zero: .5, .75)
         const level = low + (k / 2) * (1 - low);
-        const text = level === 0.5 && g.narrow ? ".5" : String(level);
+        const text = g.narrow && level > 0 && level < 1 ? String(level).slice(1) : String(level);
         if (tick.textContent !== text) say(tick, text, tick.textContent !== "");
       });
       to(sideFrame.querySelector(".orders-demo-side-name"), top - 25);
