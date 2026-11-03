@@ -145,13 +145,13 @@ body[data-theme="dark"] .orders-demo {
    room of the problem alone, as the demo starts (unexplained) */
 @media (scripting: enabled) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 12.75rem;
+    min-height: 13.25rem;
   }
 }
 
 @media (scripting: enabled) and (max-width: 45em) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 11.5rem;
+    min-height: 11.75rem;
   }
 }
 
@@ -445,12 +445,18 @@ body[data-theme="dark"] .orders-demo {
   text-transform: none;
 }
 
+/* the card's question, in the ink, f(x) in the red of the prediction it asks about */
 .orders-demo-plan-eyebrow {
-  color: var(--orders-muted);
-  font-size: 0.68rem;
-  font-weight: 700;
+  color: var(--orders-ink);
+  font-size: 0.8rem;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.orders-demo-plan-eyebrow .orders-demo-math {
+  color: rgb(255, 13, 87);
+  font-size: 1.08em;
 }
 
 /* the input: a face, a table of a house's features, a matrix of houses, or (small, on a phone) the
@@ -592,7 +598,8 @@ body[data-theme="dark"] .orders-demo {
 
 /* its input clear of the symbol in its corner */
 .orders-demo-wire-x {
-  padding-top: 1.1rem;
+  justify-items: unsafe center; /* what is wider than the box, as it shrinks to fit it (demo.js) */
+  padding: 1.1rem 0.55rem 0.5rem;
   background: var(--orders-sheet);
 }
 
@@ -616,12 +623,26 @@ body[data-theme="dark"] .orders-demo {
   aspect-ratio: auto;
 }
 
-/* in the box, the table and its glyph have no frame of their own */
+/* in the box, the table and its glyph have no frame of their own; the table, a little tighter, fits
+   the box, in its middle (and, should it not, it shrinks there, demo.js, rather than to one side) */
 .orders-demo-wire-x :is(.orders-demo-input-table, .orders-demo-input-small .orders-demo-input-face) {
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
+}
+
+.orders-demo-wire-x .orders-demo-input-table {
+  gap: 0.05rem 0.65rem;
+  font-size: 0.62rem;
+}
+
+.orders-demo-wire-x .orders-demo-input-cell {
+  gap: 0.35rem;
+}
+
+.orders-demo-wire-x .orders-demo-wire-shows {
+  max-width: none;
 }
 
 .orders-demo-wire-name {
@@ -727,7 +748,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-veiled .orders-demo-plan {
-  padding-bottom: 2.8rem; /* the tab's room */
+  padding-bottom: 3.2rem; /* the tab's room */
 }
 
 .orders-demo-wire-chip.orders-demo-chip-call {
@@ -759,11 +780,12 @@ body[data-theme="dark"] .orders-demo {
   position: absolute;
   top: calc(100% + 0.6rem);
   left: 50%;
-  padding: 0.3rem 0.8rem 0.35rem;
+  padding: 0.42rem 1.05rem 0.47rem;
   border-radius: 999px;
   background: var(--orders-ink);
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.45);
   color: var(--orders-sheet);
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -801,7 +823,7 @@ body[data-theme="dark"] .orders-demo {
    slider, and the plot beside them, drawn down with the line */
 .orders-demo-revealing::after {
   position: absolute;
-  z-index: 200;
+  z-index: -1; /* behind what it builds: it shows between the parts, not over them */
   top: var(--orders-scan-from, 0);
   right: 0;
   left: 0;
@@ -1020,8 +1042,30 @@ body[data-theme="dark"] .orders-demo {
   pointer-events: none;
 }
 
+/* every line a line, whatever it says: none breaks, and none moves as the next explanation shows;
+   where one would not fit the column, all shrink alike (demo.js sets the fit; the lines' sizes are
+   in em of the words') */
+.orders-demo-plan-words {
+  font-size: calc(1em * var(--orders-words-fit, 1));
+}
+
+.orders-demo-plan-words > * {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* where what an explanation holds would not fit a line, it has two, whatever it says */
+.orders-demo-plan-words.orders-demo-plan-two .orders-demo-plan-what {
+  display: -webkit-box;
+  min-height: 2.8em;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .orders-demo-plan-title {
-  font-size: 0.95rem;
+  font-size: 1.12em;
 }
 
 .orders-demo-plan-title strong {
@@ -1029,15 +1073,9 @@ body[data-theme="dark"] .orders-demo {
   color: var(--orders-ink);
 }
 
+/* under its name, what it holds, its bar by its R^2, and what it was explained with, and how */
 .orders-demo-plan-fit {
   font-variant-numeric: tabular-nums;
-}
-
-/* with the plot beside the sheets: under the sheet's name, what it holds, and a bar by its R^2 */
-.orders-demo-plan-what {
-  display: block;
-  color: var(--orders-muted);
-  font-size: 0.85rem;
 }
 
 .orders-demo-plan-fit .orders-demo-meter {
@@ -1046,21 +1084,22 @@ body[data-theme="dark"] .orders-demo {
   vertical-align: 0.05em;
 }
 
-.orders-demo-plan-method::before {
-  content: " · ";
+.orders-demo-plan-method {
+  font-size: 0.94em;
 }
 
-.orders-demo-plan-method {
-  font-style: italic;
+.orders-demo-plan-method strong {
+  color: var(--orders-ink);
+  font-weight: 600;
 }
 
 /* red and blue, as the marks */
 .orders-demo-plan-legend {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.15rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.88em;
 }
 
 .orders-demo-plan-key {
@@ -1152,7 +1191,7 @@ body[data-theme="dark"] .orders-demo {
   }
 
   .orders-demo-plan-eyebrow {
-    font-size: 0.62rem;
+    font-size: 0.72rem;
     letter-spacing: 0.05em;
   }
 
@@ -1163,7 +1202,7 @@ body[data-theme="dark"] .orders-demo {
   }
 
   .orders-demo-plan-view {
-    width: 6.5rem;
+    width: 5.5rem;
   }
 
   .orders-demo-plan-text {
@@ -1172,11 +1211,15 @@ body[data-theme="dark"] .orders-demo {
   }
 
   .orders-demo-plan-title {
-    font-size: 0.88rem;
+    font-size: 1.1em;
   }
 
-  /* the method, on a phone, goes: the room is the order's */
-  .orders-demo-plan-method {
+  .orders-demo-meter {
+    width: 3.6em;
+  }
+
+  /* on a phone, what it was explained with, without how: the room is the order's */
+  .orders-demo-plan-how {
     display: none;
   }
 }
@@ -1747,8 +1790,8 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-meter {
   position: relative;
   flex: none;
-  width: 4.5rem;
-  height: 0.4rem;
+  width: 5.3em;
+  height: 0.47em;
   overflow: hidden;
   border-radius: 999px;
   background: var(--orders-line);
@@ -1774,7 +1817,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-verdict {
-  font-size: 0.75rem;
+  font-size: 0.88em;
   letter-spacing: 0.02em;
 }
 

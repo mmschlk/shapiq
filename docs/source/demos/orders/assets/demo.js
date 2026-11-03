@@ -1219,29 +1219,33 @@
     // (its index), an order's between the sheets (blank), or the mechanism's
     function wordsOf(example, { index = 0, blank = null, mechanism = false }) {
       const words = PLAYERS[example.kind];
+      // a line each, whatever it shows, so that none moves: its name, what it holds, its bar and fit,
+      // what it was explained with, and what red and blue mean
       const title = el("span", "orders-demo-plan-title");
+      const what = el("span", "orders-demo-plan-what");
       const fit = el("span", "orders-demo-plan-fit");
       const full = example.sheets.at(-1);
       let r2 = full.r2;
       if (mechanism) {
         const n = playersOf(example);
-        title.append(el("strong", "", "Mechanism"), " the model itself, ");
-        if (estimated(example)) title.append("up to ", power(n), " terms");
-        else title.append(`${full.count.toLocaleString("en")} of `, power(n), " terms");
+        title.append(el("strong", "", "Mechanism"), " the model itself");
+        if (estimated(example)) what.append("up to ", power(n), " terms");
+        else what.append(`${full.count.toLocaleString("en")} of `, power(n), " terms");
       } else if (blank !== null) {
         r2 = fitOf(example, blank)[1];
-        title.append(el("strong", "", `Order ${blank}`), blank >= example.largest ? " as the full decomposition" : " between the sheets");
+        title.append(el("strong", "", `Order ${blank}`), " between the sheets");
+        what.append(blank >= example.largest ? "as the full decomposition" : `groups of up to ${blank} ${words.players}`);
       } else {
         const sheet = example.sheets[index];
         r2 = sheet.r2;
-        const what =
+        title.append(el("strong", "", sheetName(sheet).tag), ` ${sheetName(sheet).name}`);
+        what.append(
           sheet.order === 1
             ? `each ${words.one} alone`
             : !sheet.full
               ? `groups of up to ${sheet.order} ${words.players}`
-              : `groups of any size, ${estimated(example) ? "estimated" : "exact"}`;
-        // the sheet's name, then what it holds
-        title.append(el("strong", "", sheetName(sheet).tag), ` ${sheetName(sheet).name}`, el("span", "orders-demo-plan-what", what));
+              : `groups of any size, ${estimated(example) ? "estimated" : "exact"}`,
+        );
       }
       // and a bar by its R^2
       const meter = el("span", "orders-demo-meter");
@@ -1250,7 +1254,8 @@
       meter.append(fill);
       fit.append(meter);
       fit.append(el("span", "orders-demo-r2", fit2(r2)), el("span", "orders-demo-verdict", verdict(r2)));
-      fit.append(el("span", "orders-demo-plan-method", example.model.method));
+      const method = el("span", "orders-demo-plan-method");
+      method.append("Explained with ", el("strong", "", example.model.method), el("span", "orders-demo-plan-how", `, ${example.model.how}`));
       const legend = el("span", "orders-demo-plan-legend");
       for (const [color, meaning] of [["up", "raises"], ["down", "lowers"]]) {
         const key = el("span", "orders-demo-plan-key");
@@ -1258,7 +1263,7 @@
         legend.append(key);
       }
       legend.append(math("f(x)"));
-      return { nodes: [title, fit, legend], r2 };
+      return { nodes: [title, what, fit, method, legend], r2 };
     }
 
     // the card keeps its place and its size whatever it shows, in every example: its words take a
@@ -1275,7 +1280,11 @@
       probe.style.width = `${width}px`;
       probe.append(whyName.cloneNode(true), words);
       why.append(probe);
-      let tallest = 0;
+      // every line as it says the most, at full size: where one is wider than the column (on a
+      // narrow screen), all the words shrink alike, the same whatever the card shows; but what an
+      // explanation holds, the longest line, takes two lines instead, where it would not fit one
+      words.style.setProperty("--orders-words-fit", "1");
+      let [widest, widestWhat] = [0, 0];
       for (const example of data.examples) {
         const picks = [
           ...example.sheets.map((_, index) => ({ index })),
@@ -1284,11 +1293,21 @@
         ];
         for (const pick of picks) {
           words.replaceChildren(...wordsOf(example, pick).nodes);
-          tallest = Math.max(tallest, probe.offsetHeight);
+          for (const line of words.children) {
+            if (line.classList.contains("orders-demo-plan-what")) widestWhat = Math.max(widestWhat, line.scrollWidth);
+            else widest = Math.max(widest, line.scrollWidth);
+          }
         }
       }
+      const fit = Math.min(1, (width - 1) / widest);
+      const two = widestWhat * fit > width - 1;
+      for (const node of [planWords, words]) {
+        node.style.setProperty("--orders-words-fit", roundTo(fit, 3));
+        node.classList.toggle("orders-demo-plan-two", two);
+      }
+      // and as tall as its words, shrunk so, are (every explanation's have as many lines)
+      planText.style.minHeight = `${Math.ceil(probe.offsetHeight)}px`;
       probe.remove();
-      planText.style.minHeight = `${Math.ceil(tallest)}px`;
     }
 
     function showPlan() {

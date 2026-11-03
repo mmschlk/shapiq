@@ -35,8 +35,8 @@ next.
 Above the stack, the problem: the input :math:`x` wired through the model :math:`f`, a chip (black
 for a black box, gray for a model whose structure the explanation uses), to its prediction
 :math:`f(x)`, in the red of what raises it. Out of the chip falls the explanation: the input seen
-from above, flat, with the explanation pointed at on it, what that explanation is, and how well it
-fits. The chip clears as far as the explanation fits, its :math:`R^2`: the explanation opens the
+from above, flat, with the explanation pointed at on it, what that explanation is, how well it
+fits, and what it was explained with. The chip clears as far as the explanation fits, its :math:`R^2`: the explanation opens the
 black box, all the way where it is exact. The demo
 starts with the problem alone: a click on the chip explains it, and the explanation is built
 below it, from the top down. As the examples change, the problem stays, and what its parts show

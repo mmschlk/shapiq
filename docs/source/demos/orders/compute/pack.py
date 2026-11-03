@@ -44,25 +44,27 @@ SHORT = ["Income", "Age", "Rooms", "Bedrooms", "Population", "Occupancy", "Lat",
 # the income and the occupancy, with which it interacts the most
 TREE_NAMES = ["Income", "Age", "Rooms", "Beds", "Pop.", "Occup.", "Lat", "Long"]
 TREE_LAYOUT = [1, 3, 0, 6, 7, 5, 2, 4]
-# the models, as the demo's badge shows them: its icon, name, details, and how it was explained
-# the models, as the demo shows them: its icon, kind, details, how it was explained, and its name
+# the models, as the demo shows them: its icon, kind, details, what it was explained with and how,
+# and its name
 MODELS = {
-    "graph": [
-        "graph",
-        "Graph neural network",
-        "GCN with 2 layers",
-        "exact with GraphSHAP-IQ",
-        "GCN",
-    ],
+    "graph": ["graph", "Graph neural network", "GCN with 2 layers", "GraphSHAP-IQ", "exact", "GCN"],
     "tree": [
         "tree",
         "Tree ensemble",
         "XGBoost, 300 trees of depth 5",
-        "exact with TreeExplainer",
+        "TreeExplainer",
+        "exact",
         "XGBoost",
     ],
-    "black box": ["box", "Black box", "SigLIP 2, a vision-language model", "ProxySHAP", "SigLIP 2"],
-    "tabpfn": ["box", "Black box", "TabPFN", "exact with TabPFNImputer", "TabPFN"],
+    "black box": [
+        "box",
+        "Black box",
+        "SigLIP 2, a vision-language model",
+        "ProxySHAP",
+        "estimated",
+        "SigLIP 2",
+    ],
+    "tabpfn": ["box", "Black box", "TabPFN", "TabPFNImputer", "exact", "TabPFN"],
 }
 
 
@@ -91,7 +93,9 @@ def explanation(result: dict[str, Any], order: int) -> dict[str, Any]:
 
 def model(kind: str) -> dict[str, str]:
     """Return the model of an example, as the demo's badge shows it."""
-    return dict(zip(("icon", "title", "detail", "method", "short"), MODELS[kind], strict=True))
+    return dict(
+        zip(("icon", "title", "detail", "method", "how", "short"), MODELS[kind], strict=True)
+    )
 
 
 def split(
@@ -355,7 +359,7 @@ def main() -> None:
                 "detail": "SigLIP 2",
                 "model": {
                     **model("black box"),
-                    "method": f"ProxySHAP from {fixlip['budget']:,} coalitions",
+                    "how": f"from {fixlip['budget']:,} coalitions",
                 },
                 "problem": problem(
                     input="A photo and its caption",
