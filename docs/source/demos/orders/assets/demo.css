@@ -1623,6 +1623,14 @@ body[data-theme="dark"] .orders-demo {
   stop-color: var(--orders-mech-beam);
 }
 
+.orders-demo-beam-tip {
+  fill: var(--orders-xai-edge);
+}
+
+.orders-demo-beam-deep .orders-demo-beam-tip {
+  fill: var(--orders-mech-edge);
+}
+
 .orders-demo-beam-deep .orders-demo-beam-edges {
   stroke: var(--orders-mech-edge);
   stroke-width: 1;
@@ -1752,7 +1760,7 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-rail-lead {
   position: absolute;
   z-index: 60;
-  top: 0;
+  top: -0.5px; /* its middle at the corner's height */
   left: 0;
   width: 0;
   border-top: 1px solid var(--orders-ink);
@@ -1820,6 +1828,14 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-mech-edge);
 }
 
+/* the slider's handle, brought down to the mechanism, on its handle, in its orange */
+.orders-demo-thumb.orders-demo-thumb-mechanism {
+  background: var(--orders-mech-edge);
+  box-shadow:
+    0 0 0 1px var(--orders-mech-edge),
+    0 1px 4px var(--orders-shade);
+}
+
 /* the ladder: a row per sheet, beside its right corner: its line from the corner, on to the sheet's
    point in the plot (demo.js), and a button for the keyboard, which the card above speaks for (the
    ring on the plot its focus). Unfolded, the rows of the input and of the mechanism name them,
@@ -1847,10 +1863,12 @@ body[data-theme="dark"] .orders-demo {
   transition: transform var(--orders-move) var(--orders-settle);
 }
 
-/* the line from the sheet's right corner to its row */
+/* the line from the sheet's right corner to its row (its middle at the corner's height, as the
+   plot's line it goes on to) */
 .orders-demo-row::before {
   position: absolute;
   top: 50%;
+  margin-top: -0.5px;
   right: 100%;
   width: var(--orders-lead, 0);
   border-top: 1px dashed var(--orders-edge);

@@ -1442,8 +1442,12 @@
     const glow = add(add(beam, "defs"), "linearGradient", { id: `orders-beam-${plotId}`, x1: 0, y1: 0, x2: 0, y2: 1 });
     add(glow, "stop", { offset: 0, class: "orders-demo-beam-top" });
     add(glow, "stop", { offset: 1, class: "orders-demo-beam-bottom" });
+    // its edges, each with a small arrowhead where it reaches the input (green, or the mechanism's
+    // orange)
+    const tip = add(beam.querySelector("defs"), "marker", { id: `orders-tip-${plotId}`, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" });
+    add(tip, "path", { class: "orders-demo-beam-tip", d: "M0,1L9,5L0,9Z" });
     const beamHull = add(beam, "polygon", { fill: `url(#orders-beam-${plotId})` });
-    const beamEdges = add(beam, "path", { class: "orders-demo-beam-edges" });
+    const beamEdges = [0, 1, 2, 3].map(() => add(beam, "path", { class: "orders-demo-beam-edges", "marker-end": `url(#orders-tip-${plotId})` }));
     // the examples not shown yet, drawn while the page is idle, a sheet at a time, so that choosing
     // one only has to show it
     const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 100));
@@ -1616,11 +1620,17 @@
         row.setAttribute("aria-pressed", String(state.pinned && out && item.index === active));
       });
 
-      // the slider: its stops at the middles of the layers at rest (without a blank sheet's peek), its
-      // line from its rest down to the last explanation, and its handle at the layer pointed at
+      // the slider: its stops at the middles of the layers at rest (without a blank sheet's peek), and
+      // past the last explanation, the mechanism's, on its own handle; its line from its rest down to
+      // the last explanation, and its handle at the layer pointed at
       const rest = layeredLayout(true);
-      stops = [{ y: Math.max(10, rest[0].y - RAIL_REST), item: null }, ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y, item }))];
-      const [top, bottom] = [stops[0].y, stops.at(-1).y];
+      const mechanism = items.find((item) => item.deep);
+      stops = [
+        { y: Math.max(10, rest[0].y - RAIL_REST), item: null },
+        ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y, item })),
+        { y: rest[items.indexOf(mechanism)].y, item: mechanism },
+      ];
+      const [top, bottom] = [stops[0].y, stops.at(-2).y];
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
       railLine.style.height = `${roundTo(bottom - top, 2)}px`;
       // the arrow's label beside its middle
@@ -1634,9 +1644,11 @@
           item === null ? !out && state.blank === null : out ? item.index === active : !item.sheet && item.order === state.blank,
         ),
       );
-      // placed by translate, which the handle's growing on hover does not scale, unlike a transform
+      // placed by translate, which the handle's growing on hover does not scale, unlike a transform; at
+      // the mechanism, on its handle, in its orange
       thumb.style.translate = `0 ${roundTo(stops[at].y, 2)}px`;
       thumb.classList.toggle("orders-demo-thumb-rest", at === 0);
+      thumb.classList.toggle("orders-demo-thumb-mechanism", Boolean(stops[at].item?.mechanism));
       thumb.setAttribute("aria-valuemin", "0");
       thumb.setAttribute("aria-valuemax", String(stops.length - 1));
       thumb.setAttribute("aria-valuenow", String(at));
@@ -1700,7 +1712,9 @@
       const hull = [by(upper, left), by(upper, (a, b) => (b[1] < a[1] ? b : a)), by(upper, right), by(lower, right), by(lower, (a, b) => (b[1] > a[1] ? b : a)), by(lower, left)];
       const f = ([x, y]) => `${roundTo(x, 1)},${roundTo(y, 1)}`;
       beamHull.setAttribute("points", hull.map(f).join(" "));
-      beamEdges.setAttribute("d", upper.map((p, k) => `M${f(p)}L${f(lower[k])}`).join(""));
+      // (from the layer, or the mechanism, to the card)
+      const [from, to] = [anchors[items.indexOf(item)], anchors[items.indexOf(card)]].map(corners);
+      beamEdges.forEach((edge, k) => edge.setAttribute("d", `M${f(from[k])}L${f(to[k])}`));
     }
 
     // -- the plot of the fit, upright beside the sheets: every order at the height of its sheet, from
