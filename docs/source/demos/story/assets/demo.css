@@ -1,0 +1,533 @@
+/* The story demo (demo.js; see demos/story/index.rst): two steps up to the orders demo, a game of
+   three of a house's features, its coalitions in a lattice. The colors are the orders demo's: red
+   raises the price and blue lowers it, the model's values are orange (its mechanism's) and an
+   explanation's green (its light on the input). */
+
+.story-demo {
+  position: relative;
+  clear: both;
+  margin: 1.5rem 0 1.25rem;
+  container-type: inline-size;
+  /* the docs' tokens (tokens.css, Furo), with fallbacks for a page without them */
+  --story-ink: var(--color-foreground-primary, #1b1e27);
+  --story-muted: var(--color-foreground-secondary, #5b6275);
+  --story-sheet: var(--shapiq-surface, #ffffff);
+  --story-page: var(--color-background-primary, #ffffff);
+  --story-raised: var(--shapiq-surface-raised, #f7f8fc);
+  --story-line: var(--shapiq-border, #e2e6f3);
+  --story-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --story-duration: var(--shapiq-duration, 220ms);
+  --story-edge: #ccd3e6;
+  --story-shade: rgba(20, 28, 60, 0.14);
+  --story-up: rgb(255, 13, 87);
+  --story-down: rgb(30, 136, 229);
+  --story-model: rgba(240, 118, 0, 0.9);
+  --story-model-ink: #d96200;
+  --story-xai: rgba(22, 163, 74, 0.85);
+  --story-xai-ink: #15803d;
+  --story-xai-soft: rgba(22, 163, 74, 0.12);
+}
+
+body[data-theme="dark"] .story-demo {
+  --story-edge: #3b4152;
+  --story-shade: rgba(0, 0, 0, 0.45);
+  --story-model: rgba(255, 150, 40, 0.85);
+  --story-model-ink: #ffa23f;
+  --story-xai: rgba(74, 222, 128, 0.8);
+  --story-xai-ink: #4ade80;
+  --story-xai-soft: rgba(74, 222, 128, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .story-demo {
+    --story-edge: #3b4152;
+    --story-shade: rgba(0, 0, 0, 0.45);
+    --story-model: rgba(255, 150, 40, 0.85);
+    --story-model-ink: #ffa23f;
+    --story-xai: rgba(74, 222, 128, 0.8);
+    --story-xai-ink: #4ade80;
+    --story-xai-soft: rgba(74, 222, 128, 0.12);
+  }
+}
+
+/* while the script builds the demo, it keeps about its room */
+@media (scripting: enabled) {
+  .story-demo:not(.story-demo-ready) {
+    min-height: 34rem;
+  }
+}
+
+.story-demo-fallback {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* -- the head: the features with their values, and a few words --------------------------------- */
+
+.story-head {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.story-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.story-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem 0.4rem;
+  border: 1px solid var(--story-line);
+  border-radius: 999px;
+  background: var(--story-raised);
+  color: var(--story-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  transition:
+    background var(--story-duration) var(--story-ease),
+    color var(--story-duration) var(--story-ease),
+    border-color var(--story-duration) var(--story-ease);
+}
+
+button.story-chip {
+  cursor: pointer;
+}
+
+.story-chip-name {
+  font-weight: 700;
+}
+
+.story-chip-value {
+  color: var(--story-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a feature picked: as the layer pointed at, dark */
+.story-chip[aria-pressed="true"] {
+  border-color: var(--story-ink);
+  background: var(--story-ink);
+  color: var(--story-sheet);
+}
+
+.story-chip[aria-pressed="true"] .story-chip-value {
+  color: color-mix(in srgb, var(--story-sheet) 75%, transparent);
+}
+
+.story-chip:focus-visible,
+.story-order:focus-visible {
+  outline: 2px solid var(--story-ink);
+  outline-offset: 2px;
+}
+
+.story-lead {
+  margin: 0;
+  color: var(--story-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+/* -- the lattice: a card per coalition, the steps between them ---------------------------------- */
+
+.story-lattice {
+  position: relative;
+}
+
+.story-edges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+
+.story-step {
+  stroke: var(--story-edge);
+  stroke-width: 1.25;
+  transition:
+    stroke var(--story-duration) var(--story-ease),
+    stroke-width var(--story-duration) var(--story-ease);
+}
+
+.story-step-on {
+  stroke: var(--story-ink);
+  stroke-width: 2;
+}
+
+/* what a feature adds on a step, halfway down it */
+.story-step-tag {
+  position: absolute;
+  z-index: 2;
+  display: none;
+  padding: 0.05rem 0.4rem 0.1rem;
+  border: 1px solid var(--story-ink);
+  border-radius: 999px;
+  background: var(--story-sheet);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.story-step-tag-on {
+  display: block;
+}
+
+.story-node {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.3rem;
+  box-sizing: border-box;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid var(--story-line);
+  border-radius: 10px;
+  background: var(--story-sheet);
+  box-shadow: 0 1px 3px var(--story-shade);
+  transition:
+    opacity var(--story-duration) var(--story-ease),
+    border-color var(--story-duration) var(--story-ease);
+}
+
+/* a feature or two picked: the coalitions of their steps stand out, the others fade */
+.story-picked .story-node:not(.story-node-on) {
+  opacity: 0.45;
+}
+
+.story-node-on {
+  border-color: var(--story-ink);
+}
+
+/* its features: those known, dark; the others, faint */
+.story-pills {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.story-pill {
+  padding: 0.02rem 0.3rem 0.06rem;
+  border: 1px dashed var(--story-edge);
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--story-muted) 55%, transparent);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.story-pill-on {
+  border-style: solid;
+  border-color: var(--story-ink);
+  background: var(--story-ink);
+  color: var(--story-sheet);
+}
+
+.story-node-body {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.story-value {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.story-up {
+  color: var(--story-up);
+}
+
+.story-down {
+  color: var(--story-down);
+}
+
+.story-zero {
+  color: var(--story-muted);
+}
+
+/* -- the panel under the lattice: a credit, what two do together, or an explanation's terms ----- */
+
+.story-panel {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--story-line);
+  border-radius: 12px;
+  background: var(--story-sheet);
+  box-shadow: 0 1px 3px var(--story-shade);
+}
+
+.story-panel-title {
+  margin: 0;
+  color: var(--story-ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.story-panel-note {
+  margin: 0;
+  color: var(--story-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.story-terms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.story-term {
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem 0.3rem;
+  border: 1px solid var(--story-line);
+  border-radius: 8px;
+  background: var(--story-raised);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.story-term-weight {
+  color: var(--story-ink);
+  font-weight: 700;
+}
+
+.story-term-times {
+  color: var(--story-muted);
+}
+
+.story-term-value {
+  font-weight: 800;
+}
+
+.story-term-when {
+  color: var(--story-muted);
+  font-size: 0.75rem;
+}
+
+.story-term-total {
+  border-color: var(--story-ink);
+  background: var(--story-sheet);
+}
+
+/* the credits of all three, under every credit */
+.story-credits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--story-line);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.story-credits-title {
+  color: var(--story-muted);
+  font-weight: 700;
+}
+
+.story-credit {
+  display: inline-flex;
+  gap: 0.3rem;
+  color: var(--story-muted);
+}
+
+.story-credit-on .story-credit-name {
+  color: var(--story-ink);
+  font-weight: 700;
+}
+
+.story-credit-value {
+  font-weight: 800;
+}
+
+.story-credit-sum {
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--story-line);
+}
+
+/* -- the fit part: the orders, and every coalition's two prices --------------------------------- */
+
+.story-orders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.story-order {
+  display: inline-grid;
+  gap: 0.05rem;
+  padding: 0.35rem 0.8rem 0.4rem;
+  border: 1px solid var(--story-line);
+  border-radius: 10px;
+  background: var(--story-raised);
+  color: var(--story-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--story-duration) var(--story-ease),
+    color var(--story-duration) var(--story-ease);
+}
+
+.story-order-what {
+  color: var(--story-muted);
+  font-size: 0.72rem;
+}
+
+.story-order[aria-pressed="true"] {
+  border-color: var(--story-xai);
+  background: var(--story-xai-soft);
+}
+
+.story-order[aria-pressed="true"] strong {
+  color: var(--story-xai-ink);
+}
+
+/* a coalition's prices: the model's, an orange tick, and the explanation's, a green bar, from 0 */
+.story-track {
+  position: relative;
+  width: 100%;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--story-raised);
+}
+
+.story-track-zero {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 1px;
+  background: var(--story-edge);
+}
+
+.story-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--story-xai);
+  transition:
+    left 420ms var(--story-ease),
+    width 420ms var(--story-ease);
+}
+
+.story-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--story-model);
+}
+
+.story-numbers {
+  display: flex;
+  gap: 0.45rem;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.story-number-model {
+  color: var(--story-model-ink);
+}
+
+.story-number-guess {
+  color: var(--story-xai-ink);
+}
+
+/* a coalition the explanation misses: its card edged in orange */
+.story-node-off {
+  border-color: var(--story-model);
+}
+
+.story-terms-wrap .story-term-chip {
+  grid-auto-flow: column;
+}
+
+/* the explanation's faithfulness, as the orders demo's card shows it */
+.story-fit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.story-fit-name {
+  color: var(--story-muted);
+}
+
+.story-fit-track {
+  position: relative;
+  flex: 0 1 8rem;
+  height: 0.47rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--story-line);
+}
+
+.story-fit-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--story-xai);
+  transition: width 420ms var(--story-ease);
+}
+
+.story-fit-r2 {
+  color: var(--story-ink);
+  font-weight: 800;
+}
+
+@container (max-width: 30rem) {
+  .story-chip {
+    padding: 0.3rem 0.65rem 0.34rem;
+    font-size: 0.8rem;
+  }
+
+  .story-panel {
+    padding: 0.75rem 0.8rem;
+  }
+
+  .story-value {
+    font-size: 0.9rem;
+  }
+
+  .story-pill {
+    padding: 0.02rem 0.22rem 0.05rem;
+    font-size: 0.56rem;
+  }
+
+  .story-numbers {
+    gap: 0.3rem;
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-demo * {
+    transition: none !important;
+  }
+}
