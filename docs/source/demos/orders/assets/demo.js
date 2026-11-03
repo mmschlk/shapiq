@@ -1631,8 +1631,12 @@
         { y: rest[items.indexOf(mechanism)].y, item: mechanism },
       ];
       const [top, bottom] = [stops[0].y, stops.at(-2).y];
+      // the arrow goes on past the explanations, down to the input's height, which it points at from
+      // above, as the mechanism's does from below (each tip a few pixels short of it)
+      const [mechY, cardY] = [rest[items.indexOf(mechanism)].y, rest[items.findIndex((item) => item.base)].y];
+      const end = cardY - 13; // (its tip 8px below)
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
-      railLine.style.height = `${roundTo(bottom - top, 2)}px`;
+      railLine.style.height = `${roundTo(end - top, 2)}px`;
       // the arrow's label beside its middle
       railLabel.style.top = `${roundTo((stops[1].y + bottom) / 2, 2)}px`;
       [...ticks.children].forEach((tick, p) => {
@@ -1653,12 +1657,16 @@
       thumb.setAttribute("aria-valuemax", String(stops.length - 1));
       thumb.setAttribute("aria-valuenow", String(at));
       thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
-      // the mechanism's handle at its height, and its arrow up to the input's
-      const [mechY, cardY] = [rest[items.findIndex((item) => item.deep)].y, rest[items.findIndex((item) => item.base)].y];
+      // projected, from the layer pointed at down to the input, the arrow turns green, as the light it
+      // casts onto the input
+      const lit = projecting() && target && !target.deep && (target.sheet || betweenOf(current(), target.order));
+      railLine.classList.toggle("orders-demo-rail-line-lit", Boolean(lit));
+      railLine.style.setProperty("--orders-split", lit ? `${roundTo(stops[at].y - top, 2)}px` : "100%");
+      // the mechanism's handle at its height, and its arrow up to the input's (its tip 5px below it)
       railMech.style.translate = `0 ${roundTo(mechY, 2)}px`;
       railMech.classList.toggle("orders-demo-rail-mech-on", Boolean(target?.deep));
-      railMechLine.style.translate = `0 ${roundTo(cardY, 2)}px`;
-      railMechLine.style.height = `${roundTo(Math.max(0, mechY - 9 - cardY), 2)}px`;
+      railMechLine.style.translate = `0 ${roundTo(cardY + 6, 2)}px`;
+      railMechLine.style.height = `${roundTo(Math.max(0, mechY - 9 - cardY - 6), 2)}px`;
       // the handle's line on to the layer it brought out (or the mechanism's handle's on to the
       // mechanism), at the height of the layer's left corner
       const led = target?.deep ? target : at === 0 ? null : stops[at].item;

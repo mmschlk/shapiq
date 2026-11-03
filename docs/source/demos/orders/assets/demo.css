@@ -1657,7 +1657,8 @@ body[data-theme="dark"] .orders-demo {
   left: calc(var(--orders-rail-line) - 0.5px);
   width: 2px;
   border-radius: 1px;
-  background: linear-gradient(var(--orders-edge), var(--orders-muted));
+  /* (projected, from the layer pointed at down, --orders-split on, green: demo.js) */
+  background: linear-gradient(var(--orders-edge), var(--orders-muted) var(--orders-split, 100%), var(--orders-xai-edge) var(--orders-split, 100%));
 }
 
 .orders-demo-rail-line::after {
@@ -1668,6 +1669,10 @@ body[data-theme="dark"] .orders-demo {
   border-top: 9px solid var(--orders-muted);
   border-bottom: 0;
   content: "";
+}
+
+.orders-demo-rail-line-lit::after {
+  border-top-color: var(--orders-xai-edge);
 }
 
 .orders-demo-rail-label {
