@@ -1,6 +1,6 @@
 /* The explanation of every order (demo.js; see demos/orders/index.rst): a stack of sheets, the
-   Shapley values on top and the full decomposition at the bottom, each with its fit, and a plot of
-   the fit by order. */
+   Shapley values on top and the full decomposition at the bottom, and beside them, upright, a plot
+   of their fit. */
 
 .orders-demo {
   position: relative; /* for the line that builds the explanation */
@@ -28,20 +28,17 @@
   --orders-box-edge: #ffffff;
   /* the estimation gap in the plot: the fit an estimated full decomposition falls short of */
   --orders-gap: #c2700a;
-  /* the unfolded view's floating layers: their edge, glow, film and scan lines, the light down to
-     the card, and how the projected marks lie on the card (multiplied on a light one, screened on
-     a dark one) */
-  --orders-layer-edge: rgba(64, 112, 224, 0.6);
-  --orders-layer-glow: rgba(86, 136, 255, 0.2);
-  --orders-layer-film: rgba(120, 160, 255, 0.04);
-  --orders-layer-line: rgba(86, 128, 232, 0.08);
-  --orders-layer-beam: rgba(110, 160, 255, 0.15);
-  --orders-layer-blend: multiply;
-  /* the mechanism: amber, as a blueprint's lines */
-  --orders-mech-edge: rgba(196, 122, 26, 0.75);
-  --orders-mech-glow: rgba(232, 150, 40, 0.22);
-  --orders-mech-film: rgba(240, 170, 70, 0.05);
-  --orders-mech-line: rgba(196, 122, 26, 0.1);
+  /* the unfolded view's floating layers: paper, as the stack's sheets, near opaque (what a layer
+     covers of the layers below it barely shows through, until a layer is pointed at), their edge,
+     and the shadow of the light down to the card */
+  --orders-layer-edge: rgba(91, 98, 117, 0.45);
+  --orders-layer-film: rgba(255, 255, 255, 0.92);
+  --orders-layer-beam: rgba(91, 98, 117, 0.08);
+  /* the mechanism: amber paper with a blueprint's lines, and the box it casts up to the card */
+  --orders-mech-edge: rgba(150, 112, 60, 0.6);
+  --orders-mech-film: rgba(252, 248, 240, 0.85);
+  --orders-mech-line: rgba(150, 112, 60, 0.07);
+  --orders-mech-beam: rgba(150, 112, 60, 0.2);
   /* the problem's chip of a model whose structure the explanation uses, what a chip clears to (and
      its words, then), and the light out of it */
   --orders-chip-gray: #6c7385;
@@ -55,16 +52,13 @@ body[data-theme="dark"] .orders-demo {
   --orders-shade: rgba(0, 0, 0, 0.45);
   --orders-box-edge: #9aa1b4;
   --orders-gap: #f0a43a;
-  --orders-layer-edge: rgba(130, 176, 255, 0.7);
-  --orders-layer-glow: rgba(90, 150, 255, 0.32);
-  --orders-layer-film: rgba(120, 170, 255, 0.06);
-  --orders-layer-line: rgba(140, 180, 255, 0.1);
-  --orders-layer-beam: rgba(120, 170, 255, 0.18);
-  --orders-layer-blend: screen;
-  --orders-mech-edge: rgba(255, 190, 100, 0.75);
-  --orders-mech-glow: rgba(255, 170, 60, 0.3);
-  --orders-mech-film: rgba(255, 180, 80, 0.06);
-  --orders-mech-line: rgba(255, 190, 100, 0.1);
+  --orders-layer-edge: rgba(170, 178, 196, 0.4);
+  --orders-layer-film: rgba(30, 33, 42, 0.92);
+  --orders-layer-beam: rgba(170, 178, 196, 0.06);
+  --orders-mech-edge: rgba(210, 175, 120, 0.5);
+  --orders-mech-film: rgba(40, 36, 30, 0.85);
+  --orders-mech-line: rgba(210, 175, 120, 0.06);
+  --orders-mech-beam: rgba(210, 175, 120, 0.2);
   --orders-chip-gray: #5a6172;
   --orders-glass: #c6cdda;
   --orders-glass-ink: #1b1e27;
@@ -77,16 +71,13 @@ body[data-theme="dark"] .orders-demo {
     --orders-shade: rgba(0, 0, 0, 0.45);
     --orders-box-edge: #9aa1b4;
     --orders-gap: #f0a43a;
-    --orders-layer-edge: rgba(130, 176, 255, 0.7);
-    --orders-layer-glow: rgba(90, 150, 255, 0.32);
-    --orders-layer-film: rgba(120, 170, 255, 0.06);
-    --orders-layer-line: rgba(140, 180, 255, 0.1);
-    --orders-layer-beam: rgba(120, 170, 255, 0.18);
-    --orders-layer-blend: screen;
-    --orders-mech-edge: rgba(255, 190, 100, 0.75);
-    --orders-mech-glow: rgba(255, 170, 60, 0.3);
-    --orders-mech-film: rgba(255, 180, 80, 0.06);
-    --orders-mech-line: rgba(255, 190, 100, 0.1);
+    --orders-layer-edge: rgba(170, 178, 196, 0.4);
+    --orders-layer-film: rgba(30, 33, 42, 0.92);
+    --orders-layer-beam: rgba(170, 178, 196, 0.06);
+    --orders-mech-edge: rgba(210, 175, 120, 0.5);
+    --orders-mech-film: rgba(40, 36, 30, 0.85);
+    --orders-mech-line: rgba(210, 175, 120, 0.06);
+    --orders-mech-beam: rgba(210, 175, 120, 0.2);
     --orders-chip-gray: #5a6172;
     --orders-glass: #c6cdda;
     --orders-glass-ink: #1b1e27;
@@ -94,70 +85,23 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-/* the unfolded view, toned down (data-tone="calm" on the demo): its layers paper, as the stack's
-   sheets, with neither glow nor scan lines, and the light down to the card a shadow. Their paper is
-   near opaque: what a layer covers of the layers below it barely shows through, until a layer is
-   pointed at, when the paper of the others thins (below) */
-.orders-demo[data-tone="calm"] {
-  --orders-layer-edge: rgba(91, 98, 117, 0.45);
-  --orders-layer-glow: transparent;
-  --orders-layer-film: rgba(255, 255, 255, 0.92);
-  --orders-layer-line: transparent;
-  --orders-layer-beam: rgba(91, 98, 117, 0.08);
-  --orders-mech-edge: rgba(150, 112, 60, 0.6);
-  --orders-mech-glow: transparent;
-  --orders-mech-film: rgba(252, 248, 240, 0.85);
-  --orders-mech-line: rgba(150, 112, 60, 0.07);
-  --orders-mech-beam: rgba(150, 112, 60, 0.2);
-}
-
-body[data-theme="dark"] .orders-demo[data-tone="calm"] {
-  --orders-layer-edge: rgba(170, 178, 196, 0.4);
-  --orders-layer-glow: transparent;
-  --orders-layer-film: rgba(30, 33, 42, 0.92);
-  --orders-layer-line: transparent;
-  --orders-layer-beam: rgba(170, 178, 196, 0.06);
-  --orders-mech-edge: rgba(210, 175, 120, 0.5);
-  --orders-mech-glow: transparent;
-  --orders-mech-film: rgba(40, 36, 30, 0.85);
-  --orders-mech-line: rgba(210, 175, 120, 0.06);
-  --orders-mech-beam: rgba(210, 175, 120, 0.2);
-}
-
-@media (prefers-color-scheme: dark) {
-  body:not([data-theme="light"]) .orders-demo[data-tone="calm"] {
-    --orders-layer-edge: rgba(170, 178, 196, 0.4);
-    --orders-layer-glow: transparent;
-    --orders-layer-film: rgba(30, 33, 42, 0.92);
-    --orders-layer-line: transparent;
-    --orders-layer-beam: rgba(170, 178, 196, 0.06);
-    --orders-mech-edge: rgba(210, 175, 120, 0.5);
-    --orders-mech-glow: transparent;
-    --orders-mech-film: rgba(40, 36, 30, 0.85);
-    --orders-mech-line: rgba(210, 175, 120, 0.06);
-    --orders-mech-beam: rgba(210, 175, 120, 0.2);
-  }
-}
-
-/* choosing an example: the stack, its fits and what the plots plot fade out (demo.js draws the
+/* choosing an example: the stack, its rows and what the plot plots fade out (demo.js draws the
    example chosen when they have), and in again with it; the plan above them stays, and what it
-   shows flips, and so do the plots' frames */
+   shows flips, and so does the plot's frame */
 .orders-demo-stack,
 .orders-demo-ladder,
-.orders-demo-plot-data,
 .orders-demo-side-data {
   transition: opacity 420ms var(--orders-ease);
   will-change: opacity; /* a layer of its own already: a fade neither starts nor ends with a repaint */
 }
 
-/* the stack and what the plot plots, swiped (demo.js): aside by --orders-shift, and fading with the
-   swipe (beside the sheets, the plot's only fades) */
+/* the stack, swiped (demo.js): aside by --orders-shift, and fading with the swipe; what the plot
+   plots only fades */
 .orders-demo-side-data {
   opacity: var(--orders-swipe-opacity, 1);
 }
 
-.orders-demo-stack,
-.orders-demo-plot-data {
+.orders-demo-stack {
   translate: var(--orders-shift, 0px) 0;
   opacity: var(--orders-swipe-opacity, 1);
   transition:
@@ -166,23 +110,23 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   will-change: opacity, translate;
 }
 
-/* stepped from, they leave to the side, out of view, as a swipe carries them on: they keep their
-   opacity, and speed up as they go */
-.orders-demo-fading.orders-demo-leaving :is(.orders-demo-stack, .orders-demo-plot-data) {
+/* stepped from, it leaves to the side, out of view, as a swipe carries it on: it keeps its opacity,
+   and speeds up as it goes */
+.orders-demo-fading.orders-demo-leaving .orders-demo-stack {
   opacity: var(--orders-swipe-opacity, 1);
   transition:
     opacity 240ms cubic-bezier(0.4, 0, 1, 1),
     translate 240ms cubic-bezier(0.4, 0, 1, 1);
 }
 
-/* while a finger swipes them, they follow at once; a new stack, plot and model take their side at
-   once (over the leaving rule, which is still on then) */
-.orders-demo.orders-demo-swiping :is(.orders-demo-stack, .orders-demo-plot-data, .orders-demo-side-data),
-.orders-demo.orders-demo-jump :is(.orders-demo-stack, .orders-demo-plot-data, .orders-demo-side-data) {
+/* while a finger swipes it, it follows at once; a new stack and plot take their side at once (over
+   the leaving rule, which is still on then) */
+.orders-demo.orders-demo-swiping :is(.orders-demo-stack, .orders-demo-side-data),
+.orders-demo.orders-demo-jump :is(.orders-demo-stack, .orders-demo-side-data) {
   transition: none;
 }
 
-.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-data, .orders-demo-side-data) {
+.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-side-data) {
   opacity: 0;
   transition-duration: 160ms;
 }
@@ -193,16 +137,17 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   transition: none;
 }
 
-/* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
+/* while the script builds the demo, it keeps about the demo's room, so the page does not jump: the
+   room of the problem alone, as the demo starts (unexplained) */
 @media (scripting: enabled) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 64rem;
+    min-height: 12.75rem;
   }
 }
 
 @media (scripting: enabled) and (max-width: 45em) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
-    min-height: 54rem;
+    min-height: 11.5rem;
   }
 }
 
@@ -291,7 +236,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 }
 
 .orders-demo-option:focus-visible,
-.orders-demo-row:focus-visible {
+.orders-demo-mechanism-row:focus-visible {
   outline: 2px solid var(--orders-ink);
   outline-offset: 2px;
 }
@@ -773,7 +718,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 
 /* unexplained (data-reveal="click"), the demo is the problem alone, and the chip a button that
    explains it: it calls, a ring going out of it, a tab under it */
-.orders-demo-veiled :is(.orders-demo-cast, .orders-demo-why, .orders-demo-stage, .orders-demo-dots, .orders-demo-footer) {
+.orders-demo-veiled :is(.orders-demo-cast, .orders-demo-why, .orders-demo-stage, .orders-demo-dots) {
   display: none;
 }
 
@@ -849,7 +794,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 /* explained, it is built from the top down: a line runs down from the chip, the light pours out
    of it, and every part comes as the line passes it (demo.js sets --orders-at, its moment, and the
    line's start, length and time): the card, the sheets one after the other and their rows, the
-   slider, and the plot, drawn from left to right */
+   slider, and the plot beside them, drawn down with the line */
 .orders-demo-revealing::after {
   position: absolute;
   z-index: 200;
@@ -898,10 +843,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   animation: orders-demo-appear 420ms var(--orders-ease) var(--orders-at, 0ms) both;
 }
 
-.orders-demo-revealing .orders-demo-plot-svg {
-  animation: orders-demo-draw 900ms var(--orders-ease) var(--orders-at, 0ms) both;
-}
-
 /* the plot beside the sheets, drawn down with the line */
 .orders-demo-revealing .orders-demo-side {
   animation: orders-demo-pour var(--orders-side-time, 900ms) linear var(--orders-at, 0ms) both;
@@ -941,16 +882,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 @keyframes orders-demo-appear {
   from {
     opacity: 0;
-  }
-}
-
-@keyframes orders-demo-draw {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-
-  to {
-    clip-path: inset(0);
   }
 }
 
@@ -1435,19 +1366,16 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   font-weight: 600;
 }
 
-/* -- the unfolded view (data-view="unfolded"): the input on a card, every explanation on a glowing,
-   see-through layer above it, which floats off the card while open (unfolds), and below the card
-   the mechanism under it all ------------------------------------------------------------------ */
+/* -- the unfolded view (data-view="unfolded"): the input on a card, every explanation on a layer of
+   paper above it, which floats off the card while open (unfolds), and below the card the mechanism
+   under it all ------------------------------------------------------------------------------- */
 
-/* a layer: film with scan lines and a glowing edge, nothing but the explanation's marks on it */
+/* a layer: paper with an edge below, as the stack's sheets, nothing but the explanation's marks on
+   it */
 .orders-demo-sheet.orders-demo-layer {
   border-color: var(--orders-layer-edge);
-  background:
-    repeating-linear-gradient(0deg, var(--orders-layer-line) 0 1px, transparent 1px 6px),
-    var(--orders-layer-film);
-  box-shadow:
-    0 0 14px var(--orders-layer-glow),
-    inset 0 0 20px var(--orders-layer-glow);
+  background: var(--orders-layer-film);
+  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
   transition:
     transform var(--orders-move) var(--orders-settle),
     opacity 360ms var(--orders-ease),
@@ -1460,19 +1388,10 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   fill: var(--orders-layer-edge);
 }
 
-/* open, the layers hang in the air, each floating a little (demo.js staggers them) */
-.orders-demo-open .orders-demo-layer {
-  animation: orders-demo-float 3.6s ease-in-out infinite alternate;
-}
-
-@keyframes orders-demo-float {
-  from {
-    translate: 0 -2.5px;
-  }
-
-  to {
-    translate: 0 2.5px;
-  }
+/* while a layer is pointed at, the others' paper thins as their marks fade: the paper of the layers
+   above it would else veil it */
+.orders-demo-sheet.orders-demo-layer.orders-demo-receded:not(.orders-demo-deep) {
+  background: color-mix(in srgb, var(--orders-layer-film), transparent 85%);
 }
 
 /* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
@@ -1497,7 +1416,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 .orders-demo-projection {
   position: absolute;
   inset: 0;
-  mix-blend-mode: var(--orders-layer-blend);
   pointer-events: none;
 }
 
@@ -1565,22 +1483,13 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     repeating-linear-gradient(0deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
     repeating-linear-gradient(90deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
     var(--orders-mech-film);
-  box-shadow:
-    0 0 16px var(--orders-mech-glow),
-    inset 0 0 22px var(--orders-mech-glow);
 }
 
 .orders-demo-deep .orders-demo-tag {
   fill: var(--orders-mech-edge);
 }
 
-/* the mechanism's row tells how complex it is, of how complex it could be */
-.orders-demo-mechanism-size {
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
+/* 2^n, the terms the mechanism could have */
 .orders-demo-power sup {
   margin-left: 0.05em;
   font-size: 0.72em;
@@ -1594,7 +1503,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   filter: blur(1.4px);
 }
 
-/* at rest, under the card: only its glowing edge shows below the card's */
+/* at rest, under the card: only its edge shows below the card's */
 .orders-demo[data-view="unfolded"]:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;
 }
@@ -1603,82 +1512,18 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   opacity: 0;
 }
 
-/* its light, rising under the card (calm, a wash of the mechanism's paper: the box between them) */
+/* its light, rising under the card: a wash of its amber paper, the box between them, its edges
+   drawn */
 .orders-demo-beam-deep .orders-demo-beam-top,
 .orders-demo-beam-deep .orders-demo-beam-bottom {
-  stop-color: var(--orders-mech-beam, var(--orders-mech-glow));
+  stop-color: var(--orders-mech-beam);
 }
 
 .orders-demo-beam-deep .orders-demo-beam-edges {
   stroke: var(--orders-mech-edge);
-}
-
-/* the slider as a depth gauge: the arrow down the explanations ends at the input's surface, a
-   bar across the slider, and below it, a dashed line goes down to the mechanism */
-.orders-demo-rail-surface,
-.orders-demo-rail-deep,
-.orders-demo-rail-deep-label {
-  display: none;
-}
-
-/* below the input's surface, reading down from it: on a phone, the dashed line is shorter than
-   the label, which hangs below it rather than into the arrow's */
-.orders-demo-rail-label.orders-demo-rail-deep-label {
-  transform: none;
-}
-
-.orders-demo[data-view="unfolded"] :is(.orders-demo-rail-surface, .orders-demo-rail-deep, .orders-demo-rail-deep-label) {
-  display: block;
-}
-
-/* with the plot beside the sheets, the slider goes through the explanations only (demo.js): the
-   input and the mechanism are named beside them, under the plot */
-.orders-demo[data-view="unfolded"][data-plot="beside"] :is(.orders-demo-rail-surface, .orders-demo-rail-deep, .orders-demo-rail-deep-label) {
-  display: none;
-}
-
-.orders-demo-rail-surface {
-  position: absolute;
-  top: -1.5px;
-  left: calc(var(--orders-rail-line) - 10px);
-  width: 22px;
-  border-top: 3px solid var(--orders-ink);
-  border-radius: 2px;
-}
-
-.orders-demo-rail-deep {
-  position: absolute;
-  top: 0;
-  left: calc(var(--orders-rail-line) - 0.5px);
-  border-left: 2px dashed var(--orders-mech-edge);
-}
-
-/* -- the calm tone (data-tone="calm"): the unfolded view's layers lie still, with an edge below
-   them, as the stack's sheets ------------------------------------------------------------------ */
-
-.orders-demo[data-tone="calm"] .orders-demo-layer {
-  animation: none;
-}
-
-.orders-demo[data-tone="calm"] .orders-demo-sheet.orders-demo-layer {
-  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
-}
-
-.orders-demo[data-tone="calm"] .orders-demo-projection {
-  mix-blend-mode: normal;
-}
-
-/* the box between the mechanism and the card, pointed at: drawn, its edges solid */
-.orders-demo[data-tone="calm"] .orders-demo-beam-deep .orders-demo-beam-edges {
   stroke-width: 1;
   stroke-dasharray: none;
   opacity: 0.85;
-}
-
-/* while a layer is pointed at, the others' paper thins as their marks fade: the paper of the layers
-   above it would else veil it */
-.orders-demo[data-tone="calm"] .orders-demo-sheet.orders-demo-layer.orders-demo-receded:not(.orders-demo-deep) {
-  background: color-mix(in srgb, var(--orders-layer-film), transparent 85%);
 }
 
 /* the slider of the orders, in its column left of the stack (demo.js places its parts): an arrow
@@ -1798,7 +1643,10 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   transition: none;
 }
 
-/* the ladder: a row per sheet, beside its right corner, with the sheet's fit */
+/* the ladder: a row per sheet, beside its right corner: its line from the corner, on to the sheet's
+   point in the plot (demo.js), and a button for the keyboard, which the card above speaks for (the
+   ring on the plot its focus). Unfolded, the rows of the input and of the mechanism name them,
+   under the plot, as the plot names its axis */
 .orders-demo-ladder {
   position: absolute;
   inset: 0;
@@ -1810,20 +1658,16 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   top: 0;
   right: 0;
   display: grid;
-  gap: 0.2rem;
-  padding: 0.15rem 0 0.15rem 0.6rem;
+  padding: 0;
   border: 0;
+  outline: none;
   background: none;
-  color: var(--orders-muted);
+  color: var(--orders-ink);
   font: inherit;
-  font-size: 0.85rem;
-  line-height: 1.25;
   text-align: left;
   pointer-events: auto;
   cursor: pointer;
-  transition:
-    transform var(--orders-move) var(--orders-settle),
-    color var(--orders-duration) var(--orders-ease);
+  transition: transform var(--orders-move) var(--orders-settle);
 }
 
 /* the line from the sheet's right corner to its row */
@@ -1837,26 +1681,38 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   transition: width var(--orders-move) var(--orders-settle);
 }
 
-.orders-demo-row-title {
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
+.orders-demo-active::before {
+  border-top-style: solid;
+  border-color: var(--orders-ink);
+}
+
+.orders-demo-row-label {
+  padding-left: 0.4rem;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.25;
   white-space: nowrap;
 }
 
-.orders-demo-row-title strong {
-  color: var(--orders-ink);
-  font-weight: 700;
+.orders-demo-card-row {
+  pointer-events: none;
+  cursor: default;
 }
 
-.orders-demo-row-fit {
+/* on narrow screens, smaller, to fit the narrow column, and should they not, into the gap left of
+   it rather than off the stage */
+.orders-demo-narrow .orders-demo-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.orders-demo-narrow .orders-demo-row-label {
   display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-variant-numeric: tabular-nums;
+  justify-content: flex-end;
+  padding-left: 0.15rem;
+  font-size: 10px;
 }
 
-/* the bar as wide in every row, so that the bars line up and match */
+/* the card's bar by its R^2, as wide whatever it shows, and the R^2 with its verdict */
 .orders-demo-meter {
   position: relative;
   flex: none;
@@ -1873,11 +1729,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   border-radius: inherit;
   background: var(--orders-ink);
   opacity: 0.7;
-  transition: opacity var(--orders-duration) var(--orders-ease);
-}
-
-.orders-demo-score {
-  white-space: nowrap;
 }
 
 .orders-demo-r2 {
@@ -1901,66 +1752,37 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   content: ", ";
 }
 
-.orders-demo-active {
-  color: var(--orders-ink);
-}
+/* -- beside the stack: the plot of the fit, upright, where the rows' lines lead (demo.js) ------- */
 
-@media (hover: hover) {
-  .orders-demo-row:hover {
-    color: var(--orders-ink);
-  }
-}
-
-.orders-demo-active .orders-demo-meter-fill {
-  opacity: 1;
-}
-
-.orders-demo-active::before {
-  border-top-style: solid;
-  border-color: var(--orders-ink);
-}
-
-/* the row of the blank sheets: what they stand for, not a button */
-.orders-demo-blank-row {
-  font-style: italic;
-  pointer-events: none;
-  cursor: default;
-}
-
-.orders-demo-blank-row .orders-demo-row-title strong {
-  min-width: 0.8em;
-  font-style: normal;
-  text-align: center;
-}
-
-/* on narrow screens, no ladder: the sheets take its room */
-.orders-demo-narrow .orders-demo-ladder {
-  display: none;
-}
-
-/* -- below the stack: the plot of the fit by order ---------------------------------------------- */
-
-/* under the stack, the plot of the fit by order, in the middle */
-.orders-demo-footer {
-  display: flex;
-  justify-content: center;
-  margin-top: 0.75rem;
-  overflow-x: clip; /* a plot swiped aside does not widen the page */
-}
-
-.orders-demo-plot {
-  width: 100%;
-  max-width: 34rem;
-  min-width: 0;
-  margin: 0;
-}
-
-.orders-demo-plot-svg {
+.orders-demo-side {
+  position: absolute;
+  inset: 0;
   display: block;
-  max-width: 100%;
-  height: auto;
   overflow: visible;
+  pointer-events: none;
   font-variant-numeric: tabular-nums;
+}
+
+/* the frame: its rules drawn a unit long and stretched to the stack (their stroke unstretched), so
+   that they, and the ticks and name over them, move to the next example's stack */
+.orders-demo-side-rule {
+  vector-effect: non-scaling-stroke;
+}
+
+.orders-demo-side-frame :is(line, text) {
+  transition: transform 520ms var(--orders-settle);
+}
+
+/* a row's line, on from the row to its point */
+.orders-demo-side-lead {
+  stroke: var(--orders-edge);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.orders-demo-side-lead-on {
+  stroke: var(--orders-ink);
+  stroke-dasharray: none;
 }
 
 .orders-demo-plot-grid line {
@@ -2002,15 +1824,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   stroke-linejoin: round;
 }
 
-/* the note on the full decomposition, clear of the band's hatching */
-.orders-demo-plot-note {
-  paint-order: stroke;
-  stroke: var(--orders-page);
-  stroke-width: 4px;
-  stroke-linejoin: round;
-}
-
-/* the axes' labels: the order under the axis, the faithfulness along it */
+/* the axis's name */
 .orders-demo-plot-label {
   fill: var(--orders-ink);
   font-size: 11.5px;
@@ -2018,29 +1832,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   dominant-baseline: central;
 }
 
-/* along the axis, an arrow: every order to the right is more complex (its label over the line) */
-.orders-demo-plot-complexity path {
-  fill: none;
-  stroke: var(--orders-muted);
-  stroke-width: 1.25;
-  opacity: 0.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.orders-demo-plot-complexity text {
-  paint-order: stroke;
-  stroke: var(--orders-page);
-  stroke-width: 8px;
-  stroke-linejoin: round;
-}
-
-.orders-demo-plot-strong {
-  fill: var(--orders-ink);
-  font-weight: 700;
-}
-
-/* the area under the line: the line's ink, darkest where the line runs highest, fading to the axis */
+/* the area left of the line: the line's ink, darkest where the line runs furthest right, fading to
+   the axis */
 .orders-demo-plot-fade-top {
   stop-color: var(--orders-ink);
   stop-opacity: 0.16;
@@ -2063,16 +1856,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   stroke-dasharray: 3 4;
 }
 
-.orders-demo-plot-break rect {
-  fill: var(--orders-page);
-}
-
-.orders-demo-plot-break path {
-  fill: none;
-  stroke: var(--orders-muted);
-  stroke-width: 1.25;
-}
-
 .orders-demo-plot-dot {
   fill: var(--orders-ink);
   stroke: var(--orders-sheet);
@@ -2085,9 +1868,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   stroke-width: 1.25;
 }
 
-/* the ring on the line at the order pointed at, and a guide down to its tick */
-.orders-demo-plot-marker,
-.orders-demo-plot-guide {
+/* the ring on the line at the order pointed at */
+.orders-demo-plot-marker {
   opacity: 0;
   pointer-events: none;
   transition:
@@ -2095,8 +1877,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
     opacity var(--orders-duration) var(--orders-ease);
 }
 
-.orders-demo-plot-pointing .orders-demo-plot-marker,
-.orders-demo-plot-pointing .orders-demo-plot-guide {
+.orders-demo-plot-pointing .orders-demo-plot-marker {
   opacity: 1;
 }
 
@@ -2123,116 +1904,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   stroke-linejoin: round;
 }
 
-/* under the R^2, on narrow screens, its verdict */
-.orders-demo-plot-verdict {
-  fill: var(--orders-muted);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-.orders-demo-plot-guide line {
-  stroke: var(--orders-ink);
-  stroke-width: 1;
-  stroke-dasharray: 2 3;
-  opacity: 0.45;
-}
-
 .orders-demo-plot-cover {
   fill: transparent;
   cursor: crosshair;
   pointer-events: all;
   touch-action: pan-y;
-}
-
-/* -- beside the sheets (data-plot="beside"): the plot upright, where the rows were ---------------- */
-
-.orders-demo-side {
-  display: none;
-}
-
-.orders-demo[data-plot="beside"] .orders-demo-side {
-  position: absolute;
-  inset: 0;
-  display: block;
-  overflow: visible;
-  pointer-events: none;
-  font-variant-numeric: tabular-nums;
-}
-
-/* the plot below goes, and of the rows, only their lines from the sheets stay: the card above
-   speaks for them (the rows stay buttons for the keyboard, the ring on the plot their focus) */
-.orders-demo[data-plot="beside"] :is(.orders-demo-footer, .orders-demo-blank-row:not(.orders-demo-card-row)) {
-  display: none;
-}
-
-.orders-demo[data-plot="beside"] .orders-demo-ladder {
-  display: block;
-}
-
-.orders-demo[data-plot="beside"] .orders-demo-row {
-  padding: 0;
-  outline: none;
-}
-
-.orders-demo[data-plot="beside"] .orders-demo-row > * {
-  display: none;
-}
-
-/* unfolded, the plot ends at the last explanation: below it, the rows of the input and of the
-   mechanism only name them, as the plot names its axis */
-.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) {
-  padding-left: 0.4rem;
-}
-
-.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) > .orders-demo-row-title {
-  display: flex;
-}
-
-.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) .orders-demo-row-name {
-  display: none;
-}
-
-.orders-demo[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) strong {
-  font-size: 11.5px;
-  text-transform: lowercase;
-}
-
-/* on narrow screens, smaller, to fit the narrow column, and should they not, into the gap left of
-   it rather than off the stage */
-.orders-demo-narrow[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) {
-  grid-template-columns: minmax(0, 1fr); /* the name kept to the row's width, overflowing left */
-  padding-left: 0.15rem;
-}
-
-.orders-demo-narrow[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) > .orders-demo-row-title {
-  justify-content: flex-end;
-}
-
-.orders-demo-narrow[data-plot="beside"] :is(.orders-demo-card-row, .orders-demo-mechanism-row) strong {
-  font-size: 10px;
-}
-
-/* the frame: its rules drawn a unit long and stretched to the stack (their stroke unstretched), so
-   that they, and the ticks and name over them, move to the next example's stack */
-.orders-demo-side-rule {
-  vector-effect: non-scaling-stroke;
-}
-
-.orders-demo-side-frame :is(line, text) {
-  transition: transform 520ms var(--orders-settle);
-}
-
-/* a row's line, on from the row to its point */
-.orders-demo-side-lead {
-  stroke: var(--orders-edge);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-.orders-demo-side-lead-on {
-  stroke: var(--orders-ink);
-  stroke-dasharray: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

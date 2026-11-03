@@ -3,10 +3,11 @@
 // interactions of one more order (FSII, the Faithful Shapley Interactions, or k-SII, as the data
 // says), up to order 4. Below them, blank sheets stand for the orders that follow, up to the bottom
 // sheet: the full decomposition, the interactions of all orders, which add up to the model itself.
-// Beside every sheet is its R^2, its faithfulness: how much of the model's output on random
-// coalitions (drawn from the distribution of the Shapley values) the explanation reproduces beyond
-// what their sizes alone predict; below the stack a plot of the R^2 of every order: it rises from
-// the Shapley values to the full decomposition, which reproduces the model exactly, unless it is
+// Beside the stack, upright, a plot of every order's R^2, its faithfulness: how much of the model's
+// output on random coalitions (drawn from the distribution of the Shapley values) the explanation
+// reproduces beyond what their sizes alone predict. Every order's point lies at the height of its
+// sheet, a line leading to it from the sheet's corner, and the line through them runs down from the
+// Shapley values to the full decomposition, which reproduces the model exactly, unless it is
 // estimated: what it falls short of 1 is then shaded, the estimation gap.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
@@ -19,36 +20,30 @@
 // depth, which already are); the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
 // precomputed (../compute) into data.js. Pointing at a sheet (hover, keyboard focus on its row, a
-// tap that pins it, or the slider beside the stack) slides it out to the side of the
-// stack as it lies, under the sheets above it, and the others stay where they are. A ring marks its
-// order on the plot; pointing along the plot brings out the sheet of the order pointed at, or the
-// blank sheet of an order between. The slider is an arrow down the side of the stack, and one along
-// the plot's axis matches it: the explanations grow more complex, and more faithful, from order to
-// order. Where the examples do not fit in a row, a stepper goes from one to the next, and so does a
-// swipe across the stack. Above the stack, the plan shows the problem, as machine learning draws
-// it: the input x wired through the model f, a chip, to its prediction f(x). Out of the chip falls
-// the light of the explanation: the example seen from above, flat, its input with the explanation
-// pointed at on it (at rest, the Shapley values), and in a few words what that explanation is and
-// how well it fits. The chip clears as far
+// tap that pins it, or the slider left of the stack) slides it out to the side of the stack as it
+// lies, under the sheets above it, and the others stay where they are. A ring marks its order on the
+// plot; pointing along the plot brings out the sheet of the order pointed at, or the blank sheet of
+// an order between. The slider is an arrow down the side of the stack: the explanations grow more
+// complex, and more faithful, from order to order. Where the examples do not fit in a row, a stepper
+// goes from one to the next, and so does a swipe across the stack. Above the stack, the plan shows
+// the problem, as machine learning draws it: the input x wired through the model f, a chip, to its
+// prediction f(x). Out of the chip falls the light of the explanation: the example seen from above,
+// flat, its input with the explanation pointed at on it (at rest, the Shapley values), and in a few
+// words what that explanation is, with a bar by its R^2, and how well it fits. The chip clears as far
 // as the explanation fits: the black box opens, all the way where it is exact. The demo starts with
 // the problem alone (unless data-reveal="open"): a click on the chip explains it, and the
 // explanation is built under it from the top down. The problem stays as the examples change: what
 // its parts show flips, as on a board of departures.
 //
 // Another view, the unfolded view (data-view="unfolded" on the demo; the docs show the stack): the
-// example's input on a card, every explanation on a see-through layer above it, its marks only, the
+// example's input on a card, every explanation on a layer of paper above it, its marks only, the
 // full decomposition the last of them, and below the card the mechanism they explain, the model
 // itself, however complex: the explanations reveal more and more of it, order by order. At rest,
 // the layers lie on the card (the top one showing, on the input), the mechanism hidden under it;
 // once explained and in view (or after a tap), they unfold, for good: they float off it, apart, and
-// the layer pointed at casts its light onto the card, which wears its marks. The rows, the slider,
-// the plot, the stepper and the swipe work as in the stack. Its layers tone down from glowing film to
-// paper with data-tone="calm".
-//
-// With data-plot="beside" (in either view), the plot stands upright where the rows were, beside the
-// sheets: every order's point at the height of its sheet, the line running down from the Shapley
-// values to the full decomposition, the last explanation (unfolded, not on to the mechanism), and
-// the card above has what the rows said: the sheet's name, its bar, its R^2 and verdict.
+// the layer pointed at casts its light onto the card, which wears its marks (the mechanism's rises
+// to it, a box of amber light). The slider and the plot go through the explanations only, the input
+// and the mechanism named under the plot; the stepper and the swipe work as in the stack.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -89,7 +84,6 @@
   // side; and the depth below the input at which the mechanism lies
   const AIR = 0.3;
   const DEPTH = 0.34;
-  const PLOT = { height: 153, left: 58, right: 14, top: 24, bottom: 54 }; // pixels: an axis of 75
 
   const roundTo = (value, digits) => {
     const scale = 10 ** digits;
@@ -591,9 +585,6 @@
     // pointed at; and below the card, apart from the full decomposition, the mechanism they explain,
     // hidden at rest
     const layered = () => root.dataset.view === "unfolded";
-    // the plot of the fit: below the stack, or (data-plot="beside") turned upright beside the sheets,
-    // where the rows were, which the card above then speaks for
-    const beside = () => root.dataset.plot === "beside";
     // the demo starts with the problem alone (unless data-reveal="open"): a click on the model's chip
     // explains it, and the explanation is built under it, from the top down; once explained, every
     // example is
@@ -725,13 +716,6 @@
     rail.style.setProperty("--orders-rail-line", `${RAIL_LINE}px`);
     const railLine = el("span", "orders-demo-rail-line");
     const railLabel = el("span", "orders-demo-rail-label");
-    // the mechanism's: the input's surface across the slider, and below it, the depth to the
-    // mechanism
-    const railSurface = el("span", "orders-demo-rail-surface");
-    const railDeep = el("span", "orders-demo-rail-deep");
-    const railDeepLabel = el("span", "orders-demo-rail-label orders-demo-rail-deep-label");
-    railDeepLabel.append("the ", el("em", "", "mechanism"));
-    railDeepLabel.setAttribute("aria-hidden", "true");
     railLabel.append("more ", el("em", "", "complex"), " and more ", el("em", "", "faithful"));
     railLabel.setAttribute("aria-hidden", "true");
     const ticks = el("span", "orders-demo-rail-ticks");
@@ -741,38 +725,26 @@
     thumb.setAttribute("role", "slider");
     thumb.setAttribute("aria-orientation", "vertical");
     thumb.setAttribute("aria-label", "Order of the explanation");
-    rail.append(railLine, railLabel, railSurface, railDeep, railDeepLabel, ticks, thumb);
+    rail.append(railLine, railLabel, ticks, thumb);
     // the stack's window: it starts at the slider's column, so that a stack swiped or slid aside goes
     // out of view there, not under the slider
     const view = el("div", "orders-demo-view");
     view.append(stack);
-    // beside the sheets, the plot of the fit, upright (data-plot="beside")
+    // beside the sheets, the plot of the fit, upright
     const side = document.createElementNS(SVG, "svg");
     side.setAttribute("class", "orders-demo-side");
     side.setAttribute("role", "img");
     stage.append(rail, view, ladder, side);
-    // both plots have a frame that stays as the examples change (its grid, its ticks and the names
-    // of its axes), and what they plot, which fades, and slides with the stack, as the stack does
+    // its frame stays as the examples change (its grid, its ticks and the name of its axis), and what
+    // it plots fades
     const sideFrame = add(side, "g", { class: "orders-demo-side-frame" });
     const sideData = add(side, "g", { class: "orders-demo-side-data" });
 
-    const footer = el("div", "orders-demo-footer");
-    const plotBox = el("figure", "orders-demo-plot");
-    const plot = document.createElementNS(SVG, "svg");
-    plot.setAttribute("class", "orders-demo-plot-svg");
-    plot.setAttribute("role", "img");
-    plotBox.append(plot);
-    // (what the plot plots slides in a window right of the axis of R^2: out of it, under its ticks)
-    const plotFrame = add(plot, "g", { class: "orders-demo-plot-frame" });
-    const plotPane = add(add(plot, "defs"), "clipPath", { id: `orders-plot-window-${plotId}` });
-    const plotPaneRect = add(plotPane, "rect");
-    const plotData = add(add(plot, "g", { "clip-path": `url(#orders-plot-window-${plotId})` }), "g", { class: "orders-demo-plot-data" });
-    footer.append(plotBox);
     // under the stack, where the stepper shows (demo.css): a dot for every example, the one shown dark
     const dots = el("div", "orders-demo-dots");
     dots.setAttribute("aria-hidden", "true");
     dots.append(...data.examples.map(() => el("span")));
-    root.append(bar, planWindow, stage, dots, footer);
+    root.append(bar, planWindow, stage, dots);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
@@ -780,28 +752,23 @@
     let items = [];
     let rows = [];
     let stops = []; // the slider's: its rest, then every sheet and blank sheet, top to bottom
-    let blankRow = null;
     let cardRow = null; // the floating layers': the input's row, beside its card
-    let marker = null;
-    let plotWidth = 0;
 
     const current = () => data.examples.find((example) => example.id === state.example);
     const sheetItems = () => items.filter((item) => item.sheet);
     const blankItems = () => items.filter((item) => !item.sheet && !item.base);
-    // the slider's: no stop at the card, and, with the plot beside the sheets, none at the mechanism:
-    // there the slider, as the plot, goes through the explanations only
-    const stopItems = () => items.filter((item) => !item.base && !(item.mechanism && beside()));
+    // the slider's: no stop at the card or the mechanism; it goes through the explanations only, as
+    // the plot does
+    const stopItems = () => items.filter((item) => !item.base && !item.mechanism);
 
     // -- geometry: the size of the sheets, the stage, and every sheet's place ------------------------
 
     function measure() {
       const width = stage.clientWidth;
       const narrow = width < 560;
-      // the rows of the ladder: room for a bar, the R^2 and the verdict, all as wide; on narrow
-      // screens no ladder, and its room goes to the sheets (the plot below has their fits). The plot
-      // beside the sheets takes less room, and has some on narrow screens too
-      const ladderWidth = beside() ? Math.min(narrow ? 71 : 120, width * 0.17) : narrow ? 0 : Math.min(256, width * 0.32);
-      const gap = narrow ? (beside() ? 10 : 0) : 28;
+      // the plot beside the sheets: a narrow column, where the rows' lines lead
+      const ladderWidth = Math.min(narrow ? 71 : 120, width * 0.17);
+      const gap = narrow ? 10 : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const room = width - ladderWidth - gap - RAIL;
       // the room holds the stack and the sheet slid out of it
@@ -998,7 +965,7 @@
       root.classList.toggle("orders-demo-leaving", direction !== 0);
       shift(-direction * stage.clientWidth);
       // the fade out starts now, and the example is drawn when it ends (at once, if all is faded)
-      const fades = [stack, ladder, plotData, sideData].flatMap((node) => {
+      const fades = [stack, ladder, sideData].flatMap((node) => {
         getComputedStyle(node).opacity;
         return node.getAnimations();
       });
@@ -1252,19 +1219,15 @@
             : !sheet.full
               ? `groups of up to ${sheet.order} ${words.players}`
               : `groups of any size, ${estimated(example) ? "estimated" : "exact"}`;
-        // with the plot beside the sheets, the card is their row too: the sheet's name, then what
-        // it holds
-        if (beside()) title.append(el("strong", "", sheetName(sheet).tag), ` ${sheetName(sheet).name}`, el("span", "orders-demo-plan-what", what));
-        else title.append(el("strong", "", sheetName(sheet).tag), ` ${what}`);
+        // the sheet's name, then what it holds
+        title.append(el("strong", "", sheetName(sheet).tag), ` ${sheetName(sheet).name}`, el("span", "orders-demo-plan-what", what));
       }
-      // and its bar, as the rows had it
-      if (beside()) {
-        const meter = el("span", "orders-demo-meter");
-        const fill = el("span", "orders-demo-meter-fill");
-        fill.style.width = `${Math.max(0, Math.min(1, r2)) * 100}%`;
-        meter.append(fill);
-        fit.append(meter);
-      }
+      // and a bar by its R^2
+      const meter = el("span", "orders-demo-meter");
+      const fill = el("span", "orders-demo-meter-fill");
+      fill.style.width = `${Math.max(0, Math.min(1, r2)) * 100}%`;
+      meter.append(fill);
+      fit.append(meter);
       fit.append(el("span", "orders-demo-r2", fit2(r2)), el("span", "orders-demo-verdict", verdict(r2)));
       fit.append(el("span", "orders-demo-plan-method", example.model.method));
       const legend = el("span", "orders-demo-plan-legend");
@@ -1279,11 +1242,11 @@
 
     // the card keeps its place and its size whatever it shows, in every example: its words take a
     // column of their own width, as tall as the most words it can show (measured out of view, for
-    // the column's width and the view, and the place of the plot)
+    // the column's width and the view)
     let settled = "";
     function settleCard() {
       const width = planText.clientWidth;
-      const key = `${width} ${layered()} ${beside()}`;
+      const key = `${width} ${layered()}`;
       if (!width || key === settled) return;
       settled = key;
       const probe = el("span", "orders-demo-plan-text orders-demo-plan-probe");
@@ -1348,8 +1311,8 @@
       unfold();
     }
     // the explanation built from the top down: a line runs down from the chip, and every part comes
-    // as it passes, the card, the sheets one after the other with their rows, and the plot, drawn
-    // from left to right (demo.css): each part's moment is how far below the chip it lies
+    // as it passes, the card, the sheets one after the other with their rows, and the plot beside
+    // them, drawn down with it (demo.css): each part's moment is how far below the chip it lies
     let building = 0;
     function buildUp() {
       const box = root.getBoundingClientRect();
@@ -1361,7 +1324,7 @@
         const y = part.top - box.top + Math.min(part.height * 0.25, 40);
         return `${Math.round(Math.max(0, (y - from) / length) * building)}ms`;
       };
-      for (const node of [why, rail, plotBox, dots, side, ...items.map((item) => item.node), ...ladder.children]) {
+      for (const node of [why, rail, dots, side, ...items.map((item) => item.node), ...ladder.children]) {
         node.style.setProperty("--orders-at", at(node));
       }
       // the plot beside the sheets is drawn down as the line passes it
@@ -1443,7 +1406,7 @@
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
-      for (const row of [...rows, blankRow, cardRow]) row?.remove();
+      for (const row of [...rows, cardRow]) row?.remove();
       if (problemOf !== example.id) showProblem(example);
       showCall();
       geometry = measure();
@@ -1488,31 +1451,21 @@
           }
         });
       };
-      const clamp = (r2) => Math.max(0, Math.min(1, r2));
+      // a sheet's row: its line on to its point in the plot, and a button for the keyboard (the card
+      // above says what the row would)
       rows = example.sheets.map((sheet, i) => {
         const names = sheetName(sheet);
         const row = el("button", "orders-demo-row");
         row.type = "button";
         row.setAttribute("aria-label", `${names.name}, order ${sheet.order}: R² ${fit2(sheet.r2)}, ${verdict(sheet.r2)}`);
-        const title = el("span", "orders-demo-row-title");
-        title.append(el("strong", "", names.tag), el("span", "orders-demo-row-name", names.name));
-        const fitBox = el("span", "orders-demo-row-fit");
-        const meter = el("span", "orders-demo-meter");
-        const fill = el("span", "orders-demo-meter-fill");
-        fill.style.width = `${clamp(sheet.r2) * 100}%`;
-        meter.append(fill);
-        // the R^2 and its verdict in one phrase: "R² 0.76, workable"
-        const score = el("span", "orders-demo-score");
-        score.append(el("span", "orders-demo-r2", fit2(sheet.r2)), el("span", "orders-demo-verdict", verdict(sheet.r2)));
-        fitBox.append(meter, score);
-        row.append(title, fitBox);
         wire(row, i);
         ladder.append(row);
         return row;
       });
       if (layered()) {
-        // the mechanism's row: the model itself, which fits itself; how complex it is, of how
-        // complex it could be, a term for every subset of the players (only an estimate shows it)
+        // the mechanism's row, below the plot, which ends at the last explanation: its name (and, for
+        // the keyboard, how complex it is, of how complex it could be, a term for every subset of the
+        // players, which only an estimate shows)
         const i = rows.length;
         const full = example.sheets.at(-1);
         const n = playersOf(example);
@@ -1522,43 +1475,22 @@
           "aria-label",
           `The mechanism, the model itself: ${estimated(example) ? `up to 2^${n} terms, estimated` : `${full.count.toLocaleString("en")} of 2^${n} possible terms`}`,
         );
-        const title = el("span", "orders-demo-row-title");
-        title.append(el("strong", "", "Mechanism"), el("span", "orders-demo-row-name", "the model itself"));
-        const power = el("span", "orders-demo-power", "2");
-        power.append(el("sup", "", String(n)));
-        const size = el("span", "orders-demo-mechanism-size");
-        if (estimated(example)) size.append("up to ", power, " terms, estimated");
-        else size.append(`${full.count.toLocaleString("en")} of `, power, " possible terms");
-        row.append(title, size);
+        row.append(el("span", "orders-demo-row-label", "mechanism"));
         wire(row, i);
         ladder.append(row);
         rows.push(row);
       }
       ticks.replaceChildren(...stopItems().map((item) => el("span", item.sheet ? "orders-demo-tick" : "orders-demo-tick orders-demo-tick-blank")));
 
-      // the floating layers' row of their card: the input, what the layers explain
+      // the floating layers' row of their card: the input, what the layers explain, named
       cardRow = null;
       if (layered()) {
-        cardRow = el("div", "orders-demo-row orders-demo-blank-row orders-demo-card-row");
+        cardRow = el("div", "orders-demo-row orders-demo-card-row");
         cardRow.setAttribute("aria-hidden", "true");
-        const title = el("span", "orders-demo-row-title");
-        title.append(el("strong", "", "Input"), el("span", "orders-demo-row-name", example.label));
-        cardRow.append(title);
+        cardRow.append(el("span", "orders-demo-row-label", "input"));
         ladder.append(cardRow);
       }
 
-      // one row for all blank sheets: the orders between, which the plot shows one by one
-      blankRow = null;
-      if (between(example).length) {
-        blankRow = el("div", "orders-demo-row orders-demo-blank-row");
-        blankRow.setAttribute("aria-hidden", "true");
-        const title = el("span", "orders-demo-row-title");
-        title.append(el("strong", "", "⋮"), el("span", "orders-demo-row-name"));
-        blankRow.append(title);
-        ladder.append(blankRow);
-      }
-
-      drawPlot();
       drawSide();
       showPlan();
       settleCard();
@@ -1591,8 +1523,6 @@
       const opening = floating && open !== root.classList.contains("orders-demo-open");
       root.classList.toggle("orders-demo-floating", floating);
       root.classList.toggle("orders-demo-open", open);
-      const rowY = []; // the height of every sheet's row, for the row of the blank sheets
-      let cardRowY = null;
       items.forEach((item, position) => {
         const { x, y } = places[position];
         const node = item.node;
@@ -1601,10 +1531,9 @@
         node.style.zIndex = floating ? layerZ(item) : zIndex(item);
         if (floating) {
           // the layers peel off the card one after the other, the top one first, and settle back
-          // onto it the lowest first; each floats a little, in a rhythm of its own
+          // onto it the lowest first
           const delay = opening ? (open ? position : items.length - position) * 45 : 0;
           node.style.transitionDelay = `${delay}ms`;
-          node.style.animationDelay = open ? `${-position * 0.9}s` : "";
           node.classList.toggle("orders-demo-top", position === 0);
         }
         node.style.transform = `translate(${roundTo(x, 2)}px, ${roundTo(y, 2)}px) scaleY(${TILT}) rotate(${(TURN * 180) / Math.PI}deg)`;
@@ -1617,7 +1546,6 @@
 
         if (item.base) {
           const right = rightCorner(anchors[position]);
-          cardRowY = right[1];
           cardRow.style.left = `${g.ladderLeft}px`;
           cardRow.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
           cardRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
@@ -1625,7 +1553,6 @@
         if (!item.sheet) return;
         const row = rows[item.index];
         const right = rightCorner(anchors[position]);
-        rowY[item.index] = right[1];
         row.style.left = `${g.ladderLeft}px`;
         row.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
         row.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
@@ -1634,29 +1561,17 @@
       });
 
       // the slider: its stops at the middles of the sheets at rest (without a blank sheet's peek), its
-      // line from its rest down to the bottom sheet, and its handle at the sheet pointed at
+      // line from its rest down to the last explanation, and its handle at the sheet pointed at
       const rest = floating ? anchors : layout(null);
       stops = [
         { y: Math.max(10, rest[0].y - RAIL_REST), item: null },
         ...stopItems().map((item) => ({ y: rest[items.indexOf(item)].y - (!floating && item.order === state.blank ? PEEK * g.side : 0), item })),
       ];
       const [top, bottom] = [stops[0].y, stops.at(-1).y];
-      // with floating layers, the arrow ends at the input's surface, and below it, a dashed line goes
-      // down to the mechanism; with the plot beside them, it ends at the last explanation
-      const surface = floating && !beside() ? cardRowY : null;
-      const end = surface ?? bottom;
       railLine.style.transform = `translateY(${roundTo(top, 2)}px)`;
-      railLine.style.height = `${roundTo(end - top - (surface === null ? 0 : 10), 2)}px`;
-      // the arrow's label beside its middle, but clear of the input's surface below it
-      const middle = (stops[1].y + end) / 2;
-      const clear = surface === null ? middle : Math.min(middle, surface - 14 - railLabel.offsetHeight / 2);
-      railLabel.style.top = `${roundTo(clear, 2)}px`;
-      if (surface !== null) {
-        railSurface.style.translate = `0 ${roundTo(surface, 2)}px`;
-        railDeep.style.translate = `0 ${roundTo(surface, 2)}px`;
-        railDeep.style.height = `${roundTo(bottom - surface, 2)}px`;
-        railDeepLabel.style.top = `${roundTo(surface + 10, 2)}px`;
-      }
+      railLine.style.height = `${roundTo(bottom - top, 2)}px`;
+      // the arrow's label beside its middle
+      railLabel.style.top = `${roundTo((stops[1].y + bottom) / 2, 2)}px`;
       [...ticks.children].forEach((tick, p) => {
         tick.style.transform = `translateY(${roundTo(stops[p + 1].y, 2)}px)`;
       });
@@ -1674,32 +1589,6 @@
       thumb.setAttribute("aria-valuenow", String(at));
       thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
 
-      // the row of the blank sheets: beside the middle one, where it lies at rest
-      if (blankRow) {
-        const blanks = blankItems();
-        const target = blanks[Math.floor((blanks.length - 1) / 2)];
-        const right = rightCorner(anchors[items.indexOf(target)]);
-        if (!floating && target.order === state.blank) right[1] -= PEEK * g.side;
-        blankRow.classList.toggle("orders-demo-active", state.blank !== null);
-        // beside the blank sheet, but clear of the rows above and below it: of order 4 and of the full
-        // decomposition
-        const below = current().sheets.length - 1;
-        const above = below - 1;
-        const half = (row) => row.offsetHeight / 2;
-        const y = Math.min(
-          Math.max(right[1], rowY[above] + half(rows[above]) + half(blankRow) + 2),
-          rowY[below] - half(rows[below]) - half(blankRow) - 2,
-        );
-        blankRow.style.left = `${g.ladderLeft}px`;
-        blankRow.style.transform = `translateY(${roundTo(y, 2)}px) translateY(-50%)`;
-        blankRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
-        // the orders the blank sheets stand for: all between order 4 and n
-        const [first, last] = [blanks[0].order, current().sheets.at(-1).order - 1];
-        blankRow.querySelector(".orders-demo-row-name").textContent =
-          state.blank !== null
-            ? `Order ${state.blank}: R² ${fit2(blanks.find((item) => item.order === state.blank).fit[1])}`
-            : `Orders ${first}–${last}`;
-      }
       if (floating) project(out ? sheetItems()[active] : null, anchors);
     }
 
@@ -1739,197 +1628,15 @@
       beamEdges.setAttribute("d", upper.map((p, k) => `M${f(p)}L${f(lower[k])}`).join(""));
     }
 
-    // -- the plot of the fit by order: a ring on the line marks the order pointed at -------------
-
-    function drawPlot() {
-      const example = current();
-      plotWidth = plotBox.clientWidth;
-      const [w, h] = [Math.max(200, plotWidth), PLOT.height];
-      plot.setAttribute("viewBox", `0 0 ${w} ${h}`);
-      plot.setAttribute("width", w);
-      plot.setAttribute("height", h);
-      plot.setAttribute(
-        "aria-label",
-        `Faithfulness (R²) by order: ${example.fits.map(([order, r2]) => `${order}: ${fit2(r2)}`).join(", ")}; the highest order is the full decomposition` +
-          (estimated(example) ? ", estimated: what its R² falls short of 1 is the estimation gap" : ""),
-      );
-      plotData.replaceChildren();
-      const fits = example.fits;
-      const n = fits.at(-1)[0];
-      const sheetOrders = new Set(example.sheets.map((sheet) => sheet.order));
-      const [x0, x1, y0, y1] = [PLOT.left, w - PLOT.right, h - PLOT.bottom, PLOT.top];
-      // R^2 from 0, or from 0.5 when every order fits better, so that the rise shows
-      const low = Math.min(...fits.map((fit) => fit[1])) >= 0.5 ? 0.5 : 0;
-      // the orders evenly spaced, and a break before n where the orders between are left out:
-      // they all equal the highest order with an interaction
-      const broken = n - fits.at(-2)[0] > 1;
-      const slots = fits.map((_, k) => k + (broken && k === fits.length - 1 ? 0.8 : 0));
-      const places = new Map(fits.map(([order], k) => [order, x0 + (slots[k] / slots.at(-1)) * (x1 - x0)]));
-      // an order left out at the break lies on the dashed line, as far along it as between its ends
-      const x = (order) => {
-        if (places.has(order)) return places.get(order);
-        const from = fits.at(-2)[0];
-        return places.get(from) + ((order - from) / (n - from)) * (places.get(n) - places.get(from));
-      };
-      const y = (r2) => y0 - ((Math.max(low, Math.min(1, r2)) - low) / (1 - low)) * (y0 - y1);
-
-      // the frame, drawn for the plot's width: the grid, the names of the axes, the arrow along the
-      // order's; the ticks of R^2 are the example's (from 0, or from 0.5), and flip to the next one's
-      const f = (value) => roundTo(value, 1);
-      if (plotFrame.dataset.width !== String(w)) {
-        plotFrame.dataset.width = w;
-        plotFrame.replaceChildren();
-        for (const [name, value] of Object.entries({ x: x0 - 10, y: -40, width: w - x0 + 40, height: h + 40 })) plotPaneRect.setAttribute(name, value);
-        const grid = add(plotFrame, "g", { class: "orders-demo-plot-grid" });
-        for (let k = 0; k <= 4; k++) {
-          const at = roundTo(y0 - (k / 4) * (y0 - y1), 1);
-          add(grid, "line", { x1: x0, x2: x1, y1: at, y2: at });
-          if (k % 2 === 0) add(plotFrame, "text", { class: "orders-demo-plot-tick orders-demo-plot-level", x: x0 - 13, y: at, "text-anchor": "end" });
-        }
-        // the axes' labels: the order under the axis, the faithfulness along it, turned
-        add(plotFrame, "text", { class: "orders-demo-plot-label", x: f((x0 + x1) / 2), y: y0 + 31, "text-anchor": "middle" }, "order of interaction");
-        const middle = f((y0 + y1) / 2);
-        add(plotFrame, "text", { class: "orders-demo-plot-label", x: 12, y: middle, "text-anchor": "middle", transform: `rotate(-90 12 ${middle})` }, "faithfulness (R²)");
-        // under it, an arrow along the axis: every order to the right is more complex
-        const arrowY = h - 6;
-        const arrow = add(plotFrame, "g", { class: "orders-demo-plot-complexity" });
-        add(arrow, "path", { d: `M${f(x0)},${arrowY}H${f(x1)}M${f(x1 - 5)},${arrowY - 3.5}L${f(x1)},${arrowY}L${f(x1 - 5)},${arrowY + 3.5}` });
-        add(arrow, "text", { class: "orders-demo-plot-axis", x: f((x0 + x1) / 2), y: arrowY, "text-anchor": "middle" }, "more complex");
-      }
-      [...plotFrame.querySelectorAll(".orders-demo-plot-level")].forEach((tick, k) => {
-        const text = String(low + (k / 2) * (1 - low));
-        if (tick.textContent !== text) say(tick, text, tick.textContent !== "");
-      });
-      for (const [order] of fits) {
-        const last = order === n;
-        add(
-          plotData,
-          "text",
-          {
-            class: last ? "orders-demo-plot-tick orders-demo-plot-strong" : "orders-demo-plot-tick",
-            x: roundTo(x(order), 1),
-            y: y0 + 14,
-            "text-anchor": "middle",
-          },
-          String(order),
-        );
-      }
-      // the estimation gap: where even the full decomposition is estimated (from a proxy of the
-      // model, not from all 2^n coalitions), the R^2 it falls short of 1, hatched across the plot
-      const full = fits.at(-1)[1];
-      // the note on the full decomposition: above its point, or, over the band, on the line of the
-      // band's label, at the other end
-      let note = { x: f(x(n) + 4), y: f(y(full) - 15) };
-      if (full < EXACT) {
-        const id = `orders-gap-${plotId}`;
-        const hatch = add(add(plotData, "defs", {}), "pattern", {
-          id,
-          width: 5,
-          height: 5,
-          patternUnits: "userSpaceOnUse",
-          patternTransform: "rotate(45)",
-        });
-        add(hatch, "line", { class: "orders-demo-plot-gap-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
-        const gap = add(plotData, "g", { class: "orders-demo-plot-gap" });
-        const band = { x: f(x0), y: f(y(1)), width: f(x1 - x0), height: f(y(full) - y(1)) };
-        add(gap, "rect", { ...band, class: "orders-demo-plot-gap-fill" });
-        add(gap, "rect", { ...band, fill: `url(#${id})` });
-        // its label inside the band, or above the plot where the band is too thin for it
-        const inside = band.height >= 15;
-        const line = inside ? f((y(1) + y(full)) / 2) : f(y(1) - 8);
-        add(gap, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label", x: f(x0 + (inside ? 6 : 0)), y: line }, "estimation gap");
-        note = { x: f(x1 - (inside ? 6 : 0)), y: line };
-      }
-
-      const points = fits.map(([order, r2]) => `${roundTo(x(order), 1)},${roundTo(y(r2), 1)}`);
-      // the area under the line, a wash that fades from the line's highest point down to the axis
-      const fade = `orders-fade-${plotId}`;
-      const gradient = add(add(plotData, "defs"), "linearGradient", { id: fade, x1: 0, y1: 0, x2: 0, y2: 1 });
-      add(gradient, "stop", { class: "orders-demo-plot-fade-top", offset: 0 });
-      add(gradient, "stop", { class: "orders-demo-plot-fade-bottom", offset: 1 });
-      add(plotData, "path", {
-        class: "orders-demo-plot-area",
-        d: `M${roundTo(x0, 1)},${y0}L${points.join("L")}L${roundTo(x1, 1)},${y0}Z`,
-        fill: `url(#${fade})`,
-      });
-      // across the break, the line is dashed: the orders it skips have the same fit
-      const solid = broken ? points.slice(0, -1) : points;
-      add(plotData, "path", { class: "orders-demo-plot-line", d: `M${solid.join("L")}` });
-      if (broken) {
-        add(plotData, "path", { class: "orders-demo-plot-line orders-demo-plot-skipped", d: `M${points.slice(-2).join("L")}` });
-        // the break: two slashes across the axis, between the highest order with an interaction and n
-        const at = (x(fits.at(-2)[0]) + x(n)) / 2;
-        const mark = add(plotData, "g", { class: "orders-demo-plot-break" });
-        add(mark, "rect", { x: roundTo(at - 4.5, 1), y: y0 - 4, width: 9, height: 8 });
-        add(mark, "path", { d: `M${roundTo(at - 5, 1)},${y0 + 4}L${roundTo(at - 1, 1)},${y0 - 4}M${roundTo(at + 1, 1)},${y0 + 4}L${roundTo(at + 5, 1)},${y0 - 4}` });
-      }
-      for (const [order, r2] of fits) {
-        add(plotData, "circle", {
-          class: sheetOrders.has(order) ? "orders-demo-plot-dot" : "orders-demo-plot-dot orders-demo-plot-between",
-          cx: roundTo(x(order), 1),
-          cy: roundTo(y(r2), 1),
-          r: sheetOrders.has(order) ? 3 : 2.4,
-        });
-      }
-
-      // the last order is the full decomposition: a note by its point
-      add(plotData, "text", { class: "orders-demo-plot-axis orders-demo-plot-note", ...note, "text-anchor": "end" }, "full decomposition");
-
-      // the marker: a guide down to the axis and a ring on the line, with the order's R^2
-      const guide = add(plotData, "g", { class: "orders-demo-plot-guide" });
-      add(guide, "line", { x1: 0, x2: 0, y1: y1, y2: y0 });
-      const ring = add(plotData, "g", { class: "orders-demo-plot-marker" });
-      add(ring, "circle", { r: 7 });
-      add(ring, "circle", { class: "orders-demo-plot-core", r: 3 });
-      const label = add(ring, "text", { class: "orders-demo-plot-value", "text-anchor": "middle" });
-      const score = add(label, "tspan");
-      const rating = add(label, "tspan", { class: "orders-demo-plot-verdict" });
-      marker = { guide, ring, label, score, rating, x, y, last: n, middle: (y0 + y1) / 2, bottom: y0 };
-
-      // a cover over the plot: the order nearest to the pointer
-      const cover = add(plotData, "rect", { class: "orders-demo-plot-cover", x: x0 - 12, y: 0, width: x1 - x0 + 24, height: h });
-      const nearest = (event) => {
-        const box = plot.getBoundingClientRect();
-        const at = ((event.clientX - box.left) * w) / box.width;
-        const distance = (order) => Math.abs(x(order) - at);
-        return fits.reduce((best, [order]) => (distance(order) < distance(best) ? order : best), fits[0][0]);
-      };
-      let touched = false;
-      cover.addEventListener("pointermove", (event) => {
-        if (event.pointerType === "mouse" ? !state.pinned : cover.hasPointerCapture(event.pointerId)) {
-          pointAtOrder(nearest(event));
-        }
-      });
-      cover.addEventListener("pointerdown", (event) => {
-        touched = event.pointerType !== "mouse";
-        if (!touched) return;
-        cover.setPointerCapture(event.pointerId);
-        state.pinned = true;
-        pointAtOrder(nearest(event));
-      });
-      cover.addEventListener("click", (event) => {
-        if (touched) {
-          touched = false;
-          return;
-        }
-        const order = nearest(event);
-        const index = current().sheets.findIndex((sheet) => sheet.order === order);
-        if (index >= 0) toggle(index, null);
-        else toggle(null, order);
-      });
-      mark();
-    }
-
-    // -- beside the sheets (data-plot="beside"): the plot of the fit turned upright, every order at
-    // the height of its sheet, from order 1 at the top down to the full decomposition, and the fit
-    // growing to the right. A sheet's row keeps its line from the sheet's corner, on to its point.
-    // Unfolded, it ends at the last explanation too: the mechanism below them is no explanation
+    // -- the plot of the fit, upright beside the sheets: every order at the height of its sheet, from
+    // order 1 at the top down to the full decomposition, and the fit growing to the right. A sheet's
+    // row keeps its line from the sheet's corner, on to its point. Unfolded, it ends at the last
+    // explanation too: the input and the mechanism below them are no explanations ----------------
 
     let sideMarks = null;
     function drawSide() {
       sideData.replaceChildren();
       sideMarks = null;
-      if (!beside()) return;
       const example = current();
       const g = geometry;
       side.setAttribute("viewBox", `0 0 ${g.width} ${g.height}`);
@@ -2059,12 +1766,13 @@
         go(nearest(event), true);
       });
       sideMarks = { points, leads, ring, value, x, left: x0 };
-      markSide();
+      mark();
     }
 
-    // the ring beside the sheets: at the layer pointed at, its R^2 left of it (where the line has come
-    // from above), or right of it, near the axis; and the line of its row, solid
-    function markSide() {
+    // the ring on the plot: at the layer pointed at (a sheet's slid out, or a blank sheet's, hidden at
+    // rest), its R^2 left of it (where the line has come from above), or right of it, near the axis;
+    // and the line of its row, solid
+    function mark() {
       if (!sideMarks) return;
       const pointed = state.active !== null ? sheetItems()[state.active] : null;
       const at = sideMarks.points.find((p) => (pointed ? p.item === pointed : state.blank !== null && !p.item.sheet && p.order === state.blank));
@@ -2078,38 +1786,6 @@
       sideMarks.value.textContent = `R² ${fit2(at.r2)}`;
       sideMarks.value.setAttribute("x", right ? 11 : -11);
       sideMarks.value.setAttribute("text-anchor", right ? "start" : "end");
-    }
-
-    // the ring at the order pointed at (a sheet's slid out, or a blank sheet's), hidden at rest
-    function mark() {
-      markSide();
-      if (!marker) return;
-      const example = current();
-      // (the mechanism has no fit of its own: it is the model)
-      const pointed = state.active !== null ? sheetItems()[state.active] : null;
-      const order = pointed ? (pointed.mechanism ? null : pointed.order) : state.blank;
-      plot.classList.toggle("orders-demo-plot-pointing", order !== null);
-      if (order === null) return;
-      const r2 = fitOf(example, order)[1];
-      const [cx, cy] = [roundTo(marker.x(order), 1), roundTo(marker.y(r2), 1)];
-      marker.ring.style.transform = `translate(${cx}px, ${cy}px)`;
-      marker.guide.style.transform = `translateX(${cx}px)`;
-      // the value right of the ring (where the line rises away from it), below the ring where the
-      // line runs high; left of it at the last order. On narrow screens, which have no ladder, the
-      // verdict in a line under it
-      marker.score.textContent = `R² ${fit2(r2)}`;
-      marker.rating.textContent = geometry.narrow ? verdict(r2) : "";
-      const below = marker.y(r2) < marker.middle;
-      const last = order === marker.last;
-      const lines = geometry.narrow ? 2 : 1;
-      const x = last ? 6 : below ? -4 : 12;
-      let y = below ? 22 : 0;
-      y -= Math.max(0, cy + y + (lines - 1) * 13 + 7 - marker.bottom); // low on the plot: above the axis
-      marker.label.setAttribute("text-anchor", last ? "end" : "start");
-      for (const [line, span] of [marker.score, marker.rating].entries()) {
-        span.setAttribute("x", x);
-        span.setAttribute("y", y + line * 13);
-      }
     }
 
     // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
@@ -2200,7 +1876,7 @@
         if (!state.pinned && (state.active !== null || state.blank !== null)) point(null, null);
       }, 280);
     }
-    for (const zone of [why, stage, plotBox]) {
+    for (const zone of [why, stage]) {
       zone.addEventListener("pointerenter", (event) => {
         if (event.pointerType === "mouse") hold();
       });
@@ -2314,9 +1990,7 @@
         geometry = measure();
         place(state.active);
         drawSide();
-        mark();
       }
-      if (plotBox.clientWidth !== plotWidth) drawPlot();
     }).observe(root);
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
@@ -2331,9 +2005,8 @@
       settleCard();
       castLightOut();
     });
-    // the view (a stack, or the unfolded view) and the plot's place follow the demo's data-view and
-    // data-plot attributes
-    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view", "data-plot"] });
+    // the view (a stack, or the unfolded view) follows the demo's data-view attribute
+    new MutationObserver(() => render()).observe(root, { attributes: true, attributeFilter: ["data-view"] });
 
     // the first example fades in, as every next one
     root.classList.add("orders-demo-fading");

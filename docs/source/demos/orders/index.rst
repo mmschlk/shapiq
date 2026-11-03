@@ -25,7 +25,7 @@ between order 4 and the bottom sheet, which holds the **full decomposition**: FS
 :math:`n`, the number of players, which gives every group of players its own value, the Möbius
 transform :cite:p:`Grabisch.1999`; for trees of depth 5, FSII of order 5, which already is. Red
 raises the prediction, blue lowers it; the larger and the more opaque, the stronger. The slider
-beside the stack, an arrow down, points to the more complex and more faithful explanations: every
+left of the stack, an arrow down, points to the more complex and more faithful explanations: every
 order below has more values, and fits the model more closely (see the fit, below). Point at a sheet
 to slide it out of the stack, or drag the slider's handle down through the orders (on a touch
 screen, tap a sheet, drag the handle, or tap an order on the plot). Where the examples do not fit in
@@ -35,15 +35,17 @@ next.
 Above the stack, the problem: the input :math:`x` wired through the model :math:`f`, a chip (black
 for a black box, gray for a model whose structure the explanation uses), to its prediction
 :math:`f(x)`, in the red of what raises it. Out of the chip falls the explanation: the input seen
-from above, flat, with the explanation pointed at on it, and how well it fits. The chip clears as far as the explanation fits,
-its :math:`R^2`: the explanation opens the black box, all the way where it is exact. The demo
+from above, flat, with the explanation pointed at on it, what that explanation is, and how well it
+fits. The chip clears as far as the explanation fits, its :math:`R^2`: the explanation opens the
+black box, all the way where it is exact. The demo
 starts with the problem alone: a click on the chip explains it, and the explanation is built
 below it, from the top down. As the examples change, the problem stays, and what its parts show
 flips over, as on a board of departures.
 
 **The fit.** An explanation predicts what the model does with only some of the players: the sum of
-the values of their groups. Beside every sheet, :math:`R^2` measures how much of the model's output
-on random coalitions this prediction reproduces, its faithfulness. The coalitions are drawn from
+the values of their groups. Beside the stack, a plot stands upright, a point at the height of every
+sheet: its :math:`R^2`, how much of the model's output on random coalitions this prediction
+reproduces, its faithfulness. The coalitions are drawn from
 the distribution of the Shapley values: a size :math:`s` from 1 to :math:`n - 1` with probability
 proportional to :math:`1 / (s (n - s))`, and every coalition of that size alike, the weights of
 KernelSHAP. Much of what the model does with them follows from how many players they hold, not from
@@ -66,7 +68,7 @@ many players, the full decomposition, too, is fit to a sample of the coalitions,
 falls short of 1, shaded in the plot, is the **estimation gap**. Many models have no interactions
 above some order: the trees of a given depth, the receptive fields of a graph neural network. From
 that order on, FSII equals the full decomposition: the houses' stacks end there, at order 5, where
-the fit is exact, and the plot of the molecule breaks its axis before :math:`n = 30`. Point along
+the fit is exact, and the molecule's plot runs dashed from order 10 to :math:`n = 30`. Point along
 the plot to bring out the sheet of an order.
 
 **The molecule** is graph 71 of the Mutagenicity dataset of the TUDataset collection
