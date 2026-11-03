@@ -197,8 +197,8 @@ def test_weighted_game_index_sums_to_the_discrete_derivative_index(weights, pack
     interaction = jnp.stack([_coalition(*pair) for pair in PAIRS])
     game = _CubicGame(COEFFICIENTS, FinitePlayers(N_PLAYERS))
     weighted = WeightedGameInteractionIndex(
-        weights=weights,
         game=game,
+        weights=weights,
         interaction=pack_bool_coalition(interaction) if packed else interaction,
     )
     derivative = _index(COEFFICIENTS, interaction, weights)

@@ -72,7 +72,7 @@ class DiscreteDerivativeInteractionIndex[P, V: JaxLike](
 ):
     """Computes the discrete derivate of coalitions given an interaction."""
 
-    game: FinitePlayerGame[P, V]
+    game: Shaped[FinitePlayerGame[P, V], "#*batch"]
     weights: Shaped[DiscreteDerivativeWeight, "#*batch"]
     # Accepts packed interactions; __post_init__ stores them unpacked
     interaction: (
@@ -146,8 +146,8 @@ class WeightedGameInteractionIndex[P, V: JaxLike](
 ):
     """Computes the weighted evaluation of a game given an interaction and weights using the SHAP-IQ representation."""
 
+    game: Shaped[FinitePlayerGame[P, V], "#*batch"]
     weights: Shaped[DiscreteDerivativeWeight, "#*batch"]
-    game: FinitePlayerGame[P, V]
     # Accepts packed interactions; __post_init__ stores them unpacked
     interaction: (
         Bool[jax.Array, "#*batch {game.n_players}"]

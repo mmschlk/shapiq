@@ -1,5 +1,13 @@
 # Tests and Runtime Shape Checks
 
+Tests mirror the library modules at `tests/shapiq/<submodule>/test_*.py`, with
+no deeper nesting. Put tests beside others for the module that implements the
+behavior: coalition packing in `coalition`, game evaluation in `game`, partial
+stages in `partial`, player sets and coalition expansion/contraction in `players`,
+runtime checking in `typing`, and value contracts in `value`. Add a matching
+directory when introducing tests for another module. Shared pytest setup stays
+in `tests/conftest.py`.
+
 Run the normal suite, using the same selective beartype checks as production:
 
 ```bash
@@ -92,8 +100,9 @@ Keep reusable jaxtyping aliases in assignment form (`BoolCoalition = Bool[...]`)
   sets declare admissible representations rather than a finite-array alias
   imposing a representation on every game family.
 
-`test_typing_aliases.py` checks that aliases do not couple independent shapes and
-that local annotations still enforce relationships. Finite-game tests cover
+`coalition/test_typing_aliases.py` and `value/test_typing_aliases.py` check that
+aliases do not couple independent shapes and that local annotations still enforce
+relationships. Finite-game tests cover
 logical result shapes, shaped structured values with protected internal axes,
 unshaped-result rejection, empty batches, and eager/JIT evaluation.
 

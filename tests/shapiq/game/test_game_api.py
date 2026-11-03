@@ -12,7 +12,7 @@ from shapiq.game import TableGame
 
 @pytest.fixture(scope="module")
 def sketchbook(request: pytest.FixtureRequest) -> ModuleType:
-    path = Path(__file__).resolve().parents[2] / "examples" / "game_api.ipynb"
+    path = Path(__file__).resolve().parents[3] / "examples" / "game_api.ipynb"
     notebook = json.loads(path.read_text())
     module = ModuleType(f"{__name__}.sketchbook")
     sys.modules[module.__name__] = module
