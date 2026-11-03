@@ -973,6 +973,38 @@ body[data-theme="dark"] .orders-demo {
   opacity: 0.85;
 }
 
+/* the mechanism pointed at: the card, its face and the light onto it, in the mechanism's orange */
+.orders-demo-plan-mechanism .orders-demo-cast-top,
+.orders-demo-plan-mechanism .orders-demo-cast-bottom {
+  stop-color: var(--orders-mech-beam);
+}
+
+.orders-demo-plan-mechanism .orders-demo-cast-edges {
+  stroke: var(--orders-mech-edge);
+}
+
+.orders-demo-plan-mechanism .orders-demo-why {
+  border-color: var(--orders-mech-edge);
+  box-shadow: 0 2px 14px -4px var(--orders-mech-beam);
+}
+
+.orders-demo-plan-mechanism .orders-demo-plan-view {
+  border-color: var(--orders-mech-edge);
+  background:
+    repeating-linear-gradient(0deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(90deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    var(--orders-mech-film);
+}
+
+.orders-demo-plan-mechanism :is(.orders-demo-plan-title strong, .orders-demo-r2) {
+  color: var(--orders-mech-ink);
+}
+
+.orders-demo-plan-mechanism .orders-demo-meter-fill {
+  background: var(--orders-mech-edge);
+  opacity: 1;
+}
+
 /* the card of the explanation: the face, and beside it a few words, in its middle */
 .orders-demo-why {
   position: relative;
@@ -988,6 +1020,9 @@ body[data-theme="dark"] .orders-demo {
   border-radius: 12px;
   background: var(--orders-sheet);
   box-shadow: 0 1px 3px var(--orders-shade);
+  transition:
+    border-color 360ms var(--orders-ease),
+    box-shadow 360ms var(--orders-ease);
 }
 
 .orders-demo-plan-view {
@@ -1764,9 +1799,9 @@ body[data-theme="dark"] .orders-demo {
   white-space: nowrap;
 }
 
+/* the input's row points at its card, as the mechanism's does at the mechanism */
 .orders-demo-card-row {
-  pointer-events: none;
-  cursor: default;
+  cursor: pointer;
 }
 
 .orders-demo-mechanism-row .orders-demo-row-label {

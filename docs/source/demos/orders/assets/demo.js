@@ -577,8 +577,9 @@
 
   function start(root, data) {
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
-    // what is pointed at: a sheet slid out (its index), or the blank sheet of an order between
-    const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
+    // what is pointed at: a sheet slid out (its index), the blank sheet of an order between, or, of
+    // the floating layers, the input's card
+    const state = { example: data.examples[0].id, active: null, blank: null, card: false, pinned: false };
     let geometry = null;
     const plotId = ++plots;
     // the views (data-view): the stack ("stack", the default, as the docs show it), its sheets
@@ -598,7 +599,7 @@
     // the floating layers unfold for good, once: after the model was clicked to explain it, once they
     // have come in and are in view (or tapped at rest); before, only while one is pointed at
     let unfoldedForGood = false;
-    const unfolded = () => !projecting() || unfoldedForGood || state.active !== null || state.blank !== null; // the layers, apart
+    const unfolded = () => !projecting() || unfoldedForGood || state.active !== null || state.blank !== null || state.card; // the layers, apart
 
     root.replaceChildren();
     const bar = el("div", "orders-demo-bar");
@@ -805,13 +806,14 @@
     // above it (or, unfolded, as the floating layers lie), and the one pointed at slid out to the
     // side, a blank sheet pointed at peeking out below its strip
     function layout(active) {
-      if (projecting()) return layeredLayout(unfolded());
       const g = geometry;
+      const peek = (item) => (!item.sheet && !item.base && item.order === state.blank ? PEEK * g.side : 0);
+      if (projecting()) return layeredLayout(unfolded()).map(({ x, y }, position) => ({ x, y: y + peek(items[position]) }));
       const pointed = active === null ? null : sheetItems()[active];
       const rest = layered() ? layeredLayout(true) : stackLayout();
       return rest.map(({ x, y }, position) => {
         const item = items[position];
-        return { x: x - (item === pointed ? g.slideBy : 0), y: y + (!item.sheet && !item.base && item.order === state.blank ? PEEK * g.side : 0) };
+        return { x: x - (item === pointed ? g.slideBy : 0), y: y + peek(item) };
       });
     }
     // the stack's places at rest
@@ -958,7 +960,7 @@
     const shift = (pixels) => root.style.setProperty("--orders-shift", `${roundTo(pixels, 1)}px`);
     function choose(example, direction = 0) {
       if (state.example === example.id) return;
-      Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
+      Object.assign(state, { example: example.id, active: null, blank: null, card: false, pinned: false });
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       movePill(false);
       showStep(example);
@@ -1217,7 +1219,7 @@
     // it equals it, else as the input alone; at rest, the top sheet
     // what an explanation is, in a few words, how well it fits, and how it was computed: a sheet's
     // (its index), an order's between the sheets (blank), or the mechanism's
-    function wordsOf(example, { index = 0, blank = null, mechanism = false }) {
+    function wordsOf(example, { index = 0, blank = null, mechanism = false, card = false }) {
       const words = PLAYERS[example.kind];
       // a line each, whatever it shows, so that none moves: its name, what it holds, its bar and fit,
       // what it was explained with, and what red and blue mean
@@ -1226,7 +1228,12 @@
       const fit = el("span", "orders-demo-plan-fit");
       const full = example.sheets.at(-1);
       let r2 = full.r2;
-      if (mechanism) {
+      if (card) {
+        // the input's card: no explanation yet, what the model is given
+        r2 = 0;
+        title.append(el("strong", "", "Input"), " no explanation yet");
+        what.append(example.problem.input);
+      } else if (mechanism) {
         const n = playersOf(example);
         title.append(el("strong", "", "Mechanism"), " the model itself");
         if (estimated(example)) what.append("up to ", power(n), " terms");
@@ -1253,9 +1260,10 @@
       fill.style.width = `${Math.max(0, Math.min(1, r2)) * 100}%`;
       meter.append(fill);
       fit.append(meter);
-      fit.append(el("span", "orders-demo-r2", fit2(r2)), el("span", "orders-demo-verdict", verdict(r2)));
+      fit.append(el("span", "orders-demo-r2", card ? "0" : fit2(r2)), el("span", "orders-demo-verdict", card ? "nothing explained" : verdict(r2)));
       const method = el("span", "orders-demo-plan-method");
-      method.append("Explained with ", el("strong", "", example.model.method), el("span", "orders-demo-plan-how", `, ${example.model.how}`));
+      if (card) method.append("The input alone, as ", math("f"), " gets it");
+      else method.append("Explained with ", el("strong", "", example.model.method), el("span", "orders-demo-plan-how", `, ${example.model.how}`));
       const legend = el("span", "orders-demo-plan-legend");
       for (const [color, meaning] of [["up", "raises"], ["down", "lowers"]]) {
         const key = el("span", "orders-demo-plan-key");
@@ -1289,7 +1297,7 @@
         const picks = [
           ...example.sheets.map((_, index) => ({ index })),
           ...between(example).map(([blank]) => ({ blank })),
-          ...(layered() ? [{ mechanism: true }] : []),
+          ...(layered() ? [{ mechanism: true }, { card: true }] : []),
         ];
         for (const pick of picks) {
           words.replaceChildren(...wordsOf(example, pick).nodes);
@@ -1316,19 +1324,23 @@
       const pointed = state.active !== null ? sheetItems()[state.active] : null;
       let index = pointed ? Math.min(pointed.index, last) : 0;
       if (state.blank !== null) index = state.blank >= example.largest ? last : null;
+      if (state.card) index = null; // the input alone
       const face = planFace(example, index);
       if (planView.firstChild !== face) planView.replaceChildren(face);
       // the mechanism, where only an estimate shows it, blurred
       planView.classList.toggle("orders-demo-estimated", Boolean(pointed?.mechanism) && estimated(example));
 
-      const { nodes, r2 } = wordsOf(example, pointed?.mechanism ? { mechanism: true } : state.blank !== null ? { blank: state.blank } : { index });
+      const pick = state.card ? { card: true } : pointed?.mechanism ? { mechanism: true } : state.blank !== null ? { blank: state.blank } : { index };
+      const { nodes, r2 } = wordsOf(example, pick);
       planWords.replaceChildren(...nodes);
+      // the mechanism's, in its orange
+      plan.classList.toggle("orders-demo-plan-mechanism", Boolean(pointed?.mechanism));
 
       // the chip clears as far as the explanation pointed at fits (at rest, none is): opaque, it is
       // the black box; clear, the explanation has opened it
       const clear = pointed || state.blank !== null ? Math.max(0, Math.min(1, r2)) : 0;
       flow.style.setProperty("--orders-clear", roundTo(clear, 3));
-      plan.classList.toggle("orders-demo-plan-lit", pointed !== null || state.blank !== null);
+      plan.classList.toggle("orders-demo-plan-lit", pointed !== null || state.blank !== null || state.card);
       chip.classList.toggle("orders-demo-chip-open", clear >= 0.6);
       const note = pointed || state.blank !== null ? `R² ${fit2(r2)} explained` : example.model.title;
       if (chipNote.textContent !== note) {
@@ -1442,7 +1454,7 @@
     function render() {
       const example = current();
       root.classList.toggle("orders-demo-veiled", !revealed);
-      Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
+      Object.assign(state, { active: null, blank: null, card: false, pinned: false }); // a new example shows at rest
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, stacked, with their fit`);
       stack.replaceChildren();
@@ -1532,6 +1544,10 @@
         cardRow = el("div", "orders-demo-row orders-demo-card-row");
         cardRow.setAttribute("aria-hidden", "true");
         cardRow.append(el("span", "orders-demo-row-label", "Input"));
+        cardRow.addEventListener("pointerenter", (event) => {
+          if (event.pointerType === "mouse" && !state.pinned) point(null, null, true);
+        });
+        cardRow.addEventListener("click", () => toggle(null, null, true));
         ladder.append(cardRow);
       }
 
@@ -1587,7 +1603,7 @@
         const depth = (item.sheet ? THICKNESS : THICKNESS / 2) / TILT;
         node.style.setProperty("--orders-edge-x", `${roundTo(Math.sin(TURN) * depth, 2)}px`);
         node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
-        node.classList.toggle("orders-demo-receded", out && !item.base && item.index !== active);
+        node.classList.toggle("orders-demo-receded", !item.base && ((out && item.index !== active) || state.card));
         // (projected, the layers above the one pointed at, through which it shows, unless it is the
         // mechanism, under the card; unfolded, the one slid out, which shows its input under its
         // marks)
@@ -1597,6 +1613,7 @@
 
         if (item.base) {
           const right = rightCorner(anchors[position]);
+          cardRow.classList.toggle("orders-demo-active", state.card);
           cardRow.style.left = `${g.ladderLeft}px`;
           cardRow.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
           cardRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
@@ -1840,24 +1857,24 @@
     }
 
     // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
-    function point(active, blank) {
+    function point(active, blank, card = false) {
       // during a switch, the sheets, rows and plot on screen are still the old example's
       if (root.classList.contains("orders-demo-fading")) return;
-      if (state.active === active && state.blank === blank) return;
-      Object.assign(state, { active, blank });
+      if (state.active === active && state.blank === blank && state.card === card) return;
+      Object.assign(state, { active, blank, card });
       place(active);
       mark();
       showPlan();
     }
 
-    function toggle(active, blank) {
-      const same = state.active === active && state.blank === blank;
+    function toggle(active, blank, card = false) {
+      const same = state.active === active && state.blank === blank && state.card === card;
       if (state.pinned && same) {
         state.pinned = false;
         point(null, null);
       } else {
         state.pinned = true;
-        point(active, blank);
+        point(active, blank, card);
         // pointed at already (hovered, then tapped), it is pinned now: its row and button say so
         if (same && !root.classList.contains("orders-demo-fading")) {
           place(active);
@@ -1924,7 +1941,7 @@
     function rest() {
       clearTimeout(resting);
       resting = setTimeout(() => {
-        if (!state.pinned && (state.active !== null || state.blank !== null)) point(null, null);
+        if (!state.pinned && (state.active !== null || state.blank !== null || state.card)) point(null, null);
       }, 280);
     }
     for (const zone of [why, stage]) {
@@ -1939,8 +1956,9 @@
       if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail, .orders-demo-side")) return;
       hold();
       const item = itemAt(pointer(event));
-      if (item?.base) return;
-      if (item?.sheet) point(item.index, null);
+      // the input's card: the input alone, no explanation on it
+      if (item?.base) point(null, null, true);
+      else if (item?.sheet) point(item.index, null);
       // a blank sheet comes out as a sheet does, and the sheet slid out goes back: the blank sheet's
       // strip, where the stack at rest has it, stays under the pointer (over the sheet slid out,
       // itemAt gives that sheet)
@@ -2014,8 +2032,13 @@
         return;
       }
       const item = itemAt(pointer(event));
-      if (layered() && (item === null || item.base)) {
-        // unfolded, a tap on the card, or beside the layers, lets go of the layer pointed at
+      if (item?.base) {
+        // a tap on the input's card: the input alone
+        toggle(null, null, true);
+        return;
+      }
+      if (layered() && item === null) {
+        // a tap beside the layers lets go of the one pointed at
         state.pinned = false;
         point(null, null);
         return;
