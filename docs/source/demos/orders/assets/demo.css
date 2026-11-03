@@ -2116,8 +2116,9 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 }
 
 /* the plot below goes, and of the rows, only their lines from the sheets stay: the card above
-   speaks for them (the rows stay buttons for the keyboard, the ring on the plot their focus) */
-.orders-demo[data-plot="beside"] :is(.orders-demo-footer, .orders-demo-blank-row, .orders-demo-card-row) {
+   speaks for them (the rows stay buttons for the keyboard, the ring on the plot their focus). The
+   plot ends at the last explanation, so the mechanism's row goes too */
+.orders-demo[data-plot="beside"] :is(.orders-demo-footer, .orders-demo-blank-row, .orders-demo-card-row, .orders-demo-mechanism-row) {
   display: none;
 }
 
@@ -2144,18 +2145,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
 .orders-demo-side-lead-on {
   stroke: var(--orders-ink);
   stroke-dasharray: none;
-}
-
-/* down to the mechanism, the model itself, which fits itself */
-.orders-demo-side-deep {
-  stroke-dasharray: 1 3.5;
-  opacity: 0.7;
-}
-
-.orders-demo-side-model {
-  fill: var(--orders-sheet);
-  stroke: var(--orders-ink);
-  stroke-width: 1.5;
 }
 
 @media (prefers-reduced-motion: reduce) {

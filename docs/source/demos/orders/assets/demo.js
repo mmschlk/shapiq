@@ -47,8 +47,8 @@
 //
 // With data-plot="beside" (in either view), the plot stands upright where the rows were, beside the
 // sheets: every order's point at the height of its sheet, the line running down from the Shapley
-// values to the full decomposition (and, unfolded, on to the mechanism, which fits itself), and the
-// card above has what the rows said: the sheet's name, its bar, its R^2 and verdict.
+// values to the full decomposition, the last explanation (unfolded, not on to the mechanism), and
+// the card above has what the rows said: the sheet's name, its bar, its R^2 and verdict.
 //
 // The sheets are drawn in an axonometric view: a square face, turned in its plane and squashed
 // vertically, so that every corner of every sheet is known here exactly. The script uses them to
@@ -1867,7 +1867,7 @@
     // -- beside the sheets (data-plot="beside"): the plot of the fit turned upright, every order at
     // the height of its sheet, from order 1 at the top down to the full decomposition, and the fit
     // growing to the right. A sheet's row keeps its line from the sheet's corner, on to its point.
-    // Unfolded, below them all, the mechanism: the model itself, which fits itself, R^2 = 1
+    // Unfolded, it ends at the last explanation too: the mechanism below them is no explanation
 
     let sideMarks = null;
     function drawSide() {
@@ -1883,21 +1883,20 @@
       // layers) lies at rest
       const rest = layered() ? layeredLayout(true) : layout(null);
       const points = items
-        .filter((item) => !item.base)
+        .filter((item) => !item.base && !item.mechanism)
         .map((item) => ({
           item,
           order: item.order,
-          r2: item.mechanism ? 1 : item.sheet ? item.sheet.r2 : item.fit[1],
+          r2: item.sheet ? item.sheet.r2 : item.fit[1],
           y: rightCorner(rest[items.indexOf(item)])[1],
         }));
-      const fits = points.filter((p) => !p.item.mechanism);
       side.setAttribute(
         "aria-label",
-        `Faithfulness (R²) of the explanations, top to bottom: ${fits.map((p) => `order ${p.order}: ${fit2(p.r2)}`).join(", ")}` +
+        `Faithfulness (R²) of the explanations, top to bottom: ${points.map((p) => `order ${p.order}: ${fit2(p.r2)}`).join(", ")}` +
           (estimated(example) ? "; what the full decomposition falls short of 1 is the estimation gap" : ""),
       );
       // R^2 from 0, or from 0.5 when every order fits better, so that the rise shows
-      const low = Math.min(...fits.map((p) => p.r2)) >= 0.5 ? 0.5 : 0;
+      const low = Math.min(...points.map((p) => p.r2)) >= 0.5 ? 0.5 : 0;
       const [x0, x1] = [g.ladderLeft + (g.narrow ? 6 : 10), g.width - (g.narrow ? 8 : 12)];
       const x = (r2) => x0 + ((Math.max(low, Math.min(1, r2)) - low) / (1 - low)) * (x1 - x0);
       const f = (value) => roundTo(value, 1);
@@ -1913,11 +1912,13 @@
           add(side, "text", { class: "orders-demo-plot-tick", x: f(x(level)), y: f(top - 9), "text-anchor": "middle" }, text);
         }
       }
-      add(side, "text", { class: "orders-demo-plot-label", x: f((x0 + x1) / 2), y: f(top - 25), "text-anchor": "middle" }, x1 - x0 < 100 ? "R²" : "faithfulness (R²)");
+      // (over the plot's middle, or, where the plot is narrower than its name, ending at its right)
+      const roomy = x1 - x0 >= 104;
+      add(side, "text", { class: "orders-demo-plot-label", x: f(roomy ? (x0 + x1) / 2 : x1), y: f(top - 25), "text-anchor": roomy ? "middle" : "end" }, "faithfulness (R²)");
 
       // the estimation gap: what an estimated full decomposition falls short of 1, a hatched band
       // down the plot, its name along it
-      const full = fits.at(-1);
+      const full = points.at(-1);
       if (full.r2 < EXACT) {
         const id = `orders-side-gap-${plotId}`;
         const hatch = add(add(side, "defs"), "pattern", { id, width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
@@ -1926,7 +1927,7 @@
         const band = { x: f(x(full.r2)), y: top, width: f(x(1) - x(full.r2)), height: f(bottom - top) };
         add(gap, "rect", { ...band, class: "orders-demo-plot-gap-fill" });
         add(gap, "rect", { ...band, fill: `url(#${id})` });
-        const [cx, cy] = [f(band.x + band.width / 2), f((fits[0].y + full.y) / 2)];
+        const [cx, cy] = [f(band.x + band.width / 2), f((points[0].y + full.y) / 2)];
         add(gap, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label", x: cx, y: cy, "text-anchor": "middle", transform: `rotate(-90 ${cx} ${cy})` }, "estimation gap");
       }
 
@@ -1938,22 +1939,20 @@
       }
 
       // the area left of the line, darkest where it runs furthest right; the line, dashed where it
-      // skips orders (they all equal the full decomposition), and dotted down to the mechanism
+      // skips orders (they all equal the full decomposition)
       const at = (p) => `${f(x(p.r2))},${f(p.y)}`;
       const fade = `orders-side-fade-${plotId}`;
       const gradient = add(add(side, "defs"), "linearGradient", { id: fade, x1: 1, y1: 0, x2: 0, y2: 0 });
       add(gradient, "stop", { class: "orders-demo-plot-fade-top", offset: 0 });
       add(gradient, "stop", { class: "orders-demo-plot-fade-bottom", offset: 1 });
-      add(side, "path", { class: "orders-demo-plot-area", d: `M${f(x0)},${f(fits[0].y)}L${fits.map(at).join("L")}L${f(x0)},${f(full.y)}Z`, fill: `url(#${fade})` });
-      const skips = fits.length > 1 && full.order - fits.at(-2).order > 1;
-      const solid = skips ? fits.slice(0, -1) : fits;
+      add(side, "path", { class: "orders-demo-plot-area", d: `M${f(x0)},${f(points[0].y)}L${points.map(at).join("L")}L${f(x0)},${f(full.y)}Z`, fill: `url(#${fade})` });
+      const skips = points.length > 1 && full.order - points.at(-2).order > 1;
+      const solid = skips ? points.slice(0, -1) : points;
       add(side, "path", { class: "orders-demo-plot-line", d: `M${solid.map(at).join("L")}` });
-      if (skips) add(side, "path", { class: "orders-demo-plot-line orders-demo-plot-skipped", d: `M${fits.slice(-2).map(at).join("L")}` });
-      const model = points.find((p) => p.item.mechanism);
-      if (model) add(side, "path", { class: "orders-demo-plot-line orders-demo-side-deep", d: `M${at(full)}L${at(model)}` });
+      if (skips) add(side, "path", { class: "orders-demo-plot-line orders-demo-plot-skipped", d: `M${points.slice(-2).map(at).join("L")}` });
       for (const p of points) {
         const blank = !p.item.sheet;
-        const className = p.item.mechanism ? "orders-demo-plot-dot orders-demo-side-model" : blank ? "orders-demo-plot-dot orders-demo-plot-between" : "orders-demo-plot-dot";
+        const className = blank ? "orders-demo-plot-dot orders-demo-plot-between" : "orders-demo-plot-dot";
         add(side, "circle", { class: className, cx: f(x(p.r2)), cy: f(p.y), r: blank ? (g.narrow ? 1.8 : 2.2) : 3 });
       }
 
