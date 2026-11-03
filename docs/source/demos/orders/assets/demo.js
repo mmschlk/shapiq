@@ -789,7 +789,7 @@
       // the rows of the ladder: room for a bar, the R^2 and the verdict, all as wide; on narrow
       // screens no ladder, and its room goes to the sheets (the plot below has their fits). The plot
       // beside the sheets takes less room, and has some on narrow screens too
-      const ladderWidth = beside() ? Math.min(narrow ? 118 : 200, width * 0.28) : narrow ? 0 : Math.min(256, width * 0.32);
+      const ladderWidth = beside() ? Math.min(narrow ? 71 : 120, width * 0.17) : narrow ? 0 : Math.min(256, width * 0.32);
       const gap = narrow ? (beside() ? 10 : 0) : 28;
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const room = width - ladderWidth - gap - RAIL;
@@ -1898,7 +1898,7 @@
       );
       // R^2 from 0, or from 0.5 when every order fits better, so that the rise shows
       const low = Math.min(...fits.map((p) => p.r2)) >= 0.5 ? 0.5 : 0;
-      const [x0, x1] = [g.ladderLeft + (g.narrow ? 8 : 14), g.width - (g.narrow ? 10 : 16)];
+      const [x0, x1] = [g.ladderLeft + (g.narrow ? 6 : 10), g.width - (g.narrow ? 8 : 12)];
       const x = (r2) => x0 + ((Math.max(low, Math.min(1, r2)) - low) / (1 - low)) * (x1 - x0);
       const f = (value) => roundTo(value, 1);
       const [top, bottom] = [points[0].y - 12, points.at(-1).y + 12];
@@ -1913,7 +1913,7 @@
           add(side, "text", { class: "orders-demo-plot-tick", x: f(x(level)), y: f(top - 9), "text-anchor": "middle" }, text);
         }
       }
-      add(side, "text", { class: "orders-demo-plot-label", x: f((x0 + x1) / 2), y: f(top - 25), "text-anchor": "middle" }, g.narrow ? "R²" : "faithfulness (R²)");
+      add(side, "text", { class: "orders-demo-plot-label", x: f((x0 + x1) / 2), y: f(top - 25), "text-anchor": "middle" }, x1 - x0 < 100 ? "R²" : "faithfulness (R²)");
 
       // the estimation gap: what an estimated full decomposition falls short of 1, a hatched band
       // down the plot, its name along it
@@ -2006,7 +2006,8 @@
       if (!at) return;
       const [cx, cy] = [roundTo(sideMarks.x(at.r2), 1), roundTo(at.y, 1)];
       sideMarks.ring.style.transform = `translate(${cx}px, ${cy}px)`;
-      const right = cx - 58 < sideMarks.left;
+      // (right of it only where it fits on the stage)
+      const right = cx - 58 < sideMarks.left && cx + 60 <= geometry.width;
       sideMarks.value.textContent = `R² ${fit2(at.r2)}`;
       sideMarks.value.setAttribute("x", right ? 11 : -11);
       sideMarks.value.setAttribute("text-anchor", right ? "start" : "end");
