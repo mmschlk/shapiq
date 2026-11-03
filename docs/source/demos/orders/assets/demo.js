@@ -580,9 +580,8 @@
 
   function start(root, data) {
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
-    // what is pointed at: a sheet slid out (its index), the blank sheet of an order between, or, of
-    // the floating layers, the input's card
-    const state = { example: data.examples[0].id, active: null, blank: null, card: false, pinned: false };
+    // what is pointed at: a layer (its index), or the blank layer of an order between
+    const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     let geometry = null;
     const plotId = ++plots;
     // the views (data-view), both of floating layers: the input on a card, the explanations on
@@ -599,7 +598,7 @@
     // the floating layers unfold for good, once: after the model was clicked to explain it, once they
     // have come in and are in view (or tapped at rest); before, only while one is pointed at
     let unfoldedForGood = false;
-    const unfolded = () => !projecting() || unfoldedForGood || state.active !== null || state.blank !== null || state.card; // the layers, apart
+    const unfolded = () => !projecting() || unfoldedForGood || state.active !== null || state.blank !== null; // the layers, apart
 
     root.replaceChildren();
     const bar = el("div", "orders-demo-bar");
@@ -732,7 +731,12 @@
     thumb.setAttribute("role", "slider");
     thumb.setAttribute("aria-orientation", "vertical");
     thumb.setAttribute("aria-label", "Order of the explanation");
-    rail.append(railLine, railLabel, ticks, thumb);
+    // apart from the arrow, at the mechanism's height, its own handle, on a thinner, orange arrow up
+    // to the input: the mechanism, which gives the input its prediction
+    const railMechLine = el("span", "orders-demo-rail-mech-line");
+    const railMech = el("span", "orders-demo-rail-mech");
+    railMech.setAttribute("aria-hidden", "true"); // (the mechanism's row serves the keyboard)
+    rail.append(railLine, railLabel, ticks, railMechLine, railMech, thumb);
     // the line of the layer pointed at, on from its left corner to the slider's handle, as its row's
     // goes on from its right corner to its point in the plot
     const railLead = el("span", "orders-demo-rail-lead");
@@ -810,12 +814,11 @@
     // the place (center) of every item, as the floating layers lie: unfolded, the one pointed at (or
     // the input's card) slid out to the side; and a blank sheet pointed at peeking out below its
     // strip
-    function layout(active, card = false) {
+    function layout(active) {
       const g = geometry;
       const peek = (item) => (!item.sheet && !item.base && item.order === state.blank ? PEEK * g.side : 0);
       if (projecting()) return layeredLayout(unfolded()).map(({ x, y }, position) => ({ x, y: y + peek(items[position]) }));
-      // (unfolded, the input's card too, pointed at)
-      const pointed = active === null ? (card ? items.find((item) => item.base) : null) : sheetItems()[active];
+      const pointed = active === null ? null : sheetItems()[active];
       const rest = layeredLayout(true);
       return rest.map(({ x, y }, position) => {
         const item = items[position];
@@ -885,13 +888,13 @@
         const position = order.find((p) => inside(point, corners(places[p])));
         return position === undefined ? null : items[position];
       }
-      const slid = state.active !== null ? sheetItems()[state.active] : state.card ? items.find((item) => item.base) : null;
+      const slid = state.active !== null ? sheetItems()[state.active] : null;
       const places = layout(null);
       if (slid) {
         const out = items.indexOf(slid);
         const above = order.slice(0, order.indexOf(out));
         if (
-          inside(point, corners(layout(state.active, state.card)[out])) &&
+          inside(point, corners(layout(state.active)[out])) &&
           !above.some((p) => inside(point, corners(places[p])))
         ) {
           return items[out];
@@ -949,7 +952,7 @@
     const shift = (pixels) => root.style.setProperty("--orders-shift", `${roundTo(pixels, 1)}px`);
     function choose(example, direction = 0) {
       if (state.example === example.id) return;
-      Object.assign(state, { example: example.id, active: null, blank: null, card: false, pinned: false });
+      Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       movePill(false);
       showStep(example);
@@ -1042,16 +1045,34 @@
     }
     // the plan's faces, drawn once: a sheet's, all of it, on the input; or the input alone (null)
     const plans = new Map();
-    function planFace(example, index) {
-      const key = `${example.id} ${index}`;
+    function planFace(example, sheet) {
+      const name = sheet ? `${sheet.order}${sheet.full ? "-full" : ""}` : "input";
+      const key = `${example.id} ${name}`;
       if (!plans.has(key)) {
         const svg = document.createElementNS(SVG, "svg");
         svg.setAttribute("viewBox", "0 0 100 100");
         svg.setAttribute("class", "orders-demo-plan-face");
-        drawFace(svg, example, example.sheets[index ?? 0], index === null ? "input" : "all", `orders-${plotId}-${example.id}-plan-${index}`);
+        drawFace(svg, example, sheet ?? example.sheets[0], sheet ? "all" : "input", `orders-${plotId}-${example.id}-plan-${name}`);
         plans.set(key, svg);
       }
       return plans.get(key);
+    }
+    // the explanation of an order between, as a blank layer stands for it: of the orders from the
+    // highest with an interaction on, the full decomposition; else its own, where the data has it
+    const betweenOf = (example, order) =>
+      order >= example.largest ? example.sheets.at(-1) : (example.between?.find((sheet) => sheet.order === order) ?? null);
+    // and its marks, for the card to wear, projected
+    const betweenMarks = new Map();
+    function marksOf(example, sheet) {
+      const key = `${example.id} ${sheet.order}${sheet.full ? "-full" : ""}`;
+      if (!betweenMarks.has(key)) {
+        const svg = document.createElementNS(SVG, "svg");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.setAttribute("class", "orders-demo-face");
+        drawFace(svg, example, sheet, "marks", `orders-${plotId}-${example.id}-between-${key}`);
+        betweenMarks.set(key, svg);
+      }
+      return betweenMarks.get(key);
     }
     // the problem: the input, a wire into the model's chip (dark for a black box, gray for a model
     // whose structure the explanation uses), and a wire out of it to the prediction, in the red of
@@ -1196,7 +1217,7 @@
     // it equals it, else as the input alone; at rest, the top sheet
     // what an explanation is, in a few words, how well it fits, and how it was computed: a sheet's
     // (its index), an order's between the sheets (blank), or the mechanism's
-    function wordsOf(example, { index = 0, blank = null, mechanism = false, card = false }) {
+    function wordsOf(example, { index = 0, blank = null, mechanism = false }) {
       const words = PLAYERS[example.kind];
       // a line each, whatever it shows, so that none moves: its name, what it holds, its bar and fit,
       // what it was explained with, and what red and blue mean
@@ -1205,12 +1226,7 @@
       const fit = el("span", "orders-demo-plan-fit");
       const full = example.sheets.at(-1);
       let r2 = full.r2;
-      if (card) {
-        // the input's card: no explanation yet, what the model is given
-        r2 = 0;
-        title.append(el("strong", "", "Input"), " no explanation yet");
-        what.append(example.problem.input);
-      } else if (mechanism) {
+      if (mechanism) {
         const n = playersOf(example);
         title.append(el("strong", "", "Mechanism"), " the model itself");
         if (estimated(example)) what.append("up to ", power(n), " terms, estimated");
@@ -1245,13 +1261,12 @@
         meter.append(hatch);
       }
       fit.append(meter);
-      const judged = card ? el("span", "orders-demo-verdict", "nothing explained") : gap ? el("span", "orders-demo-verdict orders-demo-plan-gap") : el("span", "orders-demo-verdict", verdict(r2));
+      const judged = gap ? el("span", "orders-demo-verdict orders-demo-plan-gap") : el("span", "orders-demo-verdict", verdict(r2));
       // (on a phone, "gap" alone)
       if (gap) judged.append(el("span", "orders-demo-plan-long", "estimation "), `gap ${fit2(gap)}`);
-      fit.append(el("span", "orders-demo-r2", card ? "0" : fit2(r2)), judged);
+      fit.append(el("span", "orders-demo-r2", fit2(r2)), judged);
       const method = el("span", "orders-demo-plan-method");
-      if (card) method.append("The input alone, as ", math("f"), " gets it");
-      else method.append("Explained with ", el("strong", "", example.model.method), el("span", "orders-demo-plan-how", `, ${example.model.how}`));
+      method.append("Explained with ", el("strong", "", example.model.method), el("span", "orders-demo-plan-how", `, ${example.model.how}`));
       const legend = el("span", "orders-demo-plan-legend");
       for (const [color, meaning] of [["up", "raises"], ["down", "lowers"]]) {
         const key = el("span", "orders-demo-plan-key");
@@ -1286,7 +1301,6 @@
           ...example.sheets.map((_, index) => ({ index })),
           ...between(example).map(([blank]) => ({ blank })),
           { mechanism: true },
-          { card: true },
         ];
         for (const pick of picks) {
           words.replaceChildren(...wordsOf(example, pick).nodes);
@@ -1311,15 +1325,14 @@
       const example = current();
       const last = example.sheets.length - 1;
       const pointed = state.active !== null ? sheetItems()[state.active] : null;
-      let index = pointed ? Math.min(pointed.index, last) : 0;
-      if (state.blank !== null) index = state.blank >= example.largest ? last : null;
-      if (state.card) index = null; // the input alone
-      const face = planFace(example, index);
+      const index = pointed ? Math.min(pointed.index, last) : 0;
+      // (an order between: its own explanation, or, where the data has none, the input alone)
+      const face = planFace(example, state.blank !== null ? betweenOf(example, state.blank) : example.sheets[index]);
       if (planView.firstChild !== face) planView.replaceChildren(face);
       // the mechanism, where only an estimate shows it, blurred
       planView.classList.toggle("orders-demo-estimated", Boolean(pointed?.mechanism) && estimated(example));
 
-      const pick = state.card ? { card: true } : pointed?.mechanism ? { mechanism: true } : state.blank !== null ? { blank: state.blank } : { index };
+      const pick = pointed?.mechanism ? { mechanism: true } : state.blank !== null ? { blank: state.blank } : { index };
       const { nodes, r2 } = wordsOf(example, pick);
       planWords.replaceChildren(...nodes);
       // the mechanism's, in its orange
@@ -1329,9 +1342,12 @@
       // the black box; clear, the explanation has opened it
       const clear = pointed || state.blank !== null ? Math.max(0, Math.min(1, r2)) : 0;
       flow.style.setProperty("--orders-clear", roundTo(clear, 3));
-      plan.classList.toggle("orders-demo-plan-lit", pointed !== null || state.blank !== null || state.card);
+      plan.classList.toggle("orders-demo-plan-lit", pointed !== null || state.blank !== null);
       chip.classList.toggle("orders-demo-chip-open", clear >= 0.6);
-      const note = pointed || state.blank !== null ? `R² ${fit2(r2)} explained` : example.model.title;
+      // its R^2 in two decimals, or >.99 short of 1: as wide whatever it is, so that the chip, whose
+      // words shrink to fit it, does not change its size from one to the next
+      const short = r2 >= EXACT ? "1.00" : r2 >= 0.995 ? ">.99" : r2.toFixed(2);
+      const note = pointed || state.blank !== null ? `R² ${short} explained` : example.model.title;
       if (chipNote.textContent !== note) {
         chipNote.textContent = note;
         fitPart(chipShows);
@@ -1443,7 +1459,7 @@
     function render() {
       const example = current();
       root.classList.toggle("orders-demo-veiled", !revealed);
-      Object.assign(state, { active: null, blank: null, card: false, pinned: false }); // a new example shows at rest
+      Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, as layers above its input, with their fit`);
       stack.replaceChildren();
@@ -1525,10 +1541,6 @@
       cardRow = el("div", "orders-demo-row orders-demo-card-row");
       cardRow.setAttribute("aria-hidden", "true");
       cardRow.append(el("span", "orders-demo-row-label", "Input"));
-      cardRow.addEventListener("pointerenter", (event) => {
-        if (event.pointerType === "mouse" && !state.pinned) point(null, null, true);
-      });
-      cardRow.addEventListener("click", () => toggle(null, null, true));
       ladder.append(cardRow);
 
       drawSide();
@@ -1555,7 +1567,7 @@
       stage.style.height = `${g.height}px`;
       root.classList.toggle("orders-demo-narrow", g.narrow);
       const out = typeof active === "number";
-      const places = layout(active, state.card);
+      const places = layout(active);
       // the rows (and, projected, the beam) follow the layers; projected, they keep to where the layers
       // float, open or at rest
       const anchors = projecting() ? layeredLayout(true) : places;
@@ -1563,7 +1575,9 @@
       const opening = open !== root.classList.contains("orders-demo-open");
       root.classList.add("orders-demo-floating");
       root.classList.toggle("orders-demo-open", open);
-      const pointedAt = out ? items.indexOf(sheetItems()[active]) : -1;
+      // the layer pointed at, or the blank layer: the others fade, and, projected, those above it thin
+      const target = out ? sheetItems()[active] : state.blank !== null ? items.find((item) => !item.sheet && !item.base && item.order === state.blank) : null;
+      const pointedAt = target ? items.indexOf(target) : -1;
       items.forEach((item, position) => {
         const { x, y } = places[position];
         const node = item.node;
@@ -1580,15 +1594,14 @@
         const depth = (item.sheet ? THICKNESS : THICKNESS / 2) / TILT;
         node.style.setProperty("--orders-edge-x", `${roundTo(Math.sin(TURN) * depth, 2)}px`);
         node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
-        node.classList.toggle("orders-demo-receded", !item.base && ((out && item.index !== active) || state.card));
+        node.classList.toggle("orders-demo-receded", Boolean(target) && !item.base && item !== target);
         // (projected, the layers above the one pointed at, through which it shows, unless it is the
         // mechanism, under the card)
-        node.classList.toggle("orders-demo-above", out && position < pointedAt && !items[pointedAt].deep);
+        node.classList.toggle("orders-demo-above", Boolean(target) && position < pointedAt && !target.deep);
         node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
 
         if (item.base) {
           const right = rightCorner(anchors[position]);
-          cardRow.classList.toggle("orders-demo-active", state.card);
           cardRow.style.left = `${g.ladderLeft}px`;
           cardRow.style.transform = `translateY(${roundTo(right[1], 2)}px) translateY(-50%)`;
           cardRow.style.setProperty("--orders-lead", `${Math.max(0, roundTo(g.ladderLeft - right[0] - 4, 2))}px`);
@@ -1628,9 +1641,17 @@
       thumb.setAttribute("aria-valuemax", String(stops.length - 1));
       thumb.setAttribute("aria-valuenow", String(at));
       thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
-      // the handle's line on to the layer it brought out, at the height of the layer's left corner
-      const led = at === 0 ? null : stops[at].item;
+      // the mechanism's handle at its height, and its arrow up to the input's
+      const [mechY, cardY] = [rest[items.findIndex((item) => item.deep)].y, rest[items.findIndex((item) => item.base)].y];
+      railMech.style.translate = `0 ${roundTo(mechY, 2)}px`;
+      railMech.classList.toggle("orders-demo-rail-mech-on", Boolean(target?.deep));
+      railMechLine.style.translate = `0 ${roundTo(cardY, 2)}px`;
+      railMechLine.style.height = `${roundTo(Math.max(0, mechY - 9 - cardY), 2)}px`;
+      // the handle's line on to the layer it brought out (or the mechanism's handle's on to the
+      // mechanism), at the height of the layer's left corner
+      const led = target?.deep ? target : at === 0 ? null : stops[at].item;
       railLead.classList.toggle("orders-demo-rail-lead-on", Boolean(led));
+      railLead.classList.toggle("orders-demo-rail-lead-deep", Boolean(led?.deep));
       if (led) {
         const [lx, ly] = corners(places[items.indexOf(led)]).reduce((a, b) => (b[0] < a[0] ? b : a));
         const from = RAIL_LINE + 10;
@@ -1638,7 +1659,9 @@
         railLead.style.width = `${roundTo(Math.max(0, lx - from - 4), 2)}px`;
       }
 
-      project(projecting() && out ? sheetItems()[active] : null, anchors);
+      // projected, the layer pointed at casts its marks onto the card: a blank one, its order's
+      const cast = target && (target.sheet || betweenOf(current(), target.order)) ? target : null;
+      project(projecting() ? cast : null, anchors);
     }
 
     // the light from the layer pointed at down to the card (or from the mechanism up to it), whose
@@ -1649,14 +1672,16 @@
       beam.classList.toggle("orders-demo-beam-on", Boolean(item));
       // the light is over the card, under the layers; the mechanism's own rises under the card
       beam.style.zIndex = item?.deep ? 1 : 3;
-      // brightest at the layer it comes from: above the card, or the mechanism's, amber, below it
+      // brightest at the layer it comes from: above the card, green, or the mechanism's, orange, below
+      // it
       beam.classList.toggle("orders-demo-beam-deep", Boolean(item?.deep));
       card.node.classList.toggle("orders-demo-lit", Boolean(item) && !item.deep);
       glow.setAttribute("y1", item?.deep ? 1 : 0);
       glow.setAttribute("y2", item?.deep ? 0 : 1);
-      const source = item?.node;
+      // (a layer's marks, or a blank layer's order's)
+      const source = !item ? null : item.sheet ? item.node.querySelector(".orders-demo-face") : marksOf(current(), betweenOf(current(), item.order));
       if ((projected.get(card.node) ?? null) !== (source ?? null)) {
-        const marks = source?.querySelector(".orders-demo-face").cloneNode(true);
+        const marks = source?.cloneNode(true);
         marks?.querySelector(".orders-demo-tag")?.remove();
         const projection = card.node.querySelector(".orders-demo-projection");
         projection.replaceChildren(...(marks ? [marks] : []));
@@ -1841,24 +1866,24 @@
     }
 
     // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
-    function point(active, blank, card = false) {
+    function point(active, blank) {
       // during a switch, the sheets, rows and plot on screen are still the old example's
       if (root.classList.contains("orders-demo-fading")) return;
-      if (state.active === active && state.blank === blank && state.card === card) return;
-      Object.assign(state, { active, blank, card });
+      if (state.active === active && state.blank === blank) return;
+      Object.assign(state, { active, blank });
       place(active);
       mark();
       showPlan();
     }
 
-    function toggle(active, blank, card = false) {
-      const same = state.active === active && state.blank === blank && state.card === card;
+    function toggle(active, blank) {
+      const same = state.active === active && state.blank === blank;
       if (state.pinned && same) {
         state.pinned = false;
         point(null, null);
       } else {
         state.pinned = true;
-        point(active, blank, card);
+        point(active, blank);
         // pointed at already (hovered, then tapped), it is pinned now: its row and button say so
         if (same && !root.classList.contains("orders-demo-fading")) {
           place(active);
@@ -1881,7 +1906,7 @@
       return stops.reduce((best, stop) => (Math.abs(stop.y - y) < Math.abs(best.y - y) ? stop : best), stops[0]);
     };
     rail.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || event.target === railMech) return;
       event.preventDefault();
       rail.setPointerCapture(event.pointerId);
       rail.classList.add("orders-demo-dragging");
@@ -1889,6 +1914,12 @@
       thumb.focus({ preventScroll: true, focusVisible: false });
       slideTo(stopAt(event.clientY));
     });
+    // the mechanism's handle points at the mechanism, as its row does
+    const mechanismAt = () => sheetItems().findIndex((item) => item.mechanism);
+    railMech.addEventListener("pointerenter", (event) => {
+      if (event.pointerType === "mouse" && !state.pinned) point(mechanismAt(), null);
+    });
+    railMech.addEventListener("click", () => toggle(mechanismAt(), null));
     rail.addEventListener("pointermove", (event) => {
       if (rail.hasPointerCapture(event.pointerId)) slideTo(stopAt(event.clientY));
     });
@@ -1925,7 +1956,7 @@
     function rest() {
       clearTimeout(resting);
       resting = setTimeout(() => {
-        if (!state.pinned && (state.active !== null || state.blank !== null || state.card)) point(null, null);
+        if (!state.pinned && (state.active !== null || state.blank !== null)) point(null, null);
       }, 280);
     }
     for (const zone of [why, stage]) {
@@ -1940,9 +1971,9 @@
       if (event.pointerType !== "mouse" || state.pinned || event.target.closest(".orders-demo-row, .orders-demo-rail, .orders-demo-side")) return;
       hold();
       const item = itemAt(pointer(event));
-      // the input's card: the input alone, no explanation on it
-      if (item?.base) point(null, null, true);
-      else if (item?.sheet) point(item.index, null);
+      // (the input's card stays as it is)
+      if (item?.base) return;
+      if (item?.sheet) point(item.index, null);
       // a blank sheet comes out as a sheet does, and the sheet slid out goes back: the blank sheet's
       // strip, where the stack at rest has it, stays under the pointer (over the sheet slid out,
       // itemAt gives that sheet)
@@ -2016,13 +2047,8 @@
         return;
       }
       const item = itemAt(pointer(event));
-      if (item?.base) {
-        // a tap on the input's card: the input alone
-        toggle(null, null, true);
-        return;
-      }
-      if (item === null) {
-        // a tap beside the layers lets go of the one pointed at
+      if (item === null || item.base) {
+        // a tap on the input's card, or beside the layers, lets go of the one pointed at
         state.pinned = false;
         point(null, null);
       } else if (item.sheet) {

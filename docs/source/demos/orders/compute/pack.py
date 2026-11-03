@@ -34,6 +34,8 @@ ORDERS = (1, 2, 3, 4)  # the sheets, above the one of order n (the full decompos
 # the interactions (of two or more players) drawn on a sheet, most of them weak: a haze around
 # the strongest
 STRONGEST = 300
+# of the orders between, which show only while pointed at, small: their strongest interactions
+BETWEEN_STRONGEST = 120
 # R^2 to nine decimals: enough to tell the exact full decomposition (R^2 = 1) from an order that
 # only nearly is (the house's order 4 misses by 3e-7)
 R2_DIGITS = 9
@@ -137,6 +139,35 @@ def sheets(
                 "first": first,
                 "groups": groups,
                 "count": len(values),
+            }
+        )
+    return out
+
+
+def between(result: dict[str, Any], strongest: int | None) -> list[dict[str, Any]]:
+    """Return the explanations of the orders between the last sheet and the highest with interactions.
+
+    The orders the demo's blank sheets stand for, up to the highest order with an interaction (the
+    orders above it equal the full decomposition), where the result keeps their values (fixlip.py
+    keeps only those of the orders with a sheet). Of the interactions, each keeps the ``strongest``.
+    """
+    n = result["n_players"]
+    out = []
+    for order in range(ORDERS[-1] + 1, result["largest_order"]):
+        entry = explanation(result, order)
+        if not entry.get("values"):
+            continue
+        first, groups = split(
+            {tuple(players): value for players, value in entry["values"]}, n, strongest
+        )
+        out.append(
+            {
+                "order": order,
+                "full": False,
+                "r2": round(entry["r2"], R2_DIGITS),
+                "first": first,
+                "groups": groups,
+                "count": len(entry["values"]),
             }
         )
     return out
@@ -260,7 +291,8 @@ def main() -> None:
     )
     molecule["n_players"] = len(molecule["atoms"])
     molecule_sheets = sheets(molecule)
-    for sheet in molecule_sheets:
+    molecule_between = between(molecule, strongest=BETWEEN_STRONGEST)
+    for sheet in (*molecule_sheets, *molecule_between):
         place_groups(sheet, molecule["coords"])
     fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
     # the houses' predictions, from the lowest to the highest
@@ -289,6 +321,7 @@ def main() -> None:
                 "budget": molecule["budget"],
                 "largest": molecule["largest_order"],
                 "sheets": molecule_sheets,
+                "between": molecule_between,
                 "fits": fits(molecule),
             },
             {
@@ -334,6 +367,7 @@ def main() -> None:
                 "largest": tabpfn["largest_order"],
                 # no depth: FSII of order n, all 8 features, is the first that is exact
                 "sheets": sheets(tabpfn, strongest=None),
+                "between": between(tabpfn, strongest=None),
                 "fits": fits(tabpfn),
             },
             {

@@ -29,9 +29,9 @@ Red raises the prediction, blue lowers it; the larger and the more opaque, the s
 left of the layers, an arrow down, points to the more complex and more faithful explanations: every
 order below has more values, and fits the model more closely (see the fit, below). Point at a layer
 to slide it out, or drag the slider's handle down through the orders (on a touch screen, tap a
-layer, drag the handle, or tap an order on the plot); point at the card for the input alone. Where
-the examples do not fit in a row, as on a phone, the arrows above the layers, or a swipe across
-them, step from one example to the next.
+layer, drag the handle, or tap an order on the plot); the orange handle below them, on its arrow up
+to the input, brings out the mechanism. Where the examples do not fit in a row, as on a phone, the
+arrows above the layers, or a swipe across them, step from one example to the next.
 
 Above the layers, the problem: the input :math:`x` wired through the model :math:`f`, a chip (black
 for a black box, gray for a model whose structure the explanation uses), to its prediction
