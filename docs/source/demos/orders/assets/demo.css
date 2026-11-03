@@ -1850,6 +1850,76 @@ body[data-theme="dark"] .orders-demo {
     0 1px 4px var(--orders-shade);
 }
 
+/* the slider with dots (data-rail="dots"), as the mechanism's: a thinner arrow, a hollow circle at
+   every layer (smaller at a blank one), and the handle the circle of the order pointed at, filled */
+.orders-demo[data-rail="dots"] .orders-demo-rail-line {
+  left: calc(var(--orders-rail-line) - 0.25px);
+  width: 1.5px;
+}
+
+.orders-demo[data-rail="dots"] .orders-demo-rail-line::after {
+  bottom: -6px;
+  left: -4.25px;
+  border-width: 5px;
+  border-top-width: 7px;
+  border-bottom: 0;
+}
+
+.orders-demo[data-rail="dots"] .orders-demo-tick {
+  left: calc(var(--orders-rail-line) - 6.5px);
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--orders-muted);
+  border-radius: 50%;
+  margin-top: -7px;
+  background: var(--orders-page);
+  opacity: 1;
+}
+
+.orders-demo[data-rail="dots"] .orders-demo-tick-blank {
+  left: calc(var(--orders-rail-line) - 2.5px);
+  width: 6px;
+  height: 6px;
+  border-width: 1.5px;
+  margin-top: -3px;
+}
+
+/* (on a phone, where the blank layers lie close, smaller still) */
+.orders-demo-narrow[data-rail="dots"] .orders-demo-tick-blank {
+  left: calc(var(--orders-rail-line) - 1.5px);
+  width: 4px;
+  height: 4px;
+  border-width: 1px;
+  margin-top: -2px;
+}
+
+.orders-demo[data-rail="dots"] .orders-demo-thumb {
+  top: -7px;
+  left: calc(var(--orders-rail-line) - 6.5px);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--orders-ink);
+  background: var(--orders-ink);
+  box-shadow: 0 1px 4px var(--orders-shade);
+}
+
+/* at rest, no circle filled, and no handle above them (but for the keyboard's focus) */
+.orders-demo[data-rail="dots"] .orders-demo-thumb.orders-demo-thumb-rest {
+  border-color: var(--orders-muted);
+  background: var(--orders-page);
+  box-shadow: none;
+}
+
+.orders-demo[data-rail="dots"] .orders-demo-thumb.orders-demo-thumb-rest:not(:focus-visible) {
+  opacity: 0;
+}
+
+.orders-demo[data-rail="dots"] .orders-demo-thumb.orders-demo-thumb-mechanism {
+  border-color: var(--orders-mech-edge);
+  background: var(--orders-mech-edge);
+}
+
 /* the ladder: a row per sheet, beside its right corner: its line from the corner, on to the sheet's
    point in the plot (demo.js), and a button for the keyboard, which the card above speaks for (the
    ring on the plot its focus). Unfolded, the rows of the input and of the mechanism name them,
