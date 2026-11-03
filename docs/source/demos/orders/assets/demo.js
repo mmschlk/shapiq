@@ -39,8 +39,8 @@
 // of paper, their marks only, above the example's input on a card, the full decomposition the last
 // of them, and below the card the mechanism they explain, the model itself, however complex: the
 // explanations reveal more and more of it, order by order. Unfolded ("unfolded"), the layers float
-// apart, and the one pointed at slides out, as the stack's sheets do, showing its input under its
-// marks. Projected ("projected"), they lie on the card at rest (the top one showing, on the input),
+// apart, and the one pointed at, its marks only (or the input's card), slides out, as the stack's
+// sheets do. Projected ("projected"), they lie on the card at rest (the top one showing, on the input),
 // the mechanism hidden under it; once explained and in view (or after a tap), they unfold, for good,
 // and the layer pointed at casts its light onto the card, which wears its marks (the mechanism's
 // rises to it, a box of orange light). In both, the others fade as the stack's do; the slider and
@@ -586,7 +586,7 @@
     // stacked, the one pointed at sliding out of it; and two of floating layers, the input on a card,
     // the explanations on layers above it, and below the card, apart from the full decomposition,
     // the mechanism they explain. Unfolded ("unfolded"), the layers float apart, and the one pointed
-    // at slides out, as the stack's sheets do, its input showing under its marks. Projected
+    // at (or the input's card) slides out, as the stack's sheets do. Projected
     // ("projected"), they lie on the card at rest, the mechanism hidden under it, and unfold, float
     // off it, once explained (or after a tap on the card), or while a layer is pointed at, which
     // casts its marks onto the card
@@ -805,11 +805,12 @@
     // the place (center) of every item: stacked so that a strip of every sheet shows below the one
     // above it (or, unfolded, as the floating layers lie), and the one pointed at slid out to the
     // side, a blank sheet pointed at peeking out below its strip
-    function layout(active) {
+    function layout(active, card = false) {
       const g = geometry;
       const peek = (item) => (!item.sheet && !item.base && item.order === state.blank ? PEEK * g.side : 0);
       if (projecting()) return layeredLayout(unfolded()).map(({ x, y }, position) => ({ x, y: y + peek(items[position]) }));
-      const pointed = active === null ? null : sheetItems()[active];
+      // (unfolded, the input's card too, pointed at)
+      const pointed = active === null ? (card ? items.find((item) => item.base) : null) : sheetItems()[active];
       const rest = layered() ? layeredLayout(true) : stackLayout();
       return rest.map(({ x, y }, position) => {
         const item = items[position];
@@ -896,13 +897,13 @@
         const position = order.find((p) => inside(point, corners(places[p])));
         return position === undefined ? null : items[position];
       }
-      const sliding = state.active !== null;
+      const slid = state.active !== null ? sheetItems()[state.active] : state.card ? items.find((item) => item.base) : null;
       const places = layout(null);
-      if (sliding) {
-        const out = items.indexOf(sheetItems()[state.active]);
+      if (slid) {
+        const out = items.indexOf(slid);
         const above = order.slice(0, order.indexOf(out));
         if (
-          inside(point, corners(layout(state.active)[out])) &&
+          inside(point, corners(layout(state.active, state.card)[out])) &&
           !above.some((p) => inside(point, corners(places[p])))
         ) {
           return items[out];
@@ -1028,15 +1029,6 @@
       for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i, layer));
       drawn.set(key, nodes);
       return nodes;
-    }
-    // unfolded, a layer slid out shows its input under its marks: drawn the first time it is needed
-    function underOf(example, node, i) {
-      if (node.querySelector(".orders-demo-under")) return;
-      const svg = document.createElementNS(SVG, "svg");
-      svg.setAttribute("viewBox", "0 0 100 100");
-      svg.setAttribute("class", "orders-demo-under");
-      drawFace(svg, example, example.sheets[i], "input", `orders-${plotId}-${example.id}-under-${i}`);
-      node.prepend(svg);
     }
     // the floating layers' card: the input, and over it, the marks of the layer pointed at, projected
     const cards = new Map();
@@ -1236,7 +1228,7 @@
       } else if (mechanism) {
         const n = playersOf(example);
         title.append(el("strong", "", "Mechanism"), " the model itself");
-        if (estimated(example)) what.append("up to ", power(n), " terms");
+        if (estimated(example)) what.append("up to ", power(n), " terms, estimated");
         else what.append(`${full.count.toLocaleString("en")} of `, power(n), " terms");
       } else if (blank !== null) {
         r2 = fitOf(example, blank)[1];
@@ -1259,8 +1251,19 @@
       const fill = el("span", "orders-demo-meter-fill");
       fill.style.width = `${Math.max(0, Math.min(1, r2)) * 100}%`;
       meter.append(fill);
+      // the mechanism, where only an estimate shows it: what the estimate falls short of 1, the
+      // estimation gap, hatched on the bar, and named in place of the verdict
+      const gap = mechanism && estimated(example) ? 1 - r2 : 0;
+      if (gap) {
+        const hatch = el("span", "orders-demo-meter-gap");
+        Object.assign(hatch.style, { left: `${r2 * 100}%`, width: `${gap * 100}%` });
+        meter.append(hatch);
+      }
       fit.append(meter);
-      fit.append(el("span", "orders-demo-r2", card ? "0" : fit2(r2)), el("span", "orders-demo-verdict", card ? "nothing explained" : verdict(r2)));
+      const judged = card ? el("span", "orders-demo-verdict", "nothing explained") : gap ? el("span", "orders-demo-verdict orders-demo-plan-gap") : el("span", "orders-demo-verdict", verdict(r2));
+      // (on a phone, "gap" alone)
+      if (gap) judged.append(el("span", "orders-demo-plan-long", "estimation "), `gap ${fit2(gap)}`);
+      fit.append(el("span", "orders-demo-r2", card ? "0" : fit2(r2)), judged);
       const method = el("span", "orders-demo-plan-method");
       if (card) method.append("The input alone, as ", math("f"), " gets it");
       else method.append("Explained with ", el("strong", "", example.model.method), el("span", "orders-demo-plan-how", `, ${example.model.how}`));
@@ -1481,10 +1484,6 @@
         const card = { order: 0, base: true, node: cardOf(example) };
         items.push(card, { order: full.order, sheet: full, index: example.sheets.length, mechanism: true, deep: true, node: mechanismOf(example) });
       }
-      // unfolded, every layer can slide out, the mechanism too: each with its input under its marks
-      if (layered() && !projecting()) {
-        for (const item of items) if (item.sheet) underOf(example, item.node, Math.min(item.index, example.sheets.length - 1));
-      }
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
 
       // a row points at its sheet: hovered, focused or tapped, and the arrow keys go to the next row
@@ -1575,7 +1574,7 @@
       stage.style.height = `${g.height}px`;
       root.classList.toggle("orders-demo-narrow", g.narrow);
       const out = typeof active === "number";
-      const places = layout(active);
+      const places = layout(active, state.card);
       // the projected layers' rows, slider and beam keep to where they float, open or at rest; the
       // others' follow their sheets
       const floating = layered();
@@ -1605,10 +1604,8 @@
         node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
         node.classList.toggle("orders-demo-receded", !item.base && ((out && item.index !== active) || state.card));
         // (projected, the layers above the one pointed at, through which it shows, unless it is the
-        // mechanism, under the card; unfolded, the one slid out, which shows its input under its
-        // marks)
+        // mechanism, under the card)
         node.classList.toggle("orders-demo-above", out && position < pointedAt && !items[pointedAt].deep);
-        node.classList.toggle("orders-demo-out", out && !projecting() && item.index === active);
         node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
 
         if (item.base) {
