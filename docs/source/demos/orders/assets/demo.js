@@ -738,7 +738,12 @@
     const railMechLine = el("span", "orders-demo-rail-mech-line");
     const railMech = el("span", "orders-demo-rail-mech");
     railMech.setAttribute("aria-hidden", "true"); // (the mechanism's row serves the keyboard)
-    rail.append(railLine, railLabel, ticks, railMechLine, railMech, thumb);
+    // with data-nudge="slider", on a narrow screen, the invitation is a smaller one, at the slider:
+    // its first circle calls, "Tap" beside it
+    const railNudge = el("span", "orders-demo-rail-nudge");
+    railNudge.setAttribute("aria-hidden", "true");
+    railNudge.append(el("span", "orders-demo-rail-nudge-word", "Tap"));
+    rail.append(railLine, railLabel, ticks, railMechLine, railMech, railNudge, thumb);
     // the line of the layer pointed at, on from its left corner to the slider's handle, as its row's
     // goes on from its right corner to its point in the plot
     const railLead = el("span", "orders-demo-rail-lead");
@@ -1641,6 +1646,7 @@
       hint.style.top = `${roundTo(places[0].y - g.sheetHeight * 0.12, 2)}px`;
 
       // the slider: its stops at the middles of the layers at rest (without a blank sheet's peek), and
+      // its invitation at the first layer's (placed below, once the stops are)
       // past the last explanation, the mechanism's, on its own handle; its line from its rest down to
       // the last explanation, and its handle at the layer pointed at
       const rest = layeredLayout(true);
@@ -1651,6 +1657,7 @@
         { y: rest[items.indexOf(mechanism)].y, item: mechanism },
       ];
       const [top, bottom] = [stops[0].y, stops.at(-2).y];
+      railNudge.style.translate = `0 ${roundTo(stops[1].y, 2)}px`;
       // the arrow goes on past the explanations, down to the input's height, which it points at from
       // above, as the mechanism's does from below (each tip a few pixels short of it)
       const [mechY, cardY] = [rest[items.indexOf(mechanism)].y, rest[items.findIndex((item) => item.base)].y];
