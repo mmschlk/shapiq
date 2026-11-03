@@ -58,7 +58,10 @@
 // A post that explains the figure builds it up step by step, a demo for every step (data-step): the
 // problem alone ("problem"); the input, and below it the mechanism ("mechanism"); the Shapley values
 // above them, with the plot of their fit ("shapley"); the explanations of the orders up to 4
-// ("interactions"); and, without data-step, all of it. The demos of a page show the same example:
+// ("interactions"); and all of it ("full"). Every step points at what it adds, until a reader
+// points elsewhere, and again once they let go: the mechanism, the Shapley values, the pairs (order
+// 2), the full decomposition. Without data-step, the demo is all of it, nothing pointed at, as the
+// docs show it. The demos of a page show the same example:
 // choosing one in any of them chooses it in all. The page hears every choice, and can make one, as
 // the event "orders-demo-example" on the document, its detail { example: <id> }.
 //
@@ -584,7 +587,7 @@
   // -- the demo -------------------------------------------------------------------------------------
 
   // the steps of the figure, as a post builds it up (without one, a demo shows all of it)
-  const PARTS = ["problem", "mechanism", "shapley", "interactions"];
+  const PARTS = ["problem", "mechanism", "shapley", "interactions", "full"];
   // the example chosen, on the document: every demo of the page hears it, and follows
   const EXAMPLE_EVENT = "orders-demo-example";
   // the explanations' index, as the sheets' tags name it: FSII (2-FSII), or k-SII (2-SII)
@@ -595,14 +598,32 @@
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
     // what is pointed at: a layer (its index), or the blank layer of an order between
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
-    // the step of the figure it shows (data-step), or all of it
+    // the step of the figure it shows (data-step), or all of it ("all", as the docs show it, or
+    // "full", as the last step of a post)
     const part = PARTS.includes(root.dataset.step) ? root.dataset.step : "all";
+    const whole = part === "all" || part === "full";
     // of an example, the layers a step shows: how many of its sheets, from the top (none, the
     // Shapley values, all but the full decomposition, or all), and the blank layers between them
     const shownSheets = (example) =>
       ({ problem: 0, mechanism: 0, shapley: 1, interactions: example.sheets.filter((sheet) => !sheet.full).length })[part] ??
       example.sheets.length;
-    const shownBlanks = (example) => (part === "all" ? between(example) : []);
+    const shownBlanks = (example) => (whole ? between(example) : []);
+    // what a step points at, at rest: what it adds to the figure (the mechanism, the Shapley values,
+    // the pairs, or the full decomposition; the problem alone, and all of it as the docs show it,
+    // nothing), as the plan picks it
+    const restPick = (example) =>
+      ({
+        mechanism: { mechanism: true },
+        shapley: { index: 0 },
+        interactions: { index: example.sheets.findIndex((sheet) => sheet.order === 2) },
+        full: { index: example.sheets.length - 1 },
+      })[part] ?? null;
+    // and as the layers do: its index (the sheets shown are the first ones, and the mechanism after
+    // them)
+    const restActive = () => {
+      const pick = restPick(current());
+      return !pick ? null : pick.mechanism ? sheetItems().findIndex((item) => item.mechanism) : pick.index;
+    };
     let geometry = null;
     const plotId = ++plots;
     // the views (data-view), both of floating layers: the input on a card, the explanations on
@@ -1371,9 +1392,12 @@
       const example = current();
       const last = example.sheets.length - 1;
       const pointed = state.active !== null ? sheetItems()[state.active] : null;
-      // at rest, the top layer's explanation; where the step shows none, the mechanism
-      const mechanism = pointed ? pointed.mechanism : part === "mechanism" || part === "problem";
-      const index = pointed && !mechanism ? Math.min(pointed.index, last) : 0;
+      // at rest, what the step adds, as pointed at (as soon as it is chosen, before its layers are
+      // drawn); without a step, the top layer's explanation, unlit
+      const rest = pointed || state.blank !== null ? null : restPick(example);
+      const lit = pointed !== null || state.blank !== null || rest !== null;
+      const mechanism = pointed ? Boolean(pointed.mechanism) : Boolean(rest?.mechanism);
+      const index = pointed && !mechanism ? Math.min(pointed.index, last) : (rest?.index ?? 0);
       // (an order between: its own explanation, or, where the data has none, the input alone)
       const face = planFace(
         example,
@@ -1387,18 +1411,18 @@
       const { nodes, r2 } = wordsOf(example, pick);
       planWords.replaceChildren(...nodes);
       // the mechanism's, in its orange
-      plan.classList.toggle("orders-demo-plan-mechanism", Boolean(pointed?.mechanism));
+      plan.classList.toggle("orders-demo-plan-mechanism", mechanism && state.blank === null);
 
       // the chip clears as far as the explanation pointed at fits (at rest, none is): opaque, it is
       // the black box; clear, the explanation has opened it
-      const clear = pointed || state.blank !== null ? Math.max(0, Math.min(1, r2)) : 0;
+      const clear = lit ? Math.max(0, Math.min(1, r2)) : 0;
       flow.style.setProperty("--orders-clear", roundTo(clear, 3));
-      plan.classList.toggle("orders-demo-plan-lit", pointed !== null || state.blank !== null);
+      plan.classList.toggle("orders-demo-plan-lit", lit);
       chip.classList.toggle("orders-demo-chip-open", clear >= 0.6);
       // its R^2 in two decimals, or >.99 short of 1: as wide whatever it is, so that the chip, whose
       // words shrink to fit it, does not change its size from one to the next
       const short = r2 >= EXACT ? "1.00" : r2 >= 0.995 ? ">.99" : r2.toFixed(2);
-      const note = pointed || state.blank !== null ? `R² ${short} explained` : example.model.title;
+      const note = lit ? `R² ${short} explained` : example.model.title;
       if (chipNote.textContent !== note) {
         chipNote.textContent = note;
         fitPart(chipShows);
@@ -1541,6 +1565,7 @@
       const card = { order: 0, base: true, node: cardOf(example) };
       items.push(card, { order: last.order, sheet: last, index: shown, mechanism: true, deep: true, node: mechanismOf(example) });
       for (const item of items) item.node.classList.toggle("orders-demo-deep", Boolean(item.deep));
+      state.active = restActive();
 
       // a row points at its sheet: hovered, focused or tapped, and the arrow keys go to the next row
       const wire = (row, i) => {
@@ -1610,7 +1635,7 @@
       // and lay out every element of their faces, and placing them (their size, and the custom
       // properties of their edges, which every element inherits) would do so again
       root.classList.add("orders-demo-instant");
-      place(null);
+      place(state.active);
       stack.append(...items.map((item) => item.node));
       if (projecting()) stack.append(beam);
       root.getBoundingClientRect();
@@ -1716,7 +1741,7 @@
       thumb.style.translate = `0 ${roundTo(stops[at].y, 2)}px`;
       thumb.classList.toggle("orders-demo-thumb-rest", at === 0);
       thumb.classList.toggle("orders-demo-thumb-mechanism", Boolean(stops[at].item?.mechanism));
-      thumb.setAttribute("aria-valuemin", "0");
+      thumb.setAttribute("aria-valuemin", String(restActive() === null ? 0 : 1));
       thumb.setAttribute("aria-valuemax", String(stops.length - 1));
       thumb.setAttribute("aria-valuenow", String(at));
       thumb.setAttribute("aria-valuetext", at === 0 ? "none" : stopName(stops[at].item));
@@ -1960,10 +1985,12 @@
       sideMarks.value.setAttribute("text-anchor", right ? "start" : "end");
     }
 
-    // point at a sheet (its index), or at the blank sheet of an order between, or at nothing
+    // point at a sheet (its index), or at the blank sheet of an order between, or at nothing: at
+    // what the step adds, if it is a step
     function point(active, blank) {
       // during a switch, the sheets, rows and plot on screen are still the old example's
       if (root.classList.contains("orders-demo-fading")) return;
+      if (active === null && blank === null) active = restActive();
       if (state.active === active && state.blank === blank) return;
       Object.assign(state, { active, blank });
       // a layer pointed at, the invitation goes, for good
@@ -1978,6 +2005,8 @@
       if (state.pinned && same) {
         state.pinned = false;
         point(null, null);
+        // (a step's own, let go of, stays out, no longer pinned: its row says so)
+        if (state.active === active && !root.classList.contains("orders-demo-fading")) place(active);
       } else {
         state.pinned = true;
         point(active, blank);
@@ -1998,9 +2027,12 @@
       else if (stop.item.sheet) point(stop.item.index, null);
       else point(null, stop.item.order);
     }
+    // (a step, pointing at what it adds at rest, has no stop at rest)
+    const firstStop = () => (restActive() === null ? 0 : 1);
     const stopAt = (clientY) => {
       const y = clientY - stage.getBoundingClientRect().top;
-      return stops.reduce((best, stop) => (Math.abs(stop.y - y) < Math.abs(best.y - y) ? stop : best), stops[0]);
+      const reach = stops.slice(firstStop());
+      return reach.reduce((best, stop) => (Math.abs(stop.y - y) < Math.abs(best.y - y) ? stop : best), reach[0]);
     };
     rail.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || event.target === railMech) return;
@@ -2029,7 +2061,7 @@
       const next = { ArrowDown: at + 1, ArrowRight: at + 1, ArrowUp: at - 1, ArrowLeft: at - 1, Home: 0, End: last }[event.key];
       if (next === undefined) return;
       event.preventDefault();
-      slideTo(stops[Math.max(0, Math.min(last, next))]);
+      slideTo(stops[Math.max(firstStop(), Math.min(last, next))]);
     });
 
     // the plot points at an order: the sheet of that order, or its blank sheet
@@ -2140,7 +2172,7 @@
       if (!unfolded()) {
         // a tap on the layers at rest unfolds them, for good, none pointed at
         unfoldedForGood = true;
-        place(null);
+        place(state.active);
         return;
       }
       const item = itemAt(pointer(event));

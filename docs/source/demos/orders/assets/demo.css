@@ -1952,6 +1952,11 @@ body[data-theme="dark"] .orders-demo {
   display: none;
 }
 
+/* a step whose one thing to point at is pointed at already, at rest, invites to nothing */
+.orders-demo:is([data-step="mechanism"], [data-step="shapley"]) :is(.orders-demo-hint, .orders-demo-rail-nudge) {
+  display: none;
+}
+
 .orders-demo-hinted .orders-demo-rail-nudge,
 .orders-demo-revealing .orders-demo-rail-nudge {
   opacity: 0;

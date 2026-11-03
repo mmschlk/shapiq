@@ -18,8 +18,8 @@ embeds the FIxLIP demo)::
        :alt: What the fallback image shows.
 
 A demo that builds up step by step shows the step its ``:step:`` names, as the container's
-``data-step`` (the orders demo's ``problem``, ``mechanism``, ``shapley`` and ``interactions``; without
-it, all of it). The demos of one page show the same example: choosing one in any of them chooses it
+``data-step`` (the orders demo's ``problem``, ``mechanism``, ``shapley``, ``interactions`` and
+``full``; without it, all of it, as the demo's own page shows it). The demos of one page show the same example: choosing one in any of them chooses it
 in all.
 
 It writes the demo's container, ``<div class="<name>-demo" data-root="..." data-version="...">``,
