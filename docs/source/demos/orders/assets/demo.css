@@ -34,11 +34,13 @@
   --orders-layer-edge: rgba(91, 98, 117, 0.45);
   --orders-layer-film: rgba(255, 255, 255, 0.92);
   --orders-layer-beam: rgba(91, 98, 117, 0.08);
-  /* the mechanism: amber paper with a blueprint's lines, and the box it casts up to the card */
-  --orders-mech-edge: rgba(150, 112, 60, 0.6);
-  --orders-mech-film: rgba(252, 248, 240, 0.85);
-  --orders-mech-line: rgba(150, 112, 60, 0.07);
-  --orders-mech-beam: rgba(150, 112, 60, 0.2);
+  /* the mechanism: orange, its paper with a blueprint's lines, the box it casts up to the card, and
+     its name */
+  --orders-mech-edge: rgba(240, 118, 0, 0.75);
+  --orders-mech-film: rgba(255, 246, 234, 0.9);
+  --orders-mech-line: rgba(240, 118, 0, 0.09);
+  --orders-mech-beam: rgba(240, 118, 0, 0.18);
+  --orders-mech-ink: #d96200;
   /* the problem's chip of a model whose structure the explanation uses, what a chip clears to (and
      its words, then), and the light out of it */
   --orders-chip-gray: #6c7385;
@@ -55,10 +57,11 @@ body[data-theme="dark"] .orders-demo {
   --orders-layer-edge: rgba(170, 178, 196, 0.4);
   --orders-layer-film: rgba(30, 33, 42, 0.92);
   --orders-layer-beam: rgba(170, 178, 196, 0.06);
-  --orders-mech-edge: rgba(210, 175, 120, 0.5);
-  --orders-mech-film: rgba(40, 36, 30, 0.85);
-  --orders-mech-line: rgba(210, 175, 120, 0.06);
-  --orders-mech-beam: rgba(210, 175, 120, 0.2);
+  --orders-mech-edge: rgba(255, 150, 40, 0.7);
+  --orders-mech-film: rgba(46, 32, 18, 0.9);
+  --orders-mech-line: rgba(255, 150, 40, 0.08);
+  --orders-mech-beam: rgba(255, 150, 40, 0.18);
+  --orders-mech-ink: #ffa23f;
   --orders-chip-gray: #5a6172;
   --orders-glass: #c6cdda;
   --orders-glass-ink: #1b1e27;
@@ -74,10 +77,11 @@ body[data-theme="dark"] .orders-demo {
     --orders-layer-edge: rgba(170, 178, 196, 0.4);
     --orders-layer-film: rgba(30, 33, 42, 0.92);
     --orders-layer-beam: rgba(170, 178, 196, 0.06);
-    --orders-mech-edge: rgba(210, 175, 120, 0.5);
-    --orders-mech-film: rgba(40, 36, 30, 0.85);
-    --orders-mech-line: rgba(210, 175, 120, 0.06);
-    --orders-mech-beam: rgba(210, 175, 120, 0.2);
+    --orders-mech-edge: rgba(255, 150, 40, 0.7);
+    --orders-mech-film: rgba(46, 32, 18, 0.9);
+    --orders-mech-line: rgba(255, 150, 40, 0.08);
+    --orders-mech-beam: rgba(255, 150, 40, 0.18);
+    --orders-mech-ink: #ffa23f;
     --orders-chip-gray: #5a6172;
     --orders-glass: #c6cdda;
     --orders-glass-ink: #1b1e27;
@@ -1366,9 +1370,9 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
-/* -- the unfolded view (data-view="unfolded"): the input on a card, every explanation on a layer of
-   paper above it, which floats off the card while open (unfolds), and below the card the mechanism
-   under it all ------------------------------------------------------------------------------- */
+/* -- the floating layers (data-view="unfolded" or "projected"): the input on a card, every
+   explanation on a layer of paper above it, apart (projected, they lie on the card at rest, and
+   float off it, unfold, while open), and below the card the mechanism under it all ------------ */
 
 /* a layer: paper with an edge below, as the stack's sheets, nothing but the explanation's marks on
    it */
@@ -1388,10 +1392,33 @@ body[data-theme="dark"] .orders-demo {
   fill: var(--orders-layer-edge);
 }
 
-/* while a layer is pointed at, the others' paper thins as their marks fade: the paper of the layers
-   above it would else veil it */
-.orders-demo-sheet.orders-demo-layer.orders-demo-receded:not(.orders-demo-deep) {
+/* while a layer is pointed at, the others' marks fade, as the stack's sheets' do; projected, the
+   layer pointed at stays where it floats, and the paper of the layers above it thins, else it would
+   veil it */
+.orders-demo[data-view="projected"] .orders-demo-sheet.orders-demo-layer.orders-demo-above {
   background: color-mix(in srgb, var(--orders-layer-film), transparent 85%);
+}
+
+.orders-demo[data-view="projected"] .orders-demo-above .orders-demo-face {
+  opacity: 0.2;
+}
+
+/* unfolded, the layer pointed at slides out, as the stack's sheets do, and shows its input under its
+   marks (demo.js draws it) */
+.orders-demo-under {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-out .orders-demo-under {
+  opacity: 1;
 }
 
 /* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
@@ -1504,11 +1531,11 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* at rest, under the card: only its edge shows below the card's */
-.orders-demo[data-view="unfolded"]:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
+.orders-demo[data-view="projected"]:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;
 }
 
-.orders-demo[data-view="unfolded"]:not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
+.orders-demo[data-view="projected"]:not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
   opacity: 0;
 }
 
@@ -1697,6 +1724,10 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-card-row {
   pointer-events: none;
   cursor: default;
+}
+
+.orders-demo-mechanism-row .orders-demo-row-label {
+  color: var(--orders-mech-ink);
 }
 
 /* on narrow screens, smaller, to fit the narrow column, and should they not, into the gap left of

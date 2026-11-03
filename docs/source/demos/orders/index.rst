@@ -11,7 +11,7 @@ explained exactly with ``shapiq``.
 
 .. shapiq-demo:: orders
    :fallback: images/hero_orders.png
-   :alt: Sheets stacked on top of each other, each a molecule explained at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank sheets for the orders 5 to 29, and the full decomposition of all 30 atoms at the bottom. Beside every sheet, its fit to the model rises from R² = 0.36 to 1.
+   :alt: Sheets stacked on top of each other, each a molecule explained at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank sheets for the orders 5 to 29, and the full decomposition of all 30 atoms at the bottom. Beside the stack, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every sheet.
 
 What you see
 ------------
