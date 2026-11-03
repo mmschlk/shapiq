@@ -138,7 +138,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
    when they have), and in again with it; the plan above them stays, and what it shows flips */
 .orders-demo-stack,
 .orders-demo-ladder,
-.orders-demo-plot-svg {
+.orders-demo-plot-svg,
+.orders-demo-side {
   transition: opacity 420ms var(--orders-ease);
   will-change: opacity; /* a layer of its own already: a fade neither starts nor ends with a repaint */
 }
@@ -170,7 +171,7 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   transition: none;
 }
 
-.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg) {
+.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-plot-svg, .orders-demo-side) {
   opacity: 0;
   transition-duration: 160ms;
 }
@@ -671,7 +672,9 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   min-width: 1.5rem;
   height: 2px;
   margin: 0 0.75rem;
-  background: repeating-linear-gradient(90deg, var(--orders-muted) 0 6px, transparent 6px 12px);
+  /* a dash and a gap, the tile that flows: as long as one step of the flow, so that the dashes
+     come in at the wire's start without a seam */
+  background: linear-gradient(90deg, var(--orders-muted) 0 6px, transparent 6px) 0 0 / 12px 100% repeat-x;
   animation: orders-demo-wire 0.9s linear infinite;
 }
 
@@ -882,6 +885,11 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   animation: orders-demo-draw 900ms var(--orders-ease) var(--orders-at, 0ms) both;
 }
 
+/* the plot beside the sheets, drawn down with the line */
+.orders-demo-revealing .orders-demo-side {
+  animation: orders-demo-pour var(--orders-side-time, 900ms) linear var(--orders-at, 0ms) both;
+}
+
 @keyframes orders-demo-pour {
   from {
     clip-path: inset(0 0 100% 0);
@@ -991,13 +999,14 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   opacity: 0.85;
 }
 
-/* the card of the explanation: the face, and beside it the orders and a few words */
+/* the card of the explanation: the face, and beside it a few words, in its middle */
 .orders-demo-why {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 1.1rem;
+  justify-content: center;
+  gap: 1.4rem;
   box-sizing: border-box;
   width: min(100%, 38rem);
   padding: 0.8rem 1rem;
@@ -1046,70 +1055,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   line-height: 1.4;
 }
 
-.orders-demo-why-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.6rem;
-}
-
-/* the orders: a button each, the order shown outlined, the one pointed at filled */
-.orders-demo-orders {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.orders-demo-order {
-  min-width: 1.8rem;
-  height: 1.6rem;
-  padding: 0 0.45rem;
-  border: 1px solid var(--orders-line);
-  border-radius: 999px;
-  background: var(--orders-sheet);
-  color: var(--orders-ink);
-  font: inherit;
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background var(--orders-duration) var(--orders-ease),
-    border-color var(--orders-duration) var(--orders-ease),
-    color var(--orders-duration) var(--orders-ease);
-}
-
-.orders-demo-order.orders-demo-order-shown {
-  border-color: var(--orders-ink);
-}
-
-.orders-demo-order.orders-demo-order-on {
-  border-color: var(--orders-ink);
-  background: var(--orders-ink);
-  color: var(--orders-sheet);
-}
-
-.orders-demo-order:focus-visible {
-  outline: 2px solid var(--orders-ink);
-  outline-offset: 2px;
-}
-
-.orders-demo-orders-gap {
-  padding: 0 0.15rem;
-  color: var(--orders-muted);
-}
-
-.orders-demo-orders-gap.orders-demo-order-on {
-  color: var(--orders-ink);
-  font-weight: 700;
-}
-
-.orders-demo-plan-hint {
-  font-size: 0.75rem;
-  font-style: italic;
-}
-
 .orders-demo-plan-title {
   font-size: 0.95rem;
 }
@@ -1123,7 +1068,19 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   font-variant-numeric: tabular-nums;
 }
 
-.orders-demo-plan-gain::before,
+/* with the plot beside the sheets: under the sheet's name, what it holds, and a bar by its R^2 */
+.orders-demo-plan-what {
+  display: block;
+  color: var(--orders-muted);
+  font-size: 0.85rem;
+}
+
+.orders-demo-plan-fit .orders-demo-meter {
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: 0.05em;
+}
+
 .orders-demo-plan-method::before {
   content: " · ";
 }
@@ -1874,28 +1831,8 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   transition: opacity var(--orders-duration) var(--orders-ease);
 }
 
-/* what a sheet adds (data-show="delta"): the R^2 of the sheet above it, faint, and what it gains
-   after it, the bar's own */
-.orders-demo-meter-base {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: inherit;
-  background: var(--orders-ink);
-  opacity: 0.16;
-}
-
 .orders-demo-score {
   white-space: nowrap;
-}
-
-/* what it gains, to what: "R² +0.51 → 0.88" */
-.orders-demo-gain .orders-demo-verdict {
-  font-size: inherit;
-  letter-spacing: 0;
-}
-
-.orders-demo-gain .orders-demo-verdict::before {
-  content: " → ";
 }
 
 .orders-demo-r2 {
@@ -2069,12 +2006,6 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   stop-opacity: 0.01;
 }
 
-/* what every order gains (data-show="delta"): a bar up from the fit of the order before */
-.orders-demo-plot-gains rect {
-  fill: var(--orders-ink);
-  opacity: 0.16;
-}
-
 .orders-demo-plot-line {
   fill: none;
   stroke: var(--orders-ink);
@@ -2167,6 +2098,64 @@ body[data-theme="dark"] .orders-demo[data-tone="calm"] {
   cursor: crosshair;
   pointer-events: all;
   touch-action: pan-y;
+}
+
+/* -- beside the sheets (data-plot="beside"): the plot upright, where the rows were ---------------- */
+
+.orders-demo-side {
+  display: none;
+}
+
+.orders-demo[data-plot="beside"] .orders-demo-side {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the plot below goes, and of the rows, only their lines from the sheets stay: the card above
+   speaks for them (the rows stay buttons for the keyboard, the ring on the plot their focus) */
+.orders-demo[data-plot="beside"] :is(.orders-demo-footer, .orders-demo-blank-row, .orders-demo-card-row) {
+  display: none;
+}
+
+.orders-demo[data-plot="beside"] .orders-demo-ladder {
+  display: block;
+}
+
+.orders-demo[data-plot="beside"] .orders-demo-row {
+  padding: 0;
+  outline: none;
+}
+
+.orders-demo[data-plot="beside"] .orders-demo-row > * {
+  display: none;
+}
+
+/* a row's line, on from the row to its point */
+.orders-demo-side-lead {
+  stroke: var(--orders-edge);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.orders-demo-side-lead-on {
+  stroke: var(--orders-ink);
+  stroke-dasharray: none;
+}
+
+/* down to the mechanism, the model itself, which fits itself */
+.orders-demo-side-deep {
+  stroke-dasharray: 1 3.5;
+  opacity: 0.7;
+}
+
+.orders-demo-side-model {
+  fill: var(--orders-sheet);
+  stroke: var(--orders-ink);
+  stroke-width: 1.5;
 }
 
 @media (prefers-reduced-motion: reduce) {
