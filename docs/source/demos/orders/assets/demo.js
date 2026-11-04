@@ -704,7 +704,6 @@
     planView.setAttribute("aria-hidden", "true");
     const planText = el("figcaption", "orders-demo-plan-text");
     const why = el("div", "orders-demo-why");
-    why.append(planView, planText);
     plan.append(flow, cast, why);
     // the problem's parts, made once: as the examples change, they stay where they are, and only what
     // they show changes, flipping in as on a board of departures (the input, the model's chip, the
@@ -739,11 +738,13 @@
       event.preventDefault();
       reveal();
     });
-    // the caption: what the explanation shown is, and how well it fits
+    // the card's question, at its top, in the middle, where the light out of the chip meets it; below
+    // it, the face, and the caption: what the explanation shown is, and how well it fits
     const whyName = el("span", "orders-demo-plan-eyebrow");
     whyName.append("Why ", math("f(x)"), "?");
     const planWords = el("span", "orders-demo-plan-words");
-    planText.append(whyName, planWords);
+    planText.append(planWords);
+    why.append(whyName, planView, planText);
     // its window: swiped aside, it goes out of view, not out of the page
     const planWindow = el("div", "orders-demo-plan-window");
     planWindow.append(plan);
@@ -1325,7 +1326,7 @@
       const probe = el("span", "orders-demo-plan-text orders-demo-plan-probe");
       const words = el("span", "orders-demo-plan-words");
       probe.style.width = `${width}px`;
-      probe.append(whyName.cloneNode(true), words);
+      probe.append(words);
       why.append(probe);
       // every line as it says the most, at full size: where one is wider than the column (on a
       // narrow screen), all the words shrink alike, the same whatever the card shows; but what an
@@ -1585,7 +1586,11 @@
           "aria-label",
           `The mechanism, the model itself: ${estimated(example) ? `up to 2^${n} terms, estimated` : `${full.count.toLocaleString("en")} of 2^${n} possible terms`}`,
         );
-        row.append(el("span", "orders-demo-row-label", "Mechanism"));
+        // (where only an estimate shows it, so it says, on a line of its own)
+        const name = el("span", "orders-demo-row-label");
+        name.append(el("span", "", estimated(example) ? "Mechanism," : "Mechanism"));
+        if (estimated(example)) name.append(el("span", "orders-demo-row-note", "estimated"));
+        row.append(name);
         wire(row, i);
         ladder.append(row);
         rows.push(row);
