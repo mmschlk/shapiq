@@ -1,15 +1,18 @@
 /* The interactive FIxLIP explanation (demo.js; see demos/fixlip/index.rst): a photo and its
    caption, whose regions and tokens show their interactions when pointed at. */
 
+/* open on the page, as the orders demo: no card around it */
 .fixlip-demo {
   clear: both;
   margin: 2rem 0 0.75rem;
-  padding: 1rem 1.25rem 1.25rem;
-  border: 1px solid var(--shapiq-border);
-  border-radius: var(--shapiq-radius);
-  background: var(--shapiq-surface);
-  box-shadow: var(--shapiq-shadow);
   container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  --fixlip-ink: var(--color-foreground-primary, #1b1e27);
+  --fixlip-muted: var(--color-foreground-secondary, #5b6275);
+  --fixlip-sheet: var(--shapiq-surface, #ffffff);
+  --fixlip-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --fixlip-duration: var(--shapiq-duration, 220ms);
+  --fixlip-glide: cubic-bezier(0.45, 0, 0.15, 1); /* for what moves a distance: the pill */
+  --fixlip-control: 2.35rem; /* the height of a switch, as the orders demo's */
   /* red and blue for values in text, darker than the tints so that they read well as text */
   --fixlip-red-text: #d6003f;
   --fixlip-blue-text: #1565c0;
@@ -38,7 +41,7 @@ body[data-theme="dark"] .fixlip-demo {
 /* while the script builds the demo, it keeps about the demo's room, so the page does not jump */
 @media (scripting: enabled) {
   .fixlip-demo:not(.fixlip-demo-ready, .fixlip-demo-failed) {
-    min-height: 37rem;
+    min-height: 39.5rem;
   }
 }
 
@@ -91,7 +94,19 @@ body[data-theme="dark"] .fixlip-demo {
   background: none;
   opacity: 0.6;
   cursor: pointer;
-  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration);
+  transition:
+    opacity var(--fixlip-duration) var(--fixlip-ease),
+    border-color var(--fixlip-duration) var(--fixlip-ease),
+    transform 120ms var(--fixlip-ease);
+}
+
+.fixlip-demo-photo:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.fixlip-demo-photo:focus-visible {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
 }
 
 .fixlip-demo-photo img {
@@ -107,7 +122,7 @@ body[data-theme="dark"] .fixlip-demo {
 }
 
 .fixlip-demo-photo[aria-pressed="true"] {
-  border-color: var(--shapiq-red);
+  border-color: var(--fixlip-ink);
 }
 
 .fixlip-demo-photo:disabled,
@@ -190,6 +205,7 @@ body[data-theme="dark"] .fixlip-demo {
 }
 
 .fixlip-demo-switch {
+  position: relative; /* the pill's place */
   display: inline-flex;
   padding: 3px;
   border: 1px solid var(--shapiq-border);
@@ -198,20 +214,57 @@ body[data-theme="dark"] .fixlip-demo {
 }
 
 .fixlip-demo-option {
-  padding: 0.35rem 0.95rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--fixlip-control) - 8px);
+  padding: 0 0.85rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--color-foreground-secondary);
+  color: var(--fixlip-muted);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    color var(--fixlip-duration) var(--fixlip-ease),
+    transform 120ms var(--fixlip-ease);
 }
 
-.fixlip-demo-option[aria-pressed="true"] {
-  background: var(--color-foreground-primary);
-  color: var(--color-background-primary);
+@media (hover: hover) {
+  .fixlip-demo-option:hover:not(:disabled) {
+    color: var(--fixlip-ink);
+  }
+}
+
+.fixlip-demo-option:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.fixlip-demo-option:focus-visible {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
+}
+
+/* the pill around the option chosen: a copy of the options, laid out as they are, over them, in
+   the colors of the one chosen, cut to the pill (demo.js), which slides to the next one */
+.fixlip-demo-pill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  padding: 3px;
+  border-radius: inherit;
+  background: var(--fixlip-ink);
+  pointer-events: none;
+  transition: clip-path 380ms var(--fixlip-glide);
+}
+
+.fixlip-demo-pill .fixlip-demo-option {
+  color: var(--fixlip-sheet);
 }
 
 .fixlip-demo-short {
@@ -684,9 +737,14 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   min-height: 1.35em;
   margin: 0 0 0.4rem;
   font-size: 1.05rem;
-  font-weight: 700;
   line-height: 1.35;
-  color: var(--color-foreground-primary);
+  color: var(--fixlip-muted);
+}
+
+/* its tag, as the orders card's: what is shown, in ink, before what it is */
+.fixlip-demo-title strong {
+  margin-right: 0.3em;
+  color: var(--fixlip-ink);
 }
 
 .fixlip-demo-detail {
@@ -725,23 +783,30 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 }
 
 .fixlip-demo-step {
-  width: 2rem;
-  height: 2rem;
+  width: calc(var(--fixlip-control) - 8px);
+  height: calc(var(--fixlip-control) - 8px);
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: var(--color-foreground-primary);
-  color: var(--color-background-primary);
+  background: var(--fixlip-ink);
+  color: var(--fixlip-sheet);
   font: inherit;
   font-size: 1.1rem;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  transition: opacity var(--shapiq-duration);
+  transition:
+    opacity var(--fixlip-duration) var(--fixlip-ease),
+    transform 120ms var(--fixlip-ease);
 }
 
-.fixlip-demo-step:hover:not(:disabled) {
-  opacity: 0.8;
+.fixlip-demo-step:active:not([aria-disabled="true"]) {
+  transform: scale(0.96);
+}
+
+.fixlip-demo-step:focus-visible {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
 }
 
 .fixlip-demo-step[aria-disabled="true"] {
@@ -902,20 +967,27 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   color: var(--color-foreground-primary);
 }
 
+/* red and blue, as the orders demo's: a dot each */
 .fixlip-demo-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem 0.9rem;
   margin: 0;
   font-size: 0.85rem;
 }
 
 .fixlip-demo-key {
-  display: inline-block;
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.fixlip-demo-key i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
 }
 
 .fixlip-demo-key-red {
@@ -923,7 +995,6 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 }
 
 .fixlip-demo-key-blue {
-  margin-left: 0.6rem;
   background: #1e88e5;
 }
 
@@ -932,6 +1003,105 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   font-size: 0.8rem;
   line-height: 1.5;
   color: var(--shapiq-text-muted);
+}
+
+/* under the explanation, a line each, as on the orders demo's card: its fit, what it was explained
+   with, the model's similarity, the photo's credit */
+.fixlip-demo-meta-line {
+  display: block;
+}
+
+.fixlip-demo-fit {
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-demo-meter {
+  position: relative;
+  display: inline-block;
+  width: 5.3em;
+  height: 0.47em;
+  margin-right: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--shapiq-border);
+  vertical-align: 0.05em;
+}
+
+.fixlip-demo-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--fixlip-ink);
+  opacity: 0.7;
+}
+
+.fixlip-demo-r2 {
+  color: var(--fixlip-ink);
+  font-weight: 700;
+}
+
+.fixlip-demo-r2::before {
+  content: "R² ";
+  color: var(--fixlip-muted);
+  font-weight: 500;
+}
+
+.fixlip-demo-method strong {
+  color: var(--fixlip-ink);
+  font-weight: 600;
+}
+
+/* the invitation over the photo, as the orders demo's over its layers: tap a region or a word, or
+   with a mouse, hover one; it goes once one is pointed at, and without an explanation */
+.fixlip-demo-hint {
+  position: absolute;
+  z-index: 3;
+  top: 0.9rem;
+  left: 50%;
+  padding: 0.38rem 0.95rem 0.42rem;
+  border-radius: 999px;
+  background: var(--fixlip-ink);
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.45);
+  color: var(--fixlip-sheet);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: fixlip-demo-hint-bob 2.2s ease-in-out infinite;
+  transition:
+    opacity 360ms var(--fixlip-ease),
+    visibility 0s;
+}
+
+@keyframes fixlip-demo-hint-bob {
+  50% {
+    translate: 0 3px;
+  }
+}
+
+.fixlip-demo-hint-hover {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fixlip-demo-hint-touch {
+    display: none;
+  }
+
+  .fixlip-demo-hint-hover {
+    display: inline;
+  }
+}
+
+.fixlip-demo-hinted .fixlip-demo-hint,
+.fixlip-demo-none .fixlip-demo-hint {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 360ms var(--fixlip-ease),
+    visibility 0s 360ms;
 }
 
 .fixlip-demo-live,
@@ -1001,6 +1171,28 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
     display: none;
   }
 
+  .fixlip-demo-hint {
+    padding: 0.3rem 0.75rem 0.34rem;
+    font-size: 0.78rem;
+  }
+
+  /* the "i" at the end of the photos' row, the views and the models in a row under them */
+  .fixlip-demo-switches {
+    display: contents;
+  }
+
+  .fixlip-demo-info {
+    order: 1;
+  }
+
+  .fixlip-demo-switch {
+    order: 2;
+  }
+
+  .fixlip-demo-option {
+    padding: 0 0.7rem;
+  }
+
   .fixlip-demo-short {
     display: inline;
   }
@@ -1041,13 +1233,12 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   .fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context,
   .fixlip-demo-renewed .fixlip-demo-token,
   .fixlip-demo-renewed .fixlip-demo-token::before,
-  .fixlip-demo-renewed .fixlip-demo-token::after {
+  .fixlip-demo-renewed .fixlip-demo-token::after,
+  .fixlip-demo-hint {
     animation: none;
   }
-}
 
-@media (max-width: 46em) {
-  .fixlip-demo {
-    padding: 0.85rem;
+  .fixlip-demo-pill {
+    transition: none;
   }
 }
