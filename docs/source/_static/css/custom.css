@@ -86,13 +86,18 @@ table.docutils {
 }
 
 /* the symbols of the user guide's notation link to the notation page (_static/js/notation.js),
-   whose row of the symbol is highlighted. MathJax draws each glyph as an inline block, which a
-   text-decoration does not reach: the underline is a line of its own, which slides in on hover */
+   whose row of the symbol is highlighted. On hover, a symbol casts a soft offset shadow in the
+   accent color, and an underline in the same color fades in and grows from the left, fading
+   towards its end. MathJax draws each glyph as an inline block, which a text-decoration does not
+   reach, but a text-shadow does: the underline is a line of its own. With reduced motion, the
+   duration token of tokens.css is 0 ms, so nothing slides */
 a.shapiq-notation {
+  --shapiq-notation-accent: #f5a300;
   position: relative;
   display: inline-block;
   color: inherit;
   text-decoration: none;
+  transition: text-shadow var(--shapiq-duration) var(--shapiq-ease);
 }
 
 a.shapiq-notation::after {
@@ -100,27 +105,25 @@ a.shapiq-notation::after {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -0.15em;
-  height: max(1px, 0.08em);
-  border-radius: 1px;
-  background: currentColor;
-  transform: scaleX(0);
+  bottom: -0.2em;
+  height: max(2px, 0.13em);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--shapiq-notation-accent) 35%, transparent);
+  opacity: 0;
+  transform: scaleX(0.3);
   transform-origin: left;
-  transition: transform 150ms ease-out;
+  transition:
+    opacity var(--shapiq-duration) var(--shapiq-ease),
+    transform var(--shapiq-duration) var(--shapiq-ease);
 }
 
 a.shapiq-notation:hover {
-  color: var(--color-brand-content);
+  text-shadow: 0.07em 0.07em 0.03em var(--shapiq-notation-accent);
 }
 
 a.shapiq-notation:hover::after {
+  opacity: 1;
   transform: scaleX(1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  a.shapiq-notation::after {
-    transition: none;
-  }
 }
 
 tr:has(:target) {
