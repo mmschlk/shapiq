@@ -2,19 +2,20 @@
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import ClassVar, Protocol, override, runtime_checkable
+from typing import Any, ClassVar, Protocol, override, runtime_checkable
 
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 from jaxtyping import Float, Int, Shaped
+from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.typing import typechecked
 
 
 @runtime_checkable
-class Weight[C, T](Protocol):
+class Weight[C, T](JaxLike[Any], Protocol):
     """Weight protocol for games."""
 
     @abstractmethod
