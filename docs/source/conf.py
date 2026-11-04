@@ -395,17 +395,25 @@ source_suffix = {
 myst_enable_extensions = ["dollarmath", "amsmath"]
 
 # The notation of the user guide as MathJax macros: a symbol changed here changes on every page.
-# user_guide/README.md lists them.
+# The symbols of _NOTATION link to their row of the notation page (user_guide/notation.md, row id
+# notation-<macro>): their macro marks them with the class shapiq-notation-<macro>, and
+# _static/js/notation.js turns the marked symbols into links. user_guide/README.md lists them.
+_NOTATION = {
+    "players": "N",  # the players, i.e. the features of the model
+    "nplayers": "n",  # the number of players
+    "model": "F",  # the model to explain
+    "mask": r"\mathcal{M}",  # the masking operator
+    "behav": r"\mathcal{B}",  # the behavior operator
+    "inter": r"\mathcal{I}",  # the interaction operator
+    "game": r"\nu",  # the explanation game (value function)
+}
 mathjax3_config = {
     "tex": {
         "macros": {
-            "players": "N",  # the players, i.e. the features of the model
-            "nplayers": "n",  # the number of players
-            "model": "F",  # the model to explain
-            "mask": r"\mathcal{M}",  # the masking operator
-            "behav": r"\mathcal{B}",  # the behavior operator
-            "inter": r"\mathcal{I}",  # the interaction operator
-            "game": r"\nu",  # the explanation game (value function)
+            **{
+                name: rf"\class{{shapiq-notation-{name}}}{{{tex}}}"
+                for name, tex in _NOTATION.items()
+            },
             "E": r"\mathbb{E}",  # expectation
             "Var": r"\mathbb{V}",  # variance
             "R": r"\mathbb{R}",  # the real numbers
@@ -436,6 +444,7 @@ html_css_files = [
 html_js_files = [
     ("js/sidebar.js", {"defer": "defer"}),  # keeps the place in the sidebar
     ("js/logo.js", {"defer": "defer"}),  # the players of the landing page's logo are springs
+    ("js/notation.js", {"defer": "defer"}),  # symbols of the user guide link to the notation page
 ]
 
 

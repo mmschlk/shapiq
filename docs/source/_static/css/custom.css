@@ -85,6 +85,20 @@ table.docutils {
   max-width: 8.5rem;
 }
 
+/* the symbols of the user guide's notation link to the notation page (_static/js/notation.js),
+   whose row of the symbol is highlighted */
+.shapiq-notation {
+  cursor: pointer;
+}
+
+.shapiq-notation:hover {
+  color: var(--color-brand-content);
+}
+
+tr:has(:target) {
+  background: var(--color-highlighted-background);
+}
+
 /* the sidebar keeps the space of its scrollbar also when it has nothing to scroll: else, with
    scrollbars that take space (e.g. macOS "Show scroll bars: Always"), the logo and the navigation
    move sideways between pages with a short sidebar (the landing page) and with a long one */

@@ -8,3 +8,10 @@ perspectives/index
 framework/index
 methods/index
 ```
+
+```{toctree}
+:maxdepth: 1
+
+notation
+showcase
+```

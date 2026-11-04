@@ -25,8 +25,10 @@ $$ (eq-masking)
 As {eq}`eq-masking` shows, ...
 ```
 
-The notation is defined once, as MathJax macros in `docs/source/conf.py` (`mathjax3_config`), so a
-symbol can change in one place:
+The notation is defined once, as MathJax macros in `docs/source/conf.py` (`_NOTATION` and
+`mathjax3_config`), so a symbol can change in one place. The symbols of `_NOTATION` link to their
+row of the notation page (`notation.md`). A new symbol needs both: its macro in `_NOTATION`, and a
+row in `notation.md` that starts with `<span id="notation-<macro>"></span>`.
 
 | Macro | Renders | Meaning |
 | --- | --- | --- |
