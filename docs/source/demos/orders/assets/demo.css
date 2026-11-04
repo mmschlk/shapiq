@@ -1522,15 +1522,17 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* while a layer is pointed at, the others' marks fade; the layer pointed at stays where it floats,
-   and the paper of the layers above it thins, else it would veil it, and of those below it, down to
-   the input, else they would hide its light on the way */
-.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer:is(.orders-demo-above, .orders-demo-below) {
+   and the paper of the layers above it thins, else it would veil it; with data-below="clear", so
+   does the paper of those below it, down to the input, which would else hide its light on the way */
+.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer.orders-demo-above,
+.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-sheet.orders-demo-layer.orders-demo-below {
   border-color: color-mix(in srgb, var(--orders-layer-edge), transparent 55%);
   background: color-mix(in srgb, var(--orders-layer-film), transparent 96%);
   box-shadow: none;
 }
 
-.orders-demo.orders-demo-floating :is(.orders-demo-above, .orders-demo-below) .orders-demo-face {
+.orders-demo.orders-demo-floating .orders-demo-above .orders-demo-face,
+.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-below .orders-demo-face {
   opacity: 0.1;
 }
 
@@ -2246,18 +2248,6 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-plot-axis {
   font-size: 10.5px;
   font-style: italic;
-}
-
-/* a good fit, R^2 0.8: a line down the plot in the explanations' green, named below it */
-.orders-demo-plot-good {
-  stroke: var(--orders-xai-edge);
-  stroke-width: 1.25;
-  vector-effect: non-scaling-stroke;
-}
-
-.orders-demo-plot-good-name {
-  font-style: normal;
-  font-weight: 600;
 }
 
 /* the estimation gap: what an estimated full decomposition's fit falls short of 1, hatched */

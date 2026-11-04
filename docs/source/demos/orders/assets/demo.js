@@ -12,9 +12,8 @@
 // reproduces beyond what their sizes alone predict. Every order's point lies at the height of its
 // layer, a line leading to it from the layer's corner, and the line through them runs down from the
 // Shapley values to the full decomposition, which reproduces the model exactly, unless it is
-// estimated: what it falls short of 1 is then hatched, the estimation gap, named below it. A line in
-// the explanations' green marks a good fit, R^2 0.8. The input and the mechanism are named below the
-// plot.
+// estimated: what it falls short of 1 is then hatched, the estimation gap, named below it. The input
+// and the mechanism are named below the plot.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
@@ -32,10 +31,12 @@
 // (hover, keyboard focus on its row, a tap that pins it, or the slider left of the layers) stays
 // where it floats and casts its light onto the card, which wears its marks, in green (the
 // mechanism's rises to it, a box of orange light); its name darkens, and the slider's handle and the
-// card of the explanation above take its color. The others fade; a ring marks the order pointed at on the plot, and pointing along the plot
+// card of the explanation above take its color. The others fade, and the layers above it thin (with
+// data-below="clear", those below it too, down to the input, so that its light shows all the way);
+// a ring marks the order pointed at on the plot, and pointing along the plot
 // brings out the layer of an order, or the blank layer of an order between, which peeks out. The
 // slider is an arrow down the side of the layers, a circle at every one, through the explanations:
-// they grow more complex, and more faithful, from order to order; below the input, the mechanism's
+// they grow more detailed, from order to order; below the input, the mechanism's
 // orange circle on its own arrow up to the input. Until a layer is first pointed at, an invitation
 // lies over the top one: tap a layer (with a mouse, hover one) to explain. Where the examples do not fit in a row, a stepper goes
 // from one to the next, and so does a swipe across the layers.
@@ -753,7 +754,7 @@
     stack.setAttribute("aria-hidden", "true");
     const ladder = el("div", "orders-demo-ladder");
     // beside the stack, in a column of its own, the slider of the orders: an arrow down (every order
-    // below is more complex, and fits the model more faithfully), a tick at every sheet, and a handle
+    // below explains in more detail, and fits the model more faithfully), a tick at every sheet, and a handle
     // that brings out the sheet at its tick; it rests above the top sheet. It serves touch screens,
     // where nothing hovers.
     const rail = el("div", "orders-demo-rail");
@@ -762,7 +763,7 @@
     rail.style.setProperty("--orders-rail-line", `${RAIL_LINE}px`);
     const railLine = el("span", "orders-demo-rail-line");
     const railLabel = el("span", "orders-demo-rail-label");
-    railLabel.append("more ", el("em", "", "complex"), " and more ", el("em", "", "faithful"));
+    railLabel.append("more detailed explanations");
     railLabel.setAttribute("aria-hidden", "true");
     const ticks = el("span", "orders-demo-rail-ticks");
     ticks.setAttribute("aria-hidden", "true");
@@ -1652,7 +1653,8 @@
         // (the layers above the one pointed at, through which it shows, unless it is the mechanism,
         // under the card)
         node.classList.toggle("orders-demo-above", Boolean(target) && position < pointedAt && !target.deep);
-        // (and those below it, down to the card, through which its light falls onto the input)
+        // (and those below it, down to the card, through which its light falls onto the input: thin
+        // too with data-below="clear", demo.css)
         node.classList.toggle("orders-demo-below", Boolean(target) && !target.deep && position > pointedAt && !item.base && !item.deep);
         // a blank layer pointed at shows its order's explanation
         if (!item.sheet && !item.base) showBlank(item, item === target);
@@ -1883,20 +1885,13 @@
       });
       to(sideFrame.querySelector(".orders-demo-side-name"), top - 25);
 
-      // below the plot, the names of a good fit's line and of the estimation gap: the gap's ends at
-      // the plot's right, under the gap; where it would meet the other, it takes a row of its own,
-      // where there is room above the input's name, else the other gives way to the left (their
-      // widths measured, or, while the plot is hidden, as their letters make them)
+      // a name's width below the plot: measured, or, while the plot is hidden, as its letters make it
       const widthOf = (text) => {
-        const probe = add(sideData, "text", { class: "orders-demo-plot-axis orders-demo-plot-good-name" }, text);
+        const probe = add(sideData, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label" }, text);
         const width = probe.getComputedTextLength() || text.length * 6.2;
         probe.remove();
         return width;
       };
-      const below = bottom + 11;
-      const good = x(0.8);
-      let goodAt = good;
-      const cardY = rightCorner(rest[items.findIndex((item) => item.base)])[1];
 
       // the estimation gap: what an estimated full decomposition falls short of 1, a hatched band
       // down the plot (in gray: no explanation's color, nor the mechanism's), its name below it
@@ -1909,14 +1904,11 @@
         const band = { x: f(x(full.r2)), y: top, width: f(x(1) - x(full.r2)), height: f(bottom - top) };
         add(gap, "rect", { ...band, class: "orders-demo-plot-gap-fill" });
         add(gap, "rect", { ...band, fill: `url(#${id})` });
+        // (under the gap, ending at the plot's right where it would run off it; on a narrow screen,
+        // "gap", as the card has it)
         const name = g.narrow ? "gap" : "estimation gap";
         const end = Math.min(band.x + band.width / 2 + widthOf(name) / 2, g.width - 2);
-        let y = below;
-        if (end - widthOf(name) < goodAt + widthOf("good") / 2 + 4) {
-          if (cardY - bottom > 40) y = bottom + 23;
-          else goodAt = Math.max(x0, end - widthOf(name) - 4 - widthOf("good") / 2);
-        }
-        add(gap, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label", x: f(end), y: f(y), "text-anchor": "end" }, name);
+        add(gap, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label", x: f(end), y: f(bottom + 11), "text-anchor": "end" }, name);
       }
 
       // every sheet's line from its row on to its point (the row draws it from the sheet's corner)
@@ -1934,10 +1926,6 @@
       add(gradient, "stop", { class: "orders-demo-plot-fade-top", offset: 0 });
       add(gradient, "stop", { class: "orders-demo-plot-fade-bottom", offset: 1 });
       add(sideData, "path", { class: "orders-demo-plot-area", d: `M${f(x0)},${f(points[0].y)}L${points.map(at).join("L")}L${f(x0)},${f(full.y)}Z`, fill: `url(#${fade})` });
-      // a good fit, R^2 0.8, as the verdicts have it: a line down the plot, in the explanations'
-      // green, over the area and under the fits' line, its name below it
-      add(sideData, "line", { class: "orders-demo-plot-good", x1: f(good), x2: f(good), y1: f(top), y2: f(bottom) });
-      add(sideData, "text", { class: "orders-demo-plot-axis orders-demo-plot-good-name", x: f(goodAt), y: f(below), "text-anchor": "middle" }, "good");
       const skips = points.length > 1 && full.order - points.at(-2).order > 1;
       const solid = skips ? points.slice(0, -1) : points;
       add(sideData, "path", { class: "orders-demo-plot-line", d: `M${solid.map(at).join("L")}` });
