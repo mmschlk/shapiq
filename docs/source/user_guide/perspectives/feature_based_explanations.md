@@ -1,14 +1,12 @@
 # Feature-Based Explanations
 
-% Story points of this chapter, to be written out. The EU AI Act is not in references.bib yet.
+% Story points of this chapter, to be written out.
 
-- **Opaque models make decisions.** The models that perform best are the hardest to inspect, and
-  regulation such as the EU AI Act asks that their outputs can be interpreted
-  {cite:p}`Muschalik.2026{Sec. 2.2}`.
-- **Explaining after the fact.** Instead of trading performance for a simpler model, post-hoc
-  explanations explain a trained model without changing it.
-- **Features as common ground.** Every model takes features as input, so explanations in terms of
-  features work across model classes and types of data {cite:p}`Covert.2021,Fumagalli.2025`.
+- **Features are the universal language of models.** Whatever its architecture or data, every model
+  receives its input as features, so explanations in terms of features apply to any model
+  {cite:p}`Muschalik.2026{Sec. 2.2},Covert.2021,Fumagalli.2025`.
+- **Features take many forms.** The columns of a table, the pixels or patches of an image, the tokens
+  of a text, the nodes of a graph.
 - **A running example.** A house in the California housing data: which features drive its predicted
   price? Latitude and longitude matter only together, as the location of the house.
 - **The definition.** A feature-based explanation $e : \mathcal{S} \to E$ assigns each unit $S$ of a

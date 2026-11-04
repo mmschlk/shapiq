@@ -4,6 +4,7 @@
 :numbered:
 :maxdepth: 2
 
+introduction/index
 perspectives/index
 framework/index
 methods/index
