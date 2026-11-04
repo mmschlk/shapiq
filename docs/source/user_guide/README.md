@@ -3,6 +3,15 @@
 Notes for the authors of the user guide. This file is not a page of the docs (`exclude_patterns` in
 `docs/source/conf.py`).
 
+## Structure
+
+One folder per part, one file per chapter. The numbers are automatic (`:numbered:` in `index.md`):
+the part pages are 1, 2, 3, their chapters 1.1, 1.2, ..., and the sections of a chapter 1.1.1, ...
+
+A part page (`<part>/index.md`) holds a short introduction, the sentence "This part is organized as
+follows:", and the toctree of its chapters. It has no `##` sections: they would be numbered
+together with the chapters.
+
 ## Math
 
 Inline math is `$...$`, displayed math `$$...$$`. A label after the closing `$$` numbers the
@@ -33,7 +42,9 @@ symbol can change in one place:
 ## Citations
 
 Keys are `Author.Year` (e.g. `Fumagalli.2025`, `Herbinger.2026`). `` {cite:p}`Fumagalli.2025` ``
-cites in parentheses, `` {cite:t}`Fumagalli.2025` `` in the text. New entries go into
+cites in parentheses, `` {cite:t}`Fumagalli.2025` `` in the text. A note after the year goes in
+braces after the key: `` {cite:t}`Muschalik.2026{Def. 2.1}` `` gives "Muschalik [2026, Def. 2.1]".
+Several keys are separated by commas. New entries go into
 `docs/source/references.bib`; the pre-commit hook `format-bib` formats them.
 
 ## Comments and markers

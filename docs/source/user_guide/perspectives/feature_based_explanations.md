@@ -76,7 +76,7 @@ functions of a single feature.
 ## What the Definition Leaves Open
 
 Definition 1.1 does not say how $e(S)$ is obtained. Each of the three perspectives of
-{doc}`perspectives` gives its own answer:
+{doc}`index` gives its own answer:
 
 ````{tab-set}
 
@@ -124,7 +124,7 @@ m_x(S) &= \sum_{T \subseteq S} (-1)^{\lvert S \rvert - \lvert T \rvert} \, \game
 \end{align}
 
 With a baseline in place of the data distribution, the components are also the Taylor terms of
-{eq}`eq-taylor` {cite:p}`Fumagalli.2025{Thm. 1}`. Part I ends with this result.
+{eq}`eq-taylor` {cite:p}`Fumagalli.2025{Thm. 1}`. {doc}`three_views` shows this in detail.
 ```
 
 ```{dropdown} The fANOVA components in detail
@@ -139,12 +139,12 @@ f_S(x) = \model_S(x) - \sum_{T \subsetneq S} f_T(x),
 $$ (eq-fanova-recursion)
 
 where $P$ is a distribution of the features outside $S$. Choosing it, as a baseline, the marginal,
-or the conditional distribution, is the topic of {doc}`framework`.
+or the conditional distribution, is the topic of {doc}`../framework/index`.
 ```
 
 ```{seealso}
 {cite:t}`Covert.2021` on removing features as the principle behind most explanations, and
-{cite:t}`Fumagalli.2025` on the unified framework of {doc}`framework`.
+{cite:t}`Fumagalli.2025` on the unified framework of {doc}`../framework/index`.
 ```
 
 [^notation]: {cite:t}`Muschalik.2026` writes $D = \{1, \dots, d\}$ for the features; this guide
