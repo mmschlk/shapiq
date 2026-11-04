@@ -55,7 +55,7 @@ class Index[W: Weight, R: Game](JaxAxisProtected[jax.Array]):
 
     def interactions(self, n_players: int) -> Bool[jax.Array, "n_interactions {n_players}"]:
         """Return the interaction sets this index assigns coefficients to."""
-        return subset_patterns(n_players, self.min_order, self.max_order)
+        return subset_patterns(order=n_players, min_size=self.min_order, max_size=self.max_order)
 
     @abstractmethod
     def build(

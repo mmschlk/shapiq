@@ -13,8 +13,10 @@ from ndlike.protected_axis.jax import JaxAxisProtected
 from shapiq.coalition.coalition import pack_bool_coalition
 from shapiq.game import BoolFinitePlayerGame
 from shapiq.game.discretederivative import (
-    DiscreteDerivativeInteractionIndex,
-    WeightedGameInteractionIndex,
+    DiscreteDerivative,
+    WeightedDiscreteDerivative,
+    WeightedGameValue,
+    powerset,
     subset_patterns,
 )
 from shapiq.game.weights import (
@@ -103,7 +105,7 @@ def _query(coalitions, index):
 
 
 def _index(coefficients, interaction, weights):
-    return DiscreteDerivativeInteractionIndex(
+    return WeightedDiscreteDerivative(
         game=_CubicGame(coefficients, FinitePlayers(N_PLAYERS)),
         weights=weights,
         interaction=interaction,
@@ -156,6 +158,18 @@ def test_weighted_derivatives_for_bool_and_packed_coalitions(
     )
 
 
+def test_discrete_derivative_is_the_pair_derivative():
+    interaction = jnp.stack([_coalition(*pair) for pair in PAIRS])
+    game = _CubicGame(COEFFICIENTS, FinitePlayers(N_PLAYERS))
+    derivative = DiscreteDerivative(game=game, interaction=interaction, order=2)
+    coalitions = subset_patterns(N_PLAYERS)[:, None, :]
+    expected = jnp.array(
+        [[_derivative(COEFFICIENTS, c[0], i, j) for i, j in PAIRS] for c in coalitions]
+    )
+
+    assert jnp.allclose(derivative(coalitions), expected, rtol=1e-5)
+
+
 def test_shared_game_stays_compact_under_basic_indexing():
     index = _index(
         COEFFICIENTS, jnp.stack([_coalition(*pair) for pair in PAIRS]), DDBanzhafWeight()
@@ -193,10 +207,10 @@ def test_game_batch_broadcasts_a_single_interaction():
     "weights", [case[0] for case in WEIGHT_CASES.values()], ids=WEIGHT_CASES.keys()
 )
 @pytest.mark.parametrize("packed", [False, True], ids=["bool", "packed"])
-def test_weighted_game_index_sums_to_the_discrete_derivative_index(weights, packed):
+def test_weighted_game_value_sums_to_the_weighted_discrete_derivative(weights, packed):
     interaction = jnp.stack([_coalition(*pair) for pair in PAIRS])
     game = _CubicGame(COEFFICIENTS, FinitePlayers(N_PLAYERS))
-    weighted = WeightedGameInteractionIndex(
+    weighted = WeightedGameValue(
         game=game,
         weights=weights,
         interaction=pack_bool_coalition(interaction) if packed else interaction,
@@ -212,13 +226,11 @@ def test_weighted_game_index_sums_to_the_discrete_derivative_index(weights, pack
     )
 
 
-@pytest.mark.parametrize(
-    "index_class", [DiscreteDerivativeInteractionIndex, WeightedGameInteractionIndex]
-)
+@pytest.mark.parametrize("index_class", [WeightedDiscreteDerivative, WeightedGameValue])
 def test_index_is_constructible_and_batchable_inside_jit(index_class):
     interactions = jnp.stack([_coalition(*pair) for pair in PAIRS])
     game = _CubicGame(COEFFICIENTS, FinitePlayers(N_PLAYERS))
-    extra = {"order": 2} if index_class is DiscreteDerivativeInteractionIndex else {}
+    extra = {"order": 2} if index_class is WeightedDiscreteDerivative else {}
     all_coalitions = subset_patterns(N_PLAYERS)
 
     def total(p):
@@ -235,12 +247,10 @@ def test_index_is_constructible_and_batchable_inside_jit(index_class):
     assert jnp.allclose(jax.jit(jax.vmap(total))(ps), eager)
 
 
-@pytest.mark.parametrize(
-    "index_class", [DiscreteDerivativeInteractionIndex, WeightedGameInteractionIndex]
-)
+@pytest.mark.parametrize("index_class", [WeightedDiscreteDerivative, WeightedGameValue])
 def test_weight_batch_is_part_of_the_index_batch(index_class):
     interactions = jnp.stack([_coalition(*pair) for pair in PAIRS])
-    extra = {"order": 2} if index_class is DiscreteDerivativeInteractionIndex else {}
+    extra = {"order": 2} if index_class is WeightedDiscreteDerivative else {}
     ps = jnp.array([0.2, 0.5, 0.9, 0.3])
 
     def index_for(p):
@@ -260,3 +270,18 @@ def test_weight_batch_is_part_of_the_index_batch(index_class):
     for i, p in enumerate(ps):
         assert jnp.allclose(index[i](coalitions[:, 0]), index_for(p)(coalitions[:, 0]))
     assert jnp.allclose(index(coalitions)[:, 2], index_for(ps[2])(coalitions[:, 0]))
+
+
+def test_powerset_size_filter_is_static_under_jit():
+    """Size-filtered subsets keep powerset order, beyond eight players, inside jit."""
+    coalition = jnp.array([True, False, True, True, False, True, True, True, True, True])
+    full = powerset(coalition, order=8)
+    sizes = jnp.sum(full, axis=-1)
+    expected = full[(sizes >= 2) & (sizes <= 3)]
+    filtered = jax.jit(lambda c: powerset(c, order=8, min_size=2, max_size=3))(coalition)
+    assert filtered.shape == (comb(8, 2) + comb(8, 3), 10)
+    assert jnp.array_equal(filtered, expected)
+    assert subset_patterns(9).shape == (2**9, 9)
+    assert jnp.array_equal(
+        jnp.sum(subset_patterns(9), axis=-1), jnp.array([i.bit_count() for i in range(512)])
+    )
