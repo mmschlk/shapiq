@@ -738,8 +738,9 @@
       event.preventDefault();
       reveal();
     });
-    // the card's question, at its top, in the middle, where the light out of the chip meets it; below
-    // it, the face, and the caption: what the explanation shown is, and how well it fits
+    // the card's question, a pill on its top edge, in the middle, where the light out of the chip
+    // meets it; in the card, the face, and the caption: what the explanation shown is, and how well
+    // it fits
     const whyName = el("span", "orders-demo-plan-eyebrow");
     whyName.append("Why ", math("f(x)"), "?");
     const planWords = el("span", "orders-demo-plan-words");

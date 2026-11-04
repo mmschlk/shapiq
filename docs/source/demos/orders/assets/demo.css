@@ -457,10 +457,22 @@ body[data-theme="dark"] .orders-demo {
   text-transform: uppercase;
 }
 
-/* at the card's top, in the middle, over the face and the words */
+/* on the card's top edge, in the middle, where the light out of the chip meets it: a pill on the
+   line, which takes no room in the card, its edge the card's (in its color, pointed at) */
 .orders-demo-why > .orders-demo-plan-eyebrow {
-  grid-column: 1 / -1;
-  justify-self: center;
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 50%;
+  padding: 0.12rem 0.65rem 0.14rem;
+  border: 1px solid;
+  border-color: inherit;
+  border-radius: 999px;
+  background: var(--orders-sheet);
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  transition: border-color 360ms var(--orders-ease);
 }
 
 .orders-demo-plan-eyebrow .orders-demo-math {
@@ -1052,7 +1064,7 @@ body[data-theme="dark"] .orders-demo {
   grid-template-columns: auto minmax(0, 23rem);
   align-items: center;
   justify-content: center;
-  gap: 0.55rem 1.4rem;
+  gap: 1.4rem;
   box-sizing: border-box;
   width: min(100%, 38rem);
   padding: 0.8rem 1rem;
@@ -1270,8 +1282,8 @@ body[data-theme="dark"] .orders-demo {
 
   .orders-demo-why {
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.45rem 0.75rem;
-    padding: 0.6rem 0.65rem 0.65rem;
+    gap: 0.75rem;
+    padding: 0.95rem 0.65rem 0.65rem; /* (above the words, the question's pill) */
   }
 
   .orders-demo-plan-view {
