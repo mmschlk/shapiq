@@ -249,6 +249,8 @@ exclude_patterns = [
     "demos/README.md",
     "demos/*/assets",
     "demos/*/compute",
+    # the user guide's notes for its authors, which are not a page
+    "user_guide/README.md",
 ]
 bibtex_bibfiles = ["references.bib"]
 
@@ -384,6 +386,31 @@ bibtex_reference_style = "author_year"
 source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
+}
+
+# -- MyST and math ---------------------------------------------------------------------------------
+# Markdown pages write math as in LaTeX: $...$ inline and $$...$$ displayed, with an optional label
+# after the closing $$ (``$$ ... $$ (eq-masking)``, referenced as {eq}`eq-masking`). ``amsmath``
+# allows its environments, such as ``align``, at the top level of a page.
+myst_enable_extensions = ["dollarmath", "amsmath"]
+
+# The notation of the user guide as MathJax macros: a symbol changed here changes on every page.
+# user_guide/notation.md lists them.
+mathjax3_config = {
+    "tex": {
+        "macros": {
+            "players": "N",  # the players, i.e. the features of the model
+            "nplayers": "n",  # the number of players
+            "model": "F",  # the model to explain
+            "mask": r"\mathcal{M}",  # the masking operator
+            "behav": r"\mathcal{B}",  # the behavior operator
+            "inter": r"\mathcal{I}",  # the interaction operator
+            "game": r"\nu",  # the explanation game (value function)
+            "E": r"\mathbb{E}",  # expectation
+            "Var": r"\mathbb{V}",  # variance
+            "R": r"\mathbb{R}",  # the real numbers
+        }
+    }
 }
 
 intersphinx_mapping = {
