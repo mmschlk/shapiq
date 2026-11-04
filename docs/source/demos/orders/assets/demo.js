@@ -101,6 +101,8 @@
   const ROOMY_BESIDE = 0.05;
   // pixels: below the full stack beside its card, the room left in the window
   const WINDOW_MARGIN = 24;
+  // milliseconds: how long a layer takes to move to its place (demo.css: --orders-move)
+  const MOVE = 640;
   // pixels: the column of the slider, left of the stack; its line in it; how far above the top
   // sheet its handle rests, when no sheet is out
   const RAIL = 42;
@@ -1376,8 +1378,12 @@
     // the column's width and the view)
     let settled = "";
     function settleCard() {
-      const width = planText.clientWidth;
-      const key = `${width}`;
+      // (beside the layers, the card's column is the words' room: they take as much of it as their
+      // widest line needs, in its middle)
+      const besides = root.classList.contains("orders-demo-beside");
+      const style = getComputedStyle(why);
+      const width = besides ? why.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) : planText.clientWidth;
+      const key = `${width} ${besides}`;
       if (!width || key === settled) return;
       settled = key;
       const probe = el("span", "orders-demo-plan-text orders-demo-plan-probe");
@@ -1390,6 +1396,13 @@
       // explanation holds, the longest line, takes two lines instead, where it would not fit one
       words.style.setProperty("--orders-words-fit", "1");
       let [widest, widestWhat] = [0, 0];
+      // (and how wide their text is, the lines being as wide as the column: beside, their block)
+      let [natural, naturalWhat] = [0, 0];
+      const range = document.createRange();
+      const textWidth = (line) => {
+        range.selectNodeContents(line);
+        return range.getBoundingClientRect().width;
+      };
       for (const example of data.examples) {
         const picks = [
           ...example.sheets.map((_, index) => ({ index })),
@@ -1399,8 +1412,13 @@
         for (const pick of picks) {
           words.replaceChildren(...wordsOf(example, pick).nodes);
           for (const line of words.children) {
-            if (line.classList.contains("orders-demo-plan-what")) widestWhat = Math.max(widestWhat, line.scrollWidth);
-            else widest = Math.max(widest, line.scrollWidth);
+            if (line.classList.contains("orders-demo-plan-what")) {
+              widestWhat = Math.max(widestWhat, line.scrollWidth);
+              if (besides) naturalWhat = Math.max(naturalWhat, textWidth(line));
+            } else {
+              widest = Math.max(widest, line.scrollWidth);
+              if (besides) natural = Math.max(natural, textWidth(line));
+            }
           }
         }
       }
@@ -1410,6 +1428,7 @@
         node.style.setProperty("--orders-words-fit", roundTo(fit, 3));
         node.classList.toggle("orders-demo-plan-two", two);
       }
+      planText.style.width = besides ? `${Math.ceil(Math.min(width, Math.max(natural, two ? 0 : naturalWhat) * fit)) + 2}px` : "";
       // and as tall as its words, shrunk so, are (every explanation's have as many lines)
       planText.style.minHeight = `${Math.ceil(probe.offsetHeight)}px`;
       probe.remove();
@@ -1470,6 +1489,7 @@
       revealed = true;
       render();
       if (!reducedMotion()) buildUp();
+      if (root.classList.contains("orders-demo-beside")) followLight(building + 1200);
       // the floating layers unfold once they have come in, and are in view
       unfoldAfter = performance.now() + (reducedMotion() ? 300 : building + 500);
       unfold();
@@ -1543,9 +1563,17 @@
       if (span) {
         // beside: one light, from the chip's bottom onto the card's left edge and the top layer's right
         // corner, where it floats, and on down to the card's bottom, fading
-        const at = stage.getBoundingClientRect();
-        const right = corners(layout()[0]).reduce((p, q) => (q[0] > p[0] ? q : p));
-        const [rx, ry] = [at.left + right[0], at.top + right[1]];
+        // (where the top layer is on the page, as it moves: its right corner, the right of its box)
+        const node = items[0].node;
+        let [rx, ry] = [0, 0];
+        if (node.isConnected) {
+          const r = node.getBoundingClientRect();
+          [rx, ry] = [r.right, r.top + r.height / 2];
+        } else {
+          const at = stage.getBoundingClientRect();
+          const right = corners(layout()[0]).reduce((p, q) => (q[0] > p[0] ? q : p));
+          [rx, ry] = [at.left + right[0], at.top + right[1]];
+        }
         const end = Math.max(to.bottom, ry + 1);
         hull = [onCard[0], onCard[1], f(rx, ry), f(rx, end), f(to.left + b, end), onCard[3]];
         edges = `M${hull[0]}L${hull[5]}M${hull[1]}L${hull[2]}`;
@@ -1561,6 +1589,20 @@
       cast.setAttribute("height", roundTo(box.height, 1));
       castHull.setAttribute("points", hull.join(" "));
       castEdges.setAttribute("d", edges);
+    }
+
+    // the light out of the chip, drawn anew every frame for a while: beside the card, while the top
+    // layer it falls onto moves (as the layers unfold, or come in)
+    let following = 0;
+    function followLight(ms) {
+      const run = ++following;
+      const until = performance.now() + ms;
+      const frame = (now) => {
+        if (run !== following) return;
+        castLightOut();
+        if (now < until) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
     }
 
     // the light between the layer pointed at and the card
@@ -1698,6 +1740,7 @@
       stack.append(beam);
       root.getBoundingClientRect();
       root.classList.remove("orders-demo-instant");
+      if (root.classList.contains("orders-demo-beside")) castLightOut();
     }
 
     // move every sheet and row to its place, for the sheet pointed at (or null)
@@ -1831,8 +1874,8 @@
       // the layer pointed at casts its marks onto the card: a blank one, its order's
       const cast = target && (target.sheet || betweenOf(current(), target.order)) ? target : null;
       project(cast, anchors);
-      // (beside the card, the light out of the chip onto the top layer, where it goes)
-      if (opening && root.classList.contains("orders-demo-beside")) castLightOut();
+      // (beside the card, the light out of the chip onto the top layer follows it, as it goes)
+      if (opening && root.classList.contains("orders-demo-beside")) followLight(MOVE + 45 * items.length + 120);
     }
 
     // a blank layer pointed at shows its order's explanation, and its name (where the data has none
@@ -2296,6 +2339,7 @@
         place(state.active);
         drawSide();
       }
+      settleCard();
       castLightOut();
     }
     new ResizeObserver(relayout).observe(root);

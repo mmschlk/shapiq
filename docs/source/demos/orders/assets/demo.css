@@ -473,12 +473,42 @@ body[data-theme="dark"] .orders-demo {
   container-type: inline-size;
 }
 
+/* beside the layers, the card is no box: no edge, no paper, no shadow, its question's pill on the
+   light; its face, as wide as the column, unframed (pointed at, it takes its color as ever); its words
+   below it, at the card's size above the layers, in a block as wide as their widest line, in the
+   column's middle (demo.js), so that they neither move nor leave the column lopsided */
+.orders-demo.orders-demo-beside .orders-demo-why {
+  padding: 1.1rem 0 0;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+}
+
+.orders-demo-beside .orders-demo-why > .orders-demo-plan-eyebrow {
+  border-color: var(--orders-line);
+}
+
+.orders-demo-beside .orders-demo-plan-xai .orders-demo-why > .orders-demo-plan-eyebrow {
+  border-color: color-mix(in srgb, var(--orders-xai-edge) 55%, transparent);
+}
+
+.orders-demo-beside .orders-demo-plan-mechanism .orders-demo-why > .orders-demo-plan-eyebrow {
+  border-color: var(--orders-mech-edge);
+}
+
 .orders-demo-beside .orders-demo-plan-view {
-  width: clamp(7.5rem, 55cqw, 14rem); /* (as the card is wide) */
+  width: min(100%, 22rem);
+  border-color: transparent;
+  background: none;
 }
 
 .orders-demo-beside .orders-demo-plan-text {
-  justify-self: stretch;
+  justify-self: center;
+  font-size: 0.85rem;
+}
+
+.orders-demo-beside .orders-demo-meter {
+  width: 6.5em;
 }
 
 .orders-demo-beside > .orders-demo-stage {
