@@ -1145,6 +1145,36 @@ body[data-theme="dark"] .orders-demo {
   opacity: 1;
 }
 
+/* the face's name, in its bottom left corner, as on its layer: beside the stack, where the face is
+   as large as a layer (in the card, too small to read); faint at rest, as the layers' names, in ink
+   where an explanation is pointed at, and in its orange, the mechanism's */
+.orders-demo-plan-tag {
+  display: none;
+}
+
+.orders-demo-beside .orders-demo-plan-tag {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.orders-demo-plan-tag .orders-demo-tag {
+  fill: var(--orders-layer-edge);
+  transition: fill 360ms var(--orders-ease);
+}
+
+.orders-demo-plan-xai .orders-demo-plan-tag .orders-demo-tag {
+  fill: var(--orders-ink);
+}
+
+.orders-demo-plan-mechanism .orders-demo-plan-tag .orders-demo-tag {
+  fill: var(--orders-mech-ink);
+}
+
 /* the card of the explanation: the face, and beside it a few words, in its middle */
 .orders-demo-why {
   position: relative;
@@ -1167,6 +1197,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-plan-view {
+  position: relative; /* its name's place */
   flex: none;
   box-sizing: border-box;
   width: 10rem;

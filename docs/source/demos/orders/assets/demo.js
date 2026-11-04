@@ -723,6 +723,12 @@
     const castEdges = add(castGroup, "path", { class: "orders-demo-cast-edges" });
     const planView = el("div", "orders-demo-plan-view");
     planView.setAttribute("aria-hidden", "true");
+    // the face's name, in its bottom left corner, as the layer wears it (beside the stack, where the
+    // face is as large as a layer)
+    const planTag = document.createElementNS(SVG, "svg");
+    planTag.setAttribute("viewBox", "0 0 100 100");
+    planTag.setAttribute("class", "orders-demo-plan-tag");
+    const planTagText = add(planTag, "text", { class: "orders-demo-tag", x: 6, y: 95.5 });
     const planText = el("figcaption", "orders-demo-plan-text");
     const why = el("div", "orders-demo-why");
     plan.append(flow, cast, why);
@@ -1130,14 +1136,15 @@
     function mechanismOf(example) {
       if (!mechanisms.has(example.id)) {
         const node = drawSheet(example, example.sheets.length - 1, "marks");
-        node.querySelector(".orders-demo-tag").textContent = estimated(example)
-          ? "The mechanism, estimated"
-          : `The mechanism (${sheetName(example.sheets.at(-1)).tag})`;
+        node.querySelector(".orders-demo-tag").textContent = mechanismTag(example);
         node.classList.toggle("orders-demo-estimated", estimated(example));
         mechanisms.set(example.id, node);
       }
       return mechanisms.get(example.id);
     }
+    // the mechanism's name on its layer, and on the plan's face of it
+    const mechanismTag = (example) =>
+      estimated(example) ? "The mechanism, estimated" : `The mechanism (${sheetName(example.sheets.at(-1)).tag})`;
     // the plan's faces, drawn once: a sheet's, all of it, on the input; or the input alone (null)
     const plans = new Map();
     function planFace(example, sheet) {
@@ -1455,7 +1462,10 @@
         example,
         state.blank !== null ? betweenOf(example, state.blank) : mechanism ? example.sheets[last] : example.sheets[index],
       );
-      if (planView.firstChild !== face) planView.replaceChildren(face);
+      if (planView.firstChild !== face) planView.replaceChildren(face, planTag);
+      // named as the layer it shows: a sheet, the mechanism, or an order between
+      planTagText.textContent =
+        state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face;
       // the mechanism, where only an estimate shows it, blurred
       planView.classList.toggle("orders-demo-estimated", Boolean(mechanism) && state.blank === null && estimated(example));
 
