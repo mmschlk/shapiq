@@ -86,13 +86,12 @@ table.docutils {
 }
 
 /* the symbols of the user guide's notation link to the notation page (_static/js/notation.js),
-   whose row of the symbol is highlighted. On hover, a symbol casts a soft offset shadow in the
-   accent color, and an underline in the same color fades in and grows from the left, fading
-   towards its end. MathJax draws each glyph as an inline block, which a text-decoration does not
+   whose row of the symbol is highlighted. On hover, a symbol casts a soft offset shadow in amber
+   (docs/STYLE_GUIDE.md), and an amber underline fades in and grows from the left, fading towards
+   its end. MathJax draws each glyph as an inline block, which a text-decoration does not
    reach, but a text-shadow does: the underline is a line of its own. With reduced motion, the
    duration token of tokens.css is 0 ms, so nothing slides */
 a.shapiq-notation {
-  --shapiq-notation-accent: #f5a300;
   position: relative;
   display: inline-block;
   color: inherit;
@@ -108,7 +107,7 @@ a.shapiq-notation::after {
   bottom: -0.2em;
   height: max(2px, 0.13em);
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--shapiq-notation-accent) 35%, transparent);
+  background: linear-gradient(90deg, var(--shapiq-amber) 35%, transparent);
   opacity: 0;
   transform: scaleX(0.3);
   transform-origin: left;
@@ -118,12 +117,36 @@ a.shapiq-notation::after {
 }
 
 a.shapiq-notation:hover {
-  text-shadow: 0.07em 0.07em 0.03em var(--shapiq-notation-accent);
+  text-shadow: 0.07em 0.07em 0.03em var(--shapiq-amber);
 }
 
 a.shapiq-notation:hover::after {
   opacity: 1;
   transform: scaleX(1);
+}
+
+/* references to numbered elements, such as an equation's "(1)" ({eq}) or a figure's "Fig. 1"
+   ({numref}), are amber (docs/STYLE_GUIDE.md): underlined in amber, and on hover with a thicker
+   underline and the offset shadow of the notation's symbols. Links to pages and citations keep the
+   link color; the "¶" next to an equation's number is not a reference */
+a.reference[href*="#equation-"],
+a.reference:has(> .std-numref) {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(1.5px, 0.09em);
+  text-underline-offset: 0.18em;
+  transition:
+    text-decoration-thickness var(--shapiq-duration) var(--shapiq-ease),
+    text-shadow var(--shapiq-duration) var(--shapiq-ease);
+}
+
+a.reference[href*="#equation-"]:hover,
+a.reference:has(> .std-numref):hover {
+  color: inherit;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(2.5px, 0.16em);
+  text-shadow: 0.06em 0.06em 0.03em var(--shapiq-amber);
 }
 
 tr:has(:target) {

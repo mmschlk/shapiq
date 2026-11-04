@@ -1,7 +1,8 @@
 # Writing the user guide
 
 Notes for the authors of the user guide. This file is not a page of the docs (`exclude_patterns` in
-`docs/source/conf.py`).
+`docs/source/conf.py`). The rules that pages follow (colors, references, notation, structure) are in
+`docs/STYLE_GUIDE.md`.
 
 ## Structure
 
