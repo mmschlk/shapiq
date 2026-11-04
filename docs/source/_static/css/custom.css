@@ -86,13 +86,41 @@ table.docutils {
 }
 
 /* the symbols of the user guide's notation link to the notation page (_static/js/notation.js),
-   whose row of the symbol is highlighted */
-.shapiq-notation {
-  cursor: pointer;
+   whose row of the symbol is highlighted. MathJax draws each glyph as an inline block, which a
+   text-decoration does not reach: the underline is a line of its own, which slides in on hover */
+a.shapiq-notation {
+  position: relative;
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
 }
 
-.shapiq-notation:hover {
+a.shapiq-notation::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.15em;
+  height: max(1px, 0.08em);
+  border-radius: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 150ms ease-out;
+}
+
+a.shapiq-notation:hover {
   color: var(--color-brand-content);
+}
+
+a.shapiq-notation:hover::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.shapiq-notation::after {
+    transition: none;
+  }
 }
 
 tr:has(:target) {
