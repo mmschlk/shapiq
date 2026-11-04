@@ -50,6 +50,11 @@
   --orders-glass: var(--orders-sheet);
   --orders-glass-ink: var(--orders-ink);
   --orders-cast: rgba(27, 30, 39, 0.07);
+  /* beside the stack, the light is a round glow out of the chip, fading from its middle: stronger
+     there than the cone's, which it spreads over less */
+  --orders-cast-glow: rgba(27, 30, 39, 0.12);
+  --orders-xai-glow: rgba(22, 163, 74, 0.26);
+  --orders-mech-glow: rgba(240, 118, 0, 0.28);
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -69,6 +74,9 @@ body[data-theme="dark"] .orders-demo {
   --orders-glass: #c6cdda;
   --orders-glass-ink: #1b1e27;
   --orders-cast: rgba(220, 226, 240, 0.06);
+  --orders-cast-glow: rgba(220, 226, 240, 0.1);
+  --orders-xai-glow: rgba(74, 222, 128, 0.22);
+  --orders-mech-glow: rgba(255, 150, 40, 0.28);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -89,6 +97,9 @@ body[data-theme="dark"] .orders-demo {
     --orders-glass: #c6cdda;
     --orders-glass-ink: #1b1e27;
     --orders-cast: rgba(220, 226, 240, 0.06);
+    --orders-cast-glow: rgba(220, 226, 240, 0.1);
+    --orders-xai-glow: rgba(74, 222, 128, 0.22);
+    --orders-mech-glow: rgba(255, 150, 40, 0.28);
   }
 }
 
@@ -1065,6 +1076,18 @@ body[data-theme="dark"] .orders-demo {
   stop-opacity: 0.3;
 }
 
+.orders-demo-cast-glow {
+  stop-color: var(--orders-cast-glow);
+}
+
+.orders-demo-plan-xai .orders-demo-cast-glow {
+  stop-color: var(--orders-xai-glow);
+}
+
+.orders-demo-plan-mechanism .orders-demo-cast-glow {
+  stop-color: var(--orders-mech-glow);
+}
+
 .orders-demo-cast-edges {
   fill: none;
   stroke: var(--orders-muted);
@@ -1074,13 +1097,13 @@ body[data-theme="dark"] .orders-demo {
   transition: opacity 520ms var(--orders-ease);
 }
 
-.orders-demo-cast polygon {
+.orders-demo-cast :is(polygon, circle) {
   opacity: 0.6;
   transition: opacity 520ms var(--orders-ease);
 }
 
 /* while an explanation is applied, the light is on */
-.orders-demo-plan-lit .orders-demo-cast polygon {
+.orders-demo-plan-lit .orders-demo-cast :is(polygon, circle) {
   opacity: 1;
 }
 

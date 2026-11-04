@@ -711,15 +711,21 @@
     const castLight = add(add(cast, "defs"), "linearGradient", { id: `orders-cast-${plotId}`, x1: 0, y1: 0, x2: 0, y2: 1 });
     add(castLight, "stop", { offset: 0, class: "orders-demo-cast-top" });
     add(castLight, "stop", { offset: 1, class: "orders-demo-cast-bottom" });
-    // beside the layers, the light spans the card and the stack, and fades into the page, down to the
-    // card's bottom: a mask, from opaque at the chip to clear there
+    // beside the layers, the light is round instead: a glow out of the chip, as strong to either
+    // side, that fades out a short way from it, well before the card and the page's edges; it comes
+    // out from behind the chip's lower half (a mask, clear at the chip's middle, opaque from its
+    // bottom), so that it has no edge of its own
+    const castGlowLight = add(cast.querySelector("defs"), "radialGradient", { id: `orders-cast-glow-${plotId}`, gradientUnits: "userSpaceOnUse" });
+    for (const [offset, opacity] of [[0, 1], [0.25, 0.8], [0.5, 0.45], [0.75, 0.15], [1, 0]])
+      add(castGlowLight, "stop", { offset, class: "orders-demo-cast-glow", "stop-opacity": opacity });
     const castFade = add(cast.querySelector("defs"), "linearGradient", { id: `orders-cast-fade-${plotId}`, gradientUnits: "userSpaceOnUse", x1: 0, x2: 0 });
-    add(castFade, "stop", { offset: 0, "stop-color": "#fff" });
-    add(castFade, "stop", { offset: 1, "stop-color": "#000" });
+    add(castFade, "stop", { offset: 0, "stop-color": "#000" });
+    add(castFade, "stop", { offset: 1, "stop-color": "#fff" });
     const castMask = add(cast.querySelector("defs"), "mask", { id: `orders-cast-mask-${plotId}`, maskUnits: "userSpaceOnUse" });
     const castMaskArea = add(castMask, "rect", { x: 0, y: 0, fill: `url(#orders-cast-fade-${plotId})` });
     const castGroup = add(cast, "g");
     const castHull = add(castGroup, "polygon", { fill: `url(#orders-cast-${plotId})` });
+    const castGlow = add(castGroup, "circle", { fill: `url(#orders-cast-glow-${plotId})`, r: 0 });
     const castEdges = add(castGroup, "path", { class: "orders-demo-cast-edges" });
     const planView = el("div", "orders-demo-plan-view");
     planView.setAttribute("aria-hidden", "true");
@@ -1580,32 +1586,25 @@
       const [a, b] = [round(chip), round(why)];
       const onCard = [f(from.left + a, from.bottom - a), f(from.right - a, from.bottom - a), f(to.right - b, to.top + b), f(to.left + b, to.top + b)];
       let [hull, edges] = [onCard, `M${onCard[0]}L${onCard[3]}M${onCard[1]}L${onCard[2]}`];
-      const span = besides && geometry !== null && items.length > 0;
-      if (span) {
-        // beside: one light, from the chip's bottom onto the top of the card's column (the card in
-        // its middle, by the stack's, clear of the light's edge) and the top layer's right corner,
-        // where it floats, and on down to the card's bottom, fading
-        // (where the top layer is on the page, as it moves: its right corner, the right of its box)
-        const node = items[0].node;
-        let [rx, ry] = [0, 0];
-        if (node.isConnected) {
-          const r = node.getBoundingClientRect();
-          [rx, ry] = [r.right, r.top + r.height / 2];
-        } else {
-          const at = stage.getBoundingClientRect();
-          const right = corners(layout()[0]).reduce((p, q) => (q[0] > p[0] ? q : p));
-          [rx, ry] = [at.left + right[0], at.top + right[1]];
+      const glows = besides && geometry !== null && items.length > 0;
+      if (glows) {
+        // beside: one light, round, out of the chip's bottom, as far to either side, fading out a few
+        // centimeters from it (a share of the demo's width, at most 240 px: well inside its edges)
+        const [cx, cy] = [(from.left + from.right) / 2, from.bottom - a];
+        const reach = Math.max(150, Math.min(240, 0.26 * box.width));
+        for (const node of [castGlowLight, castGlow]) {
+          node.setAttribute("cx", roundTo(cx - box.left, 1));
+          node.setAttribute("cy", roundTo(cy - box.top, 1));
+          node.setAttribute("r", roundTo(reach, 1));
         }
-        const top = Math.min(to.top, stage.getBoundingClientRect().top);
-        const end = Math.max(to.bottom, ry + 1);
-        hull = [onCard[0], onCard[1], f(rx, ry), f(rx, end), f(to.left + b, end), f(to.left + b, top + b)];
-        edges = `M${hull[0]}L${hull[5]}M${hull[1]}L${hull[2]}`;
-        castFade.setAttribute("y1", roundTo(from.bottom - a - box.top, 1));
-        castFade.setAttribute("y2", roundTo(end - box.top, 1));
+        [hull, edges] = [[], ""];
+        castFade.setAttribute("y1", roundTo((from.top + from.bottom) / 2 - box.top, 1));
+        castFade.setAttribute("y2", roundTo(cy - box.top, 1));
         castMaskArea.setAttribute("width", roundTo(box.width, 1));
         castMaskArea.setAttribute("height", roundTo(box.height, 1));
         castGroup.setAttribute("mask", `url(#orders-cast-mask-${plotId})`);
       } else {
+        castGlow.setAttribute("r", 0);
         castGroup.removeAttribute("mask");
       }
       cast.setAttribute("width", roundTo(box.width, 1));
@@ -1614,8 +1613,8 @@
       castEdges.setAttribute("d", edges);
     }
 
-    // the light out of the chip, drawn anew every frame for a while: beside the card, while the top
-    // layer it falls onto moves (as the layers unfold, or come in)
+    // the light out of the chip, drawn anew every frame for a while: beside the card, while the demo
+    // around it moves (as the layers unfold, or come in)
     let following = 0;
     function followLight(ms) {
       const run = ++following;
