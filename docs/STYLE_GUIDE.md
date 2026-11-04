@@ -45,6 +45,8 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
 ## Writing
 
 - **Title Case** for the titles of pages and sections.
+- **Titles name their subject; they are not questions**: "Feature-Based Explanations", not "What Is
+  a Feature-Based Explanation?". A chapter does not repeat the title of its part.
 - **Cite the source** of every definition, result, and method, with the keys of `references.bib`
   (`Author.Year`). A note after the key points into the source: `` {cite:t}`Muschalik.2026{Def. 2.1}` ``.
 - **Label every displayed equation the text refers to**, and refer to it with `{eq}`.

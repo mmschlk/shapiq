@@ -77,7 +77,7 @@ functions of a single feature.
 (ug-open)=
 ## What the Definition Leaves Open
 
-Definition 1.1 does not say how $e(S)$ is obtained. Each of the three perspectives of
+Definition 1.1 does not say how $e(S)$ is obtained. Each of the three lenses of
 {doc}`perspectives/index` gives its own answer:
 
 ````{tab-set}

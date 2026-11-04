@@ -1,11 +1,12 @@
-# Feature-Based Explainable AI
+# Explainable AI
 
-Feature-based explanations explain a trained model after the fact, in terms of its input features.
-This part first defines what such an explanation is, independent of how it is computed. It then
-introduces three perspectives on explanations, each in its own language: functional decomposition
+Explainable AI makes the decisions of machine learning models understandable. This part focuses on
+feature-based explanations, which explain a trained model after the fact in terms of its input
+features. It first defines what such an explanation is, independent of how it is computed. It then
+looks at explanations through three lenses, each with its own language: functional decomposition
 from statistics, the Taylor expansion from analysis, and cooperative game theory. The part ends by
-showing that they describe the same thing: a decomposition of the model into the effects of groups
-of features.
+showing that the three lenses see the same thing: a decomposition of the model into the effects of
+groups of features.
 
 This part is organized as follows:
 

@@ -1,1 +1,1 @@
-# Functional Decomposition
+# Lens 1: Functional Decomposition

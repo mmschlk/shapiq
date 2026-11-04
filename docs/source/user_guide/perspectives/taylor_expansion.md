@@ -1,1 +1,1 @@
-# Taylor Expansion
+# Lens 2: Taylor Expansion

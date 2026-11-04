@@ -1,1 +1,1 @@
-# Cooperative Game Theory
+# Lens 3: Cooperative Game Theory
