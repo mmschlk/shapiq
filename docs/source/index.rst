@@ -355,6 +355,7 @@ If you enjoy using ``shapiq``, please consider citing our NeurIPS paper :cite:p:
    :maxdepth: 2
    :caption: User Guide
 
+   user_guide/index
    demos/index
    examples
    timeline
