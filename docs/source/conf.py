@@ -395,7 +395,7 @@ source_suffix = {
 myst_enable_extensions = ["dollarmath", "amsmath"]
 
 # The notation of the user guide as MathJax macros: a symbol changed here changes on every page.
-# user_guide/notation.md lists them.
+# user_guide/README.md lists them.
 mathjax3_config = {
     "tex": {
         "macros": {
