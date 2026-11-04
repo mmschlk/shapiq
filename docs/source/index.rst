@@ -33,6 +33,14 @@ Shapley Interactions for Machine Learning
 
          Get started
 
+      .. button-ref:: user_guide/index
+         :ref-type: doc
+         :color: secondary
+         :outline:
+         :class: shapiq-button
+
+         User guide
+
       .. button-ref:: examples
          :ref-type: doc
          :color: secondary
