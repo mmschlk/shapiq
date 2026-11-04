@@ -1459,7 +1459,7 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
-/* -- the floating layers (unfolded, or data-view="projected"): the input on a card, every
+/* -- the floating layers (projected, or data-view="unfolded"): the input on a card, every
    explanation on a layer of paper above it, apart (projected, they lie on the card at rest, and
    float off it, unfold, while open), and below the card the mechanism under it all ------------ */
 
@@ -1478,18 +1478,24 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-layer .orders-demo-tag {
   fill: var(--orders-layer-edge);
+  transition: fill 360ms var(--orders-ease);
+}
+
+/* the layer pointed at: its name in ink, as the input's (the mechanism's in its orange, below) */
+.orders-demo-layer.orders-demo-pointed .orders-demo-tag {
+  fill: var(--orders-ink);
 }
 
 /* while a layer is pointed at, the others' marks fade, as the stack's sheets' do; projected, the
    layer pointed at stays where it floats, and the paper of the layers above it thins, else it would
    veil it */
-.orders-demo[data-view="projected"] .orders-demo-sheet.orders-demo-layer.orders-demo-above {
+.orders-demo:not([data-view="unfolded"]) .orders-demo-sheet.orders-demo-layer.orders-demo-above {
   border-color: color-mix(in srgb, var(--orders-layer-edge), transparent 55%);
   background: color-mix(in srgb, var(--orders-layer-film), transparent 96%);
   box-shadow: none;
 }
 
-.orders-demo[data-view="projected"] .orders-demo-above .orders-demo-face {
+.orders-demo:not([data-view="unfolded"]) .orders-demo-above .orders-demo-face {
   opacity: 0.1;
 }
 
@@ -1598,6 +1604,10 @@ body[data-theme="dark"] .orders-demo {
   fill: var(--orders-mech-edge);
 }
 
+.orders-demo-deep.orders-demo-pointed .orders-demo-tag {
+  fill: var(--orders-mech-ink);
+}
+
 /* 2^n, the terms the mechanism could have */
 .orders-demo-power sup {
   margin-left: 0.05em;
@@ -1622,11 +1632,11 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* at rest, under the card: only its edge shows below the card's */
-.orders-demo[data-view="projected"]:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
+.orders-demo:not([data-view="unfolded"]):not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;
 }
 
-.orders-demo[data-view="projected"]:not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
+.orders-demo:not([data-view="unfolded"]):not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
   opacity: 0;
 }
 

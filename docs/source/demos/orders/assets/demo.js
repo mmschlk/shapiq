@@ -26,14 +26,14 @@
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
 // precomputed (../compute) into data.js.
 //
-// Two views (data-view on the demo). Unfolded (the default, as the docs show it), the layers float
-// apart, and pointing at one (hover, keyboard focus on its row, a tap that pins it, or the slider
-// left of the layers) slides it out to the side as it lies, under the layers above it; the card
-// slides out too, pointed at. Projected ("projected"), the layers lie on the card at rest (the top
-// one showing, on the input), the mechanism hidden under it; once explained and in view (or after a
-// tap), they unfold, for good, and the layer pointed at stays where it floats and casts its light
-// onto the card, which wears its marks (the mechanism's rises to it, a box of orange light). In
-// both, the others fade; a ring marks the order pointed at on the plot, and pointing along the plot
+// Two views (data-view on the demo). Projected (the default, as the docs show it), the layers lie on
+// the card at rest (the top one showing, on the input), the mechanism hidden under it; once
+// explained and in view (or after a tap), they unfold, for good, and the layer pointed at (hover,
+// keyboard focus on its row, a tap that pins it, or the slider left of the layers) stays where it
+// floats and casts its light onto the card, which wears its marks (the mechanism's rises to it, a
+// box of orange light), and its name darkens. Unfolded ("unfolded"), the layers float apart, and
+// pointing at one slides it out to the side as it lies, under the layers above it. In both, the
+// others fade; a ring marks the order pointed at on the plot, and pointing along the plot
 // brings out the layer of an order, or the blank layer of an order between, which peeks out. The
 // slider is an arrow down the side of the layers, a circle at every one, through the explanations:
 // they grow more complex, and more faithful, from order to order; below the input, the mechanism's
@@ -628,11 +628,11 @@
     const plotId = ++plots;
     // the views (data-view), both of floating layers: the input on a card, the explanations on
     // layers above it, and below the card, apart from the full decomposition, the mechanism they
-    // explain. Unfolded (the default, as the docs show it), the layers float apart, and the one
-    // pointed at (or the input's card) slides out to the side. Projected ("projected"), they lie on
-    // the card at rest, the mechanism hidden under it, and unfold, float off it, once explained (or
-    // after a tap on the card), or while a layer is pointed at, which casts its marks onto the card
-    const projecting = () => root.dataset.view === "projected";
+    // explain. Projected (the default, as the docs show it), they lie on the card at rest, the
+    // mechanism hidden under it, and unfold, float off it, once explained (or after a tap on the
+    // card), or while a layer is pointed at, which casts its marks onto the card. Unfolded
+    // ("unfolded"), the layers float apart, and the one pointed at slides out to the side
+    const projecting = () => root.dataset.view !== "unfolded";
     // the demo starts with the problem alone (unless data-reveal="open"): a click on the model's chip
     // explains it, and the explanation is built under it, from the top down; once explained, every
     // example is. A step shows its part at once (the problem's, the problem alone, for good)
@@ -1676,6 +1676,7 @@
         node.style.setProperty("--orders-edge-x", `${roundTo(Math.sin(TURN) * depth, 2)}px`);
         node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
         node.classList.toggle("orders-demo-receded", Boolean(target) && !item.base && item !== target);
+        node.classList.toggle("orders-demo-pointed", item === target);
         // (projected, the layers above the one pointed at, through which it shows, unless it is the
         // mechanism, under the card)
         node.classList.toggle("orders-demo-above", Boolean(target) && position < pointedAt && !target.deep);
