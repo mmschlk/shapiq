@@ -1549,17 +1549,53 @@ body[data-theme="dark"] .orders-demo {
   opacity: 0.1;
 }
 
-/* with data-below="clear", the paper of those below it thins too, down to the input, which would
-   else hide its light on the way; less than above it: their edges and marks show more, as what the
-   light passes through */
-.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-sheet.orders-demo-layer.orders-demo-below {
+/* how the layers give way can be chosen (data-layers). "clear": the paper of those below it thins
+   too, down to the input, which would else hide its light on the way; less than above it: their
+   edges and marks show more, as what the light passes through */
+.orders-demo.orders-demo-floating:is([data-layers="clear"], [data-layers="outline"]) .orders-demo-sheet.orders-demo-layer.orders-demo-below {
   border-color: color-mix(in srgb, var(--orders-layer-edge), transparent 15%);
   background: color-mix(in srgb, var(--orders-layer-film), transparent 85%);
   box-shadow: none;
 }
 
-.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-below .orders-demo-face {
+.orders-demo.orders-demo-floating:is([data-layers="clear"], [data-layers="outline"]) .orders-demo-below .orders-demo-face {
   opacity: 0.35;
+}
+
+/* "outline": as "clear", but every layer that thins keeps its outline and its edge below it, so that
+   the stack's shape stays */
+.orders-demo.orders-demo-floating[data-layers="outline"] .orders-demo-sheet.orders-demo-layer:is(.orders-demo-above, .orders-demo-below) {
+  border-color: var(--orders-layer-edge);
+  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
+}
+
+.orders-demo.orders-demo-floating[data-layers="outline"] .orders-demo-sheet.orders-demo-blank:is(.orders-demo-above, .orders-demo-below) {
+  border-color: var(--orders-edge);
+}
+
+/* "stack": none thins, the stack stays as it is (the marks of the others fade, as of every layer
+   not pointed at), and the layer pointed at shows in green: its edge, a glow, its paper tinted */
+.orders-demo.orders-demo-floating[data-layers="stack"] .orders-demo-sheet.orders-demo-layer.orders-demo-above {
+  border-color: var(--orders-layer-edge);
+  background: var(--orders-layer-film);
+  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
+}
+
+.orders-demo.orders-demo-floating[data-layers="stack"] .orders-demo-sheet.orders-demo-blank.orders-demo-above {
+  border-color: var(--orders-edge);
+}
+
+.orders-demo.orders-demo-floating[data-layers="stack"] .orders-demo-above .orders-demo-face {
+  opacity: 0.45;
+}
+
+.orders-demo.orders-demo-floating[data-layers="stack"] .orders-demo-sheet.orders-demo-layer.orders-demo-pointed:not(.orders-demo-deep) {
+  border-style: solid;
+  border-color: var(--orders-xai-edge);
+  background: color-mix(in srgb, var(--orders-xai-beam) 55%, var(--orders-layer-film));
+  box-shadow:
+    var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-xai-edge),
+    0 0 16px 2px var(--orders-xai-beam);
 }
 
 /* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
