@@ -1522,18 +1522,28 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* while a layer is pointed at, the others' marks fade; the layer pointed at stays where it floats,
-   and the paper of the layers above it thins, else it would veil it; with data-below="clear", so
-   does the paper of those below it, down to the input, which would else hide its light on the way */
-.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer.orders-demo-above,
-.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-sheet.orders-demo-layer.orders-demo-below {
+   and the paper of the layers above it thins, else it would veil it */
+.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer.orders-demo-above {
   border-color: color-mix(in srgb, var(--orders-layer-edge), transparent 55%);
   background: color-mix(in srgb, var(--orders-layer-film), transparent 96%);
   box-shadow: none;
 }
 
-.orders-demo.orders-demo-floating .orders-demo-above .orders-demo-face,
-.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-below .orders-demo-face {
+.orders-demo.orders-demo-floating .orders-demo-above .orders-demo-face {
   opacity: 0.1;
+}
+
+/* with data-below="clear", the paper of those below it thins too, down to the input, which would
+   else hide its light on the way; less than above it: their edges and marks show more, as what the
+   light passes through */
+.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-sheet.orders-demo-layer.orders-demo-below {
+  border-color: color-mix(in srgb, var(--orders-layer-edge), transparent 15%);
+  background: color-mix(in srgb, var(--orders-layer-film), transparent 85%);
+  box-shadow: none;
+}
+
+.orders-demo.orders-demo-floating[data-below="clear"] .orders-demo-below .orders-demo-face {
+  opacity: 0.35;
 }
 
 /* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
