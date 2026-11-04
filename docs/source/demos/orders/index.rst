@@ -34,7 +34,7 @@ handle, or tap an order on the plot), and it casts its explanation down onto the
 light; the orange handle below them, on its arrow up to the input, casts the mechanism up onto it. Where the examples do not fit in a row, as on a phone, the
 arrows above the layers, or a swipe across them, step from one example to the next.
 
-Above the layers (on a wide screen, left of them), the problem: the input :math:`x` wired through the
+Above the layers, the problem: the input :math:`x` wired through the
 model :math:`f`, a chip (black
 for a black box, gray for a model whose structure the explanation uses), to its prediction
 :math:`f(x)`, in the red of what raises it. Out of the chip falls the explanation: the input seen

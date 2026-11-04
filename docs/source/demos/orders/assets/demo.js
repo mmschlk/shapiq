@@ -66,9 +66,11 @@
 // choosing one in any of them chooses it in all. The page hears every choice, and can make one, as
 // the event "orders-demo-example" on the document, its detail { example: <id> }.
 //
-// On a wide screen, the plan stands beside the layers: the problem and the card of the explanation in
-// a narrow column of their own, as on a phone, left of the layers (data-plan="side-right": right of
-// them; "above": above them, as on a phone), so that all of it fits a screen.
+// On a wide screen, the full stack (all of it, or the last step) would not fit a screen below the
+// card: the card of the explanation stands left of the layers then, in a narrow column, the light out
+// of the chip falling onto it there, and the layers are as large as the window's height lets them be
+// (data-plan="above" keeps the card above). The problem stays on top, and the steps before keep
+// their card above the layers: they fit.
 //
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
 // demo cannot start, the script shows that figure itself.
@@ -94,8 +96,10 @@
   // the air beside the layers, in units of their width: the stage's room holds them, and that much
   // more
   const ROOMY = 0.22;
-  // (the plan beside the layers, little: the room is narrow, and nothing slides out any more)
+  // (the card beside the layers, little: the room is narrow, and nothing slides out any more)
   const ROOMY_BESIDE = 0.05;
+  // pixels: below the full stack beside its card, the room left in the window
+  const WINDOW_MARGIN = 24;
   // pixels: the column of the slider, left of the stack; its line in it; how far above the top
   // sheet its handle rests, when no sheet is out
   const RAIL = 42;
@@ -859,15 +863,23 @@
       // between the slider and the layers, room for the line from the handle to the one pointed at
       const lead = narrow ? 14 : 24;
       const room = width - ladderWidth - gap - RAIL - lead;
-      // the room holds the layers, and air beside them
-      const side = Math.max(110, Math.min(360, room / ((1 + (beside() ? ROOMY_BESIDE : ROOMY)) * spread)));
-      const sheetHeight = side * TILT * spread;
       // the same height for every example: the most sheets and blank sheets of any, of those the
       // step shows
       const n = Math.max(...data.examples.map(shownSheets));
       const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
       // the floating layers' card, below them (without them, on top), and the mechanism below it
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
+      // the room holds the layers, and air beside them; beside the card, the window holds them too,
+      // below what is above them in the demo
+      const besides = root.classList.contains("orders-demo-beside");
+      let side = room / ((1 + (besides ? ROOMY_BESIDE : ROOMY)) * spread);
+      if (besides) {
+        const above = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
+        const tall = window.innerHeight - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
+        side = Math.min(side, tall / (TILT * spread + layers + DEPTH));
+      }
+      side = Math.max(110, Math.min(360, side));
+      const sheetHeight = side * TILT * spread;
       const stack = sheetHeight + (layers + DEPTH) * side;
       return {
         width,
@@ -1482,7 +1494,8 @@
     // the light out of the chip, onto the card of the explanation: from the chip's bottom corners to
     // the card's top ones
     function castLightOut() {
-      const box = plan.getBoundingClientRect();
+      // (beside, the plan is no box of its own: the light is drawn in the demo's)
+      const box = (root.classList.contains("orders-demo-beside") ? root : plan).getBoundingClientRect();
       const [from, to] = [chip.getBoundingClientRect(), why.getBoundingClientRect()];
       const f = (x, y) => `${roundTo(x - box.left, 1)},${roundTo(y - box.top, 1)}`;
       // halfway round the rounded corners of the chip's bottom and of the card's top
@@ -1523,6 +1536,7 @@
     function render() {
       const example = current();
       root.classList.toggle("orders-demo-veiled", !revealed);
+      wideEnough();
       Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
       for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, as layers above its input, with their fit`);
@@ -2205,22 +2219,30 @@
       if (!state.pinned && !ladder.contains(event.relatedTarget)) point(null, null);
     });
 
-    // wide enough for the plan to stand beside the layers (demo.css); and so it does, explained,
-    // unless data-plan="above"
+    // the card beside the layers (demo.css): wide, the full stack, explained, unless data-plan="above"
     function wideEnough() {
-      root.classList.toggle("orders-demo-wide", root.clientWidth >= 640);
+      const wide = root.clientWidth >= 640;
+      root.classList.toggle("orders-demo-wide", wide);
+      root.classList.toggle("orders-demo-beside", wide && whole && revealed && root.dataset.plan !== "above");
     }
-    const beside = () => root.classList.contains("orders-demo-wide") && root.dataset.plan !== "above" && revealed;
+    // the stage's width (and, beside the card, the window's height) laid out anew
     let width = 0;
-    new ResizeObserver(() => {
+    let tall = 0;
+    function relayout() {
       wideEnough();
-      if (stage.clientWidth !== width) {
-        width = stage.clientWidth;
+      const besides = root.classList.contains("orders-demo-beside");
+      if (stage.clientWidth !== width || (besides && window.innerHeight !== tall)) {
+        [width, tall] = [stage.clientWidth, window.innerHeight];
         geometry = measure();
         place(state.active);
         drawSide();
       }
-    }).observe(root);
+      castLightOut();
+    }
+    new ResizeObserver(relayout).observe(root);
+    window.addEventListener("resize", relayout);
+    // (and anew when the page sets data-plan)
+    new MutationObserver(relayout).observe(root, { attributes: true, attributeFilter: ["data-plan"] });
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
     new ResizeObserver(() => {
