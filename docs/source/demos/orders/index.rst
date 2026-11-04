@@ -125,7 +125,8 @@ better, but SigLIP 2 only as far as the proxy does. The full decomposition falls
 the estimation gap: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
 SigLIP 2, which only all of them would spare.
 
-**Step by step.** A page that explains the figure can build it up, a figure for every step: the
+**Step by step.** :doc:`../../introduction/how-much-explained` builds the figure up, a figure for
+every step, and so can any page: the
 ``:step:`` option of ``.. shapiq-demo:: orders`` shows the problem alone (``problem``), the input
 and the mechanism below it (``mechanism``), the Shapley values above them with their fit
 (``shapley``), the explanations of order 1 to 4 (``interactions``), and all of it (``full``). The

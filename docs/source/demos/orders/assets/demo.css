@@ -772,6 +772,14 @@ body[data-theme="dark"] .orders-demo {
   padding-bottom: 3.2rem; /* the tab's room */
 }
 
+/* a caption below the demo, on a page that embeds it (the landing page) */
+.orders-demo-caption-text p {
+  margin: 0 0 2rem;
+  color: var(--shapiq-text-muted, var(--color-foreground-secondary, #5b6275));
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 /* the problem alone, as a step of a post (data-step="problem"): no tab, nothing to call for */
 .orders-demo-veiled[data-step="problem"] .orders-demo-plan {
   padding-bottom: 4px;
