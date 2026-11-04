@@ -10,7 +10,6 @@ from ndlike.jax_like import JaxLike
 
 from shapiq.game import Additive
 from shapiq.game.basis import BasisGame
-from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
 
@@ -22,10 +21,6 @@ class MoebiusGame[P, V: JaxLike](BasisGame[P, V]):
     ``values[..., t]`` is the Möbius coefficient m(T_t) of ``interactions[t]``, and
     v(S) = sum over T ⊆ S of m(T). Concrete subclasses decide how the sets are stored.
     """
-
-    # Re-declared because ndlike 0.3.0 only sees a class's own annotations; see BasisGame.
-    values: Float[jax.Array, "*batch n_interactions"] = field()
-    players: Shaped[FinitePlayers[P], "#*batch"] = field()
 
     @override
     def _basis(
@@ -44,10 +39,7 @@ class SetMoebiusGame[P, V: JaxLike](MoebiusGame[P, V]):
     Sets not in ``interactions`` have coefficient zero.
     """
 
-    # Re-declared because ndlike 0.3.0 only sees a class's own annotations; see BasisGame.
-    values: Float[jax.Array, "*batch n_interactions"] = field()
     interactions: Bool[jax.Array, "n_interactions {players.n_players}"] = field()
-    players: Shaped[FinitePlayers[P], "#*batch"] = field()
     additivity: int = field()
     protected_axes: ClassVar[dict[str, int]] = {"values": 1, "interactions": 2, "players": 0}
     broadcasted_batch: ClassVar[set[str]] = {"players", "interactions"}
@@ -61,9 +53,7 @@ class AdditiveMoebiusGame[P, V: JaxLike](MoebiusGame[P, V], Additive):
     The interactions are the singletons in position order and are not stored.
     """
 
-    # Re-declared because ndlike 0.3.0 only sees a class's own annotations; see BasisGame.
     values: Float[jax.Array, "*batch {players.n_players}"] = field()
-    players: Shaped[FinitePlayers[P], "#*batch"] = field()
 
     @property
     @override

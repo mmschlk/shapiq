@@ -32,9 +32,6 @@ class Index[W: Weight, R: Game](JaxAxisProtected[jax.Array]):
 
     The index batch is the weights' batch. ``build`` decides which game the computed
     coefficients become, so exact and approximate computations share one result type.
-
-    Subclasses must re-declare ``weights``: ndlike 0.3.0 checks ``protected_axes`` against a
-    class's own annotations only.
     """
 
     weights: W
@@ -96,7 +93,6 @@ class CardinalInteractionIndex[W: DiscreteDerivativeWeight](Index[W, SetMoebiusG
 
     weights: W
     min_order: int = 1
-    max_order: int
 
     @override
     def build(
@@ -174,11 +170,6 @@ class FaithfulShapleyTopOrderIndex(CardinalInteractionIndex[DDAlphaBetaWeight]):
     part of the FSII approximation, not the whole k-additive fit.
     """
 
-    # Re-declared because ndlike 0.3.0 only sees a class's own annotations; see Index.
-    weights: DDAlphaBetaWeight
-    min_order: int
-    max_order: int
-
     def __init__(
         self,
         *,
@@ -232,7 +223,6 @@ class FaithfulBanzhafTopOrderIndex(CardinalInteractionIndex[DDBanzhafWeight]):
     weights: DDBanzhafWeight = field(default_factory=DDBanzhafWeight)
     # Derived from max_order: only the top order is covered.
     min_order: int = field(init=False)
-    max_order: int
 
     @override
     def __post_init__(self) -> None:

@@ -5,11 +5,10 @@ from typing import ClassVar, override
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Bool, Float, Shaped
+from jaxtyping import Bool, Shaped
 from ndlike.jax_like import JaxLike
 
 from shapiq.game.basis import BasisGame
-from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
 
@@ -25,10 +24,7 @@ class FourierGame[P, V: JaxLike](BasisGame[P, V]):
     Fourier and Möbius degrees coincide, so ``additivity`` bounds both.
     """
 
-    # Re-declared because ndlike 0.3.0 only sees a class's own annotations; see BasisGame.
-    values: Float[jax.Array, "*batch n_interactions"] = field()
     interactions: Bool[jax.Array, "n_interactions {players.n_players}"] = field()
-    players: Shaped[FinitePlayers[P], "#*batch"] = field()
     additivity: int = field()
     protected_axes: ClassVar[dict[str, int]] = {"values": 1, "interactions": 2, "players": 0}
     broadcasted_batch: ClassVar[set[str]] = {"players", "interactions"}

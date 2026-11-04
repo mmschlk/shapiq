@@ -31,9 +31,6 @@ class BasisGame[P, V: JaxLike](
     ``additivity`` are stored fields or implicit properties.
 
     ``additivity`` is static metadata, checked against ``interactions`` when they are concrete.
-
-    Subclasses must re-declare every field: ndlike 0.3.0 checks ``protected_axes`` against the
-    subclass's own annotations only. A re-declared slot also replaces an abstract property.
     """
 
     values: Float[jax.Array, "*batch n_interactions"]

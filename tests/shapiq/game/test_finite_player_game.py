@@ -52,7 +52,6 @@ def _array_game_class(base, *, metaclass=None):
     if metaclass is None:
         metaclass = type(base)
 
-    # Declare representation fields on the final class, as required by ndlike.
     @typechecked
     @dataclass
     class ArrayGame(base, JaxAxisProtected[jax.Array], metaclass=metaclass):
