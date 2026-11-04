@@ -8,3 +8,9 @@ perspectives
 framework
 methods
 ```
+
+```{toctree}
+:maxdepth: 1
+
+showcase
+```
