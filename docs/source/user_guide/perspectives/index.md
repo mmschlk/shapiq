@@ -1,9 +1,11 @@
-# Three Perspectives on Post-Hoc Explainable AI
+# Feature-Based Explainable AI
 
-Post-hoc explanations explain a trained model in terms of its input features. Three traditions do
-this, each in its own language: functional decomposition from statistics, the Taylor expansion from
-analysis, and cooperative game theory. This part introduces the three perspectives and shows that
-they describe the same thing: a decomposition of the model into the effects of groups of features.
+Feature-based explanations explain a trained model after the fact, in terms of its input features.
+This part first defines what such an explanation is, independent of how it is computed. It then
+introduces three perspectives on explanations, each in its own language: functional decomposition
+from statistics, the Taylor expansion from analysis, and cooperative game theory. The part ends by
+showing that they describe the same thing: a decomposition of the model into the effects of groups
+of features.
 
 This part is organized as follows:
 
