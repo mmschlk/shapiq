@@ -127,10 +127,12 @@ SigLIP 2, which only all of them would spare.
 **Step by step.** A page that explains the figure can build it up, a figure for every step: the
 ``:step:`` option of ``.. shapiq-demo:: orders`` shows the problem alone (``problem``), the input
 and the mechanism below it (``mechanism``), the Shapley values above them with their fit
-(``shapley``), the explanations of order 1 to 4 (``interactions``), and all of it (``full``). Each
-step points at what it adds, the mechanism, the Shapley values, the pairs, or the full
-decomposition, until the reader points elsewhere, and again once they let go. Without the option,
-the figure is all of it, nothing pointed at, as above.
+(``shapley``), the explanations of order 1 to 4 (``interactions``), and all of it (``full``). The
+first steps point at what they add, the mechanism, the Shapley values, or the pairs, until the
+reader points elsewhere, and again once they let go; the last points at nothing. The ``:select:``
+option chooses what a figure points at instead: ``none``, ``mechanism``, ``full`` (the full
+decomposition), or an order, as ``1`` or ``2``. Without ``:step:``, the figure is all of it, nothing
+pointed at, as above, and starts with the problem alone.
 The figures of a page show the same example: choosing one in any of them chooses it in all. A page
 can choose one too, and hear every choice, through the event ``orders-demo-example`` on the
 document, whose ``detail`` names the example, as ``{example: "house"}`` (the others: ``molecule``,

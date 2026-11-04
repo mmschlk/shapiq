@@ -378,7 +378,7 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-stage {
   position: relative;
-  overflow-x: clip; /* a stack swiped or slid aside does not widen the page */
+  overflow-x: clip; /* a stack swiped aside does not widen the page */
   /* a swipe sideways steps through the examples (demo.js), up or down scrolls the page; Safari,
      which knows no pinch-zoom here, keeps the first */
   touch-action: pan-y;
@@ -1014,6 +1014,31 @@ body[data-theme="dark"] .orders-demo {
   opacity: 1;
 }
 
+/* an explanation pointed at: the light onto the card, the card's edge, and its face's, a little green,
+   as its light on the input (less than the mechanism's orange: no wash, no lines, its words in ink) */
+.orders-demo-plan-xai .orders-demo-cast-top,
+.orders-demo-plan-xai .orders-demo-cast-bottom {
+  stop-color: var(--orders-xai-beam);
+}
+
+.orders-demo-plan-xai .orders-demo-cast-edges {
+  stroke: var(--orders-xai-edge);
+}
+
+.orders-demo-plan-xai .orders-demo-why {
+  border-color: color-mix(in srgb, var(--orders-xai-edge) 55%, transparent);
+  box-shadow: 0 2px 14px -6px var(--orders-xai-beam);
+}
+
+.orders-demo-plan-xai .orders-demo-plan-view {
+  border-color: color-mix(in srgb, var(--orders-xai-edge) 45%, transparent);
+}
+
+.orders-demo-plan-xai .orders-demo-meter-fill {
+  background: var(--orders-xai-edge);
+  opacity: 1;
+}
+
 /* the card of the explanation: the face, and beside it a few words, in its middle */
 .orders-demo-why {
   position: relative;
@@ -1270,8 +1295,8 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-/* the stack's window: from the slider's column to the stage's edge, it cuts off a stack swiped or
-   slid aside; the stack within lies over the whole stage, as the rows' coordinates assume */
+/* the stack's window: from the slider's column to the stage's edge, it cuts off a stack swiped
+   aside; the stack within lies over the whole stage, as the rows' coordinates assume */
 .orders-demo-view {
   position: absolute;
   inset: 0 0 0 calc(var(--orders-rail, 0px) - 6px);
@@ -1311,7 +1336,7 @@ body[data-theme="dark"] .orders-demo {
   will-change: opacity; /* a layer of its own: stepping back neither starts nor ends with a repaint */
 }
 
-/* while a sheet is slid out, the others step back */
+/* while a layer is pointed at, the others step back */
 .orders-demo-receded .orders-demo-face {
   opacity: 0.45;
 }
@@ -1459,9 +1484,9 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
-/* -- the floating layers (projected, or data-view="unfolded"): the input on a card, every
-   explanation on a layer of paper above it, apart (projected, they lie on the card at rest, and
-   float off it, unfold, while open), and below the card the mechanism under it all ------------ */
+/* -- the floating layers: the input on a card, every explanation on a layer of paper above it
+   (they lie on the card at rest, and float off it, unfold, while open), and below the card the
+   mechanism under it all ------------------------------------------------------------------- */
 
 /* a layer: paper with an edge below, nothing but the explanation's marks on it */
 .orders-demo-sheet.orders-demo-layer {
@@ -1486,16 +1511,15 @@ body[data-theme="dark"] .orders-demo {
   fill: var(--orders-ink);
 }
 
-/* while a layer is pointed at, the others' marks fade, as the stack's sheets' do; projected, the
-   layer pointed at stays where it floats, and the paper of the layers above it thins, else it would
-   veil it */
-.orders-demo:not([data-view="unfolded"]) .orders-demo-sheet.orders-demo-layer.orders-demo-above {
+/* while a layer is pointed at, the others' marks fade; the layer pointed at stays where it floats,
+   and the paper of the layers above it thins, else it would veil it */
+.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer.orders-demo-above {
   border-color: color-mix(in srgb, var(--orders-layer-edge), transparent 55%);
   background: color-mix(in srgb, var(--orders-layer-film), transparent 96%);
   box-shadow: none;
 }
 
-.orders-demo:not([data-view="unfolded"]) .orders-demo-above .orders-demo-face {
+.orders-demo.orders-demo-floating .orders-demo-above .orders-demo-face {
   opacity: 0.1;
 }
 
@@ -1632,11 +1656,11 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* at rest, under the card: only its edge shows below the card's */
-.orders-demo:not([data-view="unfolded"]):not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;
 }
 
-.orders-demo:not([data-view="unfolded"]):not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
   opacity: 0;
 }
 
@@ -1682,7 +1706,7 @@ body[data-theme="dark"] .orders-demo {
   left: calc(var(--orders-rail-line) - 0.25px);
   width: 1.5px;
   border-radius: 1px;
-  /* (projected, from the layer pointed at down, --orders-split on, green: demo.js) */
+  /* (from the layer pointed at down, --orders-split on, green: demo.js) */
   background: linear-gradient(var(--orders-edge), var(--orders-muted) var(--orders-split, 100%), var(--orders-xai-edge) var(--orders-split, 100%));
 }
 
@@ -1829,6 +1853,10 @@ body[data-theme="dark"] .orders-demo {
   border-color: var(--orders-mech-edge);
 }
 
+.orders-demo-rail-lead-lit {
+  border-color: var(--orders-xai-edge);
+}
+
 /* the mechanism's handle, apart from the arrow, at its height, on a thinner, orange arrow up to the
    input (demo.js places them): pointed at, it brings out the mechanism, and fills */
 .orders-demo-rail-mech-line {
@@ -1877,10 +1905,16 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-mech-edge);
 }
 
-/* the slider's handle, brought down to the mechanism, on its handle, in its orange */
+/* the slider's handle, brought down to the mechanism, on its handle, in its orange; on an
+   explanation, in the green of its light */
 .orders-demo-thumb.orders-demo-thumb-mechanism {
   border-color: var(--orders-mech-edge);
   background: var(--orders-mech-edge);
+}
+
+.orders-demo-thumb.orders-demo-thumb-lit {
+  border-color: var(--orders-xai-edge);
+  background: var(--orders-xai-edge);
 }
 
 /* the invitation over the top layer (demo.js places it), as the Explain tab under the chip: tap a
@@ -1962,8 +1996,8 @@ body[data-theme="dark"] .orders-demo {
   display: none;
 }
 
-/* a step whose one thing to point at is pointed at already, at rest, invites to nothing */
-.orders-demo:is([data-step="mechanism"], [data-step="shapley"]) :is(.orders-demo-hint, .orders-demo-rail-nudge) {
+/* where the one thing to point at is pointed at already, at rest, nothing invites (demo.js) */
+.orders-demo.orders-demo-uninvited :is(.orders-demo-hint, .orders-demo-rail-nudge) {
   display: none;
 }
 
