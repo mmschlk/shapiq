@@ -31,13 +31,10 @@
 // (hover, keyboard focus on its row, a tap that pins it, or the slider left of the layers) stays
 // where it floats and casts its light onto the card, which wears its marks, in green (the
 // mechanism's rises to it, a box of orange light); its name darkens, and the slider's handle and the
-// card of the explanation above take its color. The others fade, and the layers above it thin. How
-// the others give way can be chosen (data-layers): "clear", those below it thin too, down to the
-// input, so that its light shows all the way; "outline", as "clear", but the layers keep their
-// outlines, so that the stack's shape stays; "stack", none thins, the stack stays as it is, and the
-// layer pointed at shows in green. A ring marks the order pointed at on the plot, and pointing along
-// the plot
-// brings out the layer of an order, or the blank layer of an order between, which peeks out. The
+// card of the explanation above take its color, and so does the layer itself: its edge, a glow,
+// its paper. The stack stays as it is, the others' marks fading. A ring marks the order pointed at on
+// the plot, and pointing along the plot brings out the layer of an order, or the blank layer of an
+// order between, which peeks out, showing that order's explanation. The
 // slider is an arrow down the side of the layers, a circle at every one, through the explanations:
 // they grow more detailed, from order to order; below the input, the mechanism's
 // orange circle on its own arrow up to the input. Until a layer is first pointed at, an invitation
@@ -1638,9 +1635,8 @@
       const opening = open !== root.classList.contains("orders-demo-open");
       root.classList.add("orders-demo-floating");
       root.classList.toggle("orders-demo-open", open);
-      // the layer pointed at, or the blank layer: the others fade, and those above it thin
+      // the layer pointed at, or the blank layer: the others fade
       const target = out ? sheetItems()[active] : state.blank !== null ? items.find((item) => !item.sheet && !item.base && item.order === state.blank) : null;
-      const pointedAt = target ? items.indexOf(target) : -1;
       items.forEach((item, position) => {
         const { x, y } = places[position];
         const node = item.node;
@@ -1659,12 +1655,6 @@
         node.style.setProperty("--orders-edge-y", `${roundTo(Math.cos(TURN) * depth, 2)}px`);
         node.classList.toggle("orders-demo-receded", Boolean(target) && !item.base && item !== target);
         node.classList.toggle("orders-demo-pointed", item === target);
-        // (the layers above the one pointed at, through which it shows, unless it is the mechanism,
-        // under the card)
-        node.classList.toggle("orders-demo-above", Boolean(target) && position < pointedAt && !target.deep);
-        // (and those below it, down to the card, through which its light falls onto the input: how
-        // the layers give way, data-layers, is demo.css's)
-        node.classList.toggle("orders-demo-below", Boolean(target) && !target.deep && position > pointedAt && !item.base && !item.deep);
         // a blank layer pointed at shows its order's explanation
         if (!item.sheet && !item.base) showBlank(item, item === target);
         node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
