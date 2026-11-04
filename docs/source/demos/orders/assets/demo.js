@@ -1565,8 +1565,9 @@
       let [hull, edges] = [onCard, `M${onCard[0]}L${onCard[3]}M${onCard[1]}L${onCard[2]}`];
       const span = besides && geometry !== null && items.length > 0;
       if (span) {
-        // beside: one light, from the chip's bottom onto the card's left edge and the top layer's right
-        // corner, where it floats, and on down to the card's bottom, fading
+        // beside: one light, from the chip's bottom onto the top of the card's column (the card in
+        // its middle, by the stack's, clear of the light's edge) and the top layer's right corner,
+        // where it floats, and on down to the card's bottom, fading
         // (where the top layer is on the page, as it moves: its right corner, the right of its box)
         const node = items[0].node;
         let [rx, ry] = [0, 0];
@@ -1578,8 +1579,9 @@
           const right = corners(layout()[0]).reduce((p, q) => (q[0] > p[0] ? q : p));
           [rx, ry] = [at.left + right[0], at.top + right[1]];
         }
+        const top = Math.min(to.top, stage.getBoundingClientRect().top);
         const end = Math.max(to.bottom, ry + 1);
-        hull = [onCard[0], onCard[1], f(rx, ry), f(rx, end), f(to.left + b, end), onCard[3]];
+        hull = [onCard[0], onCard[1], f(rx, ry), f(rx, end), f(to.left + b, end), f(to.left + b, top + b)];
         edges = `M${hull[0]}L${hull[5]}M${hull[1]}L${hull[2]}`;
         castFade.setAttribute("y1", roundTo(from.bottom - a - box.top, 1));
         castFade.setAttribute("y2", roundTo(end - box.top, 1));

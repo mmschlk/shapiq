@@ -465,6 +465,7 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-beside .orders-demo-why {
   grid-area: why;
+  align-self: center; /* in the stack's middle, clear of the light's edge above it */
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: 0.6rem;
