@@ -103,6 +103,8 @@
   const WINDOW_MARGIN = 24;
   // milliseconds: how long a layer takes to move to its place (demo.css: --orders-move)
   const MOVE = 640;
+  // beside the stack, the edges of the light out of the chip: their angle from the vertical
+  const SPREAD = (58 * Math.PI) / 180;
   // pixels: the column of the slider, left of the stack; its line in it; how far above the top
   // sheet its handle rests, when no sheet is out
   const RAIL = 42;
@@ -711,21 +713,20 @@
     const castLight = add(add(cast, "defs"), "linearGradient", { id: `orders-cast-${plotId}`, x1: 0, y1: 0, x2: 0, y2: 1 });
     add(castLight, "stop", { offset: 0, class: "orders-demo-cast-top" });
     add(castLight, "stop", { offset: 1, class: "orders-demo-cast-bottom" });
-    // beside the layers, the light is round instead: a glow out of the chip, as strong to either
-    // side, that fades out a short way from it, well before the card and the page's edges; it comes
-    // out from behind the chip's lower half (a mask, clear at the chip's middle, opaque from its
-    // bottom), so that it has no edge of its own
+    // beside the layers, the light is round instead: a cone out of the chip's bottom, as wide to
+    // either side, its edges dashed, filled with a glow from the chip's middle that fades out a short
+    // way from it, well before the card and the page's edges; and its edges fade with it (a mask, as
+    // round)
     const castGlowLight = add(cast.querySelector("defs"), "radialGradient", { id: `orders-cast-glow-${plotId}`, gradientUnits: "userSpaceOnUse" });
     for (const [offset, opacity] of [[0, 1], [0.25, 0.8], [0.5, 0.45], [0.75, 0.15], [1, 0]])
       add(castGlowLight, "stop", { offset, class: "orders-demo-cast-glow", "stop-opacity": opacity });
-    const castFade = add(cast.querySelector("defs"), "linearGradient", { id: `orders-cast-fade-${plotId}`, gradientUnits: "userSpaceOnUse", x1: 0, x2: 0 });
-    add(castFade, "stop", { offset: 0, "stop-color": "#000" });
-    add(castFade, "stop", { offset: 1, "stop-color": "#fff" });
+    const castFade = add(cast.querySelector("defs"), "radialGradient", { id: `orders-cast-fade-${plotId}`, gradientUnits: "userSpaceOnUse" });
+    for (const [offset, white] of [[0, 1], [0.35, 1], [0.7, 0.35], [1, 0]])
+      add(castFade, "stop", { offset, "stop-color": "#fff", "stop-opacity": white });
     const castMask = add(cast.querySelector("defs"), "mask", { id: `orders-cast-mask-${plotId}`, maskUnits: "userSpaceOnUse" });
     const castMaskArea = add(castMask, "rect", { x: 0, y: 0, fill: `url(#orders-cast-fade-${plotId})` });
     const castGroup = add(cast, "g");
     const castHull = add(castGroup, "polygon", { fill: `url(#orders-cast-${plotId})` });
-    const castGlow = add(castGroup, "circle", { fill: `url(#orders-cast-glow-${plotId})`, r: 0 });
     const castEdges = add(castGroup, "path", { class: "orders-demo-cast-edges" });
     const planView = el("div", "orders-demo-plan-view");
     planView.setAttribute("aria-hidden", "true");
@@ -1151,6 +1152,44 @@
     // the mechanism's name on its layer, and on the plan's face of it
     const mechanismTag = (example) =>
       estimated(example) ? "The mechanism, estimated" : `The mechanism (${sheetName(example.sheets.at(-1)).tag})`;
+    // the chip's words as it clears: in its light ink or its dark one, whichever reads better on the
+    // color it clears to (its own, mixed with the paper's as the CSS mixes them), and its small print
+    // as faint as it can be and still read (4.5:1, or as close as the ink gets)
+    const parser = document.createElement("canvas").getContext("2d");
+    const rgbOf = (color) => {
+      parser.fillStyle = "#000";
+      parser.fillStyle = color.trim() || "#000";
+      const value = parser.fillStyle; // #rrggbb, or rgba(r, g, b, a)
+      return value.startsWith("#") ? [1, 3, 5].map((k) => parseInt(value.slice(k, k + 2), 16)) : value.match(/[\d.]+/g).slice(0, 3).map(Number);
+    };
+    const luminance = (rgb) => {
+      const [r, g, b] = rgb.map((c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (p, q) => (Math.max(luminance(p), luminance(q)) + 0.05) / (Math.min(luminance(p), luminance(q)) + 0.05);
+    const blend = (p, q, t) => p.map((c, k) => c * t + q[k] * (1 - t)); // t of p over q
+    let [inked, chipClear] = ["", 0];
+    function inkChip(clear = chipClear) {
+      chipClear = clear;
+      const style = getComputedStyle(chip);
+      const key = `${clear} ${style.getPropertyValue("--orders-chip")} ${style.getPropertyValue("--orders-glass")} ${style.getPropertyValue("--orders-glass-ink")}`;
+      if (key === inked) return;
+      inked = key;
+      const back = blend(rgbOf(style.getPropertyValue("--orders-chip")), rgbOf(style.getPropertyValue("--orders-glass")), 1 - clear);
+      const [light, dark] = [[242, 244, 248], rgbOf(style.getPropertyValue("--orders-glass-ink"))];
+      // (the light one as long as it reads, as the chip is dark; the dark one where it reads better)
+      const ink = contrast(light, back) >= 4.5 || contrast(light, back) >= contrast(dark, back) ? light : dark;
+      let soft = 1;
+      for (let a = 0.62; a < 1; a += 0.04) {
+        if (contrast(blend(ink, back, a), back) >= 4.5) {
+          soft = a;
+          break;
+        }
+      }
+      chip.style.setProperty("--orders-chip-ink", `rgb(${ink.join(" ")})`);
+      chip.style.setProperty("--orders-chip-soft", `rgb(${blend(ink, back, soft).map(Math.round).join(" ")})`);
+      chip.classList.toggle("orders-demo-chip-open", ink === dark);
+    }
     // the plan's faces, drawn once: a sheet's, all of it, on the input; or the input alone (null)
     const plans = new Map();
     function planFace(example, sheet) {
@@ -1496,7 +1535,7 @@
       const clear = lit ? Math.max(0, Math.min(1, r2)) : 0;
       flow.style.setProperty("--orders-clear", roundTo(clear, 3));
       plan.classList.toggle("orders-demo-plan-lit", lit);
-      chip.classList.toggle("orders-demo-chip-open", clear >= 0.6);
+      inkChip(clear);
       // its R^2 in two decimals, or >.99 short of 1: as wide whatever it is, so that the chip, whose
       // words shrink to fit it, does not change its size from one to the next
       const short = r2 >= EXACT ? "1.00" : r2 >= 0.995 ? ">.99" : r2.toFixed(2);
@@ -1588,24 +1627,27 @@
       let [hull, edges] = [onCard, `M${onCard[0]}L${onCard[3]}M${onCard[1]}L${onCard[2]}`];
       const glows = besides && geometry !== null && items.length > 0;
       if (glows) {
-        // beside: one light, round, out of the chip's bottom, as far to either side, fading out a few
-        // centimeters from it (a share of the demo's width, at most 240 px: well inside its edges)
+        // beside: one light, a cone out of the chip's bottom, as wide to either side (its edges at
+        // SPREAD from the vertical), filled with a glow that fades out a few centimeters from the chip
+        // (a share of the demo's width, at most 240 px: well inside its edges), as its edges do
         const [cx, cy] = [(from.left + from.right) / 2, from.bottom - a];
         const reach = Math.max(150, Math.min(240, 0.26 * box.width));
-        for (const node of [castGlowLight, castGlow]) {
+        const [dx, dy] = [2 * reach * Math.sin(SPREAD), 2 * reach * Math.cos(SPREAD)];
+        const [left, right] = [from.left + a, from.right - a];
+        hull = [f(left, cy), f(right, cy), f(right + dx, cy + dy), f(left - dx, cy + dy)];
+        edges = `M${hull[0]}L${hull[3]}M${hull[1]}L${hull[2]}`;
+        for (const node of [castGlowLight, castFade]) {
           node.setAttribute("cx", roundTo(cx - box.left, 1));
           node.setAttribute("cy", roundTo(cy - box.top, 1));
           node.setAttribute("r", roundTo(reach, 1));
         }
-        [hull, edges] = [[], ""];
-        castFade.setAttribute("y1", roundTo((from.top + from.bottom) / 2 - box.top, 1));
-        castFade.setAttribute("y2", roundTo(cy - box.top, 1));
         castMaskArea.setAttribute("width", roundTo(box.width, 1));
         castMaskArea.setAttribute("height", roundTo(box.height, 1));
-        castGroup.setAttribute("mask", `url(#orders-cast-mask-${plotId})`);
+        castHull.setAttribute("fill", `url(#orders-cast-glow-${plotId})`);
+        castEdges.setAttribute("mask", `url(#orders-cast-mask-${plotId})`);
       } else {
-        castGlow.setAttribute("r", 0);
-        castGroup.removeAttribute("mask");
+        castHull.setAttribute("fill", `url(#orders-cast-${plotId})`);
+        castEdges.removeAttribute("mask");
       }
       cast.setAttribute("width", roundTo(box.width, 1));
       cast.setAttribute("height", roundTo(box.height, 1));
@@ -2368,6 +2410,9 @@
     window.addEventListener("resize", relayout);
     // (and anew when the page sets data-plan)
     new MutationObserver(relayout).observe(root, { attributes: true, attributeFilter: ["data-plan"] });
+    // (and the chip's ink anew when the page changes its theme)
+    new MutationObserver(() => inkChip()).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => inkChip());
     new ResizeObserver(() => movePill(true)).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
     new ResizeObserver(() => {

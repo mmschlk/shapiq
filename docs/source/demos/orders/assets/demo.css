@@ -46,7 +46,7 @@
   --orders-mech-ink: #d96200;
   /* the problem's chip of a model whose structure the explanation uses, what a chip clears to (and
      its words, then), and the light out of it */
-  --orders-chip-gray: #6c7385;
+  --orders-chip-gray: #5d6577; /* dark enough for its light words, 4.5:1 */
   --orders-glass: var(--orders-sheet);
   --orders-glass-ink: var(--orders-ink);
   --orders-cast: rgba(27, 30, 39, 0.07);
@@ -812,7 +812,8 @@ body[data-theme="dark"] .orders-demo {
   box-shadow:
     0 8px 20px -8px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  color: #f2f4f8;
+  /* its words: in whichever ink reads better on it as it clears (demo.js) */
+  color: var(--orders-chip-ink, #f2f4f8);
   transition:
     background 520ms var(--orders-ease),
     color 520ms var(--orders-ease);
@@ -822,13 +823,10 @@ body[data-theme="dark"] .orders-demo {
   --orders-chip: var(--orders-chip-gray);
 }
 
-/* cleared, its words in ink */
-.orders-demo-wire-chip.orders-demo-chip-open {
-  color: var(--orders-glass-ink);
-}
-
+/* its small print: as faint as it can be and still read (demo.js) */
 .orders-demo-wire-chip .orders-demo-wire-tag {
-  color: #9aa1b4;
+  color: var(--orders-chip-soft, #a9afc0);
+  transition: color 520ms var(--orders-ease);
 }
 
 .orders-demo-wire-icon {
@@ -843,15 +841,10 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-chip-note {
-  color: #a9afc0;
+  color: var(--orders-chip-soft, #a9afc0);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   transition: color 520ms var(--orders-ease);
-}
-
-.orders-demo-chip-open .orders-demo-chip-note,
-.orders-demo-chip-open .orders-demo-wire-tag {
-  color: color-mix(in srgb, var(--orders-glass-ink) 65%, transparent);
 }
 
 /* unexplained (data-reveal="click"), the demo is the problem alone, and the chip a button that
@@ -1097,13 +1090,13 @@ body[data-theme="dark"] .orders-demo {
   transition: opacity 520ms var(--orders-ease);
 }
 
-.orders-demo-cast :is(polygon, circle) {
+.orders-demo-cast polygon {
   opacity: 0.6;
   transition: opacity 520ms var(--orders-ease);
 }
 
 /* while an explanation is applied, the light is on */
-.orders-demo-plan-lit .orders-demo-cast :is(polygon, circle) {
+.orders-demo-plan-lit .orders-demo-cast polygon {
   opacity: 1;
 }
 
