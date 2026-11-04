@@ -431,18 +431,19 @@ body[data-theme="dark"] .orders-demo {
   overflow-x: clip;
 }
 
-/* on a wide screen (demo.js: orders-demo-wide), with data-plan="side", the plan stands beside the
-   layers: the problem and the card of the explanation in a column of their own, as on a phone (the
-   column a container of its own, its queries a phone's), and the layers beside it, so that all of it
-   fits a screen; "side" left of them, "side-right" right of them. Unexplained (the problem alone),
+/* on a wide screen (demo.js: orders-demo-wide), the plan stands beside the layers: the problem and the
+   card of the explanation in a narrow column of their own, as on a phone (the column a container of
+   its own, its queries a phone's), the card's face above its words, and the layers beside it, as
+   large as the rest of the width lets them be, so that all of it fits a screen; left of them, or with
+   data-plan="side-right" right of them (with "above", above them). Unexplained (the problem alone),
    the plan keeps the demo's width */
-.orders-demo-wide:is([data-plan="side"], [data-plan="side-right"]):not(.orders-demo-veiled) {
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) {
   display: grid;
   grid-template-areas:
     "bar bar"
     "plan stage"
     "dots dots";
-  grid-template-columns: minmax(17rem, 20rem) minmax(0, 1fr);
+  grid-template-columns: 17rem minmax(0, 1fr);
   align-items: start;
   column-gap: 1.25rem;
 }
@@ -452,24 +453,38 @@ body[data-theme="dark"] .orders-demo {
     "bar bar"
     "stage plan"
     "dots dots";
-  grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
+  grid-template-columns: minmax(0, 1fr) 17rem;
 }
 
-.orders-demo-wide:is([data-plan="side"], [data-plan="side-right"]):not(.orders-demo-veiled) > .orders-demo-bar {
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) > .orders-demo-bar {
   grid-area: bar;
 }
 
-.orders-demo-wide:is([data-plan="side"], [data-plan="side-right"]):not(.orders-demo-veiled) > .orders-demo-plan-window {
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) > .orders-demo-plan-window {
   grid-area: plan;
   container-type: inline-size;
 }
 
-.orders-demo-wide:is([data-plan="side"], [data-plan="side-right"]):not(.orders-demo-veiled) > .orders-demo-stage {
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) > .orders-demo-stage {
   grid-area: stage;
 }
 
-.orders-demo-wide:is([data-plan="side"], [data-plan="side-right"]):not(.orders-demo-veiled) > .orders-demo-dots {
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) > .orders-demo-dots {
   grid-area: dots;
+}
+
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) .orders-demo-why {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 0.6rem;
+}
+
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) .orders-demo-plan-view {
+  width: 7.5rem;
+}
+
+.orders-demo-wide:not([data-plan="above"], .orders-demo-veiled) .orders-demo-plan-text {
+  justify-self: stretch;
 }
 
 .orders-demo-plan {

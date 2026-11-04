@@ -66,9 +66,9 @@
 // choosing one in any of them chooses it in all. The page hears every choice, and can make one, as
 // the event "orders-demo-example" on the document, its detail { example: <id> }.
 //
-// On a wide screen, the plan can stand beside the layers (data-plan): "side", the problem and the card
-// of the explanation in a column of their own, as on a phone, left of the layers; "side-right",
-// right of them. So all of it fits a screen.
+// On a wide screen, the plan stands beside the layers: the problem and the card of the explanation in
+// a narrow column of their own, as on a phone, left of the layers (data-plan="side-right": right of
+// them; "above": above them, as on a phone), so that all of it fits a screen.
 //
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
 // demo cannot start, the script shows that figure itself.
@@ -94,6 +94,8 @@
   // the air beside the layers, in units of their width: the stage's room holds them, and that much
   // more
   const ROOMY = 0.22;
+  // (the plan beside the layers, little: the room is narrow, and nothing slides out any more)
+  const ROOMY_BESIDE = 0.05;
   // pixels: the column of the slider, left of the stack; its line in it; how far above the top
   // sheet its handle rests, when no sheet is out
   const RAIL = 42;
@@ -858,7 +860,7 @@
       const lead = narrow ? 14 : 24;
       const room = width - ladderWidth - gap - RAIL - lead;
       // the room holds the layers, and air beside them
-      const side = Math.max(110, Math.min(360, room / ((1 + ROOMY) * spread)));
+      const side = Math.max(110, Math.min(360, room / ((1 + (beside() ? ROOMY_BESIDE : ROOMY)) * spread)));
       const sheetHeight = side * TILT * spread;
       // the same height for every example: the most sheets and blank sheets of any, of those the
       // step shows
@@ -2203,10 +2205,12 @@
       if (!state.pinned && !ladder.contains(event.relatedTarget)) point(null, null);
     });
 
-    // wide enough for the plan to stand beside the layers (data-plan, demo.css)
+    // wide enough for the plan to stand beside the layers (demo.css); and so it does, explained,
+    // unless data-plan="above"
     function wideEnough() {
       root.classList.toggle("orders-demo-wide", root.clientWidth >= 640);
     }
+    const beside = () => root.classList.contains("orders-demo-wide") && root.dataset.plan !== "above" && revealed;
     let width = 0;
     new ResizeObserver(() => {
       wideEnough();
