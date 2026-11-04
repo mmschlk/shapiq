@@ -1278,6 +1278,16 @@ body[data-theme="dark"] .orders-demo {
   color: var(--orders-ink);
 }
 
+/* beside the stack, where the face wears the layer's name, the title gives its order instead */
+.orders-demo-plan-ordered,
+.orders-demo-beside .orders-demo-plan-named {
+  display: none;
+}
+
+.orders-demo-beside .orders-demo-plan-ordered {
+  display: inline;
+}
+
 /* under its name, what it holds, its bar by its R^2, and what it was explained with, and how */
 .orders-demo-plan-fit {
   font-variant-numeric: tabular-nums;

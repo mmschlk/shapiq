@@ -1328,23 +1328,30 @@
       // a line each, whatever it shows, so that none moves: its name, what it holds, its bar and fit,
       // what it was explained with, and what red and blue mean
       const title = el("span", "orders-demo-plan-title");
+      // (its name in the card; beside the stack, where the face wears its name, its order instead)
+      const named = el("span", "orders-demo-plan-named");
+      const ordered = el("span", "orders-demo-plan-ordered");
+      title.append(named, ordered);
       const what = el("span", "orders-demo-plan-what");
       const fit = el("span", "orders-demo-plan-fit");
       const full = example.sheets.at(-1);
       let r2 = full.r2;
       if (mechanism) {
         const n = playersOf(example);
-        title.append(el("strong", "", "Mechanism"), " the model itself");
+        named.append(el("strong", "", "Mechanism"), " the model itself");
+        ordered.append(el("strong", "", "The model"), " itself");
         if (estimated(example)) what.append("up to ", power(n), " terms, estimated");
         else what.append(`${full.count.toLocaleString("en")} of `, power(n), " terms");
       } else if (blank !== null) {
         r2 = fitOf(example, blank)[1];
-        title.append(el("strong", "", `Order ${blank}`), " between the sheets");
+        named.append(el("strong", "", `Order ${blank}`), " between the sheets");
+        ordered.append(el("strong", "", `Order ${blank}`), " explanation");
         what.append(blank >= example.largest ? "as the full decomposition" : `groups of up to ${blank} ${words.players}`);
       } else {
         const sheet = example.sheets[index];
         r2 = sheet.r2;
-        title.append(el("strong", "", sheetName(sheet).tag), ` ${sheetName(sheet).name}`);
+        named.append(el("strong", "", sheetName(sheet).tag), ` ${sheetName(sheet).name}`);
+        ordered.append(el("strong", "", `Order ${sheet.order}`), " explanation");
         what.append(
           sheet.order === 1
             ? `each ${words.one} alone`
