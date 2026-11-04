@@ -1167,7 +1167,7 @@ body[data-theme="dark"] .orders-demo {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.15rem 0.5rem;
+  gap: 0.15rem 0.9rem;
   font-size: 0.88em;
 }
 

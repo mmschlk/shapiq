@@ -391,10 +391,7 @@ def main() -> None:
                 "kind": "image-text",
                 "label": "Describing Images",
                 "detail": "SigLIP 2",
-                "model": {
-                    **model("black box"),
-                    "how": f"from {fixlip['budget']:,} coalitions",
-                },
+                "model": model("black box"),
                 "problem": problem(
                     input="A photo and its caption",
                     output=f"Similarity {fixlip['similarity']:.2f}",

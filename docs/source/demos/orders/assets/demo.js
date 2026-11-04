@@ -1305,10 +1305,9 @@
       const legend = el("span", "orders-demo-plan-legend");
       for (const [color, meaning] of [["up", "raises"], ["down", "lowers"]]) {
         const key = el("span", "orders-demo-plan-key");
-        key.append(el("i", `orders-demo-plan-${color}`), meaning);
+        key.append(el("i", `orders-demo-plan-${color}`), meaning, math("f(x)"));
         legend.append(key);
       }
-      legend.append(math("f(x)"));
       return { nodes: [title, what, fit, method, legend], r2 };
     }
 
