@@ -473,27 +473,19 @@ body[data-theme="dark"] .orders-demo {
   container-type: inline-size;
 }
 
-/* beside the layers, the card is no box: no edge, no paper, no shadow, its question's pill on the
-   light; its face, as wide as the column, unframed (pointed at, it takes its color as ever); its words
-   below it, at the card's size above the layers, in a block as wide as their widest line, in the
-   column's middle (demo.js), so that they neither move nor leave the column lopsided */
+/* beside the layers, the card is no box: no edge, no paper, no shadow, and no question, the light
+   says it; its face, as wide as the column, unframed (pointed at, it takes its color as ever); its
+   words below it, grown into the column as far as their widest text lets them (demo.js), in a block
+   in the column's middle, so that they neither move nor leave the column lopsided */
 .orders-demo.orders-demo-beside .orders-demo-why {
-  padding: 1.1rem 0 0;
+  padding: 0;
   border-color: transparent;
   background: none;
   box-shadow: none;
 }
 
 .orders-demo-beside .orders-demo-why > .orders-demo-plan-eyebrow {
-  border-color: var(--orders-line);
-}
-
-.orders-demo-beside .orders-demo-plan-xai .orders-demo-why > .orders-demo-plan-eyebrow {
-  border-color: color-mix(in srgb, var(--orders-xai-edge) 55%, transparent);
-}
-
-.orders-demo-beside .orders-demo-plan-mechanism .orders-demo-why > .orders-demo-plan-eyebrow {
-  border-color: var(--orders-mech-edge);
+  display: none;
 }
 
 .orders-demo-beside .orders-demo-plan-view {
@@ -2116,6 +2108,26 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-narrow .orders-demo-hint {
   display: none;
+}
+
+/* (beside its card, on a wide screen, the stage is narrow, but the invitation is the wide screen's,
+   over the layers; on a touch screen, the slider's, as on a phone) */
+.orders-demo-beside.orders-demo-narrow .orders-demo-rail-nudge {
+  display: none;
+}
+
+.orders-demo-beside.orders-demo-narrow .orders-demo-hint {
+  display: revert;
+}
+
+@media (hover: none) {
+  .orders-demo-beside.orders-demo-narrow .orders-demo-rail-nudge {
+    display: block;
+  }
+
+  .orders-demo-beside.orders-demo-narrow .orders-demo-hint {
+    display: none;
+  }
 }
 
 /* where the one thing to point at is pointed at already, at rest, nothing invites (demo.js) */

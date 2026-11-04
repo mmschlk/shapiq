@@ -1244,6 +1244,8 @@
       // (the problem alone, as a step, does not call)
       const calls = !revealed && part === "all";
       chip.classList.toggle("orders-demo-chip-call", calls);
+      // (and, once explained, no animation left on it, whatever a browser keeps running)
+      chip.style.animation = calls ? "" : "none";
       if (!calls) {
         for (const name of ["role", "tabindex", "aria-label"]) chip.removeAttribute(name);
         explainTab.remove();
@@ -1422,8 +1424,10 @@
           }
         }
       }
-      const fit = Math.min(1, (width - 1) / widest);
-      const two = widestWhat * fit > width - 1;
+      // (beside the layers, the words grow into the column, as their widest text lets them, up to a
+      // third larger, on lines of one)
+      const fit = besides ? Math.min(1.3, (width - 2) / Math.max(natural, naturalWhat)) : Math.min(1, (width - 1) / widest);
+      const two = !besides && widestWhat * fit > width - 1;
       for (const node of [planWords, words]) {
         node.style.setProperty("--orders-words-fit", roundTo(fit, 3));
         node.classList.toggle("orders-demo-plan-two", two);
