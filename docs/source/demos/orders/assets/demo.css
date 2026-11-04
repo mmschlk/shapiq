@@ -26,8 +26,9 @@
   --orders-shade: rgba(20, 28, 60, 0.14);
   /* the black box stays black in both themes; on a dark page, its edges show */
   --orders-box-edge: #ffffff;
-  /* the estimation gap in the plot: the fit an estimated full decomposition falls short of */
-  --orders-gap: #c2700a;
+  /* the estimation gap in the plot: the fit an estimated full decomposition falls short of, in gray:
+     neither an explanation's color, nor the mechanism's */
+  --orders-gap: var(--orders-muted);
   /* the floating layers: paper, as the card's, near opaque (what a layer
      covers of the layers below it barely shows through, until a layer is pointed at), and their
      edge */
@@ -55,7 +56,6 @@ body[data-theme="dark"] .orders-demo {
   --orders-edge: #3b4152;
   --orders-shade: rgba(0, 0, 0, 0.45);
   --orders-box-edge: #9aa1b4;
-  --orders-gap: #f0a43a;
   --orders-layer-edge: rgba(170, 178, 196, 0.4);
   --orders-layer-film: rgba(30, 33, 42, 0.92);
   --orders-xai-edge: rgba(74, 222, 128, 0.75);
@@ -76,8 +76,7 @@ body[data-theme="dark"] .orders-demo {
     --orders-edge: #3b4152;
     --orders-shade: rgba(0, 0, 0, 0.45);
     --orders-box-edge: #9aa1b4;
-    --orders-gap: #f0a43a;
-    --orders-layer-edge: rgba(170, 178, 196, 0.4);
+      --orders-layer-edge: rgba(170, 178, 196, 0.4);
     --orders-layer-film: rgba(30, 33, 42, 0.92);
     --orders-xai-edge: rgba(74, 222, 128, 0.75);
     --orders-xai-beam: rgba(74, 222, 128, 0.14);
@@ -1349,6 +1348,17 @@ body[data-theme="dark"] .orders-demo {
   cursor: default;
 }
 
+/* pointed at, a blank layer shows its order's explanation (demo.js), fading in */
+.orders-demo-blank > .orders-demo-face {
+  animation: orders-demo-blank-in 260ms var(--orders-ease) both;
+}
+
+@keyframes orders-demo-blank-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .orders-demo-blank.orders-demo-peek {
   border-style: solid;
   border-color: var(--orders-ink);
@@ -1512,14 +1522,15 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* while a layer is pointed at, the others' marks fade; the layer pointed at stays where it floats,
-   and the paper of the layers above it thins, else it would veil it */
-.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer.orders-demo-above {
+   and the paper of the layers above it thins, else it would veil it, and of those below it, down to
+   the input, else they would hide its light on the way */
+.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer:is(.orders-demo-above, .orders-demo-below) {
   border-color: color-mix(in srgb, var(--orders-layer-edge), transparent 55%);
   background: color-mix(in srgb, var(--orders-layer-film), transparent 96%);
   box-shadow: none;
 }
 
-.orders-demo.orders-demo-floating .orders-demo-above .orders-demo-face {
+.orders-demo.orders-demo-floating :is(.orders-demo-above, .orders-demo-below) .orders-demo-face {
   opacity: 0.1;
 }
 
@@ -2235,6 +2246,18 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-plot-axis {
   font-size: 10.5px;
   font-style: italic;
+}
+
+/* a good fit, R^2 0.8: a line down the plot in the explanations' green, named below it */
+.orders-demo-plot-good {
+  stroke: var(--orders-xai-edge);
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+
+.orders-demo-plot-good-name {
+  font-style: normal;
+  font-weight: 600;
 }
 
 /* the estimation gap: what an estimated full decomposition's fit falls short of 1, hatched */

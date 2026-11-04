@@ -21,7 +21,8 @@ top one holds the **Shapley values**: one number per player, its main effect. Ev
 holds the **Shapley interactions** of one order more, FSII, the Faithful Shapley Interactions
 :cite:p:`Tsai.2022`: of all explanations with values for the players and for groups of up to
 :math:`k` of them, the one that fits the model best (see the fit, below); FSII of order 1 is the
-Shapley values. Blank layers stand for the orders between order 4 and the last layer, which holds
+Shapley values. Blank layers stand for the orders between order 4 and the last layer (pointed at,
+one shows its order's explanation), which holds
 the **full decomposition**: FSII of order :math:`n`, the number of players, which gives every group
 of players its own value, the Möbius transform :cite:p:`Grabisch.1999`; for trees of depth 5, FSII
 of order 5, which already is. Below the card lies the **mechanism** they explain, the model itself.
@@ -66,7 +67,8 @@ model explained exactly, the fit never falls from one order to the next. The Sha
 do only together. Every order recovers more of it, and the full decomposition is the model itself,
 written as a sum over groups of players: :math:`R^2 = 1`. Unless it is estimated: for a black box of
 many players, the full decomposition, too, is fit to a sample of the coalitions, and what its fit
-falls short of 1, shaded in the plot, is the **estimation gap**. Many models have no interactions
+falls short of 1, hatched in gray in the plot, is the **estimation gap**. A green line in the plot
+marks a good fit, :math:`R^2 = 0.8`. Many models have no interactions
 above some order: the trees of a given depth, the receptive fields of a graph neural network. From
 that order on, FSII equals the full decomposition: the houses' layers end there, at order 5, where
 the fit is exact, and the molecule's plot runs dashed from order 10 to :math:`n = 30`. Point along

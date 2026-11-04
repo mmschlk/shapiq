@@ -12,8 +12,9 @@
 // reproduces beyond what their sizes alone predict. Every order's point lies at the height of its
 // layer, a line leading to it from the layer's corner, and the line through them runs down from the
 // Shapley values to the full decomposition, which reproduces the model exactly, unless it is
-// estimated: what it falls short of 1 is then shaded, the estimation gap. The input and the
-// mechanism are named below the plot.
+// estimated: what it falls short of 1 is then hatched, the estimation gap, named below it. A line in
+// the explanations' green marks a good fit, R^2 0.8. The input and the mechanism are named below the
+// plot.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
@@ -1651,6 +1652,10 @@
         // (the layers above the one pointed at, through which it shows, unless it is the mechanism,
         // under the card)
         node.classList.toggle("orders-demo-above", Boolean(target) && position < pointedAt && !target.deep);
+        // (and those below it, down to the card, through which its light falls onto the input)
+        node.classList.toggle("orders-demo-below", Boolean(target) && !target.deep && position > pointedAt && !item.base && !item.deep);
+        // a blank layer pointed at shows its order's explanation
+        if (!item.sheet && !item.base) showBlank(item, item === target);
         node.classList.toggle("orders-demo-peek", !item.sheet && item.order === state.blank);
 
         if (item.base) {
@@ -1747,6 +1752,20 @@
       // the layer pointed at casts its marks onto the card: a blank one, its order's
       const cast = target && (target.sheet || betweenOf(current(), target.order)) ? target : null;
       project(cast, anchors);
+    }
+
+    // a blank layer pointed at shows its order's explanation, and its name (where the data has none
+    // of its own, nothing); let go of, it is blank again
+    function showBlank(item, shown) {
+      const sheet = shown ? betweenOf(current(), item.order) : null;
+      const order = sheet ? item.order : null;
+      if ((item.shows ?? null) === order) return;
+      item.shows = order;
+      item.node.replaceChildren();
+      if (!sheet) return;
+      const face = marksOf(current(), sheet).cloneNode(true);
+      add(face, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, `${item.order}-${INDEX}`);
+      item.node.append(face);
     }
 
     // the light from the layer pointed at down to the card (or from the mechanism up to it), whose
@@ -1864,8 +1883,23 @@
       });
       to(sideFrame.querySelector(".orders-demo-side-name"), top - 25);
 
+      // below the plot, the names of a good fit's line and of the estimation gap: the gap's ends at
+      // the plot's right, under the gap; where it would meet the other, it takes a row of its own,
+      // where there is room above the input's name, else the other gives way to the left (their
+      // widths measured, or, while the plot is hidden, as their letters make them)
+      const widthOf = (text) => {
+        const probe = add(sideData, "text", { class: "orders-demo-plot-axis orders-demo-plot-good-name" }, text);
+        const width = probe.getComputedTextLength() || text.length * 6.2;
+        probe.remove();
+        return width;
+      };
+      const below = bottom + 11;
+      const good = x(0.8);
+      let goodAt = good;
+      const cardY = rightCorner(rest[items.findIndex((item) => item.base)])[1];
+
       // the estimation gap: what an estimated full decomposition falls short of 1, a hatched band
-      // down the plot, its name along it
+      // down the plot (in gray: no explanation's color, nor the mechanism's), its name below it
       const full = points.at(-1);
       if (full.item.sheet?.full && full.r2 < EXACT) {
         const id = `orders-side-gap-${plotId}`;
@@ -1875,8 +1909,14 @@
         const band = { x: f(x(full.r2)), y: top, width: f(x(1) - x(full.r2)), height: f(bottom - top) };
         add(gap, "rect", { ...band, class: "orders-demo-plot-gap-fill" });
         add(gap, "rect", { ...band, fill: `url(#${id})` });
-        const [cx, cy] = [f(band.x + band.width / 2), f((points[0].y + full.y) / 2)];
-        add(gap, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label", x: cx, y: cy, "text-anchor": "middle", transform: `rotate(-90 ${cx} ${cy})` }, "estimation gap");
+        const name = g.narrow ? "gap" : "estimation gap";
+        const end = Math.min(band.x + band.width / 2 + widthOf(name) / 2, g.width - 2);
+        let y = below;
+        if (end - widthOf(name) < goodAt + widthOf("good") / 2 + 4) {
+          if (cardY - bottom > 40) y = bottom + 23;
+          else goodAt = Math.max(x0, end - widthOf(name) - 4 - widthOf("good") / 2);
+        }
+        add(gap, "text", { class: "orders-demo-plot-axis orders-demo-plot-gap-label", x: f(end), y: f(y), "text-anchor": "end" }, name);
       }
 
       // every sheet's line from its row on to its point (the row draws it from the sheet's corner)
@@ -1894,6 +1934,10 @@
       add(gradient, "stop", { class: "orders-demo-plot-fade-top", offset: 0 });
       add(gradient, "stop", { class: "orders-demo-plot-fade-bottom", offset: 1 });
       add(sideData, "path", { class: "orders-demo-plot-area", d: `M${f(x0)},${f(points[0].y)}L${points.map(at).join("L")}L${f(x0)},${f(full.y)}Z`, fill: `url(#${fade})` });
+      // a good fit, R^2 0.8, as the verdicts have it: a line down the plot, in the explanations'
+      // green, over the area and under the fits' line, its name below it
+      add(sideData, "line", { class: "orders-demo-plot-good", x1: f(good), x2: f(good), y1: f(top), y2: f(bottom) });
+      add(sideData, "text", { class: "orders-demo-plot-axis orders-demo-plot-good-name", x: f(goodAt), y: f(below), "text-anchor": "middle" }, "good");
       const skips = points.length > 1 && full.order - points.at(-2).order > 1;
       const solid = skips ? points.slice(0, -1) : points;
       add(sideData, "path", { class: "orders-demo-plot-line", d: `M${solid.map(at).join("L")}` });
