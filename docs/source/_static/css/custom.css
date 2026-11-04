@@ -85,6 +85,13 @@ table.docutils {
   max-width: 8.5rem;
 }
 
+/* the sidebar keeps the space of its scrollbar also when it has nothing to scroll: else, with
+   scrollbars that take space (e.g. macOS "Show scroll bars: Always"), the logo and the navigation
+   move sideways between pages with a short sidebar (the landing page) and with a long one */
+.sidebar-scroll {
+  scrollbar-gutter: stable;
+}
+
 /* the inline logo (see _static/js/logo.js): on the landing page, its players can be pulled, also
    past its edge */
 svg.sidebar-logo {
