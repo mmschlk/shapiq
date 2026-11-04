@@ -66,6 +66,10 @@
 // choosing one in any of them chooses it in all. The page hears every choice, and can make one, as
 // the event "orders-demo-example" on the document, its detail { example: <id> }.
 //
+// On a wide screen, the plan can stand beside the layers (data-plan): "side", the problem and the card
+// of the explanation in a column of their own, as on a phone, left of the layers; "side-right",
+// right of them. So all of it fits a screen.
+//
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
 // demo cannot start, the script shows that figure itself.
 (() => {
@@ -783,7 +787,10 @@
     // "Tap" beside it
     const railNudge = el("span", "orders-demo-rail-nudge");
     railNudge.setAttribute("aria-hidden", "true");
-    railNudge.append(el("span", "orders-demo-rail-nudge-word", "Tap"));
+    // ("Tap" on a touch screen, "Click" with a mouse, as the invitation over the layers has it)
+    const nudgeWord = el("span", "orders-demo-rail-nudge-word");
+    nudgeWord.append(el("span", "orders-demo-hint-touch", "Tap"), el("span", "orders-demo-hint-hover", "Click"));
+    railNudge.append(nudgeWord);
     rail.append(railLine, railLabel, ticks, railMechLine, railMech, railNudge, thumb);
     // the line of the layer pointed at, on from its left corner to the slider's handle, as its row's
     // goes on from its right corner to its point in the plot
@@ -2196,8 +2203,13 @@
       if (!state.pinned && !ladder.contains(event.relatedTarget)) point(null, null);
     });
 
+    // wide enough for the plan to stand beside the layers (data-plan, demo.css)
+    function wideEnough() {
+      root.classList.toggle("orders-demo-wide", root.clientWidth >= 640);
+    }
     let width = 0;
     new ResizeObserver(() => {
+      wideEnough();
       if (stage.clientWidth !== width) {
         width = stage.clientWidth;
         geometry = measure();
@@ -2229,6 +2241,7 @@
     });
 
     // the first example fades in, as every next one
+    wideEnough();
     root.classList.add("orders-demo-fading");
     showStep(current(), false);
     render();
