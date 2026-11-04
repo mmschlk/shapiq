@@ -67,9 +67,10 @@
 // the event "orders-demo-example" on the document, its detail { example: <id> }.
 //
 // On a wide screen, the full stack (all of it, or the last step) would not fit a screen below the
-// card: the card of the explanation stands left of the layers then, in a narrow column, the light out
-// of the chip falling onto it there, and the layers are as large as the window's height lets them be
-// (data-plan="above" keeps the card above). The problem stays on top, and the steps before keep
+// card: the card of the explanation stands left of the layers then, one light out of the chip falling
+// onto both, the card and the stack, both explanations, and fading into the page; the layers are as large as the window's
+// height lets them be, and the card takes the width they leave, so that the slider and the plot stay
+// close to them (data-plan="above" keeps the card above). The problem stays on top, and the steps before keep
 // their card above the layers: they fit.
 //
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
@@ -708,8 +709,16 @@
     const castLight = add(add(cast, "defs"), "linearGradient", { id: `orders-cast-${plotId}`, x1: 0, y1: 0, x2: 0, y2: 1 });
     add(castLight, "stop", { offset: 0, class: "orders-demo-cast-top" });
     add(castLight, "stop", { offset: 1, class: "orders-demo-cast-bottom" });
-    const castHull = add(cast, "polygon", { fill: `url(#orders-cast-${plotId})` });
-    const castEdges = add(cast, "path", { class: "orders-demo-cast-edges" });
+    // beside the layers, the light spans the card and the stack, and fades into the page, down to the
+    // card's bottom: a mask, from opaque at the chip to clear there
+    const castFade = add(cast.querySelector("defs"), "linearGradient", { id: `orders-cast-fade-${plotId}`, gradientUnits: "userSpaceOnUse", x1: 0, x2: 0 });
+    add(castFade, "stop", { offset: 0, "stop-color": "#fff" });
+    add(castFade, "stop", { offset: 1, "stop-color": "#000" });
+    const castMask = add(cast.querySelector("defs"), "mask", { id: `orders-cast-mask-${plotId}`, maskUnits: "userSpaceOnUse" });
+    const castMaskArea = add(castMask, "rect", { x: 0, y: 0, fill: `url(#orders-cast-fade-${plotId})` });
+    const castGroup = add(cast, "g");
+    const castHull = add(castGroup, "polygon", { fill: `url(#orders-cast-${plotId})` });
+    const castEdges = add(castGroup, "path", { class: "orders-demo-cast-edges" });
     const planView = el("div", "orders-demo-plan-view");
     planView.setAttribute("aria-hidden", "true");
     const planText = el("figcaption", "orders-demo-plan-text");
@@ -854,6 +863,11 @@
     // -- geometry: the size of the sheets, the stage, and every sheet's place ------------------------
 
     function measure() {
+      // beside the card, the layers as large as the window's height lets them be, and the card's
+      // column as wide as what they leave of the demo, so that the slider and the plot stay close
+      // to them
+      const besides = root.classList.contains("orders-demo-beside");
+      const tallSide = besides ? fitColumns() : Infinity;
       const width = stage.clientWidth;
       const narrow = width < 560;
       // the plot beside the sheets: a narrow column, where the rows' lines lead
@@ -869,16 +883,8 @@
       const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
       // the floating layers' card, below them (without them, on top), and the mechanism below it
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
-      // the room holds the layers, and air beside them; beside the card, the window holds them too,
-      // below what is above them in the demo
-      const besides = root.classList.contains("orders-demo-beside");
-      let side = room / ((1 + (besides ? ROOMY_BESIDE : ROOMY)) * spread);
-      if (besides) {
-        const above = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
-        const tall = window.innerHeight - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
-        side = Math.min(side, tall / (TILT * spread + layers + DEPTH));
-      }
-      side = Math.max(110, Math.min(360, side));
+      // the room holds the layers, and air beside them; beside the card, the window holds them too
+      const side = Math.max(110, Math.min(360, room / ((1 + (besides ? ROOMY_BESIDE : ROOMY)) * spread), tallSide));
       const sheetHeight = side * TILT * spread;
       const stack = sheetHeight + (layers + DEPTH) * side;
       return {
@@ -890,6 +896,35 @@
         height: Math.ceil(stack + 2 * THICKNESS + 16),
         sheetHeight,
       };
+    }
+
+    // beside the card: the layers' side as the window's height, below what is above them in the demo,
+    // lets it be, and the card's column (--orders-why-column) as wide as the stage's width they leave
+    // (between 28% of the demo, at least 15rem, and 26rem): the stage as wide as they, the slider and
+    // the plot need, as narrow
+    // or wide a stage lays them out (the plot's column a sixth of it, up to its widest). The stage's
+    // column (--orders-stage-column) no wider: what the card leaves too, the two share, around them
+    function fitColumns() {
+      const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
+      const n = Math.max(...data.examples.map(shownSheets));
+      const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
+      const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
+      const above = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
+      const tall = window.innerHeight - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
+      const side = Math.max(110, Math.min(360, tall / (TILT * spread + layers + DEPTH)));
+      const layersWidth = side * (1 + ROOMY_BESIDE) * spread;
+      const need = (lead, gap, plot) => {
+        const base = RAIL + lead + layersWidth + gap;
+        return Math.max(base / 0.83, base + Math.min(plot, (base / 0.83) * 0.17)) + 4;
+      };
+      const wide = need(24, 28, 120);
+      const stageWidth = wide >= 560 ? wide : need(14, 10, 71);
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const free = root.clientWidth - 1.25 * rem;
+      const column = Math.max(15 * rem, 0.28 * root.clientWidth, Math.min(26 * rem, free - stageWidth));
+      root.style.setProperty("--orders-why-column", `${Math.floor(column)}px`);
+      root.style.setProperty("--orders-stage-column", `${Math.floor(Math.min(free - column, stageWidth))}px`);
+      return side;
     }
 
     // the place (center) of every item, as the floating layers lie, open or at rest; a blank sheet
@@ -1495,17 +1530,37 @@
     // the card's top ones
     function castLightOut() {
       // (beside, the plan is no box of its own: the light is drawn in the demo's)
-      const box = (root.classList.contains("orders-demo-beside") ? root : plan).getBoundingClientRect();
+      const besides = root.classList.contains("orders-demo-beside");
+      const box = (besides ? root : plan).getBoundingClientRect();
       const [from, to] = [chip.getBoundingClientRect(), why.getBoundingClientRect()];
       const f = (x, y) => `${roundTo(x - box.left, 1)},${roundTo(y - box.top, 1)}`;
       // halfway round the rounded corners of the chip's bottom and of the card's top
       const round = (node) => parseFloat(getComputedStyle(node).borderTopLeftRadius) * (1 - Math.SQRT1_2);
       const [a, b] = [round(chip), round(why)];
-      const corners = [f(from.left + a, from.bottom - a), f(from.right - a, from.bottom - a), f(to.right - b, to.top + b), f(to.left + b, to.top + b)];
+      const onCard = [f(from.left + a, from.bottom - a), f(from.right - a, from.bottom - a), f(to.right - b, to.top + b), f(to.left + b, to.top + b)];
+      let [hull, edges] = [onCard, `M${onCard[0]}L${onCard[3]}M${onCard[1]}L${onCard[2]}`];
+      const span = besides && geometry !== null && items.length > 0;
+      if (span) {
+        // beside: one light, from the chip's bottom onto the card's left edge and the top layer's right
+        // corner, where it floats, and on down to the card's bottom, fading
+        const at = stage.getBoundingClientRect();
+        const right = corners(layout()[0]).reduce((p, q) => (q[0] > p[0] ? q : p));
+        const [rx, ry] = [at.left + right[0], at.top + right[1]];
+        const end = Math.max(to.bottom, ry + 1);
+        hull = [onCard[0], onCard[1], f(rx, ry), f(rx, end), f(to.left + b, end), onCard[3]];
+        edges = `M${hull[0]}L${hull[5]}M${hull[1]}L${hull[2]}`;
+        castFade.setAttribute("y1", roundTo(from.bottom - a - box.top, 1));
+        castFade.setAttribute("y2", roundTo(end - box.top, 1));
+        castMaskArea.setAttribute("width", roundTo(box.width, 1));
+        castMaskArea.setAttribute("height", roundTo(box.height, 1));
+        castGroup.setAttribute("mask", `url(#orders-cast-mask-${plotId})`);
+      } else {
+        castGroup.removeAttribute("mask");
+      }
       cast.setAttribute("width", roundTo(box.width, 1));
       cast.setAttribute("height", roundTo(box.height, 1));
-      castHull.setAttribute("points", corners.join(" "));
-      castEdges.setAttribute("d", `M${corners[0]}L${corners[3]}M${corners[1]}L${corners[2]}`);
+      castHull.setAttribute("points", hull.join(" "));
+      castEdges.setAttribute("d", edges);
     }
 
     // the light between the layer pointed at and the card
@@ -1776,6 +1831,8 @@
       // the layer pointed at casts its marks onto the card: a blank one, its order's
       const cast = target && (target.sheet || betweenOf(current(), target.order)) ? target : null;
       project(cast, anchors);
+      // (beside the card, the light out of the chip onto the top layer, where it goes)
+      if (opening && root.classList.contains("orders-demo-beside")) castLightOut();
     }
 
     // a blank layer pointed at shows its order's explanation, and its name (where the data has none
@@ -2225,14 +2282,16 @@
       root.classList.toggle("orders-demo-wide", wide);
       root.classList.toggle("orders-demo-beside", wide && whole && revealed && root.dataset.plan !== "above");
     }
-    // the stage's width (and, beside the card, the window's height) laid out anew
+    // the stage's width (and, beside the card, the demo's width, whose columns are fit to it, and the
+    // window's height) laid out anew
     let width = 0;
     let tall = 0;
+    let demoWidth = 0;
     function relayout() {
       wideEnough();
       const besides = root.classList.contains("orders-demo-beside");
-      if (stage.clientWidth !== width || (besides && window.innerHeight !== tall)) {
-        [width, tall] = [stage.clientWidth, window.innerHeight];
+      if (stage.clientWidth !== width || (besides && (window.innerHeight !== tall || root.clientWidth !== demoWidth))) {
+        [width, tall, demoWidth] = [stage.clientWidth, window.innerHeight, root.clientWidth];
         geometry = measure();
         place(state.active);
         drawSide();

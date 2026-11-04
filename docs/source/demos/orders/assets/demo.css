@@ -443,8 +443,9 @@ body[data-theme="dark"] .orders-demo {
     "flow flow"
     "why stage"
     "dots dots";
-  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-columns: var(--orders-why-column, 15rem) var(--orders-stage-column, minmax(0, 1fr));
   align-items: start;
+  justify-content: center;
   column-gap: 1.25rem;
 }
 
@@ -473,7 +474,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-beside .orders-demo-plan-view {
-  width: 7.5rem;
+  width: clamp(7.5rem, 55cqw, 14rem); /* (as the card is wide) */
 }
 
 .orders-demo-beside .orders-demo-plan-text {
