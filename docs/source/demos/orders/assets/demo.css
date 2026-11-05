@@ -783,9 +783,27 @@ body[data-theme="dark"] .orders-demo {
   min-width: 1.5rem;
   height: 2px;
   margin: 0 0.75rem;
-  /* a dash and a gap, the tile that flows: as long as one step of the flow, so that the dashes
-     come in at the wire's start without a seam */
+}
+
+/* its dashes flow: a strip of them, one step of the flow longer than the wire, moved along by a
+   transform in a box that clips it (the browser's compositor moves it; a moving background would be
+   painted anew every frame) */
+.orders-demo-wire-dashes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* a dash and a gap, the tile that flows: as long as one step of the flow, so that the dashes come
+   in at the wire's start without a seam */
+.orders-demo-wire-dashes::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: -12px;
   background: linear-gradient(90deg, var(--orders-muted) 0 6px, transparent 6px) 0 0 / 12px 100% repeat-x;
+  content: "";
   animation: orders-demo-wire 0.9s linear infinite;
 }
 
@@ -802,12 +820,12 @@ body[data-theme="dark"] .orders-demo {
 
 @keyframes orders-demo-wire {
   to {
-    background-position: 12px 0;
+    transform: translateX(12px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .orders-demo-wire-line {
+  .orders-demo-wire-dashes::before {
     animation: none;
   }
 }
@@ -2152,6 +2170,19 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-swiping .orders-demo-hint,
 .orders-demo-fading .orders-demo-hint {
   opacity: 0;
+}
+
+/* (gone for good, it stops bobbing: an endless animation keeps what the page paints after it on
+   layers of its own) */
+.orders-demo-hinted .orders-demo-hint {
+  animation: none;
+}
+
+/* out of view, the endless animations rest (demo.js: orders-demo-away), and nothing is painted
+   for them */
+.orders-demo-away :is(.orders-demo-wire-chip.orders-demo-chip-call, .orders-demo-chip-explain, .orders-demo-hint, .orders-demo-rail-nudge),
+.orders-demo-away .orders-demo-wire-dashes::before {
+  animation-play-state: paused;
 }
 
 @container (max-width: 40rem) {

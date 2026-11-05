@@ -73,9 +73,12 @@ raw HTML:
 - `data-plan="above"`: on a wide screen, keep the explanation card above the layers instead of
   beside them. The script watches this attribute, so it can be changed live.
 
-`data-root` must end with `/`. The data is loaded from `data-root` of the first container on the
-page, with `?v=<data-version>` to get past caches. If `window.SHAPIQ_ORDERS` is already defined,
-nothing is loaded.
+The directive also adds `data.js` to the page, deferred, just before `demo.js`, so that both load
+at once. When the script runs and `window.SHAPIQ_ORDERS` is already defined, it loads nothing.
+Otherwise (a page written by hand) it loads the data itself from `data-root` of the first
+container, with `?v=<data-version>` to get past caches; `data-root` must end with `/`. Every demo
+then starts in a task of its own (`setTimeout`), so that the page can respond and paint between
+them.
 
 ### Steps
 
@@ -288,3 +291,25 @@ problem's card.
   `ResizeObserver`, on window resize, and on `data-plan` changes.
 - **No globals**: everything is scoped under `.orders-demo` (CSS) and inside the IIFE (JS). The
   only globals are `window.SHAPIQ_ORDERS`, and the `orders-demo-example` event on `document`.
+
+### Performance
+
+The demo is meant to cost nothing while nobody uses it. Keep it that way:
+
+- **Endless animations** move only `transform` and `opacity`, which the compositor runs off the
+  main thread. The wire's flowing dashes are a strip in a clipping box, moved by a transform
+  (`.orders-demo-wire-dashes::before`); a moving `background-position` was repainted every frame.
+  Out of view, the container gets `orders-demo-away`, and every endless animation pauses. The
+  invitation stops bobbing once it is gone. Measured idle cost: about 2 ms/s in view and 0
+  offscreen, down from about 110 ms/s (450 ms/s with a 4x throttled CPU).
+- **No layout reads on pointing**: the demo is a size container, so `getComputedStyle()` or a
+  size read lays it all out. `inkChip()` reads the chip's colors only when its kind or the theme
+  changes, and the chip's note is refit only when its shape, not just its digits, changes.
+- **`settleCard()`** puts every explanation's words into the probe at once and reads them after
+  one layout, instead of laying out once per explanation (about 60 times).
+- **Offscreen demos**: an example chosen in another demo is drawn in a demo out of view only once
+  it comes within a screen of the view, or when it is laid out anew (`stale`).
+- **Steps** draw only the sheets they show (`sheetsOf()`, `drawAhead()`).
+- **Nothing per frame**: there is no `requestAnimationFrame` loop that runs without changing
+  something. The light out of the chip is redrawn by `relayout()` and the plan's
+  `ResizeObserver`.

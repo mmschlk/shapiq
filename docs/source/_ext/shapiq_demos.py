@@ -26,9 +26,11 @@ in all.
 
 It writes the demo's container, ``<div class="<name>-demo" data-root="..." data-version="...">``,
 whose ``data-root`` is the URL of the demo's assets relative to the page and ``data-version`` a
-checksum of its ``data.js`` (for the script to load the data by, past browsers' caches), and adds
-``demo.css`` and ``demo.js`` to the page. Without JavaScript, the container shows the fallback image,
-a file of the built ``_static`` folder. Outside HTML, a demo is left out.
+checksum of its ``data.js`` (for the script to load the data by, past browsers' caches, where the
+page has not loaded it), and adds ``demo.css``, ``data.js`` (if the demo has one) and ``demo.js`` to
+the page, the data deferred just before the script, so that both load at once. Without JavaScript,
+the container shows the fallback image, a file of the built ``_static`` folder. Outside HTML, a demo
+is left out.
 
 The assets are copied before the pages are written, so that Sphinx adds its checksums to the links
 of ``demo.css`` and ``demo.js``, and they are dependencies of the pages that embed the demo, so that a
@@ -132,6 +134,10 @@ def _add_assets(
     for name in sorted({node["demo"] for node in doctree.findall(DemoNode)}):
         # the stylesheet after html_css_files, whose tokens.css it uses
         app.add_css_file(f"demos/{name}/demo.css", priority=900)
+        # the data, if any, just before the script and loaded alongside it (not by it, once it has
+        # run): the script uses the data on the page, and loads it itself where it is missing
+        if (Path(app.srcdir) / "demos" / name / "assets" / _DATA).is_file():
+            app.add_js_file(f"demos/{name}/{_DATA}", loading_method="defer", priority=499)
         app.add_js_file(f"demos/{name}/demo.js", loading_method="defer")
 
 

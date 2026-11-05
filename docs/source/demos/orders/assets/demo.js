@@ -173,6 +173,7 @@
     return node;
   };
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
   // -- the faces of the sheets: the explanation of one order, in a 100 x 100 square ---------------
 
@@ -777,10 +778,16 @@
     outShows.append(outValue, outNote);
     const chip = tagged("orders-demo-wire-chip", "f", chipShows);
     const explainTab = el("span", "orders-demo-chip-explain", "Explain");
+    // (a wire: its dashes flow in a box of their own, demo.css)
+    const wireLine = () => {
+      const line = el("span", "orders-demo-wire-line");
+      line.append(el("span", "orders-demo-wire-dashes"));
+      return line;
+    };
     const into = el("div", "orders-demo-wire-side orders-demo-wire-into");
-    into.append(tagged("orders-demo-wire-x", "x", xShows), el("span", "orders-demo-wire-line"));
+    into.append(tagged("orders-demo-wire-x", "x", xShows), wireLine());
     const onto = el("div", "orders-demo-wire-side orders-demo-wire-onto");
-    onto.append(el("span", "orders-demo-wire-line"), tagged("orders-demo-wire-out", "f(x)", outShows));
+    onto.append(wireLine(), tagged("orders-demo-wire-out", "f(x)", outShows));
     flow.append(into, chip, onto);
     // unexplained, the chip is a button that explains the example
     chip.addEventListener("click", () => {
@@ -1120,7 +1127,9 @@
       if (reducedMotion() || (!tell && !inView)) {
         shift(0);
         root.style.removeProperty("--orders-swipe-opacity");
-        render();
+        // (out of view, its layers are drawn anew only once it comes near the view)
+        if (!tell && !inView) stale = true;
+        else render();
         return;
       }
       root.classList.add("orders-demo-fading");
@@ -1168,9 +1177,10 @@
     }
     // every example's layers, drawn once: an example chosen again shows them as they were drawn
     const drawn = new Map();
+    // (only those the step shows: the problem and the mechanism none, the Shapley values one)
     function sheetsOf(example) {
       const nodes = drawn.get(example.id) ?? [];
-      for (let i = nodes.length; i < example.sheets.length; i++) nodes.push(drawSheet(example, i));
+      for (let i = nodes.length; i < shownSheets(example); i++) nodes.push(drawSheet(example, i));
       drawn.set(example.id, nodes);
       return nodes;
     }
@@ -1217,14 +1227,23 @@
     const contrast = (p, q) => (Math.max(luminance(p), luminance(q)) + 0.05) / (Math.min(luminance(p), luminance(q)) + 0.05);
     const blend = (p, q, t) => p.map((c, k) => c * t + q[k] * (1 - t)); // t of p over q
     let [inked, chipClear] = ["", 0];
+    // (the chip's colors, read again only when its kind or the page's theme changes: a read of the
+    // computed style lays the demo out, and the chip is inked anew at every explanation pointed at)
+    let [chipColors, chipColorsKey] = [[], ""];
     function inkChip(clear = chipClear) {
       chipClear = clear;
-      const style = getComputedStyle(chip);
-      const key = `${clear} ${style.getPropertyValue("--orders-chip")} ${style.getPropertyValue("--orders-glass")} ${style.getPropertyValue("--orders-glass-ink")}`;
+      const theme = `${chip.classList.contains("orders-demo-chip-gray")} ${document.body.dataset.theme ?? ""} ${darkScheme.matches}`;
+      if (theme !== chipColorsKey) {
+        const style = getComputedStyle(chip);
+        chipColors = ["--orders-chip", "--orders-glass", "--orders-glass-ink"].map((name) => style.getPropertyValue(name));
+        chipColorsKey = theme;
+      }
+      const [chipColor, glass, glassInk] = chipColors;
+      const key = `${clear} ${chipColors.join(" ")}`;
       if (key === inked) return;
       inked = key;
-      const back = blend(rgbOf(style.getPropertyValue("--orders-chip")), rgbOf(style.getPropertyValue("--orders-glass")), 1 - clear);
-      const [light, dark] = [[242, 244, 248], rgbOf(style.getPropertyValue("--orders-glass-ink"))];
+      const back = blend(rgbOf(chipColor), rgbOf(glass), 1 - clear);
+      const [light, dark] = [[242, 244, 248], rgbOf(glassInk)];
       // (the light one as long as it reads, as the chip is dark; the dark one where it reads better)
       const ink = contrast(light, back) >= 4.5 || contrast(light, back) >= contrast(dark, back) ? light : dark;
       let soft = 1;
@@ -1516,25 +1535,33 @@
         range.selectNodeContents(line);
         return range.getBoundingClientRect().width;
       };
-      for (const example of data.examples) {
-        const picks = [
-          ...example.sheets.map((_, index) => ({ index })),
-          ...between(example).map(([blank]) => ({ blank })),
-          { mechanism: true },
-        ];
-        for (const pick of picks) {
-          words.replaceChildren(...wordsOf(example, pick).nodes);
-          for (const line of words.children) {
-            if (line.classList.contains("orders-demo-plan-what")) {
-              widestWhat = Math.max(widestWhat, line.scrollWidth);
-              if (besides) naturalWhat = Math.max(naturalWhat, textWidth(line));
-            } else {
-              widest = Math.max(widest, line.scrollWidth);
-              if (besides) natural = Math.max(natural, textWidth(line));
-            }
+      // (every explanation's words in a block of their own, all in the probe at once: laid out once,
+      // then read, not laid out anew for every one)
+      const blocks = data.examples.flatMap((example) =>
+        [...example.sheets.map((_, index) => ({ index })), ...between(example).map(([blank]) => ({ blank })), { mechanism: true }].map(
+          (pick) => {
+            const block = el("span", "orders-demo-plan-words");
+            block.style.setProperty("--orders-words-fit", "1");
+            block.append(...wordsOf(example, pick).nodes);
+            return block;
+          },
+        ),
+      );
+      probe.replaceChildren(...blocks);
+      for (const block of blocks) {
+        for (const line of block.children) {
+          if (line.classList.contains("orders-demo-plan-what")) {
+            widestWhat = Math.max(widestWhat, line.scrollWidth);
+            if (besides) naturalWhat = Math.max(naturalWhat, textWidth(line));
+          } else {
+            widest = Math.max(widest, line.scrollWidth);
+            if (besides) natural = Math.max(natural, textWidth(line));
           }
         }
       }
+      // (and the last one's words alone again, to measure the height by)
+      words.replaceChildren(...blocks.at(-1).childNodes);
+      probe.replaceChildren(words);
       // (beside the layers, the words grow into the column, as their widest text lets them, up to a
       // third larger, on lines of one)
       const fit = besides ? Math.min(1.3, (width - 2) / Math.max(natural, naturalWhat)) : Math.min(1, (width - 1) / widest);
@@ -1593,8 +1620,11 @@
       const short = r2 >= EXACT ? "1.00" : r2 >= 0.995 ? ">.99" : r2.toFixed(2);
       const note = lit ? `R² ${short} explained` : example.model.title;
       if (chipNote.textContent !== note) {
+        // (refit only where the note's shape changes: its digits are as wide as each other)
+        const shape = (text) => text.replace(/\d/g, "0");
+        const refit = shape(chipNote.textContent) !== shape(note);
         chipNote.textContent = note;
-        fitPart(chipShows);
+        if (refit) fitPart(chipShows);
       }
     }
 
@@ -1607,7 +1637,6 @@
       revealed = true;
       render();
       if (!reducedMotion()) buildUp();
-      if (root.classList.contains("orders-demo-beside")) followLight(building + 1200);
       // the floating layers unfold once they have come in, and are in view
       unfoldAfter = performance.now() + (reducedMotion() ? 300 : building + 500);
       unfold();
@@ -1706,20 +1735,6 @@
       castEdges.setAttribute("d", edges);
     }
 
-    // the light out of the chip, drawn anew every frame for a while: beside the card, while the demo
-    // around it moves (as the layers unfold, or come in)
-    let following = 0;
-    function followLight(ms) {
-      const run = ++following;
-      const until = performance.now() + ms;
-      const frame = (now) => {
-        if (run !== following) return;
-        castLightOut();
-        if (now < until) requestAnimationFrame(frame);
-      };
-      requestAnimationFrame(frame);
-    }
-
     // the light between the layer pointed at and the card
     const beam = document.createElementNS(SVG, "svg");
     beam.setAttribute("class", "orders-demo-beam");
@@ -1737,7 +1752,7 @@
     // one only has to show it
     const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 100));
     function drawAhead() {
-      const example = data.examples.find((other) => (drawn.get(other.id)?.length ?? 0) < other.sheets.length);
+      const example = data.examples.find((other) => (drawn.get(other.id)?.length ?? 0) < shownSheets(other));
       if (!example) return;
       const nodes = drawn.get(example.id) ?? [];
       nodes.push(drawSheet(example, nodes.length));
@@ -2004,8 +2019,6 @@
       // the layer pointed at casts its marks onto the card: a blank one, its order's
       const cast = target && (target.sheet || betweenOf(current(), target.order)) ? target : null;
       project(cast, anchors);
-      // (beside the card, the light out of the chip onto the top layer follows it, as it goes)
-      if (opening && root.classList.contains("orders-demo-beside")) followLight(MOVE + 45 * items.length + 120);
     }
 
     // a blank layer pointed at shows its order's explanation, and its name (where the data has none
@@ -2470,6 +2483,11 @@
     let tall = 0;
     let demoWidth = 0;
     function relayout() {
+      // (a demo still drawn for the example shown before is drawn anew first)
+      if (stale) {
+        stale = false;
+        render();
+      }
       wideEnough();
       const besides = root.classList.contains("orders-demo-beside");
       if (stage.clientWidth !== width || viewportHeight() !== tall || (besides && root.clientWidth !== demoWidth)) {
@@ -2487,7 +2505,7 @@
     watch(new MutationObserver(relayout)).observe(root, { attributes: true, attributeFilter: ["data-plan"] });
     // (and the chip's ink anew when the page changes its theme)
     watch(new MutationObserver(() => inkChip())).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => inkChip(), { signal: life });
+    darkScheme.addEventListener?.("change", () => inkChip(), { signal: life });
     watch(new ResizeObserver(() => movePill(true))).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
     watch(
@@ -2507,11 +2525,25 @@
       castLightOut();
     });
     // the example chosen in another demo of the page, or by the page
+    // (out of view, its endless animations rest, demo.css: orders-demo-away; and an example chosen
+    // elsewhere meanwhile is drawn once it comes within a screen of the view)
     let inView = false;
+    let stale = false;
     watch(
       new IntersectionObserver(([entry]) => {
         inView = entry.isIntersecting;
+        root.classList.toggle("orders-demo-away", !inView);
       }),
+    ).observe(root);
+    watch(
+      new IntersectionObserver(
+        ([entry]) => {
+          if (!entry.isIntersecting || !stale) return;
+          stale = false;
+          render();
+        },
+        { rootMargin: "100% 0px" },
+      ),
     ).observe(root);
     document.addEventListener(
       EXAMPLE_EVENT,
@@ -2545,16 +2577,19 @@
   };
   // a demo that cannot start stops listening to the page, the window and its observers (its life
   // ends: start() ties them to it)
+  // (every demo in a task of its own: the page responds, and paints, between them)
   const begin = () => {
     for (const root of roots) {
-      const life = new AbortController();
-      try {
-        start(root, window.SHAPIQ_ORDERS, life.signal);
-      } catch (error) {
-        console.error("The explanation of every order could not start:", error);
-        life.abort();
-        showFallback(root);
-      }
+      setTimeout(() => {
+        const life = new AbortController();
+        try {
+          start(root, window.SHAPIQ_ORDERS, life.signal);
+        } catch (error) {
+          console.error("The explanation of every order could not start:", error);
+          life.abort();
+          showFallback(root);
+        }
+      });
     }
   };
   if (window.SHAPIQ_ORDERS) {

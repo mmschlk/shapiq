@@ -29,12 +29,14 @@ one (the landing page embeds the FIxLIP demo):
 
 It writes `<div class="<name>-demo" data-root="..." data-version="...">`, where `data-root` is the
 URL of the demo's assets relative to the page and `data-version` a checksum of `assets/data.js`,
-and adds `assets/demo.css` and `assets/demo.js` to the page; the build copies `assets/` to
+and adds `assets/demo.css`, `assets/data.js` (if there is one) and `assets/demo.js` to the page,
+the data deferred just before the script, so that both load at once; the build copies `assets/` to
 `_static/demos/<name>/` before it writes the pages, so that their links to the assets carry
 checksums too, and writes the pages with a demo again when its assets change. The script finds its
-container by the class, loads its data from `data-root` (with `?v=` and the version, past browsers'
-caches), and fills the container. Without JavaScript, the container shows the fallback image, a
-file of `_static/` (all options are optional). Builders other than HTML leave demos out.
+container by the class, uses the data the page loaded (or, where it is missing, loads it from
+`data-root`, with `?v=` and the version, past browsers' caches), and fills the container. Without
+JavaScript, the container shows the fallback image, a file of `_static/` (all options are
+optional). Builders other than HTML leave demos out.
 
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).

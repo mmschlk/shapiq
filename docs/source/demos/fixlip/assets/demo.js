@@ -40,9 +40,8 @@
     ["full", "Full explanation", "Full"],
   ];
 
-  const loader = document.createElement("script");
-  loader.src = `${root.dataset.root}data.js?v=${root.dataset.version ?? ""}`; // past caches
-  loader.onload = () => {
+  // the data: already on the page (the docs load it before this script, alongside it), or loaded now
+  const begin = () => {
     try {
       start(window.SHAPIQ_FIXLIP);
     } catch (error) {
@@ -50,8 +49,15 @@
       showFallback();
     }
   };
-  loader.onerror = showFallback;
-  document.head.appendChild(loader);
+  if (window.SHAPIQ_FIXLIP) {
+    queueMicrotask(begin); // (once this script has run to its end: start() uses what it defines below)
+  } else {
+    const loader = document.createElement("script");
+    loader.src = `${root.dataset.root}data.js?v=${root.dataset.version ?? ""}`; // past caches
+    loader.onload = begin;
+    loader.onerror = showFallback;
+    document.head.appendChild(loader);
+  }
 
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
