@@ -23,29 +23,29 @@ of them, we fix what they have in common, following {cite:t}`Muschalik.2026{Def.
 ```{admonition} Definition 1.1 (Feature-based explanation)
 :class: note
 
-Let $\model : \mathcal{X} \to \R$ be a trained model on the features
+Let $\model : \featurespace \to \R$ be a trained model on the features
 $\players = \{1, \dots, \nplayers\}$.[^notation] A **feature-based explanation** is a map
 
 $$
-e : \mathcal{S} \to E, \qquad S \mapsto e(S),
+\expl : \units \to \explspace, \qquad S \mapsto \expl(S),
 $$ (eq-explanation)
 
-where $\mathcal{S} \subseteq 2^{\players}$ is a collection of feature subsets, the **units**, and
-$E$ is the **explanation space**. For each unit $S \in \mathcal{S}$, the explanation $e(S)$
+where $\units \subseteq 2^{\players}$ is a collection of feature subsets, the **units**, and
+$\explspace$ is the **explanation space**. For each unit $S \in \units$, the explanation $\expl(S)$
 describes how the features in $S$ influence the output of $\model$.
 ```
 
 The map {eq}`eq-explanation` makes two choices and leaves a third open:
 
-- The collection $\mathcal{S}$ fixes the **unit**: single features give attributions, larger
+- The collection $\units$ fixes the **unit**: single features give attributions, larger
   subsets give groups or interactions (see {ref}`ug-units`).
-- The space $E$ fixes the **form**: a number or a curve (see {ref}`ug-forms`).
-- The definition says nothing about **how** $e(S)$ is computed (see {ref}`ug-open`).
+- The space $\explspace$ fixes the **form**: a number or a curve (see {ref}`ug-forms`).
+- The definition says nothing about **how** $\expl(S)$ is computed (see {ref}`ug-open`).
 
 (ug-units)=
 ## Units: What Is Explained
 
-| Units $\mathcal{S}$ | The explanation assigns a value to | Example |
+| Units $\units$ | The explanation assigns a value to | Example |
 | --- | --- | --- |
 | $\{\{i\} : i \in \players\}$ | each feature | Shapley values {cite:p}`Lundberg.2017` |
 | a partition of $\players$ into groups | each group of features, taken together | grouped importance {cite:p}`Au.2022` |
@@ -62,13 +62,13 @@ $\{\text{latitude}, \text{longitude}\}$: their joint effect, which is the locati
 (ug-forms)=
 ## Forms: What an Explanation Looks Like
 
-The explanation space $E$ decides what the reader sees. Most explanations are numbers, $E = \R$:
+The explanation space $\explspace$ decides what the reader sees. Most explanations are numbers, $\explspace = \R$:
 the attribution of a prediction to a feature, or the importance of a feature for the model.
 Feature effects are curves. The partial dependence plot {cite:p}`Friedman.2001` explains a feature
 $i$ by the function
 
 $$
-e(\{i\}) = \Big( z \mapsto \E\big[\model(z, X_{\players \setminus \{i\}})\big] \Big),
+\expl(\{i\}) = \Big( z \mapsto \E\big[\model(z, X_{\players \setminus \{i\}})\big] \Big),
 $$ (eq-pdp)
 
 the average prediction when feature $i$ is set to $z$. Its explanation space is a space of
@@ -77,7 +77,7 @@ functions of a single feature.
 (ug-open)=
 ## What the Definition Leaves Open
 
-Definition 1.1 does not say how $e(S)$ is obtained. Each of the three lenses of
+Definition 1.1 does not say how $\expl(S)$ is obtained. Each of the three lenses of
 {doc}`perspectives/index` gives its own answer:
 
 ````{tab-set}
@@ -90,7 +90,7 @@ $$
 \model(x) = \sum_{S \subseteq \players} f_S(x_S),
 $$ (eq-fanova)
 
-and the explanation of a unit is its component, $e(S) = f_S$.
+and the explanation of a unit is its component, $\expl(S) = f_S$.
 ```
 
 ```{tab-item} Taylor expansion
@@ -103,14 +103,14 @@ $$
 $$ (eq-taylor)
 
 and the explanation of a unit collects the terms that involve exactly its features:
-$e(\{i\}) = \psi(i)$, and $e(S) = J(S)$ for $\lvert S \rvert > 1$.
+$\expl(\{i\}) = \psi(i)$, and $\expl(S) = J(S)$ for $\lvert S \rvert > 1$.
 ```
 
 ```{tab-item} Game theory
 
 The model defines a cooperative game $\game : 2^{\players} \to \R$, a value for every coalition of
 features {cite:p}`Shapley.1951,Grabisch.1999`, and the explanation of a unit is its value or
-interaction index in this game, $e(S) = \phi(S)$.
+interaction index in this game, $\expl(S) = \phi(S)$.
 ```
 
 ````

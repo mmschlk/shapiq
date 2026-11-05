@@ -411,7 +411,12 @@ myst_enable_extensions = ["dollarmath", "amsmath"]
 _NOTATION = {
     "players": "N",  # the players, i.e. the features of the model
     "nplayers": "n",  # the number of players
+    "featurespace": r"\mathcal{X}",  # the feature space: the inputs of the model
+    "outputspace": r"\mathcal{Y}",  # the output space: what the model predicts
     "model": "F",  # the model to explain
+    "units": r"\mathcal{S}",  # the units of an explanation: a collection of sets of features
+    "explspace": "E",  # the explanation space
+    "expl": "e",  # an explanation
     "mask": r"\mathcal{M}",  # the masking operator
     "behav": r"\mathcal{B}",  # the behavior operator
     "inter": r"\mathcal{I}",  # the interaction operator

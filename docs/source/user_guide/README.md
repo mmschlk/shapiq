@@ -35,12 +35,22 @@ row in `notation.md` that starts with `<span id="notation-<macro>"></span>`.
 | --- | --- | --- |
 | `\players` | $N$ | the players (features) |
 | `\nplayers` | $n$ | the number of players |
+| `\featurespace` | $\mathcal{X}$ | the feature space |
+| `\outputspace` | $\mathcal{Y}$ | the output space |
 | `\model` | $F$ | the model |
+| `\units` | $\mathcal{S}$ | the units of an explanation |
+| `\explspace` | $E$ | the explanation space |
+| `\expl` | $e$ | an explanation |
 | `\mask` | $\mathcal{M}$ | the masking operator |
 | `\behav` | $\mathcal{B}$ | the behavior operator |
 | `\inter` | $\mathcal{I}$ | the interaction operator |
 | `\game` | $\nu$ | the explanation game |
 | `\E`, `\Var`, `\R` | $\mathbb{E}$, $\mathbb{V}$, $\mathbb{R}$ | expectation, variance, real numbers |
+
+## Illustrations
+
+Interactive figures go in with the `shapiq-illustration` directive; how they work and how to
+add one is in `illustrations/README.md`.
 
 ## Citations
 
