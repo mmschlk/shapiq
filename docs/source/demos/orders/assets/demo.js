@@ -811,9 +811,9 @@
     // apart from the arrow, at the mechanism's height, its own handle, on a thinner, orange arrow up
     // to the input: the mechanism, which gives the input its prediction
     const railMechLine = el("span", "orders-demo-rail-mech-line");
-    // and its label, as the arrow's beside it
+    // and its label beside it, as the arrow's, on two lines (the arrow is short)
     const railMechLabel = el("span", "orders-demo-rail-label orders-demo-rail-mech-label");
-    railMechLabel.append("the model itself");
+    railMechLabel.append("the mechanism", el("br"), "behind the model");
     railMechLabel.setAttribute("aria-hidden", "true");
     const railMech = el("span", "orders-demo-rail-mech");
     railMech.setAttribute("aria-hidden", "true"); // (the mechanism's row serves the keyboard)
@@ -1808,6 +1808,14 @@
       if (root.classList.contains("orders-demo-beside")) castLightOut();
     }
 
+    // the slider's labels' lengths (written down the slider: their heights), measured once shown,
+    // and anew in the fonts loaded
+    let labelLengths = [0, 0];
+    function labelLength(label, k) {
+      if (!labelLengths[k]) labelLengths[k] = label.offsetHeight;
+      return labelLengths[k];
+    }
+
     // move every sheet and row to its place, for the sheet pointed at (or null)
     function place(active) {
       const g = geometry;
@@ -1923,8 +1931,13 @@
       railMech.classList.toggle("orders-demo-rail-mech-on", Boolean(target?.deep));
       railMechLine.style.translate = `0 ${roundTo(cardY + 6, 2)}px`;
       railMechLine.style.height = `${roundTo(Math.max(0, mechY - 9 - cardY - 6), 2)}px`;
-      // its label beside its middle, as the arrow's
-      railMechLabel.style.top = `${roundTo((cardY + 6 + mechY - 9) / 2, 2)}px`;
+      // its label from its tip down, along it and its handle (longer than it, it does not reach up
+      // to the arrow's label); short of room below, it rises to end at the slider's bottom, and short
+      // of room between the two, it is left out (as the arrow's label is where the arrow is short)
+      const labelEnd = railLabel.hidden ? -Infinity : (stops[1].y + bottom) / 2 + labelLength(railLabel, 0) / 2;
+      const mechLabelTop = Math.min(cardY + 5, g.height - labelLength(railMechLabel, 1));
+      railMechLabel.classList.toggle("orders-demo-rail-mech-label-off", mechLabelTop < Math.max(labelEnd + 10, cardY - 2));
+      railMechLabel.style.top = `${roundTo(mechLabelTop, 2)}px`;
       // the handle's line on to the layer it brought out (or the mechanism's handle's on to the
       // mechanism), at the height of the layer's left corner
       const led = target?.deep ? target : at === 0 ? null : stops[at].item;
@@ -2426,6 +2439,8 @@
     document.fonts?.ready.then(() => {
       [xShows, chipShows, outShows].forEach(fitPart);
       settled = ""; // measured anew in the fonts loaded
+      labelLengths = [0, 0];
+      if (geometry !== null) place(state.active);
       settleCard();
       castLightOut();
     });

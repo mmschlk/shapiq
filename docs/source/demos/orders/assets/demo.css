@@ -1876,9 +1876,19 @@ body[data-theme="dark"] .orders-demo {
   pointer-events: none;
 }
 
-/* the mechanism's arrow's, in its orange */
+/* the mechanism's arrow's, in its orange, from its tip down; on two lines, a little smaller, both
+   within the slider's column, left of the arrow */
 .orders-demo-rail-mech-label {
+  left: calc(var(--orders-rail-line) - 1.75rem);
   color: var(--orders-mech-ink);
+  font-size: 0.68rem;
+  line-height: 1.1;
+  transform: none;
+}
+
+/* (where it has no room: still laid out, so that its length is known) */
+.orders-demo-rail-mech-label-off {
+  visibility: hidden;
 }
 
 .orders-demo-rail-label em {
