@@ -811,6 +811,10 @@
     // apart from the arrow, at the mechanism's height, its own handle, on a thinner, orange arrow up
     // to the input: the mechanism, which gives the input its prediction
     const railMechLine = el("span", "orders-demo-rail-mech-line");
+    // and its label, as the arrow's beside it
+    const railMechLabel = el("span", "orders-demo-rail-label orders-demo-rail-mech-label");
+    railMechLabel.append("the model itself");
+    railMechLabel.setAttribute("aria-hidden", "true");
     const railMech = el("span", "orders-demo-rail-mech");
     railMech.setAttribute("aria-hidden", "true"); // (the mechanism's row serves the keyboard)
     // on a narrow screen, the invitation is a smaller one, at the slider: its first circle calls,
@@ -821,7 +825,7 @@
     const nudgeWord = el("span", "orders-demo-rail-nudge-word");
     nudgeWord.append(el("span", "orders-demo-hint-touch", "Tap"), el("span", "orders-demo-hint-hover", "Click"));
     railNudge.append(nudgeWord);
-    rail.append(railLine, railLabel, ticks, railMechLine, railMech, railNudge, thumb);
+    rail.append(railLine, railLabel, ticks, railMechLine, railMechLabel, railMech, railNudge, thumb);
     // the line of the layer pointed at, on from its left corner to the slider's handle, as its row's
     // goes on from its right corner to its point in the plot
     const railLead = el("span", "orders-demo-rail-lead");
@@ -1919,6 +1923,8 @@
       railMech.classList.toggle("orders-demo-rail-mech-on", Boolean(target?.deep));
       railMechLine.style.translate = `0 ${roundTo(cardY + 6, 2)}px`;
       railMechLine.style.height = `${roundTo(Math.max(0, mechY - 9 - cardY - 6), 2)}px`;
+      // its label beside its middle, as the arrow's
+      railMechLabel.style.top = `${roundTo((cardY + 6 + mechY - 9) / 2, 2)}px`;
       // the handle's line on to the layer it brought out (or the mechanism's handle's on to the
       // mechanism), at the height of the layer's left corner
       const led = target?.deep ? target : at === 0 ? null : stops[at].item;

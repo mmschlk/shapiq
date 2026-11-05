@@ -1876,6 +1876,11 @@ body[data-theme="dark"] .orders-demo {
   pointer-events: none;
 }
 
+/* the mechanism's arrow's, in its orange */
+.orders-demo-rail-mech-label {
+  color: var(--orders-mech-ink);
+}
+
 .orders-demo-rail-label em {
   font-style: italic;
 }
