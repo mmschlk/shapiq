@@ -128,7 +128,8 @@ below 560px of its own width (`orders-demo-narrow`): smaller gaps, and a narrowe
 
 The window's height also bounds the layers, in every layout. It is read as
 `document.documentElement.clientHeight` (`viewportHeight()`), not `innerHeight`, so that a phone's
-toolbars coming and going as the page scrolls do not resize the stack. With the card above the
+toolbars coming and going as the page scrolls do not resize the stack. (On a page without a
+doctype, in quirks mode, the root's height is the whole page's: there it reads `innerHeight`.) With the card above the
 layers, the stack is at most the window's height minus 96px (`WINDOW_ROOM`), which matters on a
 phone on its side. `relayout()` runs again when the stage's width or the window's height
 changes.

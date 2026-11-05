@@ -108,8 +108,10 @@
   const WINDOW_MARGIN = 24;
   const WINDOW_ROOM = 96;
   // the window's height, without what a phone's toolbars take as they come and go (they would
-  // resize the stack as the page scrolls)
-  const viewportHeight = () => document.documentElement.clientHeight || window.innerHeight;
+  // resize the stack as the page scrolls); on a page without a doctype (quirks mode), the root's
+  // height is the whole page's, and the window's own is what there is
+  const viewportHeight = () =>
+    (document.compatMode === "CSS1Compat" && document.documentElement.clientHeight) || window.innerHeight;
   // milliseconds: how long a layer takes to move to its place (demo.css: --orders-move)
   const MOVE = 640;
   // beside the stack, the edges of the light out of the chip: their angle from the vertical
