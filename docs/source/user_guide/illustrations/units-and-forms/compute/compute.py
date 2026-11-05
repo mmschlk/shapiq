@@ -6,8 +6,9 @@ model on six of its features, and the explanations that the illustration shows f
 - the explanation game of the house with marginal masking: its prediction for every subset of the
   features, with the other features drawn from background houses, for all 2^6 = 64 subsets;
 - numbers: the Shapley values of the features and the pairwise Shapley interactions (k-SII of
-  order 2), with shapiq's ``ExactComputer``, and the Shapley values of groups of features taken as
-  one player, from the game with the group merged into one player (``group_value``);
+  order 2), with shapiq's ``ExactComputer``, and the Shapley values of the units of a partition of
+  the features, each unit one player (``partition_values``): the house's location (latitude and
+  longitude) as one unit, the other features alone;
 - curves: the house's prediction as one feature varies (its ICE curve), as two features vary (a
   surface), and the part of that surface that neither feature explains alone (the pure interaction),
   on evenly spaced grids that pass through the house's own values, so that the house lies on its
@@ -36,15 +37,16 @@ from sklearn.model_selection import train_test_split
 
 import shapiq
 
-FEATURES = [  # name in the data, label in the illustration, unit of the value, decimals shown
-    ("MedInc", "Median income", "\u00d7$10k", 2),
-    ("HouseAge", "House age", "years", 0),
-    ("AveRooms", "Rooms", "per household", 2),
-    ("Population", "Population", "of the block", 0),
-    ("Latitude", "Latitude", "°N", 2),
-    ("Longitude", "Longitude", "°E", 2),
+FEATURES = [  # name in the data, label and short label in the illustration, unit, decimals shown
+    ("MedInc", "Median income", "Income", "\u00d7$10k", 2),
+    ("HouseAge", "House age", "Age", "years", 0),
+    ("AveRooms", "Rooms", "Rooms", "per household", 2),
+    ("Population", "Population", "Pop.", "of the block", 0),
+    ("Latitude", "Latitude", "Lat.", "°N", 2),
+    ("Longitude", "Longitude", "Lon.", "°E", 2),
 ]
-PAIR = ("Latitude", "Longitude")  # the pair the illustration starts with: the house's location
+# the units of "groups": the house's location as one unit, the other features alone
+PARTITION = [("MedInc",), ("HouseAge",), ("AveRooms",), ("Population",), ("Latitude", "Longitude")]
 HOUSE = 0  # the explained house: the first of the data
 BACKGROUND = 256  # background houses for marginal masking
 GRID_1D = 40  # points of a curve
@@ -89,17 +91,20 @@ def main() -> None:
     shapley = computer("SV", order=1)
     ksii = computer("k-SII", order=2)
 
-    def group_value(group: tuple[int, ...]) -> float:
-        """The Shapley value of a group taken as one player, in the game with the group merged."""
-        others = [i for i in range(n) if i not in group]
-        m = len(others) + 1
-        value = 0.0
-        for size in range(len(others) + 1):
-            weight = math.factorial(size) * math.factorial(m - size - 1) / math.factorial(m)
-            for rest in itertools.combinations(others, size):
-                with_group = tuple(sorted(rest + group))
-                value += weight * (table[with_group] - table[rest])
-        return value
+    def partition_values(parts: list[tuple[int, ...]]) -> list[float]:
+        """The Shapley values of the parts of a partition, in the game with each part one player."""
+        m = len(parts)
+        values = []
+        for p, part in enumerate(parts):
+            others = [q for q in range(m) if q != p]
+            value = 0.0
+            for size in range(m):
+                weight = math.factorial(size) * math.factorial(m - size - 1) / math.factorial(m)
+                for rest in itertools.combinations(others, size):
+                    members = tuple(sorted(i for q in rest for i in parts[q]))
+                    value += weight * (table[tuple(sorted(members + part))] - table[members])
+            values.append(value)
+        return values
 
     def grid(feature: int, points: int) -> np.ndarray:
         """Evenly spaced values over the feature's range, one of them the house's own value."""
@@ -132,11 +137,12 @@ def main() -> None:
         interactions[key] = (both - only_i - only_j + prediction).tolist()
 
     names = [name for name, *_ in FEATURES]
+    partition = [tuple(names.index(name) for name in part) for part in PARTITION]
     numbers = {
         "prediction": prediction,
         "baseline": float(table[()]),
         "shapley": [float(shapley[(i,)]) for i in range(n)],
-        "groups": {"-".join(map(str, s)): group_value(s) for s in subsets if len(s) >= 2},
+        "partition_shapley": partition_values(partition),
         "interactions": {
             f"{i}-{j}": float(ksii[(i, j)]) for i, j in itertools.combinations(range(n), 2)
         },
@@ -149,13 +155,14 @@ def main() -> None:
             {
                 "name": name,
                 "label": label,
+                "short": short,
                 "unit": unit,
                 "decimals": decimals,
                 "value": float(house[i]),
             }
-            for i, (name, label, unit, decimals) in enumerate(FEATURES)
+            for i, (name, label, short, unit, decimals) in enumerate(FEATURES)
         ],
-        "pair": [names.index(name) for name in PAIR],
+        "partition": [list(part) for part in partition],  # its values: "partition_shapley"
         **_round(numbers, 4),
         **_round({"curves": curves, "surfaces": surfaces, "pure": interactions}, 3),
     }
@@ -166,6 +173,7 @@ def main() -> None:
         f"window.SHAPIQ_UNITS_AND_FORMS = {text};\n"
     )
     print(f"R² {r2:.3f}, prediction {prediction:.3f}, baseline {table[()]:.3f}, wrote {OUT}")
+    print("sum of the partition's values", sum(numbers["partition_shapley"]))
     print(
         "sum of Shapley values",
         sum(numbers["shapley"]),

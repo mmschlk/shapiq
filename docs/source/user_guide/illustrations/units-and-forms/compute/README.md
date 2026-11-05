@@ -6,8 +6,9 @@ house of the data. It writes `../assets/data.js`:
 
 - the explanation game of the house with marginal masking (256 background houses), and from it,
   with shapiq's `ExactComputer`, the Shapley values and the pairwise Shapley interactions (k-SII of
-  order 2); and the Shapley value of every group of features taken as one player, computed by the
-  script from the game with the group merged into one player (`group_value`);
+  order 2); and the Shapley values of the units of a partition, the house's location (latitude and
+  longitude) as one unit and the other features alone, each unit one player, computed by the
+  script from the game (`partition_values`);
 - the house's prediction as each feature varies (40 points), as each pair of features varies
   (20 × 20 points), and the pure interaction of each pair (the surface minus what each feature does
   alone), on evenly spaced grids through the house's own values, so that the house lies on them.

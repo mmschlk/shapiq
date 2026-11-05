@@ -44,10 +44,10 @@ describes how the information in the features of $S$ influences the output of th
 
 ```{shapiq-illustration} units-and-forms
 :anchor: illustration-units-and-forms
-:alt: Explanations of one house of the California housing data, for each choice of the units (single features, a group of features, or pairs of features) and of the explanation space (numbers or curves): bars of Shapley values, curves of the prediction as a feature varies, the value of a group, surfaces of two features, and a network of pairwise interactions.
+:alt: Definition 2.1 at work on one house of the California housing data. Three cards name its parts: the units (single features, groups with the location as one unit, or all pairs of features), the explanation space (numbers or curves), and the explanation they give (Shapley values, ICE curves, Shapley interactions, and surfaces). Below, one row per unit with its explanation: a bar, a curve, or a surface.
 
-Definition 2.1 at work on one house. The units decide what is explained, the explanation space what
-the explanation looks like. Pick the units and the space, then the features.
+Definition 2.1 at work on one house. Choose the units $\units$ and the explanation space
+$\explspace$; the explanation $\expl$ then gives one $\expl(S)$ for each unit $S$, a row each.
 ```
 - **The scope.** Local explanations explain one prediction, global ones the whole model, and regional
   ones a region of the input space in between {cite:p}`Herbinger.2026`.

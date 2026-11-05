@@ -41,7 +41,7 @@ checksums, and writes the pages with an illustration again when its assets chang
 | Name | Page | Shows |
 | --- | --- | --- |
 | `vocabulary` | 2.1 Feature-Based Explanations | features are the universal language of models: four inputs split into features, which one model reads |
-| `units-and-forms` | 2.1 Feature-Based Explanations | Definition 2.1 at work: the units and the explanation space of an explanation of one house |
+| `units-and-forms` | 2.1 Feature-Based Explanations | Definition 2.1 at work on one house: its three parts (units, explanation space, explanation) as cards, then one row S ↦ e(S) per unit |
 
 ## Add an illustration
 
