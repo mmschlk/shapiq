@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import itertools
 from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
@@ -514,19 +515,20 @@ class TreeSHAPIQ:
         Note:
             This function is called once during the initialization of the explainer.
         """
+        # the interpolation points and derived matrices do not depend on the order
+        D = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
+        D_powers = self._cache(D)
+        Ns = self._get_n_matrix(D)
+        Ns_id = self._get_n_id_matrix(D)
         for order in range(1, self._max_order + 1):
-            subset_ancestors: dict[int, np.ndarray] = self._precalculate_interaction_ancestors(
+            self.subset_ancestors_store[order] = self._precalculate_interaction_ancestors(
                 interaction_order=order,
                 n_features=self._n_features_in_tree,
             )
-            self.subset_ancestors_store[order] = subset_ancestors
-
-            # If the tree has only one feature, we assign a default value of 0
-            self.D_store[order] = np.polynomial.chebyshev.chebpts2(self.n_interpolation_size)
-
-            self.D_powers_store[order] = self._cache(self.D_store[order])
-            self.Ns_store[order] = self._get_n_matrix(self.D_store[order])
-            self.Ns_id_store[order] = self._get_n_id_matrix(self.D_store[order])
+            self.D_store[order] = D
+            self.D_powers_store[order] = D_powers
+            self.Ns_store[order] = Ns
+            self.Ns_id_store[order] = Ns_id
 
     def _get_polynomials(
         self,
@@ -692,23 +694,18 @@ class TreeSHAPIQ:
                 node in the tree.
 
         """
-        # stores position of interactions
-        subset_ancestors: dict[int, np.ndarray] = {}
-
-        for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
-            subset_ancestors[node_id] = np.full(
-                int(sp.special.binom(n_features, interaction_order)), -1, dtype=int
-            )
-        for i, S in enumerate(powerset(range(n_features), interaction_order, interaction_order)):
-            for node_id in self._tree.nodes[1:]:  # for all nodes except the root node
-                subset_ancestor = -1
-                for feature in S:
-                    subset_ancestor = max(
-                        subset_ancestor,
-                        self._edge_tree.ancestor_nodes[node_id][feature],
-                    )
-                subset_ancestors[node_id][i] = subset_ancestor
-        return subset_ancestors
+        nodes = self._tree.nodes[1:]  # all nodes except the root node
+        combinations = itertools.combinations(range(n_features), interaction_order)
+        interactions = np.fromiter(itertools.chain.from_iterable(combinations), dtype=int).reshape(
+            -1, interaction_order
+        )
+        if len(nodes) == 0 or len(interactions) == 0:
+            return {node_id: np.full(len(interactions), -1, dtype=int) for node_id in nodes}
+        # (n_nodes, n_features) ancestor table -> max ancestor over the features of each interaction
+        ancestors = np.stack([self._edge_tree.ancestor_nodes[node_id] for node_id in nodes])
+        subset_ancestors = np.max(ancestors[:, interactions], axis=2, initial=-1)
+        subset_ancestors = subset_ancestors.astype(int, copy=False)
+        return dict(zip(nodes, subset_ancestors, strict=True))
 
     @staticmethod
     def _get_n_matrix(interpolated_poly: np.ndarray) -> np.ndarray:
