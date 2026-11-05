@@ -247,6 +247,7 @@ exclude_patterns = [
     "sg_execution_times.rst",
     # the demos' notes for maintainers, assets and scripts, which are not pages
     "demos/README.md",
+    "demos/*/README.md",
     "demos/*/assets",
     "demos/*/compute",
 ]
