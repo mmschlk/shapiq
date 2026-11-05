@@ -69,8 +69,8 @@
 // On a wide screen, the full stack (all of it, or the last step) would not fit a screen below the
 // card: the card of the explanation stands left of the layers then, one light out of the chip falling
 // onto both, the card and the stack, both explanations, and fading into the page; the layers are as large as the window's
-// height lets them be, and the card takes the width they leave, so that the slider and the plot stay
-// close to them (data-plan="above" keeps the card above). The problem stays on top, and the steps before keep
+// height lets them be, and the card as large as they are, growing and shrinking with them
+// (data-plan="above" keeps the card above). The problem stays on top, and the steps before keep
 // their card above the layers: they fit.
 //
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load, or the
