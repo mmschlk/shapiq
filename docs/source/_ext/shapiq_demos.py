@@ -19,10 +19,13 @@ embeds the FIxLIP demo)::
 
 A demo that builds up step by step shows the step its ``:step:`` names, as the container's
 ``data-step`` (the orders demo's ``problem``, ``mechanism``, ``shapley``, ``interactions`` and
-``full``; without it, all of it, as the demo's own page shows it), and points at rest at what its
-``:select:`` names, as ``data-select`` (the orders demo's ``none``, ``mechanism``, ``full`` or an
-order, ``1``, ``2``, ...; without it, what the step adds). The demos of one page show the same example: choosing one in any of them chooses it
-in all.
+``full``; without it, all of it), and points at rest at what its ``:select:`` names, as
+``data-select`` (the orders demo's ``none``, ``mechanism``, ``full`` or an order, ``1``, ``2``,
+...; without it, what the step adds). A demo with examples shows those its ``:examples:`` names, as
+``data-examples``, in that order (the orders demo's ``molecule``, ``house``, ``tabpfn``,
+``houses`` and ``fixlip``, apart by commas or spaces; without it, all of them; with one, no tabs).
+The demos of one page show the same example: choosing one in any of them chooses it in all that
+have it.
 
 It writes the demo's container, ``<div class="<name>-demo" data-root="..." data-version="...">``,
 whose ``data-root`` is the URL of the demo's assets relative to the page and ``data-version`` a
@@ -73,6 +76,7 @@ class DemoDirective(SphinxDirective):
         "alt": directives.unchanged_required,  # the fallback image's text
         "step": directives.unchanged_required,  # of a demo built up step by step, the one to show
         "select": directives.unchanged_required,  # what the demo points at, at rest
+        "examples": directives.unchanged_required,  # of a demo with examples, those it shows
     }
 
     def run(self) -> list[nodes.Node]:
@@ -91,6 +95,7 @@ class DemoDirective(SphinxDirective):
         node["alt"] = self.options.get("alt", "")
         node["step"] = self.options.get("step", "")
         node["select"] = self.options.get("select", "")
+        node["examples"] = self.options.get("examples", "")
         if "anchor" in self.options:
             node["ids"].append(self.options["anchor"])
         return [node]
@@ -100,7 +105,7 @@ def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     root = relative_uri(page, f"_static/demos/{node['demo']}/")
     attributes = {"data-root": root, "data-version": node.get("version", "")}
-    for option in ("step", "select"):
+    for option in ("step", "select", "examples"):
         if node.get(option):
             attributes[f"data-{option}"] = node[option]
     self.body.append(self.starttag(node, "div", CLASS=f"{node['demo']}-demo", **attributes))

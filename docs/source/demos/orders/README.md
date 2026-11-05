@@ -53,6 +53,7 @@ All options are optional:
 | `:alt:` | the image's `alt` | text | The fallback image's alt text. |
 | `:step:` | `data-step` | `problem`, `mechanism`, `shapley`, `interactions`, `full` | Shows one step of the step-by-step figure (see below). Without it, the demo shows everything. |
 | `:select:` | `data-select` | `none`, `mechanism`, `full`, or an order (`1`, `2`, ...) | What the demo points at while the reader points at nothing. |
+| `:examples:` | `data-examples` | example ids, apart by commas or spaces: `molecule`, `house`, `tabpfn`, `houses`, `fixlip` | The examples the demo shows, in that order (see below). Without it, all five. |
 
 The directive writes the container below, and adds `demo.css` and `demo.js` to the page once:
 
@@ -93,11 +94,30 @@ what the previous one showed, plus:
 | `interactions` | The explanations of orders 1 to 4. | Order 2. |
 | `full` | Everything, as with no step. | Nothing. |
 
+### Only some examples
+
+`:examples:` limits a demo to the examples it names, in the order it names them:
+
+```rst
+.. shapiq-demo:: orders
+   :examples: tabpfn
+
+.. shapiq-demo:: orders
+   :step: interactions
+   :examples: house, houses
+```
+
+Everything the demo does then counts only its own examples: its tabs (or its stepper and dots on
+a phone), its height (the most layers of its examples), and its card's size. With a single
+example, it has no tabs, no stepper, no dots, and no swipe (`orders-demo-single`). Ids it does not
+know are left out, with a warning in the console; if it knows none of them, it shows all the
+examples. The fallback image stays the directive's `:fallback:`: give it one that fits.
+
 ### Several demos on one page
 
 All containers on a page share one data load. They also show the same example: choosing an
-example in any of them chooses it in all. The page can choose an example, and hear every choice,
-through a `CustomEvent` on `document`:
+example in any of them chooses it in all that have it (a demo without it stays as it is). The page
+can choose an example, and hear every choice, through a `CustomEvent` on `document`:
 
 ```js
 // choose an example in every demo of the page
@@ -205,6 +225,7 @@ The script toggles state classes on the container, which are useful in tests:
 | `orders-demo-veiled` | Not explained yet: the problem alone. |
 | `orders-demo-revealing` | The build-up after the click on the chip. |
 | `orders-demo-wide`, `orders-demo-beside`, `orders-demo-narrow` | The layouts above. |
+| `orders-demo-single` | One example alone (`data-examples`): no tabs, stepper, dots or swipe. |
 
 The chip is `.orders-demo-wire-chip`. Before it has been clicked, it also has
 `.orders-demo-chip-call`. To explain a demo in a test, click it: `chip.click()`.

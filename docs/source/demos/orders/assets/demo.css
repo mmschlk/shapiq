@@ -298,6 +298,11 @@ body[data-theme="dark"] .orders-demo {
   scale: 1.25;
 }
 
+/* one example alone (data-examples): nothing to choose, no tabs, no stepper and no dots */
+.orders-demo.orders-demo-single :is(.orders-demo-bar, .orders-demo-dots) {
+  display: none;
+}
+
 @container (max-width: 45rem) {
   .orders-demo-switch {
     display: none;

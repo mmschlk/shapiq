@@ -620,7 +620,23 @@
   let INDEX = "SII";
   let plots = 0; // the demos' plots on the page, for ids of their own
 
-  function start(root, data, life) {
+  // the examples a demo shows: those data-examples names (their ids, apart by commas or spaces), in
+  // its order; without it, or where it names none the data knows, all of them
+  function examplesOf(root, all) {
+    const ids = (root.dataset.examples ?? "").split(/[\s,]+/).filter(Boolean);
+    const known = ids.filter((id) => all.examples.some((example) => example.id === id));
+    if (known.length < ids.length) {
+      const ours = all.examples.map((example) => example.id).join(", ");
+      console.warn(`The explanation of every order has no example ${ids.filter((id) => !known.includes(id)).join(", ")} (it has ${ours}).`);
+    }
+    return known.length ? [...new Set(known)].map((id) => all.examples.find((example) => example.id === id)) : all.examples;
+  }
+
+  function start(root, all, life) {
+    // (the data, as far as this demo shows it: all it does, it does with its own examples)
+    const data = { ...all, examples: examplesOf(root, all) };
+    // (one example alone: no tabs, no stepper, no swipe to another, demo.css)
+    root.classList.toggle("orders-demo-single", data.examples.length === 1);
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
     // the demo's observers, for as long as it lives (its life ends where it cannot start)
     const watch = (observer) => {
@@ -2400,7 +2416,11 @@
         // (on a page zoomed in, a drag sideways pans the page)
         const zoomed = (window.visualViewport?.scale ?? 1) > 1.01;
         const free =
-          event.touches.length === 1 && !zoomed && !event.target.closest(".orders-demo-rail") && !root.classList.contains("orders-demo-fading");
+          data.examples.length > 1 &&
+          event.touches.length === 1 &&
+          !zoomed &&
+          !event.target.closest(".orders-demo-rail") &&
+          !root.classList.contains("orders-demo-fading");
         const [touch] = event.touches;
         swipe = free ? { x: touch.clientX, y: touch.clientY, dx: 0, sideways: null, moves: [[event.timeStamp, 0]] } : null;
       },
