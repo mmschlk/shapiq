@@ -7,6 +7,8 @@
   --shapiq-blue-light: #82a9e7;
   --shapiq-lavender: #b3c2e5;
   --shapiq-amber: #f5a300;    /* references to numbered elements (docs/STYLE_GUIDE.md) */
+  --shapiq-violet: #6a57cd;   /* players and features in illustrations (docs/STYLE_GUIDE.md) */
+  --shapiq-violet-soft: rgba(106, 87, 205, 0.12);
   --brand-ink-red: #ff2763;   /* probly × shapiq family red  */
   --brand-ink-blue: #285bff;  /* probly × shapiq family blue */
   /* the logo's attribution scale (red 5 and 4, blue 3 and 2), through shapiq's violet */
@@ -28,6 +30,8 @@ body[data-theme="dark"] {
   --shapiq-surface-raised: #22252e;
   --shapiq-border: #343846;
   --shapiq-text-muted: #a3a9ba;
+  --shapiq-violet: #a594ff;
+  --shapiq-violet-soft: rgba(165, 148, 255, 0.16);
   --shapiq-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
   --shapiq-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.4);
 }
@@ -38,6 +42,8 @@ body[data-theme="dark"] {
     --shapiq-surface-raised: #22252e;
     --shapiq-border: #343846;
     --shapiq-text-muted: #a3a9ba;
+    --shapiq-violet: #a594ff;
+    --shapiq-violet-soft: rgba(165, 148, 255, 0.16);
     --shapiq-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
     --shapiq-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.4);
   }

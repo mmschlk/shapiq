@@ -91,6 +91,12 @@ extensions.append("shapiq_timeline")
 # a page and adds its stylesheet and script there; see ``demos/README.md``.
 extensions.append("shapiq_demos")
 
+# -- Illustrations of the user guide (user_guide/illustrations/) ---------------------------------
+# One folder per illustration: its assets (copied to ``_static/illustrations/<name>/``) and the
+# scripts that computed its data. The ``shapiq-illustration`` directive of
+# ``_ext/shapiq_illustrations.py`` embeds one in a page; see user_guide/illustrations/README.md.
+extensions.append("shapiq_illustrations")
+
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
 # One gallery per group of examples (``examples/<group>``), each with its own page; the landing
 # page ``examples.rst`` links them. Groups may have subsections (subfolders with a header).
@@ -251,6 +257,10 @@ exclude_patterns = [
     "demos/*/compute",
     # the user guide's notes for its authors, which are not a page
     "user_guide/README.md",
+    # the illustrations' notes, assets and scripts, which are not pages
+    "user_guide/illustrations/README.md",
+    "user_guide/illustrations/*/assets",
+    "user_guide/illustrations/*/compute",
 ]
 bibtex_bibfiles = ["references.bib"]
 

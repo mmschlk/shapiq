@@ -13,8 +13,11 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
   in the navigation) stay as they are.
 - **Amber marks references** to numbered elements of the docs: equations, figures, tables, and the
   symbols of the notation. Use amber for nothing else.
+- **Violet marks features** (players) in illustrations, neutral to the meaning of red and blue: the
+  chips of features, the parts of an input that a feature lights up, and values that are neither
+  positive nor negative, such as a predicted price.
 - Take colors from the tokens of `source/_static/css/tokens.css` (`--shapiq-red`, `--shapiq-blue`,
-  `--shapiq-amber`, ...), not as hex values in a rule.
+  `--shapiq-amber`, `--shapiq-violet`, ...), not as hex values in a rule.
 
 ## References
 
@@ -41,6 +44,19 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
 - **Part pages have no sections**: their `##` headings would be numbered among the chapters.
 - **One page per chapter**, with its sections on the page. No deeper levels of pages: content is at
   most two clicks away from the user guide's start page.
+
+## Illustrations
+
+- **Real values.** An illustration that shows values computes them with a committed script
+  (`source/user_guide/illustrations/<name>/compute/`), never invented numbers. Where it only names
+  what a model predicts, it shows a label, not a number.
+- **Motion with a purpose.** Animations show how one thing becomes another, and they start when the
+  illustration is seen. With reduced motion, an illustration shows its final state without
+  animating or cycling.
+- **Every theme, width, and setting.** An illustration works in the light and the dark theme
+  (colors from the tokens), at the width of a phone, and for docs opened from disk (data as a
+  script, `data.js`). Without scripts, the directive's `alt` text describes it.
+- How to build one is in `source/user_guide/illustrations/README.md`.
 
 ## Writing
 

@@ -1,0 +1,439 @@
+/* The illustration "vocabulary" (illustration.js): four inputs, their features as chips, wires,
+   and one model. Wide: input | features | model in a row, the wires between them; narrow: stacked,
+   the chips in wrapping rows. Features are violet (docs/STYLE_GUIDE.md). */
+
+.voc {
+  display: grid;
+  gap: 1rem;
+}
+
+.voc-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.voc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.voc-tagline {
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.9rem;
+}
+
+.voc-tagline strong {
+  color: var(--color-foreground-primary);
+}
+
+.voc-column-label {
+  margin: 0 0 0.45rem;
+  color: var(--shapiq-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* -- the three columns -------------------------------------------------------------------------- */
+
+.voc-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: center;
+}
+
+@container (min-width: 40rem) {
+  .voc-body {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.7fr);
+    gap: 2.6rem;
+  }
+}
+
+.voc-input {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  min-height: 13.5rem;
+}
+
+.voc-features {
+  position: relative;
+  z-index: 2;
+}
+
+.voc-chips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+@container (max-width: 39.99rem) {
+  .voc-features {
+    text-align: center;
+  }
+
+  .voc-chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.voc-chip-preview {
+  flex: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 4px;
+}
+
+.voc-model {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+@container (max-width: 39.99rem) {
+  .voc-model {
+    grid-template-columns: auto auto;
+    align-items: center;
+    justify-content: center;
+    column-gap: 1.25rem;
+  }
+
+  .voc-model > .voc-column-label {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+}
+
+/* -- the model: a box with a gradient ring that turns while it reads ----------------------------- */
+
+.voc-model-box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 6.75rem;
+  aspect-ratio: 1;
+  border-radius: 1.1rem;
+  background: var(--shapiq-surface);
+  box-shadow: var(--shapiq-shadow);
+  isolation: isolate;
+}
+
+.voc-model-box::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: calc(1.1rem + 2px);
+  background: conic-gradient(from var(--voc-angle, 0deg), #fd4578, #6a57cd, #699bff, #7faefe, #fd4578);
+  opacity: 0.55;
+}
+
+.voc-model-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 1.1rem;
+  background: var(--shapiq-surface);
+}
+
+@property --voc-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.voc-model-box.is-thinking::before {
+  opacity: 1;
+  animation: voc-turn 0.9s linear infinite;
+}
+
+@keyframes voc-turn {
+  to {
+    --voc-angle: 360deg;
+  }
+}
+
+.voc-model-f {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 2.3rem;
+  font-style: italic;
+  line-height: 1;
+}
+
+.voc-model-name {
+  margin-top: 0.35rem;
+  padding: 0 0.4rem;
+  color: var(--shapiq-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.voc-output {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 7rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+  opacity: 0;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-output.is-shown {
+  opacity: 1;
+}
+
+.voc-output-label {
+  color: var(--shapiq-text-muted);
+  font-size: 0.68rem;
+}
+
+.voc-output-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- the wires ---------------------------------------------------------------------------------- */
+
+.voc-wires {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.voc-wire {
+  fill: none;
+  stroke: var(--shapiq-violet);
+  stroke-linecap: round;
+  stroke-width: 1.4;
+  opacity: 0.38;
+  transition:
+    opacity var(--shapiq-duration) var(--shapiq-ease),
+    stroke-width var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-wire-model {
+  opacity: 0.22;
+}
+
+.voc-wire-dot {
+  fill: var(--shapiq-violet);
+  opacity: 0.75;
+}
+
+.voc-pulse {
+  fill: var(--shapiq-violet);
+  filter: drop-shadow(0 0 3px var(--shapiq-violet));
+}
+
+.voc-pointing .voc-wire,
+.voc-pointing .voc-wire-dot {
+  opacity: 0.12;
+}
+
+.voc-pointing .voc-wire.is-active {
+  opacity: 1;
+  stroke-width: 2.4;
+}
+
+.voc-pointing .voc-wire-dot.is-active {
+  opacity: 1;
+}
+
+.voc-pointing .voc-chip:not(.is-active) {
+  opacity: 0.55;
+}
+
+/* -- the inputs --------------------------------------------------------------------------------- */
+
+/* the inputs are opaque: the wires start behind them and come out of their edge */
+.voc-table {
+  width: 100%;
+  background: var(--shapiq-surface);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.voc-table th,
+.voc-table td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--shapiq-border);
+  transition: background-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-table th {
+  color: var(--shapiq-text-muted);
+  font-weight: 700;
+}
+
+.voc-table-house td {
+  font-weight: 700;
+}
+
+.voc-table-other td {
+  color: var(--shapiq-text-muted);
+}
+
+.voc-table-more td {
+  border-bottom: 0;
+  color: var(--shapiq-text-muted);
+  text-align: center;
+}
+
+.voc-table .is-active {
+  background: var(--shapiq-violet-soft);
+}
+
+.voc-table-house td.is-active {
+  box-shadow: inset 0 0 0 1.5px var(--shapiq-violet);
+}
+
+.voc-image {
+  width: min(100%, 14.5rem);
+  height: auto;
+  border-radius: 0.6rem;
+  box-shadow: var(--shapiq-shadow);
+}
+
+.voc-patch {
+  fill: transparent;
+  stroke: var(--shapiq-surface);
+  stroke-width: 3;
+  transition:
+    fill var(--shapiq-duration) var(--shapiq-ease),
+    stroke var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-patch.is-active {
+  fill: rgba(106, 87, 205, 0.3);
+  stroke: var(--shapiq-violet);
+  stroke-width: 4;
+}
+
+.voc-sentence {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+  font-size: 1.05rem;
+  line-height: 1.9;
+}
+
+.voc-token {
+  padding: 0 0.3rem;
+  border-bottom: 2px solid var(--shapiq-violet-soft);
+  border-radius: 5px;
+  transition:
+    background-color var(--shapiq-duration) var(--shapiq-ease),
+    border-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-token.is-active {
+  border-color: var(--shapiq-violet);
+  background: var(--shapiq-violet-soft);
+}
+
+.voc-graph {
+  width: min(100%, 15rem);
+  height: auto;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+}
+
+.voc-bond {
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.voc-ring {
+  fill: none;
+  stroke: var(--shapiq-text-muted);
+  stroke-dasharray: 3 4;
+  stroke-width: 1.5;
+}
+
+.voc-atom circle {
+  fill: var(--shapiq-surface-raised);
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 2;
+  transition:
+    fill var(--shapiq-duration) var(--shapiq-ease),
+    stroke var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-atom text {
+  fill: var(--color-foreground-primary);
+  font-size: 13px;
+  font-weight: 700;
+  dominant-baseline: central;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* opaque: the bonds end under the atom */
+.voc-atom.is-active circle {
+  fill: color-mix(in oklab, var(--shapiq-violet) 18%, var(--shapiq-surface));
+  stroke: var(--shapiq-violet);
+  stroke-width: 3;
+}
+
+.voc-foot {
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.voc-foot i {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.1em;
+}
+
+.voc-set {
+  white-space: nowrap;
+}
+
+.voc-count {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--shapiq-violet);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voc-model-box.is-thinking::before {
+    animation: none;
+  }
+}

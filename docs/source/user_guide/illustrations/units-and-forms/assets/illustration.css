@@ -1,0 +1,374 @@
+/* The illustration "units-and-forms" (illustration.js): two controls (the units and the
+   explanation space of Definition 2.1), the house's features as chips, and the explanation they
+   give. Red is positive, blue negative, violet marks features (docs/STYLE_GUIDE.md). */
+
+.uaf {
+  display: grid;
+  gap: 1rem;
+}
+
+.uaf-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  align-items: center;
+}
+
+.uaf-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.uaf-control-label,
+.uaf-column-label {
+  color: var(--shapiq-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.uaf-control-label i,
+.uaf-cal {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.15em;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.uaf-column-label {
+  margin: 0 0 0.45rem;
+}
+
+/* -- features beside the view (wide) or above it (narrow) --------------------------------------- */
+
+.uaf-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem 1.6rem;
+  align-items: start;
+}
+
+@container (min-width: 40rem) {
+  .uaf-body {
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+  }
+}
+
+.uaf-chips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+@container (max-width: 39.99rem) {
+  .uaf-chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.uaf-hint {
+  margin: 0.55rem 0 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
+
+.uaf-view {
+  min-width: 0;
+}
+
+.uaf-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.7rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.uaf-def {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+.uaf-words {
+  color: var(--shapiq-text-muted);
+}
+
+.uaf-picked {
+  font-weight: 600;
+}
+
+.uaf-picked:empty {
+  display: none;
+}
+
+.uaf-chart {
+  width: 100%;
+}
+
+.uaf-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.uaf-readout {
+  min-height: 1.3em;
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.uaf-note {
+  margin: 0.2rem 0 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
+
+.uaf-foot {
+  margin: 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--shapiq-border);
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
+
+/* -- the parts of the charts -------------------------------------------------------------------- */
+
+.uaf-pos {
+  fill: var(--shapiq-red);
+  color: var(--shapiq-red);
+  stroke: var(--shapiq-red);
+}
+
+.uaf-neg {
+  fill: var(--shapiq-blue);
+  color: var(--shapiq-blue);
+  stroke: var(--shapiq-blue);
+}
+
+text.uaf-pos,
+text.uaf-neg,
+tspan.uaf-pos,
+tspan.uaf-neg {
+  stroke: none;
+}
+
+.uaf-svg text {
+  fill: var(--color-foreground-primary);
+  font-size: 12px;
+}
+
+.uaf-svg text.uaf-pos {
+  fill: var(--shapiq-red);
+}
+
+.uaf-svg text.uaf-neg {
+  fill: var(--shapiq-blue);
+}
+
+.uaf-svg tspan.uaf-pos {
+  fill: var(--shapiq-red);
+}
+
+.uaf-svg tspan.uaf-neg {
+  fill: var(--shapiq-blue);
+}
+
+.uaf-svg .uaf-tick,
+.uaf-svg .uaf-axis,
+.uaf-svg .uaf-sum,
+.uaf-svg .uaf-message {
+  fill: var(--shapiq-text-muted);
+}
+
+.uaf-svg .uaf-tick {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.uaf-svg .uaf-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.uaf-svg .uaf-value-big {
+  font-size: 15px;
+}
+
+.uaf-svg .uaf-sum {
+  font-size: 12px;
+}
+
+.uaf-zero {
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+.uaf-grid {
+  stroke: var(--shapiq-border);
+  stroke-width: 1;
+}
+
+.uaf-row {
+  cursor: pointer;
+}
+
+.uaf-row-back {
+  fill: transparent;
+  transition: fill var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.uaf-row.is-selected .uaf-row-back,
+.uaf-row.is-lit .uaf-row-back {
+  fill: var(--shapiq-violet-soft);
+}
+
+.uaf-bar {
+  stroke: none;
+}
+
+.uaf-segment {
+  stroke: var(--shapiq-surface);
+  stroke-width: 1.5;
+}
+
+.uaf-segment.is-lit {
+  stroke: var(--shapiq-violet);
+  stroke-width: 2.5;
+}
+
+.uaf-svg .uaf-segment-label {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.uaf-sum-tick {
+  fill: var(--color-foreground-primary);
+}
+
+.uaf-line {
+  fill: none;
+  stroke: var(--shapiq-violet);
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.uaf-area {
+  fill: var(--shapiq-violet-soft);
+  stroke: none;
+}
+
+.uaf-guide {
+  stroke: var(--shapiq-text-muted);
+  stroke-dasharray: 3 4;
+  stroke-width: 1;
+}
+
+.uaf-marker-dot {
+  fill: var(--color-foreground-primary);
+  stroke: var(--shapiq-surface);
+  stroke-width: 2;
+}
+
+.uaf-marker-halo {
+  fill: none;
+  stroke: var(--color-foreground-primary);
+  stroke-width: 1.5;
+  opacity: 0.35;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: uaf-halo 2.2s ease-out infinite;
+}
+
+@keyframes uaf-halo {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+.uaf-svg .uaf-marker-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.uaf-cell {
+  stroke: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.uaf-frame {
+  fill: none;
+  stroke: var(--shapiq-border);
+}
+
+.uaf-edge {
+  stroke-linecap: round;
+  cursor: pointer;
+  transition:
+    opacity var(--shapiq-duration) var(--shapiq-ease),
+    filter var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.uaf-edge-halo {
+  stroke: var(--shapiq-violet);
+  stroke-linecap: round;
+  stroke-width: 14;
+  opacity: 0.22;
+}
+
+.uaf-pointing .uaf-edge:not(.is-lit) {
+  opacity: 0.08 !important;
+}
+
+.uaf-node circle {
+  fill: var(--shapiq-surface);
+  stroke: var(--shapiq-violet);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: fill var(--shapiq-duration) var(--shapiq-ease);
+}
+
+/* opaque: the edges end under the node */
+.uaf-node.is-lit circle {
+  fill: color-mix(in oklab, var(--shapiq-violet) 18%, var(--shapiq-surface));
+  stroke-width: 3;
+}
+
+.uaf-svg .uaf-node-index {
+  fill: var(--shapiq-violet);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.uaf-svg .uaf-node-label {
+  font-size: 12px;
+}
+
+.uaf-svg .uaf-message {
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uaf-marker-halo {
+    animation: none;
+  }
+}

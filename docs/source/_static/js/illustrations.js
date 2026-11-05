@@ -1,0 +1,158 @@
+// The shared part of the user guide's illustrations (_ext/shapiq_illustrations.py). An
+// illustration's script defines it with shapiqIllustrations.define(name, start); start(stage, kit)
+// builds it in the stage of every figure of that name on the page. The kit has the URL of the
+// illustration's assets (root) and the helpers below: elements, data loading, tweens that respect
+// reduced motion, visibility, and the segmented control (pills with a sliding thumb) that the
+// illustrations share.
+(() => {
+  const SVG = "http://www.w3.org/2000/svg";
+  const reducedQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const reducedMotion = () => reducedQuery.matches;
+
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  const svg = (tag, attributes = {}, parent = null) => {
+    const node = document.createElementNS(SVG, tag);
+    for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+    if (parent) parent.appendChild(node);
+    return node;
+  };
+
+  // a script of the assets, loaded once per page: data.js works also for docs opened from disk
+  const scripts = new Map();
+  const loadScript = (url) => {
+    if (!scripts.has(url)) {
+      scripts.set(
+        url,
+        new Promise((resolve, reject) => {
+          const script = el("script");
+          script.src = url;
+          script.onload = resolve;
+          script.onerror = () => reject(new Error(`could not load ${url}`));
+          document.head.appendChild(script);
+        }),
+      );
+    }
+    return scripts.get(url);
+  };
+
+  const ease = {
+    out: (t) => 1 - (1 - t) ** 3,
+    inOut: (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2),
+    // overshoots a little before it settles, like a spring
+    spring: (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2,
+  };
+
+  // calls update(p) with the eased progress from 0 to 1 on every frame; with reduced motion, it
+  // jumps to the end. Returns a function that stops it.
+  const tween = (duration, update, { easing = ease.out, delay = 0, done } = {}) => {
+    if (reducedMotion() || duration <= 0) {
+      update(1);
+      done?.();
+      return () => {};
+    }
+    let frame = 0;
+    let start = null;
+    const step = (now) => {
+      start ??= now + delay;
+      const t = Math.min(1, Math.max(0, (now - start) / duration));
+      update(easing(t));
+      if (t < 1) frame = requestAnimationFrame(step);
+      else done?.();
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  };
+
+  // calls back with true when at least `threshold` of the node is visible, and false when not
+  const watchVisibility = (node, callback, threshold = 0.4) => {
+    if (!("IntersectionObserver" in window)) {
+      callback(true);
+      return;
+    }
+    new IntersectionObserver((entries) => callback(entries[0].intersectionRatio >= threshold), {
+      threshold: [0, threshold],
+    }).observe(node);
+  };
+
+  // a radio group of pills with a thumb that slides to the checked one; arrow keys move between
+  // them. options: [[value, label], ...]; onChange(value, byUser) runs when the value changes.
+  const segmented = (label, options, onChange) => {
+    const group = el("div", "shapiq-ill-segmented");
+    group.setAttribute("role", "radiogroup");
+    group.setAttribute("aria-label", label);
+    const thumb = el("span", "shapiq-ill-segmented-thumb");
+    thumb.setAttribute("aria-hidden", "true");
+    group.appendChild(thumb);
+    const buttons = new Map();
+    let value = null;
+    const place = () => {
+      const button = buttons.get(value);
+      if (!button) return;
+      thumb.style.width = `${button.offsetWidth}px`;
+      thumb.style.transform = `translateX(${button.offsetLeft}px)`;
+    };
+    const set = (next, byUser = false) => {
+      if (next === value) return;
+      value = next;
+      for (const [key, button] of buttons) {
+        button.setAttribute("aria-checked", String(key === value));
+        button.tabIndex = key === value ? 0 : -1;
+      }
+      place();
+      onChange?.(value, byUser);
+    };
+    options.forEach(([key, text], index) => {
+      const button = el("button", "shapiq-ill-segment", text);
+      button.type = "button";
+      button.setAttribute("role", "radio");
+      button.addEventListener("click", () => set(key, true));
+      button.addEventListener("keydown", (event) => {
+        const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+        if (!step) return;
+        event.preventDefault();
+        const [nextKey] = options[(index + step + options.length) % options.length];
+        set(nextKey, true);
+        buttons.get(nextKey).focus();
+      });
+      buttons.set(key, button);
+      group.appendChild(button);
+    });
+    new ResizeObserver(place).observe(group);
+    return { node: group, set, get value() { return value; } };
+  };
+
+  const kit = { el, svg, SVG, ease, tween, reducedMotion, watchVisibility, loadScript, segmented };
+
+  const define = (name, start) => {
+    const run = () => {
+      const figures = document.querySelectorAll(
+        `figure.shapiq-illustration[data-illustration="${name}"]`,
+      );
+      for (const figure of figures) {
+        const stage = figure.querySelector(".shapiq-illustration-stage");
+        if (!stage || stage.dataset.started) continue;
+        stage.dataset.started = "true";
+        const description = stage.getAttribute("aria-label") ?? "";
+        stage.replaceChildren();
+        Promise.resolve()
+          .then(() => start(stage, { ...kit, root: figure.dataset.root }))
+          .then(() => figure.classList.add("shapiq-illustration-ready"))
+          .catch((error) => {
+            console.error(`The illustration "${name}" could not start:`, error);
+            figure.classList.add("shapiq-illustration-failed");
+            stage.replaceChildren(el("p", "shapiq-illustration-noscript", description));
+          });
+      }
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+    else run();
+  };
+
+  window.shapiqIllustrations = { define, ...kit };
+})();
