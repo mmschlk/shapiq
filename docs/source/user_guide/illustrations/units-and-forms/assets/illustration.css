@@ -1,6 +1,6 @@
 /* The illustration "units-and-forms" (illustration.js): two controls (the units and the
    explanation space of Definition 2.1), the house's features as chips, and the explanation they
-   give. Red is positive, blue negative, violet marks features (docs/STYLE_GUIDE.md). */
+   give. Red is positive, blue negative, amber marks features (docs/STYLE_GUIDE.md). */
 
 .uaf {
   display: grid;
@@ -230,7 +230,7 @@ tspan.uaf-neg {
 
 .uaf-row.is-selected .uaf-row-back,
 .uaf-row.is-lit .uaf-row-back {
-  fill: var(--shapiq-violet-soft);
+  fill: var(--shapiq-amber-soft);
 }
 
 .uaf-bar {
@@ -243,7 +243,7 @@ tspan.uaf-neg {
 }
 
 .uaf-segment.is-lit {
-  stroke: var(--shapiq-violet);
+  stroke: var(--shapiq-amber);
   stroke-width: 2.5;
 }
 
@@ -260,13 +260,13 @@ tspan.uaf-neg {
 
 .uaf-line {
   fill: none;
-  stroke: var(--shapiq-violet);
+  stroke: var(--shapiq-amber);
   stroke-linejoin: round;
   stroke-width: 2.5;
 }
 
 .uaf-area {
-  fill: var(--shapiq-violet-soft);
+  fill: var(--shapiq-amber-soft);
   stroke: none;
 }
 
@@ -328,7 +328,7 @@ tspan.uaf-neg {
 }
 
 .uaf-edge-halo {
-  stroke: var(--shapiq-violet);
+  stroke: var(--shapiq-amber);
   stroke-linecap: round;
   stroke-width: 14;
   opacity: 0.22;
@@ -340,7 +340,7 @@ tspan.uaf-neg {
 
 .uaf-node circle {
   fill: var(--shapiq-surface);
-  stroke: var(--shapiq-violet);
+  stroke: var(--shapiq-amber);
   stroke-width: 2;
   transform-box: fill-box;
   transform-origin: center;
@@ -349,12 +349,12 @@ tspan.uaf-neg {
 
 /* opaque: the edges end under the node */
 .uaf-node.is-lit circle {
-  fill: color-mix(in oklab, var(--shapiq-violet) 18%, var(--shapiq-surface));
+  fill: color-mix(in oklab, var(--shapiq-amber) 24%, var(--shapiq-surface));
   stroke-width: 3;
 }
 
 .uaf-svg .uaf-node-index {
-  fill: var(--shapiq-violet);
+  fill: var(--shapiq-amber-ink);
   font-size: 12px;
   font-weight: 700;
 }

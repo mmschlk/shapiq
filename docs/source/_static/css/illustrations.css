@@ -1,8 +1,8 @@
 /* The shared styles of the user guide's illustrations (_ext/shapiq_illustrations.py,
    _static/js/illustrations.js): the figure, open on the page as the demos (no card around it), the
    caption, the switch, and the chips of features. Controls look as the demos' (demos/orders): a
-   black pill on the option chosen, black focus rings. Features are violet (docs/STYLE_GUIDE.md):
-   red and blue are for positive and negative values, amber for references. */
+   black pill on the option chosen, black focus rings. Features are amber, the docs' color
+   (docs/STYLE_GUIDE.md): red and blue are for positive and negative values. */
 
 figure.shapiq-illustration {
   clear: both;
@@ -162,8 +162,8 @@ button.shapiq-ill-chip:active {
   height: 1.35rem;
   padding: 0 0.3rem;
   border-radius: 999px;
-  background: var(--shapiq-violet-soft);
-  color: var(--shapiq-violet);
+  background: var(--shapiq-amber-soft);
+  color: var(--shapiq-amber-ink);
   font-size: 0.72rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -181,19 +181,20 @@ button.shapiq-ill-chip:active {
 }
 
 .shapiq-ill-chip.is-active {
-  border-color: var(--shapiq-violet);
-  box-shadow: 0 0 0 3px var(--shapiq-violet-soft);
+  border-color: var(--shapiq-amber);
+  box-shadow: 0 0 0 3px var(--shapiq-amber-soft);
   transform: translateY(-1px);
 }
 
 .shapiq-ill-chip.is-selected {
-  border-color: var(--shapiq-violet);
-  background: var(--shapiq-violet-soft);
+  border-color: var(--shapiq-amber);
+  background: var(--shapiq-amber-soft);
 }
 
+/* on solid amber, dark in both themes (8:1) */
 .shapiq-ill-chip.is-selected .shapiq-ill-chip-index {
-  background: var(--shapiq-violet);
-  color: var(--shapiq-surface);
+  background: var(--shapiq-amber);
+  color: #1b1e27;
 }
 
 .shapiq-ill-muted {

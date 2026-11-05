@@ -37,7 +37,7 @@ row in `notation.md` that starts with `<span id="notation-<macro>"></span>`.
 | `\nplayers` | $n$ | the number of players |
 | `\featurespace` | $\mathcal{X}$ | the feature space |
 | `\outputspace` | $\mathcal{Y}$ | the output space |
-| `\model` | $F$ | the model |
+| `\model` | $f$ | the model |
 | `\units` | $\mathcal{S}$ | the units of an explanation |
 | `\explspace` | $E$ | the explanation space |
 | `\expl` | $e$ | an explanation |

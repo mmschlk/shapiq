@@ -11,7 +11,7 @@
 
 ```{shapiq-illustration} vocabulary
 :anchor: illustration-vocabulary
-:alt: Four inputs of machine learning models, a row of a table, an image, a sentence, and a molecule, each split into its features: the columns, the patches, the tokens, and the atoms. One model F reads the features and predicts.
+:alt: Four inputs of machine learning models, a row of a table, an image, a sentence, and a molecule, each split into its features: the columns, the patches, the tokens, and the atoms. One model f reads the features and predicts.
 
 Features are the vocabulary of every model. Whatever the input, the model reads its features, and a
 feature-based explanation speaks about them. Point at a feature to see where it comes from.

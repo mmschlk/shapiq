@@ -11,13 +11,16 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
   negative, as in the logo and in the plots of shapiq. Use them with this meaning in figures and
   examples, not as decoration. The theme's own colors (the blue of links, the red of the current page
   in the navigation) stay as they are.
-- **Amber marks references** to numbered elements of the docs: equations, figures, tables, and the
-  symbols of the notation. Use amber for nothing else.
-- **Violet marks features** (players) in illustrations, neutral to the meaning of red and blue: the
-  chips of features, the parts of an input that a feature lights up, and values that are neither
-  positive nor negative, such as a predicted price.
+- **Amber is the docs' color**, the one touch of color beside red and blue. It marks what a reader
+  can point at or follow: references to numbered elements (equations, figures, tables), the symbols
+  of the notation, and, in illustrations, the features (players), what they light up, and values
+  that are neither positive nor negative, such as a predicted price. No other accent color: no
+  violet, no purple.
+- **Amber for lines and fills, its ink for text.** `--shapiq-amber` draws lines, underlines, and
+  fills; text in amber uses `--shapiq-amber-ink` (5:1 on the page in both themes), and highlights
+  `--shapiq-amber-soft`. On solid amber, text is dark in both themes.
 - Take colors from the tokens of `source/_static/css/tokens.css` (`--shapiq-red`, `--shapiq-blue`,
-  `--shapiq-amber`, `--shapiq-violet`, ...), not as hex values in a rule.
+  `--shapiq-amber`, ...), not as hex values in a rule.
 
 ## References
 

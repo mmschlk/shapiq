@@ -1,6 +1,6 @@
 /* The illustration "vocabulary" (illustration.js): four inputs, their features as chips, wires,
    and one model. Wide: input | features | model in a row, the wires between them; narrow: stacked,
-   the chips in wrapping rows. Features are violet (docs/STYLE_GUIDE.md). */
+   the chips in wrapping rows. Features are amber, the docs' color (docs/STYLE_GUIDE.md). */
 
 .voc {
   display: grid;
@@ -122,8 +122,8 @@
 }
 
 /* -- the model: a chip, as the orders demo draws a model (demos/orders/assets/demo.css), gray where
-   an explanation can use its structure (trees, graphs), black for a black box; its symbol F in its
-   corner. Then the flowing dashes to its prediction F(x), on a card ------------------------------ */
+   an explanation can use its structure (trees, graphs), black for a black box; its symbol f in its
+   corner. Then the flowing dashes to its prediction f(x), on a card ------------------------------ */
 
 .voc-model-box {
   --voc-chip: #5d6577; /* dark enough for its light words, 4.5:1 */
@@ -153,12 +153,12 @@
   --voc-chip: #15171d;
 }
 
-/* while the features arrive, a violet glow: they are what it reads */
+/* while the features arrive, an amber glow: they are what it reads */
 .voc-model-box.is-reading {
   box-shadow:
     0 8px 20px -8px rgba(0, 0, 0, 0.45),
-    0 0 0 4px var(--shapiq-violet-soft),
-    0 0 18px var(--shapiq-violet-soft);
+    0 0 0 4px var(--shapiq-amber-soft),
+    0 0 18px var(--shapiq-amber-soft);
 }
 
 .voc-tag {
@@ -304,7 +304,7 @@
   }
 }
 
-/* the prediction, on a card as the orders demo's f(x), tagged F(x) */
+/* the prediction, on a card as the orders demo's, tagged f(x) */
 .voc-output {
   position: relative;
   display: grid;
@@ -353,27 +353,27 @@
 
 .voc-wire {
   fill: none;
-  stroke: var(--shapiq-violet);
+  stroke: var(--shapiq-amber);
   stroke-linecap: round;
-  stroke-width: 1.4;
-  opacity: 0.38;
+  stroke-width: 1.5;
+  opacity: 0.55;
   transition:
     opacity var(--shapiq-duration) var(--shapiq-ease),
     stroke-width var(--shapiq-duration) var(--shapiq-ease);
 }
 
 .voc-wire-model {
-  opacity: 0.22;
+  opacity: 0.4;
 }
 
 .voc-wire-dot {
-  fill: var(--shapiq-violet);
+  fill: var(--shapiq-amber);
   opacity: 0.75;
 }
 
 .voc-pulse {
-  fill: var(--shapiq-violet);
-  filter: drop-shadow(0 0 3px var(--shapiq-violet));
+  fill: var(--shapiq-amber);
+  filter: drop-shadow(0 0 3px var(--shapiq-amber));
 }
 
 .voc-pointing .voc-wire,
@@ -434,11 +434,11 @@
 }
 
 .voc-table .is-active {
-  background: var(--shapiq-violet-soft);
+  background: var(--shapiq-amber-soft);
 }
 
 .voc-table-house td.is-active {
-  box-shadow: inset 0 0 0 1.5px var(--shapiq-violet);
+  box-shadow: inset 0 0 0 1.5px var(--shapiq-amber);
 }
 
 .voc-image {
@@ -458,8 +458,8 @@
 }
 
 .voc-patch.is-active {
-  fill: rgba(106, 87, 205, 0.3);
-  stroke: var(--shapiq-violet);
+  fill: rgba(245, 163, 0, 0.32);
+  stroke: var(--shapiq-amber);
   stroke-width: 4;
 }
 
@@ -479,7 +479,7 @@
 
 .voc-token {
   padding: 0 0.3rem;
-  border-bottom: 2px solid var(--shapiq-violet-soft);
+  border-bottom: 2px solid var(--shapiq-amber-soft);
   border-radius: 5px;
   transition:
     background-color var(--shapiq-duration) var(--shapiq-ease),
@@ -487,8 +487,8 @@
 }
 
 .voc-token.is-active {
-  border-color: var(--shapiq-violet);
-  background: var(--shapiq-violet-soft);
+  border-color: var(--shapiq-amber);
+  background: var(--shapiq-amber-soft);
 }
 
 .voc-graph {
@@ -532,8 +532,8 @@
 
 /* opaque: the bonds end under the atom */
 .voc-atom.is-active circle {
-  fill: color-mix(in oklab, var(--shapiq-violet) 18%, var(--shapiq-surface));
-  stroke: var(--shapiq-violet);
+  fill: color-mix(in oklab, var(--shapiq-amber) 24%, var(--shapiq-surface));
+  stroke: var(--shapiq-amber);
   stroke-width: 3;
 }
 
@@ -556,7 +556,7 @@
 .voc-count {
   display: inline-block;
   font-weight: 700;
-  color: var(--shapiq-violet);
+  color: var(--shapiq-amber-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

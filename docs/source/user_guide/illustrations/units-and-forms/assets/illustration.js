@@ -13,7 +13,7 @@
 // - interactions and curves: the part of a pair's surface that neither feature explains alone.
 //
 // The chips of the house's features pick the feature, the group, or the pair. Values are computed
-// once by ../compute/compute.py into data.js; red is positive and blue negative, violet marks the
+// once by ../compute/compute.py into data.js; red is positive and blue negative, amber marks the
 // features (docs/STYLE_GUIDE.md).
 window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
   const { el, svg, tween, ease, reducedMotion, segmented, loadScript } = kit;
@@ -345,7 +345,7 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
         return `color-mix(in oklab, var(${z >= 0 ? "--shapiq-red" : "--shapiq-blue"}) ${share}%, var(--shapiq-surface))`;
       }
       const share = Math.round(8 + ((z - lo) / (hi - lo)) * 92);
-      return `color-mix(in oklab, var(--shapiq-violet) ${share}%, var(--shapiq-surface))`;
+      return `color-mix(in oklab, var(--shapiq-amber) ${share}%, var(--shapiq-surface))`;
     };
     const cellsGroup = svg("g", {}, chart);
     grid.forEach((row, a) => {

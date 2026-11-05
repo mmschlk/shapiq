@@ -414,7 +414,7 @@ _NOTATION = {
     "nplayers": "n",  # the number of players
     "featurespace": r"\mathcal{X}",  # the feature space: the inputs of the model
     "outputspace": r"\mathcal{Y}",  # the output space: what the model predicts
-    "model": "F",  # the model to explain
+    "model": "f",  # the model to explain, lowercase as in the demos
     "units": r"\mathcal{S}",  # the units of an explanation: a collection of sets of features
     "explspace": "E",  # the explanation space
     "expl": "e",  # an explanation

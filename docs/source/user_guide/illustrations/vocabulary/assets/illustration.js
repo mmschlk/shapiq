@@ -2,7 +2,7 @@
 // language of machine learning models. Four inputs, a row of a table, a photo, a sentence, and a
 // molecule, split into their features: the columns, the patches, the tokens, and the atoms. Each
 // feature flies out of its place in the input as a chip, wires connect them, and pulses carry them
-// into one model F, which predicts. Whatever the input, the model reads features, and an
+// into one model f, which predicts. Whatever the input, the model reads features, and an
 // explanation speaks about them. When the illustration is first seen, it cycles through the four
 // inputs until the reader picks one; pointing at a chip or at a part of the input lights up the
 // pair. With reduced motion, nothing flies and nothing cycles.
@@ -180,7 +180,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
   defs.innerHTML = `
     <defs>
       <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#c3cdf0"/><stop offset="1" stop-color="#eef1fb"/>
+        <stop offset="0" stop-color="#a9d8f5"/><stop offset="1" stop-color="#eaf6fd"/>
       </linearGradient>
     </defs>
     <symbol id="${uid}-scene" viewBox="0 0 300 300">
@@ -189,7 +189,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
         <ellipse cx="70" cy="70" rx="34" ry="14"/><ellipse cx="95" cy="62" rx="26" ry="16"/>
         <ellipse cx="48" cy="66" rx="20" ry="12"/><ellipse cx="236" cy="48" rx="22" ry="9"/>
       </g>
-      <path d="M0 190 Q 60 148 120 178 T 240 168 T 300 182 V 300 H 0 Z" fill="#aab3d6"/>
+      <path d="M0 190 Q 60 148 120 178 T 240 168 T 300 182 V 300 H 0 Z" fill="#a3bccb"/>
       <path d="M0 214 Q 150 198 300 214 V 300 H 0 Z" fill="#8fbf8a"/>
       <path d="M150 236 Q 142 270 118 300 H 178 Q 166 270 162 236 Z" fill="#ddd2b9"/>
       <rect x="183" y="112" width="13" height="30" fill="#5a6078"/>
@@ -258,7 +258,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
   const box = el("div", "voc-model-box");
   const boxIcon = el("span", "voc-model-icon");
   box.append(
-    el("span", "voc-tag shapiq-ill-math", "F"),
+    el("span", "voc-tag shapiq-ill-math", "f"),
     boxIcon,
     el("strong", "voc-model-name"),
     el("span", "voc-model-title"),
@@ -268,11 +268,11 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
   flow.appendChild(el("span", "voc-flow-dashes"));
   const output = el("div", "voc-output");
   output.append(
-    el("span", "voc-tag shapiq-ill-math", "F(x)"),
+    el("span", "voc-tag shapiq-ill-math", "f(x)"),
     el("span", "voc-output-label"),
     el("span", "voc-output-value"),
   );
-  model.append(label('model <span class="shapiq-ill-math">F</span>'), box, flow, output);
+  model.append(label('model <span class="shapiq-ill-math">f</span>'), box, flow, output);
   const wires = svg("svg", { class: "voc-wires", "aria-hidden": "true" });
   body.append(inputColumn, features, model, wires);
 
