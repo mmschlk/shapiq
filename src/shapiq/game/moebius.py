@@ -41,8 +41,8 @@ class SetMoebiusGame[P, V: JaxLike](MoebiusGame[P, V]):
 
     interactions: Bool[jax.Array, "n_interactions {players.n_players}"] = field()
     additivity: int = field()
-    protected_axes: ClassVar[dict[str, int]] = {"values": 1, "interactions": 2, "players": 0}
-    broadcasted_batch: ClassVar[set[str]] = {"players", "interactions"}
+    protected_axes: ClassVar[dict[str, int]] = {"interactions": 2}
+    broadcasted_batch: ClassVar[set[str]] = {"interactions"}
 
 
 @typechecked

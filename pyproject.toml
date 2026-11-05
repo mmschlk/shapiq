@@ -18,7 +18,7 @@ dependencies = [
     "matplotlib",
     "colour",
     "flextype>=0.3.0",
-    "ndlike>=0.3.1",
+    "ndlike>=0.3.2",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
