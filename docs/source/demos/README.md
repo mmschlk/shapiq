@@ -43,4 +43,7 @@ in `conf.py`).
 
 1. Make the folder `demos/<name>/` with `index.rst`, `assets/demo.js`, `assets/demo.css` and the
    data, and `compute/` with the scripts that computed the data and a README on how to run them.
-2. Add a card for it to `demos/index.rst` and its page to the toctree there.
+2. Add a card for it to `demos/index.rst` and its page to the toctree there. The cards' images
+   (`_static/images/hero_<name>_demo.png`) are screenshots of the demos, 1952 x 1252: the demo at
+   about 2x, in the middle of a white frame with a 2 px `#e2e6f3` edge and 26 px corners, so that
+   the cards match (see `orders/README.md`).
