@@ -6,147 +6,87 @@ representation they use. Each Index class has a `build` method that packages the
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import ClassVar, Protocol, override, runtime_checkable
+from typing import Any, ClassVar, Protocol, override, runtime_checkable
 
 import jax
+import jax.numpy as jnp
+import jax.scipy as jsp
 from jaxtyping import Bool, Float, Int, Shaped
+from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.game import Game
 from shapiq.game.discretederivative import subset_patterns
 from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
-from shapiq.game.weights import (
-    AlphaBetaWeight,
-    BanzhafWeight,
-    DiscreteDerivativeWeight,
-    LeastSquaresWeight,
-    ShapleyWeight,
-    Weight,
-    WeightedBanzhafWeight,
-)
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
 
-@runtime_checkable
-class DiscreteDerivativeIndex[R: Game](DiscreteDerivativeWeight, Protocol):
-    """An index defined by discrete-derivative weights, e.g. for exact or Monte Carlo routes."""
-
-    def interactions(self, n_players: int) -> Bool[jax.Array, "n_interactions {n_players}"]:
-        """Return the interaction sets this index assigns coefficients to."""
-        ...
-
-    def build(
-        self,
-        values: Float[jax.Array, "*batch n_interactions"],
-        interactions: Bool[jax.Array, "n_interactions n_players"],
-        players: Shaped[FinitePlayers, "#*batch"],
-    ) -> R:
-        """Package coefficients on ``interactions`` into this index's result game."""
-        ...
+def _log_binom(n: int, k: Int[jax.Array, "*batch"]) -> Float[jax.Array, "*batch"]:
+    return (
+        jsp.special.gammaln(n + 1.0)
+        - jsp.special.gammaln(k + 1.0)
+        - jsp.special.gammaln(n - k + 1.0)
+    )
 
 
 @runtime_checkable
-class LeastSquaresIndex[R: Game](LeastSquaresWeight, Protocol):
-    """An index defined as a weighted least-squares fit, e.g. for KernelSHAP-type routes."""
+class IndexProtocol[R: Game](JaxLike[Any], Protocol):
+    """A batch of interaction indices, defined by weights and the interaction orders covered."""
+
+    @property
+    def min_order(self) -> int:
+        """Return the minimum interaction order this index covers."""
+
+    @property
+    def max_order(self) -> int:
+        """Return the maximum interaction order this index covers."""
 
     def interactions(self, n_players: int) -> Bool[jax.Array, "n_interactions {n_players}"]:
         """Return the interaction sets this index assigns coefficients to."""
-        ...
-
-    def build(
-        self,
-        values: Float[jax.Array, "*batch n_interactions"],
-        interactions: Bool[jax.Array, "n_interactions n_players"],
-        players: Shaped[FinitePlayers, "#*batch"],
-    ) -> R:
-        """Package coefficients on ``interactions`` into this index's result game."""
-        ...
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class Index[W: Weight, R: Game](JaxAxisProtected[jax.Array]):
-    """A batch of interaction indices, defined by weights and the interaction orders covered.
-
-    The index batch is the weights' batch. ``build`` decides which game the computed
-    coefficients become, so exact and approximate computations share one result type.
-    """
-
-    weights: W
-    min_order: int
-    max_order: int
-    # The weights carry their own batch; the index adds no axes.
-    protected_axes: ClassVar[dict[str, int]] = {"weights": 0}
-
-    def __post_init__(self) -> None:
-        """Check the order range.
-
-        Raises:
-            ValueError: The orders are negative or ``min_order`` exceeds ``max_order``.
-        """
-        if not 0 <= self.min_order <= self.max_order:
-            msg = "min_order must be nonnegative and at most max_order."
-            raise ValueError(msg)
-
-    def interactions(self, n_players: int) -> Bool[jax.Array, "n_interactions {n_players}"]:
-        """Return the interaction sets this index assigns coefficients to."""
-        return subset_patterns(order=n_players, min_size=self.min_order, max_size=self.max_order)
+        return subset_patterns(size=n_players, min_size=self.min_order, max_size=self.max_order)
 
     @abstractmethod
     def build(
         self,
         values: Float[jax.Array, "*batch n_interactions"],
-        interactions: Bool[jax.Array, "n_interactions n_players"],
+        interactions: Bool[jax.Array, "n_interactions {players.n_players}"],
         players: Shaped[FinitePlayers, "#*batch"],
     ) -> R:
         """Package coefficients on ``interactions`` into this index's result game."""
+        ...
 
 
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class SemivalueIndex[W: DiscreteDerivativeWeight](
-    Index[W, AdditiveMoebiusGame], DiscreteDerivativeIndex[AdditiveMoebiusGame]
-):
-    """A batch of semivalues: one coefficient per player, packaged as an additive game."""
+@runtime_checkable
+class DiscreteDerivativeIndex[R: Game](IndexProtocol[R], Protocol):
+    """An index defined by discrete-derivative weights, e.g. for exact or Monte Carlo routes."""
 
-    weights: W
-    # Fixed to singletons, so the result is always additive.
-    min_order: int = field(default=1, init=False)
-    max_order: int = field(default=1, init=False)
-
+    @abstractmethod
     def discrete_derivative_weight(
         self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
     ) -> Float[jax.Array, "*batch"]:
-        """Return the discrete-derivative weights that define this semivalue."""
-        return self.weights.discrete_derivative_weight(size, order, n_players)
+        """Return ``w(size, order, n_players)`` for coalitions of ``size`` outside the interaction."""
 
-    @override
-    def build(
-        self,
-        values: Float[jax.Array, "*batch n_interactions"],
-        interactions: Bool[jax.Array, "n_interactions n_players"],
-        players: Shaped[FinitePlayers, "#*batch"],
-    ) -> AdditiveMoebiusGame:
-        """Package one coefficient per player; ``interactions`` are the singletons by construction."""
-        return AdditiveMoebiusGame(values=values, players=players, interactions=interactions)
+
+@runtime_checkable
+class LeastSquaresIndex[R: Game](IndexProtocol[R], Protocol):
+    """An index defined as a weighted least-squares fit."""
+
+    @abstractmethod
+    def least_squares_weight(
+        self, size: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the kernel ``mu(size, n_players)``; ``inf`` marks a hard constraint."""
 
 
 @typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class CardinalInteractionIndex[W: DiscreteDerivativeWeight](
-    Index[W, SetMoebiusGame], DiscreteDerivativeIndex[SetMoebiusGame]
-):
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class CardinalInteractionIndex(DiscreteDerivativeIndex[SetMoebiusGame]):
     """A batch of cardinal interaction indices, building an k-additive game on the Moebius Basis."""
 
-    weights: W
-    min_order: int = 1
-
-    def discrete_derivative_weight(
-        self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
-    ) -> Float[jax.Array, "*batch"]:
-        """Return the discrete-derivative weights that define this index."""
-        return self.weights.discrete_derivative_weight(size, order, n_players)
+    min_order: int = field(default=1, init=False)
+    # A required field replaces the protocol's max_order property, which would be its default.
+    max_order: int = field()
 
     @override
     def build(
@@ -162,151 +102,128 @@ class CardinalInteractionIndex[W: DiscreteDerivativeWeight](
 
 
 @typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class ShapleyValue(SemivalueIndex[ShapleyWeight], LeastSquaresIndex[AdditiveMoebiusGame]):
-    """The Shapley value."""
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class SemivalueIndex(CardinalInteractionIndex):
+    """A batch of semivalues: one coefficient per player, packaged as an additive game.
 
-    weights: ShapleyWeight = field(default_factory=ShapleyWeight)
-
-    def least_squares_weight(
-        self, size: Int[jax.Array, "#*batch"], n_players: int
-    ) -> Float[jax.Array, "*batch"]:
-        """Return the Shapley kernel: the Shapley value is its efficient least-squares fit."""
-        return self.weights.least_squares_weight(size, n_players)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class BanzhafValue(SemivalueIndex[BanzhafWeight], LeastSquaresIndex[AdditiveMoebiusGame]):
-    """The Banzhaf value."""
-
-    weights: BanzhafWeight = field(default_factory=BanzhafWeight)
-
-    def least_squares_weight(
-        self, size: Int[jax.Array, "#*batch"], n_players: int
-    ) -> Float[jax.Array, "*batch"]:
-        """Return the uniform kernel: the Banzhaf value is its least-squares fit."""
-        return self.weights.least_squares_weight(size, n_players)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class WeightedBanzhafValue(
-    SemivalueIndex[WeightedBanzhafWeight], LeastSquaresIndex[AdditiveMoebiusGame]
-):
-    """The weighted Banzhaf value; a batch of ``p`` values becomes the index batch."""
-
-    weights: WeightedBanzhafWeight
-
-    def least_squares_weight(
-        self, size: Int[jax.Array, "#*batch"], n_players: int
-    ) -> Float[jax.Array, "*batch"]:
-        """Return the product kernel: the weighted Banzhaf value is its least-squares fit."""
-        return self.weights.least_squares_weight(size, n_players)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class BetaSemivalue(SemivalueIndex[AlphaBetaWeight]):
-    """The Beta(alpha, beta) semivalue; a batch of parameters becomes the index batch."""
-
-    weights: AlphaBetaWeight
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class ShapleyInteractionIndex(CardinalInteractionIndex[ShapleyWeight]):
-    """The Shapley interaction index (SII)."""
-
-    weights: ShapleyWeight = field(default_factory=ShapleyWeight)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class BanzhafInteractionIndex(CardinalInteractionIndex[BanzhafWeight]):
-    """The Banzhaf interaction index (BII)."""
-
-    weights: BanzhafWeight = field(default_factory=BanzhafWeight)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class WeightedBanzhafInteractionIndex(CardinalInteractionIndex[WeightedBanzhafWeight]):
-    """The weighted Banzhaf interaction index; a batch of ``p`` values becomes the index batch."""
-
-    weights: WeightedBanzhafWeight
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class BetaInteractionIndex(CardinalInteractionIndex[AlphaBetaWeight]):
-    """The Beta(alpha, beta) interaction index; a batch of parameters becomes the index batch."""
-
-    weights: AlphaBetaWeight
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class FaithfulShapleyTopOrderIndex(CardinalInteractionIndex[ShapleyWeight]):
-    """Top-order Faithful Shapley interactions (FSII) of order ``k = max_order``.
-
-    Tsai et al. (2023, Theorem 19) give the order-k FSII coefficients as discrete derivatives
-    weighted by (2k-1)!/((k-1)!)**2 * (t+k-1)! (n-t-1)! / (n+k-1)! for coalitions of size t.
-    Writing the Beta functions as factorials shows this equals the Beta(k, k) member of the
-    alpha-beta family, B(t+k, n-t) / B(k, k): a random fill level q ~ Beta(k, k) around 1/2.
-    k = 1 recovers the Shapley value; large k approaches the Banzhaf weighting.
-
-    The index carries the Shapley weights of its family; its discrete-derivative weights are
-    the Beta(k, k) weights derived from ``max_order``. Only the top-order coefficients are
-    computed; as Möbius coefficients they are the top part of the FSII approximation, not the
-    whole k-additive fit.
+    A semivalue is a cardinal interaction index restricted to the singletons, so both orders are
+    fixed to one.
     """
 
-    weights: ShapleyWeight = field(default_factory=ShapleyWeight)
-    # Derived from max_order: only the top order is covered.
-    min_order: int = field(init=False)
+    min_order: int = field(default=1, init=False)
+    max_order: int = field(default=1, init=False)
 
     @override
-    def __post_init__(self) -> None:
-        """Cover only ``max_order``.
+    def build(
+        self,
+        values: Float[jax.Array, "*batch n_interactions"],
+        interactions: Bool[jax.Array, "n_interactions n_players"],
+        players: Shaped[FinitePlayers, "#*batch"],
+    ) -> AdditiveMoebiusGame:
+        """Package one coefficient per player; ``interactions`` are the singletons by construction."""
+        return AdditiveMoebiusGame(values=values, players=players, interactions=interactions)
 
-        Raises:
-            ValueError: ``max_order`` is negative.
-        """
-        object.__setattr__(self, "min_order", self.max_order)
-        Index.__post_init__(self)
+
+@typechecked
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class WeightedBanzhafIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]):
+    """The weighted Banzhaf index, with a single parameter p for the Bernoulli distribution.
+
+    The index is the discrete-derivative fit under the weights w(|S|, |T|, n) = p**|S| * (1-p)**(n-|S|-|T|).
+    """
+
+    p: float | Float[jax.Array, "#*batch"]
+    protected_axes: ClassVar[dict[str, int]] = {"p": 0}
+
+    def __post_init__(self) -> None:
+        """Store ``p`` as an array, so it has a batch shape."""
+        object.__setattr__(self, "p", jnp.asarray(self.p, dtype=float))
 
     @override
     def discrete_derivative_weight(
         self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
     ) -> Float[jax.Array, "*batch"]:
-        """Return the Beta(k, k) weights with ``k = max_order``."""
-        k = float(self.max_order)
-        return AlphaBetaWeight(alpha=k, beta=k).discrete_derivative_weight(size, order, n_players)
+        """Return the weighted Banzhaf weights."""
+        return self.p**size * (1 - self.p) ** (n_players - size - order)
 
 
 @typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class FaithfulBanzhafTopOrderIndex(CardinalInteractionIndex[BanzhafWeight]):
-    """Top-order Faithful Banzhaf interactions (FBII) of order ``max_order``.
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class BanzhafIndex(WeightedBanzhafIndex):
+    """The Banzhaf index, a weighted Banzhaf index with p = 1/2.
 
-    Tsai et al. (2023, Theorem 17) give the top-order FBII coefficients with the Banzhaf
-    weights (1/2)**(n-k), so they equal the top-order Banzhaf interactions.
-
-    Only the top-order coefficients are computed; as Möbius coefficients they are the top
-    part of the FBII approximation, not the whole k-additive fit.
+    ``p`` stays a field so ndlike can rebuild the weights; it is always one half.
     """
 
-    weights: BanzhafWeight = field(default_factory=BanzhafWeight)
-    # Derived from max_order: only the top order is covered.
-    min_order: int = field(init=False)
+    # init=False once ndlike can rebuild init=False protected fields; until then, never pass it.
+    p: float | Float[jax.Array, "#*batch"] = 0.5
+
+
+@typechecked
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class AlphaBetaIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]):
+    """The alpha-beta index, with two parameters for the Beta distribution.
+
+    The discrete-derivative weights are ``w(|S|, |T|, n) = B(|S| + beta, n - |S| - |T| + alpha)
+    / B(alpha, beta)`` (Kwon & Zou, 2022, Eq. 4).
+    """
+
+    alpha: float | Float[jax.Array, "#*batch"]
+    beta: float | Float[jax.Array, "#*batch"]
+    protected_axes: ClassVar[dict[str, int]] = {"alpha": 0, "beta": 0}
+
+    def __post_init__(self) -> None:
+        """Broadcast alpha and beta to a common batch shape, as required for protected fields."""
+        alpha, beta = jnp.broadcast_arrays(
+            jnp.asarray(self.alpha, dtype=float), jnp.asarray(self.beta, dtype=float)
+        )
+        object.__setattr__(self, "alpha", alpha)
+        object.__setattr__(self, "beta", beta)
 
     @override
-    def __post_init__(self) -> None:
-        """Cover only ``max_order``.
+    def discrete_derivative_weight(
+        self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the alpha-beta weights."""
+        return jnp.exp(
+            jsp.special.betaln(size + self.beta, n_players - size - order + self.alpha)
+            - jsp.special.betaln(self.alpha, self.beta)
+        )
 
-        Raises:
-            ValueError: ``max_order`` is negative.
-        """
-        object.__setattr__(self, "min_order", self.max_order)
-        Index.__post_init__(self)
+
+@typechecked
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class ShapleyInteractionIndex(AlphaBetaIndex):
+    """The Shapley interaction index."""
+
+    # init=False once ndlike can rebuild init=False protected fields; until then, never pass them.
+    alpha: float | Float[jax.Array, "#*batch"] = 1.0
+    beta: float | Float[jax.Array, "#*batch"] = 1.0
+
+    @override
+    def discrete_derivative_weight(
+        self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the Shapley weights: the Shapley value is its discrete-derivative fit."""
+        return 1 / ((n_players - order + 1) * jsp.special.comb(n_players - order, size))
+
+
+@typechecked
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class ShapleyValueIndex(SemivalueIndex, ShapleyInteractionIndex, LeastSquaresIndex[SetMoebiusGame]):
+    """The Shapley value: the Shapley interaction index restricted to the singletons."""
+
+    @override
+    def least_squares_weight(
+        self, size: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the Shapley kernel: the Shapley value is its efficient least-squares fit."""
+        interior = (size > 0) & (size < n_players)
+        s = jnp.clip(size, 1, max(n_players - 1, 1))
+        log_kernel = (
+            jnp.log(n_players - 1.0)
+            - _log_binom(n_players, s)
+            - jnp.log(s)
+            - jnp.log(n_players - s)
+        )
+        return jnp.where(interior, jnp.exp(log_kernel), jnp.inf)

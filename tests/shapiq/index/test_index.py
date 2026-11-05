@@ -1,25 +1,45 @@
-"""Index construction keeps its orders and weights consistent through replace and jit."""
-
-import dataclasses
+"""The Shapley kernel reproduces the Shapley value, and only the value exposes it."""
 
 import jax
-import jax.numpy as jnp
-import pytest
+import numpy as np
 
-from shapiq.game.weights import AlphaBetaWeight
-from shapiq.index import FaithfulShapleyTopOrderIndex, ShapleyInteractionIndex
+from shapiq.game.discretederivative import subset_patterns
+from shapiq.game.exact import ExactComputer
+from shapiq.game.table import TableGame
+from shapiq.index import LeastSquaresIndex, ShapleyInteractionIndex, ShapleyValueIndex
+from shapiq.players import FinitePlayers
+
+N_PLAYERS = 5
+TABLE = jax.random.normal(jax.random.key(0), (2**N_PLAYERS,))
 
 
-def test_top_order_fsii_derives_its_orders_and_beta_weights_through_replace_and_jit():
-    index = FaithfulShapleyTopOrderIndex(max_order=2)
-    rebuilt = dataclasses.replace(index, weights=index.weights)
-    sizes, order = jnp.arange(4), jnp.asarray(2)
-    beta = AlphaBetaWeight(alpha=2.0, beta=2.0).discrete_derivative_weight(sizes, order, 5)
-    jitted = jax.jit(lambda i: i.discrete_derivative_weight(sizes, order, 5))(index)
+def _least_squares_fit(index: LeastSquaresIndex, table: np.ndarray) -> np.ndarray:
+    """Fit v(S) ≈ b + sum of S's player values under the kernel; inf entries are constraints."""
+    patterns = subset_patterns(N_PLAYERS)
+    kernel = np.asarray(index.least_squares_weight(patterns.sum(-1), N_PLAYERS), dtype=float)
+    coalitions = np.asarray(patterns)
+    design = np.hstack([np.ones((len(coalitions), 1)), coalitions])
+    fitted, exact = np.isfinite(kernel), np.isinf(kernel)
+    weighted = design[fitted].T * kernel[fitted]
+    constraints = design[exact]
+    # KKT system of the equality-constrained weighted least squares.
+    n_rows = len(constraints)
+    lhs = np.block(
+        [[weighted @ design[fitted], constraints.T], [constraints, np.zeros((n_rows, n_rows))]]
+    )
+    rhs = np.concatenate([weighted @ table[fitted], table[exact]])
+    return np.linalg.solve(lhs, rhs)[1 : N_PLAYERS + 1]
 
-    assert (rebuilt.min_order, rebuilt.max_order) == (2, 2)
-    assert jnp.allclose(jitted, beta)
-    with pytest.raises(TypeError, match="min_order"):
-        FaithfulShapleyTopOrderIndex(max_order=2, min_order=1)
-    with pytest.raises(ValueError, match="min_order"):
-        ShapleyInteractionIndex(min_order=3, max_order=2)
+
+def test_shapley_kernel_reproduces_the_shapley_value():
+    index = ShapleyValueIndex()
+    exact = ExactComputer.from_game(TableGame(TABLE, FinitePlayers(N_PLAYERS)))(index).values
+    fit = _least_squares_fit(index, np.asarray(TABLE, dtype=float))
+
+    assert isinstance(index, LeastSquaresIndex)
+    assert np.allclose(fit, exact, atol=1e-5)
+
+
+def test_only_the_shapley_value_exposes_the_kernel():
+    # SII shares the Shapley weights, but it is not the kernel's least-squares fit.
+    assert not isinstance(ShapleyInteractionIndex(max_order=2), LeastSquaresIndex)

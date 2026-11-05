@@ -10,15 +10,12 @@ import pytest
 from shapiq.game.exact import ExactComputer
 from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
 from shapiq.game.table import TableGame
-from shapiq.game.weights import WeightedBanzhafWeight
 from shapiq.index import (
-    BanzhafInteractionIndex,
-    BanzhafValue,
-    FaithfulBanzhafTopOrderIndex,
-    FaithfulShapleyTopOrderIndex,
+    AlphaBetaIndex,
+    BanzhafIndex,
     ShapleyInteractionIndex,
-    ShapleyValue,
-    WeightedBanzhafValue,
+    ShapleyValueIndex,
+    WeightedBanzhafIndex,
 )
 from shapiq.players import FinitePlayers
 
@@ -35,9 +32,12 @@ def _bii(s: int, t: int, n: int) -> float:
     return 0.5 ** (n - t)
 
 
-def _fsii_top(s: int, t: int, n: int) -> float:
-    # Tsai et al. (2023), Theorem 19, for the top order k = t.
-    return exp(lgamma(2 * t) - 2 * lgamma(t) + lgamma(n - s) + lgamma(s + t) - lgamma(n + t))
+def _beta_4_1(s: int, t: int, n: int) -> float:
+    # B(s + beta, n - t - s + alpha) / B(alpha, beta) with alpha = 4, beta = 1.
+    def log_beta(a: float, b: float) -> float:
+        return lgamma(a) + lgamma(b) - lgamma(a + b)
+
+    return exp(log_beta(s + 1.0, n - t - s + 4.0) - log_beta(4.0, 1.0))
 
 
 def _brute_force(table: list[float], weight, interactions: list[tuple[int, ...]]) -> list[float]:
@@ -67,12 +67,11 @@ def _brute_force(table: list[float], weight, interactions: list[tuple[int, ...]]
 @pytest.mark.parametrize(
     ("index", "weight"),
     [
-        (ShapleyValue(), _sii),
-        (BanzhafValue(), _bii),
+        (ShapleyValueIndex(), _sii),
+        (BanzhafIndex(max_order=1), _bii),
         (ShapleyInteractionIndex(max_order=2), _sii),
-        (BanzhafInteractionIndex(max_order=3), _bii),
-        (FaithfulShapleyTopOrderIndex(max_order=2), _fsii_top),
-        (FaithfulBanzhafTopOrderIndex(max_order=3), _bii),
+        (BanzhafIndex(max_order=3), _bii),
+        (AlphaBetaIndex(alpha=4.0, beta=1.0, max_order=2), _beta_4_1),
     ],
 )
 def test_exact_matches_the_index_definition(index, weight):
@@ -88,13 +87,13 @@ def test_exact_matches_the_index_definition(index, weight):
 def test_game_and_index_batches_broadcast_and_the_computer_runs_under_jit():
     computer = ExactComputer.from_game(TableGame(TABLES, FinitePlayers(N_PLAYERS)))
     p_values = jnp.array([0.3, 0.5, 0.7])
-    index = WeightedBanzhafValue(weights=WeightedBanzhafWeight(p_values))
+    index = WeightedBanzhafIndex(p=p_values, max_order=2)
 
     every_pair = computer[:, None](index)  # (games, p values)
-    jitted = jax.jit(lambda c: c(ShapleyValue()).values)(computer)
+    jitted = jax.jit(lambda c: c(ShapleyValueIndex()).values)(computer)
     single = ExactComputer.from_game(TableGame(TABLES[1], FinitePlayers(N_PLAYERS)))
-    single_p = WeightedBanzhafValue(weights=WeightedBanzhafWeight(p_values[2]))
+    single_p = WeightedBanzhafIndex(p=p_values[2], max_order=2)
 
     assert every_pair.shape == (2, 3)
     assert jnp.allclose(every_pair[1, 2].values, single(single_p).values, atol=1e-6)
-    assert jnp.allclose(jitted, computer(ShapleyValue()).values, atol=1e-5)
+    assert jnp.allclose(jitted, computer(ShapleyValueIndex()).values, atol=1e-5)
