@@ -5,11 +5,15 @@ model on six of its features, and the explanations that the illustration shows f
 
 - the explanation game of the house with marginal masking: its prediction for every subset of the
   features, with the other features drawn from background houses, for all 2^6 = 64 subsets;
-- numbers: the Shapley values of the features, the Shapley values of groups of features taken as
-  one player, and the pairwise Shapley interactions (k-SII of order 2), with shapiq's
-  ``ExactComputer``;
+- numbers: the Shapley values of the features and the pairwise Shapley interactions (k-SII of
+  order 2), with shapiq's ``ExactComputer``, and the Shapley values of groups of features taken as
+  one player, from the game with the group merged into one player (``group_value``);
 - curves: the house's prediction as one feature varies (its ICE curve), as two features vary (a
-  surface), and the part of that surface that neither feature explains alone (the pure interaction).
+  surface), and the part of that surface that neither feature explains alone (the pure interaction),
+  on evenly spaced grids that pass through the house's own values, so that the house lies on its
+  curves and surfaces.
+
+Values are rounded to 4 decimals, and the curves and surfaces to 3, to keep the file small.
 
 Run it from the repository's root with the docs' dependencies installed; it writes
 ``../assets/data.js``::
@@ -32,14 +36,15 @@ from sklearn.model_selection import train_test_split
 
 import shapiq
 
-FEATURES = [  # name in the data, label in the illustration, unit of the value
-    ("MedInc", "Median income", "\u00d7$10k"),
-    ("HouseAge", "House age", "years"),
-    ("AveRooms", "Rooms", "per household"),
-    ("Population", "Population", "of the block"),
-    ("Latitude", "Latitude", "°N"),
-    ("Longitude", "Longitude", "°E"),
+FEATURES = [  # name in the data, label in the illustration, unit of the value, decimals shown
+    ("MedInc", "Median income", "\u00d7$10k", 2),
+    ("HouseAge", "House age", "years", 0),
+    ("AveRooms", "Rooms", "per household", 2),
+    ("Population", "Population", "of the block", 0),
+    ("Latitude", "Latitude", "°N", 2),
+    ("Longitude", "Longitude", "°E", 2),
 ]
+PAIR = ("Latitude", "Longitude")  # the pair the illustration starts with: the house's location
 HOUSE = 0  # the explained house: the first of the data
 BACKGROUND = 256  # background houses for marginal masking
 GRID_1D = 40  # points of a curve
@@ -52,7 +57,7 @@ OUT = Path(__file__).resolve().parents[1] / "assets" / "data.js"
 def main() -> None:
     """Train the model, explain the house, and write the data."""
     data = fetch_california_housing()
-    columns = [list(data.feature_names).index(name) for name, _, _ in FEATURES]
+    columns = [list(data.feature_names).index(name) for name, *_ in FEATURES]
     x_all, y_all = data.data[:, columns], data.target
     n = len(FEATURES)
 
@@ -97,8 +102,11 @@ def main() -> None:
         return value
 
     def grid(feature: int, points: int) -> np.ndarray:
+        """Evenly spaced values over the feature's range, one of them the house's own value."""
         low, high = np.quantile(x_all[:, feature], QUANTILES)
-        return np.linspace(low, high, points)
+        step = (high - low) / (points - 1)
+        at = int(np.clip(round((house[feature] - low) / step), 0, points - 1))
+        return house[feature] + (np.arange(points) - at) * step
 
     def predict_with(changes: dict[int, np.ndarray]) -> np.ndarray:
         """Predict the house with the features of ``changes`` set to their (broadcast) values."""
@@ -123,13 +131,8 @@ def main() -> None:
         surfaces[key] = {"x": zi.tolist(), "y": zj.tolist(), "z": both.tolist()}
         interactions[key] = (both - only_i - only_j + prediction).tolist()
 
-    out = {
-        "source": "California housing, the first house; HistGradientBoostingRegressor on 6 features",
-        "r2": round(r2, 3),
-        "features": [
-            {"name": name, "label": label, "unit": unit, "value": float(house[i])}
-            for i, (name, label, unit) in enumerate(FEATURES)
-        ],
+    names = [name for name, *_ in FEATURES]
+    numbers = {
         "prediction": prediction,
         "baseline": float(table[()]),
         "shapley": [float(shapley[(i,)]) for i in range(n)],
@@ -137,13 +140,26 @@ def main() -> None:
         "interactions": {
             f"{i}-{j}": float(ksii[(i, j)]) for i, j in itertools.combinations(range(n), 2)
         },
-        "curves": curves,
-        "surfaces": surfaces,
-        "pure": interactions,
     }
-    rounded = _round(out)
-    rounded["features"] = out["features"]  # the house's values exactly, as in the data
-    text = json.dumps(rounded, separators=(",", ":"))
+    out = {
+        "source": "California housing, the first house; HistGradientBoostingRegressor on 6 features",
+        "r2": round(r2, 2),
+        "background": BACKGROUND,
+        "features": [  # the house's values exactly, as in the data
+            {
+                "name": name,
+                "label": label,
+                "unit": unit,
+                "decimals": decimals,
+                "value": float(house[i]),
+            }
+            for i, (name, label, unit, decimals) in enumerate(FEATURES)
+        ],
+        "pair": [names.index(name) for name in PAIR],
+        **_round(numbers, 4),
+        **_round({"curves": curves, "surfaces": surfaces, "pure": interactions}, 3),
+    }
+    text = json.dumps(out, separators=(",", ":"))
     OUT.write_text(
         "// The data of the illustration units-and-forms (see illustration.js), written by\n"
         "// ../compute/compute.py. Values are in units of $100,000.\n"
@@ -152,20 +168,20 @@ def main() -> None:
     print(f"R² {r2:.3f}, prediction {prediction:.3f}, baseline {table[()]:.3f}, wrote {OUT}")
     print(
         "sum of Shapley values",
-        sum(out["shapley"]),
+        sum(numbers["shapley"]),
         "= prediction - baseline",
         prediction - table[()],
     )
 
 
-def _round(value: object) -> object:
-    """Round floats to 3 decimals, recursively, to keep the file small."""
+def _round(value: object, digits: int) -> object:
+    """Round floats to ``digits`` decimals, recursively, to keep the file small."""
     if isinstance(value, float):
-        return round(value, 3)
+        return round(value, digits)
     if isinstance(value, list):
-        return [_round(v) for v in value]
+        return [_round(v, digits) for v in value]
     if isinstance(value, dict):
-        return {k: _round(v) for k, v in value.items()}
+        return {k: _round(v, digits) for k, v in value.items()}
     return value
 
 

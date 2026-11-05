@@ -22,18 +22,27 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
   const data = window.SHAPIQ_UNITS_AND_FORMS;
   const features = data.features;
   const n = features.length;
-  const DECIMALS = [2, 0, 2, 0, 2, 2];
 
-  const value = (k, v = features[k].value) => v.toFixed(DECIMALS[k]).replace("-", "−");
-  const price = (v) => `$${Math.round(v * 100)}k`;
-  const signed = (v) => `${v >= 0 ? "+" : "−"}$${Math.abs(Math.round(v * 100))}k`;
+  // values are in $100,000, shown in whole $1,000s
+  const value = (k, v = features[k].value) => v.toFixed(features[k].decimals).replace("-", "−");
+  const thousands = (v) => Math.round(v * 100);
+  const price = (v) => `$${thousands(v)}k`;
+  const signedK = (k) => `${k >= 0 ? "+" : "−"}$${Math.abs(k)}k`;
+  const signed = (v) => signedK(thousands(v));
+  // a term of a sum of whole $1,000s, in its color: the first with its sign, the next ones with
+  // their operation, as in +$157k + $25k − $4k
+  const term = (k, first = false) =>
+    `<span class="${k >= 0 ? "uaf-pos" : "uaf-neg"}">` +
+    `${first ? signedK(k) : `${k >= 0 ? "+" : "−"} $${Math.abs(k)}k`}</span>`;
+  const terms = (ks) => ks.map((k, j) => term(k, j === 0)).join(" ");
   const sign = (v) => (v >= 0 ? "uaf-pos" : "uaf-neg");
   const keyOf = (ids) => [...ids].sort((a, b) => a - b).join("-");
   const names = (ids) => [...ids].sort((a, b) => a - b).map((k) => features[k].label).join(", ");
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const lerp = (a, b, t) => a + (b - a) * t;
 
-  const state = { units: "features", form: "numbers", feature: 0, group: new Set([4, 5]), pair: [4, 5] };
+  // the pair of features it starts with, for the group and the interactions: the house's location
+  const state = { units: "features", form: "numbers", feature: 0, group: new Set(data.pair), pair: [...data.pair] };
 
   // -- the layout ----------------------------------------------------------------------------------
 
@@ -87,35 +96,51 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
   const chartBox = el("div", "uaf-chart");
   const chart = svg("svg", { class: "uaf-svg", role: "img" });
   chartBox.appendChild(chart);
+  // what a view cannot draw, in words
+  const message = el("p", "uaf-message");
+  message.hidden = true;
+  // the sum a view adds up, and the value pointed at, announced as they change
+  const equation = el("p", "uaf-equation");
+  equation.setAttribute("aria-live", "polite");
   const readout = el("p", "uaf-readout");
+  readout.setAttribute("aria-live", "polite");
   const note = el("p", "uaf-note");
-  view.append(title, chartBox, readout, note);
+  view.append(title, chartBox, message, equation, readout, note);
   body.append(side, view);
 
   const foot = el("p", "uaf-foot");
   foot.textContent =
     `A gradient boosting model on six features of the California housing data ` +
     `(R² ${data.r2.toFixed(2)} on held-out houses) predicts ${price(data.prediction)} for this ` +
-    `house, against ${price(data.baseline)} on average.`;
+    `house, against ${price(data.baseline)} on average over ${data.background} houses of the ` +
+    `training data.`;
   root.append(controls, body, foot);
   stage.appendChild(root);
 
   // -- picking features --------------------------------------------------------------------------
 
+  // a group keeps at least one feature: the last one shakes its head
   const pick = (k) => {
-    if (state.units === "features") state.feature = k;
-    else if (state.units === "groups") {
+    if (state.units === "features") {
+      if (state.feature === k) return;
+      state.feature = k;
+    } else if (state.units === "groups") {
       if (state.group.has(k)) {
         if (state.group.size === 1) {
-          chipNodes[k].animate(
-            [{ transform: "translateX(0)" }, { transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "translateX(0)" }],
-            { duration: 260 },
-          );
+          if (!reducedMotion()) {
+            chipNodes[k].animate(
+              [{ transform: "translateX(0)" }, { transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "translateX(0)" }],
+              { duration: 260 },
+            );
+          }
           return;
         }
         state.group.delete(k);
       } else state.group.add(k);
-    } else if (!state.pair.includes(k)) state.pair = [state.pair[1], k];
+    } else {
+      if (state.pair.includes(k)) return;
+      state.pair = [state.pair[1], k];
+    }
     render();
   };
 
@@ -138,11 +163,26 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
 
   // -- drawing helpers ---------------------------------------------------------------------------
 
+  // A view enters with an animation when it is shown; a new selection, or a resize, redraws it in
+  // place (only a curve morphs into the next).
   let stops = [];
-  let instant = false; // a redraw without animation, after a resize
-  const still = () => instant || reducedMotion();
+  let entering = false;
+  const still = () => !entering || reducedMotion();
   const animate = (duration, update, options) =>
-    stops.push(tween(instant ? 0 : duration, update, instant ? {} : options));
+    stops.push(tween(still() ? 0 : duration, update, still() ? {} : options));
+  const morphing = (duration, update, options) =>
+    stops.push(tween(reducedMotion() ? 0 : duration, update, reducedMotion() ? {} : options));
+  // a readout of what the pointer is on; a tap shows it too, and it stays until the next
+  const readFrom = (target, describe) => {
+    target.onpointermove = (event) => {
+      const words = describe(event);
+      if (words) readout.textContent = words;
+    };
+    target.onpointerdown = target.onpointermove;
+    target.onpointerleave = (event) => {
+      if (event.pointerType === "mouse") readout.textContent = "";
+    };
+  };
   const text = (parent, x, y, content, cls, anchor = "start") => {
     const node = svg("text", { x, y, class: cls, "text-anchor": anchor }, parent);
     node.textContent = content;
@@ -173,7 +213,7 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     const x1 = width - 62; // and of positive ones
     const x = (v) => x0 + ((v - lo) / (hi - lo)) * (x1 - x0);
     const row = 30;
-    const height = n * row + 46;
+    const height = n * row + 10;
     chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
     svg("line", { x1: x(0), x2: x(0), y1: 4, y2: n * row + 4, class: "uaf-zero" }, chart);
     values.forEach((v, k) => {
@@ -197,16 +237,20 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
       group.addEventListener("pointerenter", () => highlight([k]));
       group.addEventListener("pointerleave", () => highlight(null));
       group.addEventListener("click", () => {
+        if (state.feature === k) return;
         state.feature = k;
         render();
       });
       if (k === state.feature) group.classList.add("is-selected");
     });
-    const total = values.reduce((a, b) => a + b, 0);
-    const sum = text(chart, width / 2, n * row + 34, "", "uaf-sum", "middle");
-    sum.innerHTML =
-      `average ${price(data.baseline)} <tspan class="${sign(total)}">${signed(total)}</tspan>` +
-      ` = this house ${price(data.prediction)}`;
+    // the Shapley values add up to the prediction minus the average, shown as the difference of
+    // the shown prices, so that the line adds up
+    const total = thousands(data.prediction) - thousands(data.baseline);
+    equation.innerHTML = `average ${price(data.baseline)} ${term(total)} = this house ${price(data.prediction)}`;
+    chart.setAttribute(
+      "aria-label",
+      `Bars of the Shapley values of the features: ${features.map((f, k) => `${f.label} ${signed(values[k])}`).join(", ")}.`,
+    );
     return "The Shapley values of the features: how much each moves this house's price away from the average.";
   }
 
@@ -247,19 +291,27 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
       area.setAttribute("d", `${d}L${points.at(-1)[0]} ${height - m.bottom}L${points[0][0]} ${height - m.bottom}Z`);
       lastCurve = points;
     };
-    animate(morph && lastCurve ? 600 : 800, draw, { easing: morph ? ease.inOut : ease.out });
+    if (morph && lastCurve) morphing(600, draw, { easing: ease.inOut });
+    else animate(800, draw, { easing: ease.out });
     for (const node of [guide, marker, label]) {
       if (!still()) node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 300, fill: "backwards" });
     }
-    chart.onpointermove = (event) => {
+    readFrom(chart, (event) => {
       const box = chart.getBoundingClientRect();
       const px = ((event.clientX - box.left) / box.width) * width;
-      const i = clamp(Math.round(((px - m.left) / (width - m.left - m.right)) * (xs.length - 1)), 0, xs.length - 1);
-      readout.textContent = `${features[k].label} ${value(k, xs[i])}: ${price(curve.y[i])}`;
-    };
-    chart.onpointerleave = () => {
-      readout.textContent = "";
-    };
+      const at = xs[0] + ((px - m.left) / (width - m.left - m.right)) * (xs.at(-1) - xs[0]);
+      let i = 0; // the point nearest to the pointer
+      xs.forEach((v, j) => {
+        if (Math.abs(v - at) < Math.abs(xs[i] - at)) i = j;
+      });
+      return `${features[k].label} ${value(k, xs[i])}: ${price(curve.y[i])}`;
+    });
+    chart.setAttribute(
+      "aria-label",
+      `The prediction for this house as ${features[k].label.toLowerCase()} varies from ${value(k, xs[0])} to ` +
+        `${value(k, xs.at(-1))}: between ${price(Math.min(...curve.y))} and ${price(Math.max(...curve.y))}; ` +
+        `at the house's own value, ${value(k)}, ${price(data.prediction)}.`,
+    );
     return `The prediction for this house as ${features[k].label.toLowerCase()} varies and its other features stay (an ICE curve).`;
   }
 
@@ -268,10 +320,17 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     const together = members.length === 1 ? data.shapley[members[0]] : data.groups[keyOf(members)];
     const parts = members.map((k) => data.shapley[k]);
     const sum = parts.reduce((a, b) => a + b, 0);
-    const reach = Math.max(Math.abs(together), parts.reduce((a, b) => a + Math.abs(b), 0), 0.05) * 1.18;
+    // the scale spans zero, the group's value, and the stacked values of its features, with room
+    // for a value's label on either side
+    const up = parts.filter((v) => v > 0).reduce((a, b) => a + b, 0);
+    const down = parts.filter((v) => v < 0).reduce((a, b) => a + b, 0);
+    const lo = Math.min(0, together, down);
+    const hi = Math.max(0, together, up);
     const labelWidth = Math.min(98, width * 0.26);
-    const x = (v) => labelWidth + ((v + reach) / (2 * reach)) * (width - labelWidth - 12);
-    const height = 170;
+    const x0 = labelWidth + (lo < 0 ? 64 : 8);
+    const x1 = width - (hi > 0 ? 66 : 8);
+    const x = (v) => x0 + ((v - lo) / Math.max(hi - lo, 0.05)) * (x1 - x0);
+    const height = 140;
     chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
     svg("line", { x1: x(0), x2: x(0), y1: 14, y2: 128, class: "uaf-zero" }, chart);
     text(chart, 4, 48, "together", "uaf-label");
@@ -289,15 +348,15 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
       },
       { easing: ease.spring },
     );
-    let up = 0;
-    let down = 0;
+    let above = 0;
+    let below = 0;
     parts.forEach((v, j) => {
       const k = members[j];
-      const start = v >= 0 ? up : down;
-      if (v >= 0) up += v;
-      else down += v;
+      const start = v >= 0 ? above : below;
+      if (v >= 0) above += v;
+      else below += v;
       const segment = svg("rect", { y: 94, height: 22, rx: 3, class: `uaf-bar uaf-segment ${sign(v)}`, "data-ids": String(k) }, chart);
-      const tag = text(chart, 0, 109, String(k + 1), "uaf-segment-label", "middle");
+      const tag = text(chart, 0, 109, String(k + 1), `uaf-segment-label ${v >= 0 ? "uaf-on-pos" : "uaf-on-neg"}`, "middle");
       animate(
         600,
         (p) => {
@@ -316,10 +375,17 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     const tick = svg("g", { class: "uaf-sum-tick" }, chart);
     svg("path", { d: "M0 -7 L5 0 L0 7 L-5 0 Z" }, tick);
     animate(500, (p) => tick.setAttribute("transform", `translate(${x(sum * p)} 128) scale(${p})`), { delay: 450, easing: ease.spring });
-    const summary = text(chart, width / 2, 158, "", "uaf-sum", "middle");
-    summary.innerHTML =
-      `${members.map((k) => `<tspan class="${sign(data.shapley[k])}">${signed(data.shapley[k])}</tspan>`).join(" + ")}` +
-      ` = <tspan class="${sign(sum)}">${signed(sum)}</tspan> one by one`;
+    // the sum of the shown values, so that the line adds up
+    const shown = members.map((k) => thousands(data.shapley[k]));
+    const added = shown.reduce((a, b) => a + b, 0);
+    equation.innerHTML =
+      members.length === 1
+        ? `${term(added, true)} alone, as one feature`
+        : `one by one ${terms(shown)} = ${term(added, true)}, together ${term(thousands(together), true)}`;
+    chart.setAttribute(
+      "aria-label",
+      `The group ${names(members)}: ${signed(together)} together, ${signedK(added)} one by one.`,
+    );
     return "The Shapley value of the group, its features taken as one player, beside their Shapley values one by one.";
   }
 
@@ -333,7 +399,9 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     const cell = size / cells;
     const ox = Math.max(56, (width - size) / 2);
     const oy = 8;
-    const height = size + 58;
+    const lx = ox + size + 12;
+    const beside = lx + 62 <= width; // the legend beside the map, or under it
+    const height = size + (beside ? 58 : 92);
     chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
     const flat = grid.flat();
     const lo = Math.min(...flat);
@@ -387,31 +455,39 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     svg("circle", { r: 4.5, class: "uaf-marker-dot" }, marker);
     if (!still()) marker.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 14 * 2 * cells, fill: "backwards" });
     const legend = svg("g", {}, chart);
-    const lx = ox + size + 12;
-    if (lx + 62 <= width) {
-      for (let s = 0; s < 24; s++) {
-        const z = kind === "pure" ? reach - (2 * reach * s) / 23 : hi - ((hi - lo) * s) / 23;
-        const r = svg("rect", { x: lx, y: oy + (size / 24) * s, width: 8, height: size / 24 + 0.5 }, legend);
-        r.style.fill = fill(z);
-      }
-      const [top, bottom] = kind === "pure" ? [signed(reach), signed(-reach)] : [price(hi), price(lo)];
+    const [top, bottom] = kind === "pure" ? [signed(reach), signed(-reach)] : [price(hi), price(lo)];
+    for (let s = 0; s < 24; s++) {
+      const z = kind === "pure" ? reach - (2 * reach * s) / 23 : hi - ((hi - lo) * s) / 23;
+      const r = beside
+        ? svg("rect", { x: lx, y: oy + (size / 24) * s, width: 8, height: size / 24 + 0.5 }, legend)
+        : svg("rect", { x: ox + size - (size / 24) * (s + 1), y: oy + size + 48, width: size / 24 + 0.5, height: 8 }, legend);
+      r.style.fill = fill(z);
+    }
+    if (beside) {
       text(legend, lx + 12, oy + 9, top, "uaf-tick");
       text(legend, lx + 12, oy + size, bottom, "uaf-tick");
+    } else {
+      text(legend, ox, oy + size + 72, bottom, "uaf-tick", "start");
+      text(legend, ox + size, oy + size + 72, top, "uaf-tick", "end");
     }
     const describe = (a, b) =>
       `${features[i].label} ${value(i, surface.x[a])}, ${features[j].label.toLowerCase()} ${value(j, surface.y[b])}: ` +
       (kind === "pure" ? signed(grid[a][b]) : price(grid[a][b]));
     readout.textContent = "";
-    cellsGroup.onpointermove = (event) => {
+    readFrom(cellsGroup, (event) => {
       const target = event.target.closest("rect");
-      if (target?.dataset.a !== undefined) readout.textContent = describe(Number(target.dataset.a), Number(target.dataset.b));
-    };
-    cellsGroup.onpointerleave = () => {
-      readout.textContent = "";
-    };
+      return target?.dataset.a === undefined ? "" : describe(Number(target.dataset.a), Number(target.dataset.b));
+    });
+    const [first, second] = [features[i].label.toLowerCase(), features[j].label.toLowerCase()];
+    chart.setAttribute(
+      "aria-label",
+      kind === "pure"
+        ? `The pure interaction of ${first} and ${second}: from ${signed(lo)} to ${signed(hi)}, zero where either has the house's own value.`
+        : `The prediction for this house as ${first} and ${second} vary: from ${price(lo)} to ${price(hi)}; ${price(data.prediction)} at the house's own values.`,
+    );
     return kind === "pure"
-      ? `The prediction for this house as ${features[i].label.toLowerCase()} and ${features[j].label.toLowerCase()} vary, minus what each does alone: red where the pair raises the price together, blue where it lowers it.`
-      : `The prediction for this house as ${features[i].label.toLowerCase()} and ${features[j].label.toLowerCase()} vary together; the dot is the house.`;
+      ? `The change in the prediction for this house as ${first} and ${second} vary together, minus the changes each makes alone: red where the pair raises the price beyond them, blue where it lowers it.`
+      : `The prediction for this house as ${first} and ${second} vary together; the dot is the house.`;
   }
 
   function drawNetwork(width) {
@@ -419,7 +495,7 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
     const cx = width / 2;
     const cy = height / 2;
-    const radius = Math.min(width / 2 - 70, height / 2 - 34);
+    const radius = Math.min(width / 2 - 84, height / 2 - 34); // room for the labels beside
     const at = (k) => {
       const angle = -Math.PI / 2 + (2 * Math.PI * k) / n;
       return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
@@ -430,6 +506,8 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     const chosen = keyOf(state.pair);
     const [ca, cb] = state.pair.map(at);
     svg("line", { x1: ca[0], y1: ca[1], x2: cb[0], y2: cb[1], class: "uaf-edge-halo" }, chart);
+    const edges = svg("g", {}, chart);
+    const hits = svg("g", {}, chart); // wide, invisible lines over the edges, to point at them
     pairs.forEach(([[a, b], v], rank) => {
       const [x1, y1] = at(a);
       const [x2, y2] = at(b);
@@ -439,7 +517,7 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
         class: `uaf-edge ${sign(v)}${keyOf([a, b]) === chosen ? " is-selected" : ""}`,
         "data-ids": `${a}-${b}`,
         "stroke-width": 1.2 + 9 * strength,
-      }, chart);
+      }, edges);
       edge.style.opacity = 0.18 + 0.82 * strength;
       const length = Math.hypot(x2 - x1, y2 - y1);
       if (!still()) {
@@ -451,15 +529,17 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
           fill: "backwards",
         });
       }
-      edge.addEventListener("pointerenter", () => {
+      const hit = svg("line", { x1, y1, x2, y2, class: "uaf-edge-hit" }, hits);
+      hit.addEventListener("pointerenter", () => {
         highlight([a, b]);
         readout.textContent = `${features[a].label} × ${features[b].label}: ${signed(v)}`;
       });
-      edge.addEventListener("pointerleave", () => {
+      hit.addEventListener("pointerleave", (event) => {
         highlight(null);
-        readout.textContent = "";
+        if (event.pointerType === "mouse") readout.textContent = "";
       });
-      edge.addEventListener("click", () => {
+      hit.addEventListener("click", () => {
+        if (keyOf([a, b]) === chosen) return;
         state.pair = [a, b];
         render();
       });
@@ -488,21 +568,28 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     const v = data.interactions[keyOf([a, b])];
     readout.textContent = "";
     title.querySelector(".uaf-picked").innerHTML = `{${features[a].label}, ${features[b].label}}: <span class="${sign(v)}">${signed(v)}</span>`;
+    const strongest3 = [...pairs].reverse().slice(0, 3);
+    chart.setAttribute(
+      "aria-label",
+      `A network of the features, an edge for each pair, as thick as their Shapley interaction; the strongest: ` +
+        `${strongest3.map(([[p, q], w]) => `${features[p].label} and ${features[q].label} ${signed(w)}`).join(", ")}.`,
+    );
     return "Shapley interactions of order two (k-SII): what two features do together beyond what each does alone. Thicker lines are stronger.";
   }
 
-  function drawMessage(width, message) {
-    chart.setAttribute("viewBox", `0 0 ${width} 120`);
-    const node = text(chart, width / 2, 64, message, "uaf-message", "middle");
-    if (!still()) node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
+  function drawMessage(words) {
+    chartBox.hidden = true;
+    message.hidden = false;
+    message.textContent = words;
+    if (!still()) message.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
     return "";
   }
 
   // -- the title of each view: the units and the space of Definition 2.1 -------------------------------
 
   const TITLES = {
-    "features-numbers": ['{{1}, …, {6}}', "ℝ", "one number per feature"],
-    "features-curves": ['{{1}, …, {6}}', "curves", "one curve per feature"],
+    "features-numbers": [`{{1}, …, {${n}}}`, "ℝ", "one number per feature"],
+    "features-curves": [`{{1}, …, {${n}}}`, "curves", "one curve per feature"],
     "groups-numbers": ["{<i>S</i>}", "ℝ", "one number for the group"],
     "groups-curves": ["{<i>S</i>}", "surfaces", "one surface for the group"],
     "interactions-numbers": ["{{<i>i</i>, <i>j</i>} : <i>i</i> ≠ <i>j</i>}", "ℝ", "one number per pair"],
@@ -514,14 +601,24 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     interactions: "Pick two features.",
   };
 
+  // a group of one feature has a curve, of two a surface, and of more a function the page cannot draw
+  const titleOf = (key) => {
+    const size = state.group.size;
+    if (key !== "groups-curves" || size === 2) return TITLES[key];
+    return size === 1
+      ? ["{<i>S</i>}", "curves", "one curve for the group"]
+      : ["{<i>S</i>}", `functions of ${size} features`, "one function for the group"];
+  };
+  const shapeOf = (key) => (key === "groups-curves" ? `${key}-${Math.min(state.group.size, 3)}` : key);
+
   let lastView = null;
   let lastWidth = 0;
   function render({ animated = true } = {}) {
-    instant = !animated;
     for (const stop of stops) stop();
     stops = [];
     const key = `${state.units}-${state.form}`;
-    const changed = key !== lastView;
+    const changed = shapeOf(key) !== lastView;
+    entering = animated && changed;
     const width = Math.max(260, Math.round(chartBox.clientWidth));
     lastWidth = width;
     const ids = selection();
@@ -530,27 +627,36 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
       chip.setAttribute("aria-pressed", String(ids.includes(k)));
     });
     hint.textContent = HINTS[state.units];
-    const [units, space, words] = TITLES[key];
+    const [units, space, words] = titleOf(key);
     title.innerHTML =
       `<span class="uaf-def"><span class="uaf-cal">𝒮</span> = ${units}, <i>E</i> = ${space}</span>` +
       `<span class="uaf-words">${words}</span><span class="uaf-picked"></span>`;
     chart.replaceChildren();
     chart.onpointermove = null;
+    chart.onpointerdown = null;
     chart.onpointerleave = null;
+    chartBox.hidden = false;
+    message.hidden = true;
+    equation.innerHTML = "";
     readout.textContent = "";
     const morph = !changed && animated;
-    let message;
-    if (key === "features-numbers") message = drawBars(width);
-    else if (key === "features-curves") message = drawCurve(width, state.feature, morph);
-    else if (key === "groups-numbers") message = drawGroup(width, state.group);
+    let said; // the note under the view
+    if (key === "features-numbers") said = drawBars(width);
+    else if (key === "features-curves") said = drawCurve(width, state.feature, morph);
+    else if (key === "groups-numbers") said = drawGroup(width, state.group);
     else if (key === "groups-curves") {
       const members = [...state.group];
-      if (members.length === 1) message = drawCurve(width, members[0], morph);
-      else if (members.length === 2) message = drawHeatmap(width, members, "surface");
-      else message = drawMessage(width, `With ${members.length} features, the explanation is a function of ${members.length} features. Pick two to see it.`);
-    } else if (key === "interactions-numbers") message = drawNetwork(width);
-    else message = drawHeatmap(width, state.pair, "pure");
-    note.textContent = message;
+      if (members.length === 1) said = drawCurve(width, members[0], morph);
+      else if (members.length === 2) said = drawHeatmap(width, members, "surface");
+      else {
+        said = drawMessage(
+          `With ${members.length} features, the explanation is a function of ${members.length} features, ` +
+            "more than a page can draw. Remove features until two are left.",
+        );
+      }
+    } else if (key === "interactions-numbers") said = drawNetwork(width);
+    else said = drawHeatmap(width, state.pair, "pure");
+    note.textContent = said;
     if (key !== "interactions-numbers" && key !== "features-numbers") {
       title.querySelector(".uaf-picked").innerHTML =
         state.units === "features"
@@ -559,8 +665,8 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
             ? `{${names(state.group)}}`
             : `{${names(state.pair)}}`;
     }
-    if (changed && animated && !reducedMotion()) {
-      for (const node of [chart, title, note]) {
+    if (entering && !reducedMotion()) {
+      for (const node of [chart, title, equation, note]) {
         node.animate([{ opacity: 0, transform: "translateY(5px)" }, { opacity: 1, transform: "none" }], {
           duration: 300,
           easing: "cubic-bezier(0.2, 0.7, 0.2, 1)",
@@ -568,7 +674,7 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
       }
     }
     if (pointing) highlight(pointing);
-    lastView = key;
+    lastView = shapeOf(key);
     if (!(key === "features-curves" || (key === "groups-curves" && state.group.size === 1))) lastCurve = null;
   }
 
@@ -581,11 +687,13 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
 
   // the first view draws itself when the illustration is first seen
   let seen = false;
-  kit.watchVisibility(stage, (visible) => {
+  let stopWatching = null;
+  stopWatching = kit.watchVisibility(stage, (visible) => {
     if (visible && !seen) {
       seen = true;
       lastView = null;
       render();
+      stopWatching?.();
     }
   });
 });

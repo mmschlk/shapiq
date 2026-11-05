@@ -4,6 +4,7 @@
 
 .uaf {
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* as narrow as the page, not as its widest switch */
   gap: 1rem;
 }
 
@@ -51,7 +52,7 @@
   align-items: start;
 }
 
-@container (min-width: 40rem) {
+@container (width >= 40rem) {
   .uaf-body {
     grid-template-columns: 13.5rem minmax(0, 1fr);
   }
@@ -64,7 +65,7 @@
   gap: 0.3rem;
 }
 
-@container (max-width: 39.99rem) {
+@container (width < 40rem) {
   .uaf-chips {
     flex-direction: row;
     flex-wrap: wrap;
@@ -119,6 +120,29 @@
   overflow: visible;
 }
 
+/* the sum a view adds up, under it, and a view in words where a page cannot draw it */
+.uaf-equation {
+  margin: 0.35rem 0 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.uaf-equation:empty {
+  display: none;
+}
+
+.uaf-message {
+  margin: 0;
+  padding: 2.2rem 1rem;
+  border: 1px dashed var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  color: var(--shapiq-text-muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
 .uaf-readout {
   min-height: 1.3em;
   margin: 0.25rem 0 0;
@@ -167,26 +191,29 @@ tspan.uaf-neg {
   font-size: 12px;
 }
 
-.uaf-svg text.uaf-pos {
-  fill: var(--shapiq-red);
-}
-
-.uaf-svg text.uaf-neg {
-  fill: var(--shapiq-blue);
-}
-
+/* text in red or blue: their inks, 4.5:1 */
+.uaf-svg text.uaf-pos,
 .uaf-svg tspan.uaf-pos {
-  fill: var(--shapiq-red);
+  fill: var(--shapiq-red-ink);
 }
 
+.uaf-svg text.uaf-neg,
 .uaf-svg tspan.uaf-neg {
-  fill: var(--shapiq-blue);
+  fill: var(--shapiq-blue-ink);
+}
+
+span.uaf-pos {
+  color: var(--shapiq-red-ink);
+  font-weight: 600;
+}
+
+span.uaf-neg {
+  color: var(--shapiq-blue-ink);
+  font-weight: 600;
 }
 
 .uaf-svg .uaf-tick,
-.uaf-svg .uaf-axis,
-.uaf-svg .uaf-sum,
-.uaf-svg .uaf-message {
+.uaf-svg .uaf-axis {
   fill: var(--shapiq-text-muted);
 }
 
@@ -202,10 +229,6 @@ tspan.uaf-neg {
 
 .uaf-svg .uaf-value-big {
   font-size: 15px;
-}
-
-.uaf-svg .uaf-sum {
-  font-size: 12px;
 }
 
 .uaf-zero {
@@ -247,11 +270,16 @@ tspan.uaf-neg {
   stroke-width: 2.5;
 }
 
+/* on a segment of solid red, dark; of solid blue, white */
 .uaf-svg .uaf-segment-label {
-  fill: #ffffff;
+  fill: var(--shapiq-on-red);
   font-size: 11px;
   font-weight: 700;
   pointer-events: none;
+}
+
+.uaf-svg .uaf-segment-label.uaf-on-neg {
+  fill: var(--shapiq-on-blue);
 }
 
 .uaf-sum-tick {
@@ -321,10 +349,17 @@ tspan.uaf-neg {
 
 .uaf-edge {
   stroke-linecap: round;
-  cursor: pointer;
+  pointer-events: none; /* pointed at through its wide line (.uaf-edge-hit) */
   transition:
     opacity var(--shapiq-duration) var(--shapiq-ease),
     filter var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.uaf-edge-hit {
+  stroke: transparent;
+  stroke-linecap: round;
+  stroke-width: 14;
+  cursor: pointer;
 }
 
 .uaf-edge-halo {
@@ -363,8 +398,12 @@ tspan.uaf-neg {
   font-size: 12px;
 }
 
-.uaf-svg .uaf-message {
-  font-size: 13px;
+/* the narrowest phones: shorter switches */
+@container (width < 22rem) {
+  .uaf .shapiq-ill-segment {
+    padding: 0 0.55rem;
+    font-size: 0.8rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

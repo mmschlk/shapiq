@@ -6,6 +6,12 @@
   --shapiq-blue: #4567f2;
   --shapiq-blue-light: #82a9e7;
   --shapiq-lavender: #b3c2e5;
+  /* red and blue for text: their inks (4.5:1 on the page, its raised surface, and its amber
+     highlight, in both themes); on solid red, dark text, on solid blue, white */
+  --shapiq-red-ink: #c62554;
+  --shapiq-blue-ink: #3e5dda;
+  --shapiq-on-red: #111318;
+  --shapiq-on-blue: #ffffff;
   /* the docs' color (docs/STYLE_GUIDE.md): references, the notation, and the features of the
      illustrations; amber itself for lines and fills, its ink for text (5:1 on the page and on its
      soft tint), its soft tint for highlights */
@@ -29,6 +35,8 @@
 }
 
 body[data-theme="dark"] {
+  --shapiq-red-ink: #f787a8;
+  --shapiq-blue-ink: #93a7f7;
   --shapiq-surface: #1a1c23;
   --shapiq-surface-raised: #22252e;
   --shapiq-border: #343846;
@@ -41,6 +49,8 @@ body[data-theme="dark"] {
 
 @media (prefers-color-scheme: dark) {
   body:not([data-theme="light"]) {
+    --shapiq-red-ink: #f787a8;
+    --shapiq-blue-ink: #93a7f7;
     --shapiq-surface: #1a1c23;
     --shapiq-surface-raised: #22252e;
     --shapiq-border: #343846;
