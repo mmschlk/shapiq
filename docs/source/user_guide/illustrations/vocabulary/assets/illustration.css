@@ -3,8 +3,38 @@
    the chips in wrapping rows. Features are amber, the docs' color (docs/STYLE_GUIDE.md). */
 
 .voc {
+  /* as the orders demo's (demos/orders/assets/demo.css): the edges of the model chip, the shadow
+     of the cards, and the edges of the black box's icon, which show on a dark page */
+  --voc-edge: #ccd3e6;
+  --voc-shade: rgba(20, 28, 60, 0.14);
+  --voc-box-edge: #ffffff;
+  position: relative; /* the place of the hidden copy that measures the inputs */
   display: grid;
   gap: 1rem;
+}
+
+body[data-theme="dark"] .voc {
+  --voc-edge: #3b4152;
+  --voc-shade: rgba(0, 0, 0, 0.45);
+  --voc-box-edge: #9aa1b4;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .voc {
+    --voc-edge: #3b4152;
+    --voc-shade: rgba(0, 0, 0, 0.45);
+    --voc-box-edge: #9aa1b4;
+  }
+}
+
+/* a hidden copy of the three columns, on which the script measures the tallest input */
+.voc-probe {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .voc-defs {
@@ -42,24 +72,27 @@
 
 /* -- the three columns -------------------------------------------------------------------------- */
 
+/* the script gives it the height of the tallest input (min-height), in which the columns center */
 .voc-body {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1.4rem;
+  align-content: center;
   align-items: center;
 }
 
-@container (min-width: 40rem) {
+@container (width >= 40rem) {
   .voc-body {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.7fr);
+    grid-template-columns: minmax(min-content, 1.3fr) minmax(0, 1fr) minmax(0, 0.7fr);
     gap: 2.6rem;
   }
 }
 
+/* the wires run in front of the input, behind the chips and the model */
 .voc-input-column {
   position: relative;
-  z-index: 2;
+  z-index: 1;
 }
 
 .voc-input {
@@ -70,7 +103,7 @@
 
 .voc-features {
   position: relative;
-  z-index: 2;
+  z-index: 3;
 }
 
 .voc-chips {
@@ -80,7 +113,7 @@
   gap: 0.3rem;
 }
 
-@container (max-width: 39.99rem) {
+@container (width < 40rem) {
   .voc-features {
     text-align: center;
   }
@@ -101,14 +134,14 @@
 
 .voc-model {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   display: grid;
   justify-items: center;
   gap: 0.75rem;
   text-align: center;
 }
 
-@container (max-width: 39.99rem) {
+@container (width < 40rem) {
   .voc-model {
     align-items: center;
     justify-content: center;
@@ -126,7 +159,8 @@
    corner. Then the flowing dashes to its prediction f(x), on a card ------------------------------ */
 
 .voc-model-box {
-  --voc-chip: #5d6577; /* dark enough for its light words, 4.5:1 */
+  --voc-chip: #5d6577;
+  --voc-chip-quiet: #e3e6eb; /* its quiet words: the title and the tag f, 4.7:1 */
   position: relative;
   display: grid;
   justify-items: center;
@@ -136,7 +170,7 @@
   width: 7.75rem;
   min-height: 6.6rem;
   padding: 1rem 0.5rem 0.55rem;
-  border: 1px solid #ccd3e6;
+  border: 1px solid var(--voc-edge);
   border-radius: 10px;
   background: var(--voc-chip);
   box-shadow:
@@ -151,6 +185,7 @@
 
 .voc-model-box.voc-model-black {
   --voc-chip: #15171d;
+  --voc-chip-quiet: #a9afc0; /* 8.5:1 */
 }
 
 /* while the features arrive, an amber glow: they are what it reads */
@@ -170,7 +205,7 @@
 }
 
 .voc-model-box .voc-tag {
-  color: #a9afc0;
+  color: var(--voc-chip-quiet);
 }
 
 .voc-model-icon {
@@ -199,7 +234,7 @@
 
 .voc-icon-side {
   fill: #15171d;
-  stroke: #ffffff;
+  stroke: var(--voc-box-edge);
   stroke-width: 1;
 }
 
@@ -218,7 +253,7 @@
 }
 
 .voc-model-title {
-  color: #a9afc0;
+  color: var(--voc-chip-quiet);
   font-size: 0.7rem;
   line-height: 1.2;
 }
@@ -279,7 +314,7 @@
   }
 }
 
-@container (max-width: 39.99rem) {
+@container (width < 40rem) {
   .voc-model {
     grid-template-columns: auto auto auto;
   }
@@ -321,7 +356,7 @@
   border: 1px solid var(--shapiq-border);
   border-radius: 10px;
   background: var(--shapiq-surface);
-  box-shadow: 0 1px 3px rgba(20, 28, 60, 0.14);
+  box-shadow: 0 1px 3px var(--voc-shade);
   opacity: 0;
   transition: opacity var(--shapiq-duration) var(--shapiq-ease);
 }
@@ -350,7 +385,7 @@
 .voc-wires {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -372,9 +407,27 @@
   opacity: 0.4;
 }
 
-.voc-wire-dot {
+/* under each wire from the input, a casing in the color of the page: the wire reads in front of
+   what it crosses */
+.voc-wire-casing {
+  fill: none;
+  stroke: var(--color-background-primary, #fff);
+  stroke-linecap: round;
+  stroke-width: 4.5;
+  opacity: 0.85;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+/* the port of a wire on its part: an amber dot in a ring of the page's color */
+.voc-port {
   fill: var(--shapiq-amber);
-  opacity: 0.75;
+  stroke: var(--color-background-primary, #fff);
+  stroke-width: 1.75;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    opacity var(--shapiq-duration) var(--shapiq-ease),
+    transform var(--shapiq-duration) var(--shapiq-ease);
 }
 
 .voc-pulse {
@@ -383,8 +436,13 @@
 }
 
 .voc-pointing .voc-wire,
-.voc-pointing .voc-wire-dot {
+.voc-pointing .voc-wire-casing,
+.voc-pointing .voc-port {
   opacity: 0.12;
+}
+
+.voc-pointing .voc-wire-casing.is-active {
+  opacity: 0.85;
 }
 
 .voc-pointing .voc-wire.is-active {
@@ -392,8 +450,9 @@
   stroke-width: 2.4;
 }
 
-.voc-pointing .voc-wire-dot.is-active {
+.voc-pointing .voc-port.is-active {
   opacity: 1;
+  transform: scale(1.4);
 }
 
 .voc-pointing .voc-chip:not(.is-active) {
@@ -402,7 +461,6 @@
 
 /* -- the inputs --------------------------------------------------------------------------------- */
 
-/* the inputs are opaque: the wires start behind them and come out of their edge */
 .voc-table {
   width: 100%;
   background: var(--shapiq-surface);
@@ -464,7 +522,7 @@
 }
 
 .voc-patch.is-active {
-  fill: rgba(245, 163, 0, 0.32);
+  fill: color-mix(in srgb, var(--shapiq-amber) 32%, transparent);
   stroke: var(--shapiq-amber);
   stroke-width: 4;
 }
@@ -559,6 +617,78 @@
   white-space: nowrap;
 }
 
+/* -- the layouts, over the rules above ---------------------------------------------------------- */
+
+/* wide: the labels of the three columns on one line at the top, and what the columns show centered
+   under them */
+@container (width >= 40rem) {
+  .voc-body {
+    align-content: stretch; /* the one row fills the reserved height */
+    align-items: stretch;
+  }
+
+  .voc-input-column,
+  .voc-features,
+  .voc-model {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .voc-input-column > .voc-input,
+  .voc-features > .voc-chips {
+    margin-block: auto;
+  }
+
+  .voc-model {
+    align-items: center;
+  }
+
+  .voc-model > .voc-model-box {
+    margin-top: auto;
+  }
+
+  .voc-model > .voc-output {
+    margin-bottom: auto;
+  }
+}
+
+/* just wide enough: closer columns, and a tighter table */
+@container (40rem <= width < 47rem) {
+  .voc-body {
+    gap: 2rem;
+  }
+
+  .voc-table {
+    font-size: 0.68rem;
+  }
+
+  .voc-table th,
+  .voc-table td {
+    padding: 0.3rem 0.26rem;
+  }
+}
+
+/* the narrowest phones: a tighter table, and smaller cards for the model and its prediction */
+@container (width < 21rem) {
+  .voc-table {
+    font-size: 0.68rem;
+  }
+
+  .voc-table th,
+  .voc-table td {
+    padding: 0.3rem 0.22rem;
+  }
+
+  .voc-model-box,
+  .voc-output {
+    width: auto;
+    min-width: 6.4rem;
+  }
+
+  .voc-flow {
+    width: 1.1rem;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .voc-flow-dashes::before {

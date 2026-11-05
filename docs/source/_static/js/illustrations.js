@@ -70,15 +70,27 @@
     return () => cancelAnimationFrame(frame);
   };
 
-  // calls back with true when at least `threshold` of the node is visible, and false when not
+  // calls back with true when at least `threshold` of the node is visible, or half of the window
+  // shows it (a node taller than the window, as on a phone or at a high zoom), and with false when
+  // not; returns a function that stops watching
   const watchVisibility = (node, callback, threshold = 0.4) => {
     if (!("IntersectionObserver" in window)) {
       callback(true);
-      return;
+      return () => {};
     }
-    new IntersectionObserver((entries) => callback(entries[0].intersectionRatio >= threshold), {
-      threshold: [0, threshold],
-    }).observe(node);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        const view = entry.rootBounds?.height || window.innerHeight;
+        callback(
+          entry.isIntersecting &&
+            (entry.intersectionRatio >= threshold || entry.intersectionRect.height >= 0.5 * view),
+        );
+      },
+      { threshold: Array.from({ length: 21 }, (_, k) => k / 20) },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
   };
 
   // a radio group of options, as the demos' switches (demos/orders): the one chosen sits in a black

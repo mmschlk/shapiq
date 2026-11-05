@@ -24,16 +24,18 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     [7.2574, 52, 8.2881, 496, 37.85, -122.24],
   ];
   const COLUMNS = [
-    ["Income", "Median income", (v) => v.toFixed(2)],
-    ["Age", "House age", (v) => v.toFixed(0)],
-    ["Rooms", "Rooms", (v) => v.toFixed(2)],
-    ["Pop.", "Population", (v) => v.toFixed(0)],
-    ["Lat.", "Latitude", (v) => v.toFixed(2)],
-    ["Lon.", "Longitude", (v) => v.toFixed(2).replace("-", "−")],
+    // head, name, format, unit (for the chip's title and label), as in the California housing data
+    ["Income", "Median income", (v) => v.toFixed(2), "in $10,000, of the block"],
+    ["Age", "House age", (v) => v.toFixed(0), "in years, the median of the block"],
+    ["Rooms", "Rooms", (v) => v.toFixed(2), "per household, on average"],
+    ["Pop.", "Population", (v) => v.toFixed(0), "of the block"],
+    ["Lat.", "Latitude", (v) => v.toFixed(2), "in degrees north"],
+    ["Lon.", "Longitude", (v) => v.toFixed(2).replace("-", "−"), "in degrees east"],
   ];
   const TOKENS = ["the", "movie", "was", "not", "bad", "at", "all"];
-  const ATOMS = [
-    // symbol, name, x, y: a nitrobenzene, as in the mutagenic molecules of MUTAG
+  const MOLECULE = [
+    // symbol, name, x, y: a nitrobenzene, as in the mutagenic molecules of MUTAG; the ring from
+    // its right atom counterclockwise, then the nitro group
     ...[0, 1, 2, 3, 4, 5].map((k) => {
       const angle = (Math.PI / 3) * k;
       return ["C", "carbon", 112 + 54 * Math.cos(angle), 120 - 54 * Math.sin(angle)];
@@ -42,7 +44,13 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     ["O", "oxygen", 256, 84],
     ["O", "oxygen", 256, 156],
   ];
-  const BONDS = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [0, 6], [6, 7], [6, 8]];
+  const MOLECULE_BONDS = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [0, 6], [6, 7], [6, 8]];
+  // the atoms numbered as their wires leave the molecule (drawWires): the upper ones, which rise,
+  // from left to right, then the lower ones, which drop, from right to left; so the wires reach
+  // their chips without crossing
+  const ORDER = [3, 2, 1, 0, 6, 7, 8, 5, 4];
+  const ATOMS = ORDER.map((k) => MOLECULE[k]);
+  const BONDS = MOLECULE_BONDS.map(([a, b]) => [ORDER.indexOf(a), ORDER.indexOf(b)]);
 
   const MODALITIES = [
     {
@@ -79,9 +87,10 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     },
   ];
 
-  // each build function fills the input panel and returns the features: per feature, the chip's
-  // label and value, its preview, and the parts of the input it lights up (the first is the anchor
-  // of its wire)
+  // each build function fills the input panel (its one element) and returns the features: per
+  // feature, the chip's label and value, its preview, the parts of the input it lights up (the first
+  // is where its chip flies from), and where its wire attaches (drawWires): the part (anchor, else
+  // the first), whether it is round, and its port, "lane" or "center"
   function buildTable(panel) {
     const table = el("table", "voc-table");
     const head = table.createTHead().insertRow();
@@ -108,10 +117,15 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     cell.colSpan = COLUMNS.length;
     cell.textContent = "⋮";
     panel.appendChild(table);
-    return COLUMNS.map(([, name, format], k) => ({
+    // the wires attach to the heads of the columns: the column is the feature
+    return COLUMNS.map(([, name, format, unit], k) => ({
       text: name,
       value: format(HOUSES[0][k]),
+      unit,
       parts: parts[k],
+      anchor: parts[k][1],
+      port: "lane",
+      feet: true,
     }));
   }
 
@@ -135,7 +149,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
         "aria-hidden": "true",
       });
       svg("use", { href: `#${uid}-scene`, width: 300, height: 300 }, preview);
-      return { text: `patch ${k + 1}`, value: "", preview, parts: [patch] };
+      return { text: `patch ${k + 1}`, value: "", preview, parts: [patch], port: "center" };
     });
   }
 
@@ -147,7 +161,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       return span;
     });
     panel.appendChild(sentence);
-    return tokens.map((span, k) => ({ text: `“${TOKENS[k]}”`, value: "", parts: [span] }));
+    return tokens.map((span, k) => ({ text: `“${TOKENS[k]}”`, value: "", parts: [span], port: "lane" }));
   }
 
   function buildGraph(panel) {
@@ -172,6 +186,8 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       text: ATOMS[k][0],
       value: ATOMS[k][1],
       parts: [group],
+      round: true,
+      port: "lane",
     }));
   }
 
@@ -250,7 +266,8 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
   const body = el("div", "voc-body");
   const inputColumn = el("div", "voc-input-column");
   const input = el("div", "voc-input");
-  inputColumn.append(label('input <span class="shapiq-ill-math">x</span>'), input);
+  const INPUT_LABEL = 'input <span class="shapiq-ill-math">x</span>';
+  inputColumn.append(label(INPUT_LABEL), input);
   const features = el("div", "voc-features");
   const chips = el("div", "voc-chips");
   features.append(label("features"), chips);
@@ -291,7 +308,9 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
 
   let current = { features: [], chips: [], wires: [] };
   let pinned = null;
+  let active = null; // the feature pointed at or pinned, which the wires keep when redrawn
   const setActive = (k) => {
+    active = k;
     current.features.forEach((feature, j) => {
       const on = j === k;
       for (const part of feature.parts) part.classList.toggle("is-active", on);
@@ -304,6 +323,8 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
 
   // -- wires ---------------------------------------------------------------------------------------
 
+  // The wires run in front of the input, from a port on each part to its chip, and from the chips
+  // into the model. Wide, they run to the right, narrow, down.
   const center = (rect, base) => [
     rect.left + rect.width / 2 - base.left,
     rect.top + rect.height / 2 - base.top,
@@ -317,6 +338,67 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     return `M${x1} ${y1} C${x1} ${mid} ${x2} ${mid} ${x2} ${y2}`;
   };
 
+  // The wire from a part to its chip. Wide, a part on a lane rises from its top into a lane over the
+  // input (in its upper half) or drops from its bottom into a lane under it (in its lower half),
+  // runs out of the input, and curves to its chip: the further left the part, the outer its lane,
+  // so that no lane crosses the riser of another part, and as the features are numbered, the lanes
+  // reach their chips in order. A patch of the image sends its wire from its center, through the
+  // picture. Narrow, the columns of the table drop from their feet; the other parts send their
+  // wires from their edge (or rim), toward the chip.
+  const lanesOf = (base) => {
+    const content = input.firstElementChild.getBoundingClientRect();
+    const middle = content.top + content.height / 2;
+    const rects = current.features.map((f) => (f.anchor ?? f.parts[0]).getBoundingClientRect());
+    const up = rects.map((r) => r.top + r.height / 2 <= middle + 1);
+    const laned = (j) => current.features[j].port === "lane";
+    const top = Math.min(...rects.filter((r, j) => laned(j) && up[j]).map((r) => r.top));
+    const bottom = Math.max(...rects.filter((r, j) => laned(j) && !up[j]).map((r) => r.bottom));
+    return rects.map((r, k) => {
+      const x = r.left + r.width / 2;
+      const outer = rects.filter((q, j) => laned(j) && up[j] === up[k] && q.left + q.width / 2 > x + 0.5).length;
+      return {
+        up: up[k],
+        x: x - base.left,
+        y: (up[k] ? r.top : r.bottom) - base.top,
+        lane: up[k] ? top - base.top - 9 - 6 * outer : bottom - base.top + 9 + 6 * outer,
+        end: content.right - base.left + 6,
+      };
+    });
+  };
+
+  const lead = (feature, route, to, horizontal, base) => {
+    const [x2, y2] = to;
+    if (feature.port === "lane" && horizontal) {
+      const { up, x, y, lane, end } = route;
+      const r = Math.min(6, Math.abs(y - lane));
+      const mid = (end + x2) / 2;
+      return {
+        from: [x, y],
+        d:
+          `M${x} ${y} V${up ? lane + r : lane - r} Q${x} ${lane} ${x + r} ${lane} H${end} ` +
+          `C${mid} ${lane} ${mid} ${y2} ${x2} ${y2}`,
+      };
+    }
+    const part = (feature.anchor ?? feature.parts[0]).getBoundingClientRect();
+    if (feature.feet) {
+      const from = [part.left + part.width / 2 - base.left, input.firstElementChild.getBoundingClientRect().bottom - base.top];
+      return { from, d: curve(from, to, false) };
+    }
+    const [cx, cy] = center(part, base);
+    const length = Math.hypot(x2 - cx, y2 - cy) || 1;
+    const [ux, uy] = [(x2 - cx) / length, (y2 - cy) / length];
+    let reach = 0;
+    if (feature.round) reach = part.width / 2;
+    else if (feature.port !== "center") {
+      reach = Math.min(part.width / 2 / Math.max(Math.abs(ux), 1e-6), part.height / 2 / Math.max(Math.abs(uy), 1e-6));
+    }
+    const from = [cx + ux * reach, cy + uy * reach];
+    const pull = 0.32 * Math.hypot(x2 - from[0], y2 - from[1]);
+    const c1 = [from[0] + ux * pull, from[1] + uy * pull];
+    const c2 = horizontal ? [x2 - 0.42 * (x2 - from[0]), y2] : [x2, y2 - 0.42 * (y2 - from[1])];
+    return { from, d: `M${from[0]} ${from[1]} C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${x2} ${y2}` };
+  };
+
   // draws the wires from the input to the chips and from the chips to the model; returns the paths
   // into the model, for the pulses
   const drawWires = (animate) => {
@@ -325,10 +407,12 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     wires.replaceChildren();
     const boxRect = box.getBoundingClientRect();
     const horizontal = features.getBoundingClientRect().left > input.getBoundingClientRect().right - 4;
+    const routes = lanesOf(base);
+    const leads = svg("g", {}, wires);
+    const ports = svg("g", {}, wires);
     const into = [];
     current.wires = current.features.map((feature, k) => {
       const chip = current.chips[k].getBoundingClientRect();
-      const from = center(feature.parts[0].getBoundingClientRect(), base);
       const chipIn = horizontal
         ? [chip.left - base.left, chip.top + chip.height / 2 - base.top]
         : [chip.left + chip.width / 2 - base.left, chip.top - base.top];
@@ -338,12 +422,15 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       const modelIn = horizontal
         ? [boxRect.left - base.left, boxRect.top + boxRect.height / 2 - base.top]
         : [boxRect.left + boxRect.width / 2 - base.left, boxRect.top - base.top];
-      const dot = svg("circle", { cx: from[0], cy: from[1], r: 2.6, class: "voc-wire-dot" }, wires);
-      const a = svg("path", { d: curve(from, chipIn, horizontal), class: "voc-wire" }, wires);
+      const { from, d } = lead(feature, routes[k], chipIn, horizontal, base);
+      // a casing in the color of the page under each wire, so that it reads in front of the input
+      const casing = svg("path", { d, class: "voc-wire-casing" }, leads);
+      const a = svg("path", { d, class: "voc-wire" }, leads);
+      const port = svg("circle", { cx: from[0], cy: from[1], r: 3.6, class: "voc-port" }, ports);
       const b = svg("path", { d: curve(chipOut, modelIn, horizontal), class: "voc-wire voc-wire-model" }, wires);
       into.push(b);
       if (animate && !reducedMotion()) {
-        for (const [path, delay] of [[a, 0], [b, 160]]) {
+        for (const [path, delay] of [[casing, 0], [a, 0], [b, 160]]) {
           const length = path.getTotalLength();
           path.style.strokeDasharray = `${length}`;
           path.animate([{ strokeDashoffset: length }, { strokeDashoffset: 0 }], {
@@ -353,11 +440,16 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
             fill: "backwards",
           });
         }
-        dot.animate([{ r: 0 }, { r: 2.6 }], { duration: 300, delay: 28 * k, fill: "backwards" });
+        port.animate([{ transform: "scale(0)" }, { transform: "scale(1.5)", offset: 0.6 }, { transform: "none" }], {
+          duration: 420,
+          delay: 28 * k,
+          easing: "cubic-bezier(0.3, 1.4, 0.5, 1)",
+          fill: "backwards",
+        });
       }
-      return [dot, a, b];
+      return [casing, a, port, b];
     });
-    if (pinned !== null) setActive(pinned);
+    setActive(active);
     return into;
   };
 
@@ -368,7 +460,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, reducedMotion() ? 0 : ms));
   const frame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-  const makeChip = (feature, k) => {
+  const chipOf = (feature, k) => {
     const chip = el("button", "shapiq-ill-chip voc-chip");
     chip.type = "button";
     chip.appendChild(el("span", "shapiq-ill-chip-index", String(k + 1)));
@@ -376,15 +468,28 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     const text = el("span", "shapiq-ill-chip-text", feature.text);
     if (feature.value) text.append(" ", el("span", "shapiq-ill-chip-value", feature.value));
     chip.appendChild(text);
-    chip.setAttribute("aria-label", `Feature ${k + 1}: ${feature.text} ${feature.value}`.trim());
+    return chip;
+  };
+
+  const makeChip = (feature, k) => {
+    const chip = chipOf(feature, k);
+    const described = `${feature.text} ${feature.value} ${feature.unit ?? ""}`.trim();
+    chip.setAttribute("aria-label", `Feature ${k + 1}: ${described}`);
+    if (feature.unit) chip.title = described;
+    chip.setAttribute("aria-pressed", "false");
     chip.addEventListener("pointerenter", () => point(k));
     chip.addEventListener("pointerleave", () => point(null));
     chip.addEventListener("focus", () => point(k));
     chip.addEventListener("blur", () => point(null));
+    // a click pins the feature (or unpins it): the chip stays pressed, and its pair lit
     chip.addEventListener("click", () => {
       stopAutoplay();
       pinned = pinned === k ? null : k;
-      setActive(pinned);
+      current.chips.forEach((other, j) => {
+        other.classList.toggle("is-selected", j === pinned);
+        other.setAttribute("aria-pressed", String(j === pinned));
+      });
+      point(k);
     });
     for (const part of feature.parts) {
       part.addEventListener("pointerenter", () => point(k));
@@ -399,8 +504,10 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     clearTimeout(timer);
     const modality = MODALITIES[next];
     const moving = !reducedMotion();
+    waiting = false;
     pinned = null;
     setActive(null);
+    box.classList.remove("is-reading");
 
     // the old input and its chips leave
     if (index >= 0 && moving && !intro) {
@@ -437,6 +544,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     const made = built.map(makeChip);
     chips.append(...made);
     current = { features: built, chips: made, wires: [] };
+    chips.style.visibility = "";
     const count = root.querySelector(".voc-count");
     count.textContent = String(built.length);
 
@@ -527,12 +635,55 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     });
   };
 
+  // -- the room of the tallest input -----------------------------------------------------------------
+
+  // every input gets the room of the tallest, measured on a hidden copy of the three columns at the
+  // width of the figure, so that the page does not jump while the inputs cycle
+  const probe = el("div", "voc-body voc-probe");
+  probe.setAttribute("aria-hidden", "true");
+  probe.inert = true;
+  root.appendChild(probe);
+  let measured = -1;
+  const reserve = () => {
+    const width = root.clientWidth;
+    if (!width || width === measured) return;
+    measured = width;
+    let tallest = 0;
+    for (const modality of MODALITIES) {
+      const panel = el("div", "voc-input");
+      const column = el("div", "voc-input-column");
+      column.append(label(INPUT_LABEL), panel);
+      const list = el("div", "voc-chips");
+      const listColumn = el("div", "voc-features");
+      listColumn.append(label("features"), list);
+      list.append(...modality.build(panel).map(chipOf));
+      const copy = model.cloneNode(true);
+      copy.querySelector(".voc-model-name").textContent = modality.model.short;
+      copy.querySelector(".voc-model-title").textContent = modality.model.title;
+      copy.querySelector(".voc-model-box").classList.toggle("voc-model-black", modality.model.icon === "box");
+      copy.querySelector(".voc-output-label").textContent = modality.output[0];
+      copy.querySelector(".voc-output-value").textContent = modality.output[1](1);
+      probe.replaceChildren(column, listColumn, copy);
+      tallest = Math.max(tallest, probe.getBoundingClientRect().height);
+    }
+    probe.replaceChildren();
+    body.style.minHeight = `${Math.ceil(tallest)}px`;
+  };
+  reserve();
+  document.fonts?.ready.then(() => {
+    measured = -1;
+    reserve();
+  });
+
   // -- cycling through the inputs ------------------------------------------------------------------
 
+  // An input stays for DWELL, then the next comes. While the reader points at the illustration, it
+  // is off-screen, or the tab is hidden, the cycle rests, and when the reader is back, the input
+  // stays for a full DWELL again.
   let autoplay = !reducedMotion();
   let visible = false;
   let hovering = false;
-  let started = false;
+  let resting = false;
   let timer = 0;
   const DWELL = 3800;
   const stopAutoplay = () => {
@@ -541,42 +692,47 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
   };
   const scheduleNext = () => {
     clearTimeout(timer);
+    resting = false;
     if (!autoplay) return;
-    timer = setTimeout(function tick() {
+    timer = setTimeout(() => {
       if (!autoplay) return;
-      if (!visible || hovering || document.hidden) {
-        timer = setTimeout(tick, 600);
-        return;
-      }
-      show((index + 1) % MODALITIES.length);
+      if (!visible || hovering || document.hidden) resting = true;
+      else show((index + 1) % MODALITIES.length);
     }, DWELL);
+  };
+  const resume = () => {
+    if (resting && visible && !hovering && !document.hidden) scheduleNext();
   };
   stage.addEventListener("pointerenter", () => {
     hovering = true;
   });
   stage.addEventListener("pointerleave", () => {
     hovering = false;
+    resume();
   });
+  document.addEventListener("visibilitychange", resume);
   stage.addEventListener("focusin", stopAutoplay);
 
   new ResizeObserver(() => {
+    reserve();
     if (current.chips.length && current.wires.length) drawWires(false);
   }).observe(body);
 
-  // the first input waits, without its chips, until the illustration is seen
+  // The first input waits, without its chips (hidden, so not focusable either), until the
+  // illustration is seen; then it plays, unless the reader has picked an input before.
+  let waiting = false;
   if (reducedMotion()) {
     show(0);
   } else {
     show(0, { intro: true });
     run += 1; // stop that first run after its setup: it plays when seen
-    for (const chip of current.chips) chip.style.opacity = "0";
+    chips.style.visibility = "hidden";
     showPrediction(false);
+    waiting = true;
   }
   watchVisibility(stage, (seen) => {
     visible = seen;
-    if (seen && !started && !reducedMotion()) {
-      started = true;
-      show(0, { intro: true });
-    }
+    if (seen && waiting) show(index, { intro: true });
+    resume();
   });
 });
