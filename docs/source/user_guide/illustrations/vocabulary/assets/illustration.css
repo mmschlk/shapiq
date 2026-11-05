@@ -230,6 +230,12 @@
   width: 2px;
   height: 1.3rem;
   margin-bottom: 0.45rem;
+  opacity: 0; /* with the prediction (illustration.js) */
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-flow.is-shown {
+  opacity: 1;
 }
 
 .voc-flow-dashes {
@@ -553,11 +559,6 @@
   white-space: nowrap;
 }
 
-.voc-count {
-  display: inline-block;
-  font-weight: 700;
-  color: var(--shapiq-amber-ink);
-}
 
 @media (prefers-reduced-motion: reduce) {
   .voc-flow-dashes::before {

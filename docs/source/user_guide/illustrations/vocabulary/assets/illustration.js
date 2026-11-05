@@ -273,12 +273,17 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     el("span", "voc-output-value"),
   );
   model.append(label('model <span class="shapiq-ill-math">f</span>'), box, flow, output);
+  // the prediction, and the flowing dashes to it, come and go together
+  const showPrediction = (shown) => {
+    output.classList.toggle("is-shown", shown);
+    flow.classList.toggle("is-shown", shown);
+  };
   const wires = svg("svg", { class: "voc-wires", "aria-hidden": "true" });
   body.append(inputColumn, features, model, wires);
 
   const foot = el("p", "voc-foot");
   foot.innerHTML =
-    'Different inputs, one vocabulary: the features <span class="voc-set"><i>N</i>&#8202;=&#8202;{1,&#8202;…,&#8202;<span class="voc-count"></span>}</span>.';
+    'Different inputs, one vocabulary: the features <span class="voc-set"><i>D</i>&#8202;=&#8202;{1,&#8202;…,&#8202;<span class="voc-count"></span>}</span>.';
   root.append(head, body, foot, defs);
   stage.appendChild(root);
 
@@ -407,7 +412,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
           fill: "forwards",
         }),
       );
-      for (const node of [input, wires, output]) {
+      for (const node of [input, wires, output, flow]) {
         node.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards" });
       }
       await wait(260);
@@ -422,11 +427,11 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     box.classList.toggle("voc-model-black", modality.model.icon === "box");
     output.querySelector(".voc-output-label").textContent = modality.output[0];
     output.querySelector(".voc-output-value").textContent = modality.output[1](1);
-    output.classList.remove("is-shown");
+    showPrediction(false);
     input.replaceChildren();
     chips.replaceChildren();
     wires.replaceChildren();
-    for (const node of [input, wires, output]) node.getAnimations().forEach((a) => a.cancel());
+    for (const node of [input, wires, output, flow]) node.getAnimations().forEach((a) => a.cancel());
 
     const built = modality.build(input);
     const made = built.map(makeChip);
@@ -437,7 +442,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
 
     if (!moving) {
       drawWires(false);
-      output.classList.add("is-shown");
+      showPrediction(true);
       return;
     }
 
@@ -445,10 +450,6 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     input.animate([{ opacity: 0, transform: "scale(0.97)" }, { opacity: 1, transform: "none" }], {
       duration: 380,
       easing: "cubic-bezier(0.2, 0.7, 0.2, 1)",
-    });
-    count.animate([{ transform: "scale(1.6)", opacity: 0.4 }, { transform: "none", opacity: 1 }], {
-      duration: 420,
-      easing: "cubic-bezier(0.3, 1.4, 0.5, 1)",
     });
     for (const chip of made) chip.style.opacity = "0";
     await frame();
@@ -489,7 +490,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
         duration: 420,
         easing: "cubic-bezier(0.3, 1.4, 0.5, 1)",
       });
-      output.classList.add("is-shown");
+      showPrediction(true);
       const value = output.querySelector(".voc-output-value");
       output.animate([{ opacity: 0, transform: "translateY(6px) scale(0.9)" }, { opacity: 1, transform: "none" }], {
         duration: 460,
@@ -569,7 +570,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     show(0, { intro: true });
     run += 1; // stop that first run after its setup: it plays when seen
     for (const chip of current.chips) chip.style.opacity = "0";
-    output.classList.remove("is-shown");
+    showPrediction(false);
   }
   watchVisibility(stage, (seen) => {
     visible = seen;

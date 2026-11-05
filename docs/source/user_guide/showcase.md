@@ -149,5 +149,5 @@ or the conditional distribution, is the topic of {doc}`framework/index`.
 {cite:t}`Fumagalli.2025` on the unified framework of {doc}`framework/index`.
 ```
 
-[^notation]: {cite:t}`Muschalik.2026` writes $D = \{1, \dots, d\}$ for the features; this guide
-    writes $\players$ and $\nplayers$, as for the players of a game.
+[^notation]: As {cite:t}`Muschalik.2026` and {cite:t}`Fumagalli.2025`, this guide writes the
+    features as $\players = \{1, \dots, \nplayers\}$; in a game, they are its players.

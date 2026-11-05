@@ -410,8 +410,8 @@ myst_enable_extensions = ["dollarmath", "amsmath"]
 # notation-<macro>): their macro marks them with the class shapiq-notation-<macro>, and
 # _static/js/notation.js turns the marked symbols into links. user_guide/README.md lists them.
 _NOTATION = {
-    "players": "N",  # the players, i.e. the features of the model
-    "nplayers": "n",  # the number of players
+    "players": "D",  # the players, i.e. the features of the model, as in the thesis and the papers
+    "nplayers": "d",  # the number of players
     "featurespace": r"\mathcal{X}",  # the feature space: the inputs of the model
     "outputspace": r"\mathcal{Y}",  # the output space: what the model predicts
     "model": "f",  # the model to explain, lowercase as in the demos

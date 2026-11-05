@@ -33,8 +33,8 @@ row in `notation.md` that starts with `<span id="notation-<macro>"></span>`.
 
 | Macro | Renders | Meaning |
 | --- | --- | --- |
-| `\players` | $N$ | the players (features) |
-| `\nplayers` | $n$ | the number of players |
+| `\players` | $D$ | the players (features) |
+| `\nplayers` | $d$ | the number of players |
 | `\featurespace` | $\mathcal{X}$ | the feature space |
 | `\outputspace` | $\mathcal{Y}$ | the output space |
 | `\model` | $f$ | the model |
