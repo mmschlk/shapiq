@@ -80,8 +80,7 @@ interaction explains more of the model, up to the full decomposition, which is t
 .. container:: orders-demo-caption-text
 
    One prediction, explained at every order of interaction, and how much of the model each order
-   explains. :doc:`Step by step <introduction/how-much-explained>` ·
-   :doc:`More about this demo <demos/orders/index>`.
+   explains. :doc:`Step by step, and how it was computed <introduction/how-much-explained>`.
 
 
 Install

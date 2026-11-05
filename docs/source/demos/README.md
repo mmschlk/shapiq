@@ -11,7 +11,8 @@ run with the docs: its data is computed by hand and committed.
 demos/
 ├── index.rst          the Demos page: a card per demo, and the toctree
 └── <name>/
-    ├── index.rst      the demo's page: the demo (`.. shapiq-demo:: <name>`) and its write-up
+    ├── index.rst      the demo's page: the demo (`.. shapiq-demo:: <name>`) and its write-up (the
+    │                  orders demo has none: its card opens the guide that builds it up)
     ├── README.md      optional: notes for maintainers on how the demo is built and embedded
     ├── assets/        what the page loads: demo.js, demo.css and the demo's data
     └── compute/       the scripts that computed the data, with a README on how to run them

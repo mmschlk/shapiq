@@ -1,6 +1,6 @@
 # How the orders demo was computed
 
-These scripts computed the data of the [orders demo](https://shapiq.readthedocs.io/en/latest/demos/orders/index.html)
+These scripts computed the data of the [orders demo](https://shapiq.readthedocs.io/en/latest/introduction/how-much-explained.html)
 (`../assets/data.js`): one prediction explained at every order of interaction, from the Shapley
 values to the full decomposition. They are run by hand, once; the docs only show their result.
 

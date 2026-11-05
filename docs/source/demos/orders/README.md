@@ -2,8 +2,9 @@
 
 This file explains how the orders demo is built, embedded and changed. It is for maintainers and
 coding agents, not readers of the docs. It is not a page of the docs (`exclude_patterns` in
-`docs/source/conf.py`). What the demo means is on its page, `index.rst`. How its data was computed
-is in `compute/README.md`.
+`docs/source/conf.py`). The demo has no page of its own: what it means is on the guide
+`introduction/how-much-explained.rst`, which builds it up step by step and ends with how it was
+computed. How its data was computed is in `compute/README.md`.
 
 The demo explains one prediction at every order of interaction, from the Shapley values (order 1)
 to the full decomposition (order n). The explanations are drawn as layers floating above the
@@ -24,10 +25,9 @@ self-contained script fills every container on a page.
 | `assets/demo.css` | All styles, scoped under `.orders-demo`. Colors are custom properties (`--orders-*`) on `.orders-demo`, with dark-mode overrides. |
 | `assets/data.js` | The data: `window.SHAPIQ_ORDERS = {...}`, written by `compute/pack.py`. Never edit it by hand. |
 | `compute/` | The scripts that computed the data, and `compute/README.md` on how to run them. They are run by hand, not by the docs build. |
-| `index.rst` | The demo's page: the demo, and a write-up of what it shows and how it was computed. |
-| `../index.rst` | The Demos gallery: one card per demo, with `/_static/images/hero_orders_demo.png` as this demo's card image. |
+| `../index.rst` | The Demos gallery: one card per demo. This demo's card shows `/_static/images/hero_orders_demo.png` and opens the guide below. |
 | `../../index.rst` | The landing page, which embeds the full demo. |
-| `../../introduction/how-much-explained.rst` | The write-up that builds the figure up step by step: five demos, one per `:step:`. |
+| `../../introduction/how-much-explained.rst` | The guide, and the demo's page: it builds the figure up step by step (five demos, one per `:step:`, the last one all of it), and after a line, "Further Information": how the fit is measured, the examples, how they were computed, and how to run it again. |
 | `../../_static/images/hero_orders.png` | The static figure. It is shown without JavaScript, and when the demo cannot start. |
 | `../../_static/images/hero_orders_demo.png` | The gallery card's image: a screenshot of the wide-screen layout, 1952 x 1252, the same size as the FIxLIP card's. |
 | `../../_ext/shapiq_demos.py` | The Sphinx extension behind `.. shapiq-demo::`. It is shared by all demos (see `../README.md`). |
@@ -250,8 +250,8 @@ problem's card.
    python -m sphinx -b html -D plot_gallery=0 docs/source docs/build/html
    ```
 
-   `-D plot_gallery=0` skips running the examples. The demo is on `index.html`,
-   `demos/orders/index.html` and `introduction/how-much-explained.html`.
+   `-D plot_gallery=0` skips running the examples. The demo is on `index.html` and
+   `introduction/how-much-explained.html`.
 
 2. **Iterate**: after a full build once, copy `assets/demo.js` and `assets/demo.css` into
    `docs/build/html/_static/demos/orders/` and reload the page. A change to `data.js` changes
@@ -262,8 +262,8 @@ problem's card.
    | Viewport | Page | What it covers |
    |---|---|---|
    | 1440 x 900, and a short window such as 1440 x 700 | `index.html` | Beside the layers: the stack and the card fit the window, and the card scales with the stack. |
-   | 1280 x 800 | `demos/orders/index.html` | The docs' content width, beside the layers. |
-   | 390 x 844, 360 x 740 | all three pages | Phones: the stepper, no horizontal overflow. |
+   | 1280 x 800 | `introduction/how-much-explained.html` | The docs' content width, beside the layers (the last step). |
+   | 390 x 844, 360 x 740 | both pages | Phones: the stepper, no horizontal overflow. |
    | any | `introduction/how-much-explained.html` | The five steps. |
 
    For each, explain the demo (click the chip), step through the examples, point at layers, and

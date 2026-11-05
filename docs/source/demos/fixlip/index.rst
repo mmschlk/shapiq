@@ -169,7 +169,7 @@ Every coalition costs one pass of the image model and one of the text model, so 
 explanations, with 10,000 coalitions each, took 5 to 10 minutes on four CPU cores. How faithful an
 explanation is shows in the demo, as a bar under it: the :math:`R^2` of its main effects and
 interactions on 512 coalitions it was not fit to, with a word for it as in the
-:doc:`orders demo <../orders/index>` (very good from 0.95, good from 0.8, workable from 0.6).
+:doc:`orders demo <../../introduction/how-much-explained>` (very good from 0.95, good from 0.8, workable from 0.6).
 
 Run it again
 ------------
