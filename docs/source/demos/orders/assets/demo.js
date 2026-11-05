@@ -811,9 +811,9 @@
     // apart from the arrow, at the mechanism's height, its own handle, on a thinner, orange arrow up
     // to the input: the mechanism, which gives the input its prediction
     const railMechLine = el("span", "orders-demo-rail-mech-line");
-    // and its label beside it, as the arrow's, on two lines (the arrow is short)
+    // and its label beside it, as the arrow's
     const railMechLabel = el("span", "orders-demo-rail-label orders-demo-rail-mech-label");
-    railMechLabel.append("the mechanism", el("br"), "behind the model");
+    railMechLabel.append("model behavior");
     railMechLabel.setAttribute("aria-hidden", "true");
     const railMech = el("span", "orders-demo-rail-mech");
     railMech.setAttribute("aria-hidden", "true"); // (the mechanism's row serves the keyboard)
