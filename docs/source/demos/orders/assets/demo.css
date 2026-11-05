@@ -8,6 +8,7 @@
   margin: 1.5rem 0 1rem;
   container-type: inline-size; /* the layout follows the demo's width, not the window's */
   isolation: isolate; /* the sheets' and the slider's z-index stay inside the demo, under the page's */
+  -webkit-tap-highlight-color: transparent; /* a tap shows what it points at, no box over the layers */
   /* the docs' tokens (tokens.css, Furo), with fallbacks for a page without them */
   --orders-ink: var(--color-foreground-primary, #1b1e27);
   --orders-muted: var(--color-foreground-secondary, #5b6275);
@@ -389,10 +390,19 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-stage {
   position: relative;
   overflow-x: clip; /* a stack swiped aside does not widen the page */
-  /* a swipe sideways steps through the examples (demo.js), up or down scrolls the page; Safari,
-     which knows no pinch-zoom here, keeps the first */
+  /* a swipe sideways steps through the examples (demo.js), up or down scrolls the page */
   touch-action: pan-y;
   touch-action: pan-y pinch-zoom;
+}
+
+/* (Safari knows no pinch-zoom here, and pan-y alone would keep a pinch from zooming the page: there,
+   the browser's own, and a swipe sideways is kept from it by demo.js) */
+@supports not (touch-action: pinch-zoom) {
+  .orders-demo-stage,
+  .orders-demo-rail,
+  .orders-demo-plot-cover {
+    touch-action: auto;
+  }
 }
 
 /* the icons: lines in the text's color; the black box solid, its sides shaded */
@@ -818,6 +828,13 @@ body[data-theme="dark"] .orders-demo {
   transition:
     background 520ms var(--orders-ease),
     color 520ms var(--orders-ease);
+}
+
+/* (where color-mix is unknown, Safari before 16.2, the chip keeps its color, and its words show) */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .orders-demo-wire-chip {
+    background: var(--orders-chip);
+  }
 }
 
 .orders-demo-wire-chip.orders-demo-chip-gray {
@@ -1795,6 +1812,16 @@ body[data-theme="dark"] .orders-demo {
   overflow: hidden;
 }
 
+/* the example chosen, said once to a screen reader (demo.js): out of view, and out of the grid */
+.orders-demo-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* at rest, under the card: only its edge shows below the card's */
 .orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
   opacity: 1;
@@ -1835,7 +1862,9 @@ body[data-theme="dark"] .orders-demo {
   bottom: 0;
   left: 0;
   cursor: pointer;
-  touch-action: none; /* dragging the handle does not scroll the page */
+  /* a drag up or down the column scrolls the page, a pinch zooms it; the handle's drags it */
+  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 /* the line darkens downwards, to its arrowhead: the explanations grow more complex (thin, as the
@@ -1939,12 +1968,21 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-ink);
   box-shadow: 0 1px 4px var(--orders-shade);
   cursor: grab;
+  touch-action: none; /* dragging the handle does not scroll the page */
   transition:
     translate 320ms var(--orders-settle),
     scale var(--orders-duration) var(--orders-ease),
     opacity var(--orders-duration) var(--orders-ease),
     background var(--orders-duration) var(--orders-ease),
     box-shadow var(--orders-duration) var(--orders-ease);
+}
+
+/* (a finger wide where it is touched: a drag starts at the handle, on a touch screen) */
+.orders-demo-thumb::before {
+  position: absolute;
+  inset: -15px;
+  border-radius: 50%;
+  content: "";
 }
 
 /* at rest, no circle is filled, and no handle shows above them (but for the keyboard's focus) */
@@ -2532,10 +2570,13 @@ body[data-theme="dark"] .orders-demo {
   cursor: crosshair;
   pointer-events: all;
   touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .orders-demo * {
+  .orders-demo *,
+  .orders-demo *::before,
+  .orders-demo *::after {
     transition: none !important;
     animation: none !important;
   }

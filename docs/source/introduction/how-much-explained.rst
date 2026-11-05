@@ -67,15 +67,15 @@ and see the fit rise.
 Every Order
 -----------
 
-Between order 4 and the last order, as many as there are players, lie blank layers, one for every
-order; point at one to see its explanation. The last layer is the full decomposition: the
+Between order 4 and the last order, as many as there are players, lie blank layers, standing for
+the orders in between; point at one to see an order's explanation. The last layer is the full decomposition: the
 mechanism, explained exactly, with :math:`R^2 = 1`, unless it is estimated, when what it falls
 short of is the estimation gap.
 
 .. shapiq-demo:: orders
    :step: full
    :fallback: images/hero_orders.png
-   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers for the orders 5 to 29, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
+   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 29, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
 
 
 Read More

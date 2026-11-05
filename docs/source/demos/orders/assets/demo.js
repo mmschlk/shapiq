@@ -103,8 +103,13 @@
   // column as wide, or, where they are small, as wide as its words need at the least (rem)
   const FACE_BESIDE = 0.8;
   const WORDS_BESIDE = 14;
-  // pixels: below the full stack beside its card, the room left in the window
+  // pixels: below the full stack beside its card, the room left in the window; and with the card
+  // above the stack, the room the stack leaves of the window's height
   const WINDOW_MARGIN = 24;
+  const WINDOW_ROOM = 96;
+  // the window's height, without what a phone's toolbars take as they come and go (they would
+  // resize the stack as the page scrolls)
+  const viewportHeight = () => document.documentElement.clientHeight || window.innerHeight;
   // milliseconds: how long a layer takes to move to its place (demo.css: --orders-move)
   const MOVE = 640;
   // beside the stack, the edges of the light out of the chip: their angle from the vertical
@@ -612,8 +617,13 @@
   let INDEX = "SII";
   let plots = 0; // the demos' plots on the page, for ids of their own
 
-  function start(root, data) {
+  function start(root, data, life) {
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
+    // the demo's observers, for as long as it lives (its life ends where it cannot start)
+    const watch = (observer) => {
+      life?.addEventListener("abort", () => observer.disconnect(), { once: true });
+      return observer;
+    };
     // what is pointed at: a layer (its index), or the blank layer of an order between
     const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
     // the step of the figure it shows (data-step), or all of it ("all", as the docs show it, or
@@ -632,6 +642,8 @@
     // problem alone, and all of it). As the plan picks it
     const select = root.dataset.select ?? { mechanism: "mechanism", shapley: "1", interactions: "2" }[part] ?? "none";
     const restPick = (example) => {
+      // (unexplained, nothing: the chip stays dark, the problem alone)
+      if (!revealed) return null;
       if (select === "mechanism") return { mechanism: true };
       const index =
         select === "full"
@@ -654,7 +666,7 @@
     // the demo starts with the problem alone (unless data-reveal="open"): a click on the model's chip
     // explains it, and the explanation is built under it, from the top down; once explained, every
     // example is. A step shows its part at once (the problem's, the problem alone, for good)
-    let revealed = root.dataset.reveal === "open" || (part !== "all" && part !== "problem");
+    let revealed = part !== "problem" && (root.dataset.reveal === "open" || part !== "all");
     // the floating layers unfold for good, once: after the model was clicked to explain it, once they
     // have come in and are in view (or tapped at rest); before, only while one is pointed at
     let unfoldedForGood = false;
@@ -697,8 +709,8 @@
       button.addEventListener("click", () => step(delta));
       return button;
     };
+    // (the example chosen is said by the demo's status line, below, in every layout)
     const shown = el("span", "orders-demo-step-shown");
-    shown.setAttribute("aria-live", "polite");
     stepper.append(stepButton(-1, "Previous example", "M10 3.5 5.5 8l4.5 4.5"), shown, stepButton(1, "Next example", "M6 3.5l4.5 4.5L6 12.5"));
     bar.append(switcher, stepper);
 
@@ -710,7 +722,10 @@
     // fits the model: it opens the black box, all the way where it is exact
     const plan = el("figure", "orders-demo-plan");
     const flow = el("div", "orders-demo-flow");
-    flow.setAttribute("aria-live", "polite");
+    // (no live region: its parts flip through random letters to the next example's; a line out of
+    // view says the example chosen instead, once: the status, below)
+    const status = el("span", "orders-demo-status");
+    status.setAttribute("aria-live", "polite");
     const cast = document.createElementNS(SVG, "svg"); // the light out of the chip
     cast.setAttribute("class", "orders-demo-cast");
     cast.setAttribute("aria-hidden", "true");
@@ -866,7 +881,7 @@
     const blur = add(add(blurs, "defs"), "filter", { id: `orders-blur-${plotId}`, x: "-20%", y: "-20%", width: "140%", height: "140%" });
     add(blur, "feGaussianBlur", { stdDeviation: 1.6 });
     root.style.setProperty("--orders-blur", `url(#orders-blur-${plotId})`);
-    root.append(bar, planWindow, stage, dots, blurs);
+    root.append(bar, planWindow, stage, dots, blurs, status);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
@@ -905,8 +920,11 @@
       const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
       // the floating layers' card, below them (without them, on top), and the mechanism below it
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
-      // the room holds the layers, and air beside them; beside the card, the window holds them too
-      const side = Math.max(110, Math.min(360, room / ((1 + (besides ? ROOMY_BESIDE : ROOMY)) * spread), tallSide));
+      // the room holds the layers, and air beside them; beside the card, the window holds them too,
+      // and with the card above them, the window holds them but for a little room (on a phone on
+      // its side, the stack is not taller than the screen)
+      const windowSide = besides ? tallSide : (viewportHeight() - WINDOW_ROOM) / (TILT * spread + layers + DEPTH);
+      const side = Math.max(110, Math.min(360, room / ((1 + (besides ? ROOMY_BESIDE : ROOMY)) * spread), windowSide));
       const sheetHeight = side * TILT * spread;
       const stack = sheetHeight + (layers + DEPTH) * side;
       return {
@@ -934,7 +952,7 @@
       const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
       const above = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
-      const tall = window.innerHeight - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
+      const tall = viewportHeight() - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
       const free = root.clientWidth - 1.25 * rem;
       const need = (layersWidth, lead, gap, plot) => {
@@ -1093,8 +1111,12 @@
       showPlan();
       [planView, planText].forEach((node) => flap(node, 300));
       const choice = ++chosen;
-      // every demo of the page follows (out of view, at once)
-      if (tell) document.dispatchEvent(new CustomEvent(EXAMPLE_EVENT, { detail: { example: example.id } }));
+      // every demo of the page follows (out of view, at once); the one chosen in says so, once
+      if (tell) {
+        const { label, model, problem } = example;
+        status.textContent = `${label}: ${model.title}, ${problem.output} (${problem.value})`;
+        document.dispatchEvent(new CustomEvent(EXAMPLE_EVENT, { detail: { example: example.id } }));
+      }
       if (reducedMotion() || (!tell && !inView)) {
         shift(0);
         root.style.removeProperty("--orders-swipe-opacity");
@@ -1242,7 +1264,8 @@
         const svg = document.createElementNS(SVG, "svg");
         svg.setAttribute("viewBox", "0 0 100 100");
         svg.setAttribute("class", "orders-demo-face");
-        drawFace(svg, example, sheet, "marks", `orders-${plotId}-${example.id}-between-${key}`);
+        // (its ids without spaces, which would end a url(#...) reference)
+        drawFace(svg, example, sheet, "marks", `orders-${plotId}-${example.id}-between-${sheet.order}${sheet.full ? "-full" : ""}`);
         betweenMarks.set(key, svg);
       }
       return betweenMarks.get(key);
@@ -1325,8 +1348,11 @@
       // (and, once explained, no animation left on it, whatever a browser keeps running)
       chip.style.animation = calls ? "" : "none";
       if (!calls) {
+        // (explained from the keyboard, its focus goes on to the slider, not back to the page)
+        const focused = document.activeElement === chip;
         for (const name of ["role", "tabindex", "aria-label"]) chip.removeAttribute(name);
         explainTab.remove();
+        if (focused) requestAnimationFrame(() => thumb.focus({ preventScroll: true }));
       } else {
         chip.setAttribute("role", "button");
         chip.setAttribute("aria-label", `${model.title}, ${model.detail}: explain its prediction`);
@@ -1616,12 +1642,14 @@
     let unfoldAfter = Infinity;
     let unfolding = 0;
     let stageInView = false;
-    new IntersectionObserver(
-      ([entry]) => {
-        stageInView = entry.isIntersecting;
-        unfold();
-      },
-      { threshold: 0.45 },
+    watch(
+      new IntersectionObserver(
+        ([entry]) => {
+          stageInView = entry.isIntersecting;
+          unfold();
+        },
+        { threshold: 0.45 },
+      ),
     ).observe(stage);
     function unfold() {
       clearTimeout(unfolding);
@@ -2177,23 +2205,12 @@
         if (pin) toggle(active, blank);
         else point(active, blank);
       };
-      let touched = false;
       cover.addEventListener("pointermove", (event) => {
         if (event.pointerType === "mouse" && !state.pinned) go(nearest(event), false);
       });
-      cover.addEventListener("pointerdown", (event) => {
-        touched = event.pointerType !== "mouse";
-        if (!touched) return;
-        state.pinned = true;
-        go(nearest(event), false);
-      });
-      cover.addEventListener("click", (event) => {
-        if (touched) {
-          touched = false;
-          return;
-        }
-        go(nearest(event), true);
-      });
+      // a click, or a tap, pins the order there, and lets it go again (a touch that scrolls the page
+      // instead is no tap: it leaves what is pointed at as it was)
+      cover.addEventListener("click", (event) => go(nearest(event), true));
       sideMarks = { points, leads, ring, value, x, left: x0 };
       mark();
     }
@@ -2266,10 +2283,19 @@
       const reach = stops.slice(firstStop());
       return reach.reduce((best, stop) => (Math.abs(stop.y - y) < Math.abs(best.y - y) ? stop : best), reach[0]);
     };
+    // with a mouse, a press anywhere on the slider goes to the stop there, and drags on; on a touch
+    // screen, a drag starts at the handle (demo.css: a finger wide), and anywhere else a touch may
+    // scroll the page, so only a tap (a click) goes to the stop there
+    let railTap = false;
+    // (the pointer that drags the handle, if one does: a touch is captured by what it lands on
+    // anyway, so capture alone does not tell a drag from a scroll)
+    let dragging = null;
     rail.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || event.target === railMech) return;
+      railTap = event.pointerType !== "mouse" && event.target !== thumb;
+      if (event.button !== 0 || event.target === railMech || railTap) return;
       event.preventDefault();
       rail.setPointerCapture(event.pointerId);
+      dragging = event.pointerId;
       rail.classList.add("orders-demo-dragging");
       // the arrow keys go on from there, without the ring that shows keyboard focus
       thumb.focus({ preventScroll: true, focusVisible: false });
@@ -2282,11 +2308,19 @@
     });
     railMech.addEventListener("click", () => toggle(mechanismAt(), null));
     rail.addEventListener("pointermove", (event) => {
-      if (rail.hasPointerCapture(event.pointerId)) slideTo(stopAt(event.clientY));
+      if (dragging === event.pointerId) slideTo(stopAt(event.clientY));
     });
     for (const type of ["pointerup", "pointercancel"]) {
-      rail.addEventListener(type, () => rail.classList.remove("orders-demo-dragging"));
+      rail.addEventListener(type, () => {
+        dragging = null;
+        rail.classList.remove("orders-demo-dragging");
+      });
     }
+    rail.addEventListener("click", (event) => {
+      if (!railTap || event.target === railMech) return;
+      railTap = false;
+      slideTo(stopAt(event.clientY));
+    });
     thumb.addEventListener("keydown", (event) => {
       const at = Number(thumb.getAttribute("aria-valuenow"));
       const last = stops.length - 1;
@@ -2348,7 +2382,10 @@
     stage.addEventListener(
       "touchstart",
       (event) => {
-        const free = event.touches.length === 1 && !event.target.closest(".orders-demo-rail") && !root.classList.contains("orders-demo-fading");
+        // (on a page zoomed in, a drag sideways pans the page)
+        const zoomed = (window.visualViewport?.scale ?? 1) > 1.01;
+        const free =
+          event.touches.length === 1 && !zoomed && !event.target.closest(".orders-demo-rail") && !root.classList.contains("orders-demo-fading");
         const [touch] = event.touches;
         swipe = free ? { x: touch.clientX, y: touch.clientY, dx: 0, sideways: null, moves: [[event.timeStamp, 0]] } : null;
       },
@@ -2427,16 +2464,16 @@
       root.classList.toggle("orders-demo-wide", wide);
       root.classList.toggle("orders-demo-beside", wide && whole && revealed && root.dataset.plan !== "above");
     }
-    // the stage's width (and, beside the card, the demo's width, whose columns are fit to it, and the
-    // window's height) laid out anew
+    // the stage's width, and the window's height (both hold the layers), and beside the card, the
+    // demo's width, whose columns are fit to it, laid out anew
     let width = 0;
     let tall = 0;
     let demoWidth = 0;
     function relayout() {
       wideEnough();
       const besides = root.classList.contains("orders-demo-beside");
-      if (stage.clientWidth !== width || (besides && (window.innerHeight !== tall || root.clientWidth !== demoWidth))) {
-        [width, tall, demoWidth] = [stage.clientWidth, window.innerHeight, root.clientWidth];
+      if (stage.clientWidth !== width || viewportHeight() !== tall || (besides && root.clientWidth !== demoWidth)) {
+        [width, tall, demoWidth] = [stage.clientWidth, viewportHeight(), root.clientWidth];
         geometry = measure();
         place(state.active);
         drawSide();
@@ -2444,21 +2481,24 @@
       settleCard();
       castLightOut();
     }
-    new ResizeObserver(relayout).observe(root);
-    window.addEventListener("resize", relayout);
+    watch(new ResizeObserver(relayout)).observe(root);
+    window.addEventListener("resize", relayout, { signal: life });
     // (and anew when the page sets data-plan)
-    new MutationObserver(relayout).observe(root, { attributes: true, attributeFilter: ["data-plan"] });
+    watch(new MutationObserver(relayout)).observe(root, { attributes: true, attributeFilter: ["data-plan"] });
     // (and the chip's ink anew when the page changes its theme)
-    new MutationObserver(() => inkChip()).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => inkChip());
-    new ResizeObserver(() => movePill(true)).observe(switcher);
+    watch(new MutationObserver(() => inkChip())).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => inkChip(), { signal: life });
+    watch(new ResizeObserver(() => movePill(true))).observe(switcher);
     // the light out of the chip follows the plan's layout (its width, its fonts)
-    new ResizeObserver(() => {
-      settleCard();
-      castLightOut();
-      for (const node of [xShows, chipShows, outShows]) fitPart(node);
-    }).observe(plan);
+    watch(
+      new ResizeObserver(() => {
+        settleCard();
+        castLightOut();
+        for (const node of [xShows, chipShows, outShows]) fitPart(node);
+      }),
+    ).observe(plan);
     document.fonts?.ready.then(() => {
+      if (life?.aborted) return;
       [xShows, chipShows, outShows].forEach(fitPart);
       settled = ""; // measured anew in the fonts loaded
       labelLengths = [0, 0];
@@ -2468,13 +2508,19 @@
     });
     // the example chosen in another demo of the page, or by the page
     let inView = false;
-    new IntersectionObserver(([entry]) => {
-      inView = entry.isIntersecting;
-    }).observe(root);
-    document.addEventListener(EXAMPLE_EVENT, (event) => {
-      const example = data.examples.find((other) => other.id === event.detail?.example);
-      if (example) choose(example, 0, false);
-    });
+    watch(
+      new IntersectionObserver(([entry]) => {
+        inView = entry.isIntersecting;
+      }),
+    ).observe(root);
+    document.addEventListener(
+      EXAMPLE_EVENT,
+      (event) => {
+        const example = data.examples.find((other) => other.id === event.detail?.example);
+        if (example) choose(example, 0, false);
+      },
+      { signal: life },
+    );
 
     // the first example fades in, as every next one
     wideEnough();
@@ -2491,17 +2537,22 @@
   // the static figure of every demo, kept before the demo replaces it (with scripts on, a
   // <noscript>'s content is its HTML as text)
   const fallbacks = new Map(roots.map((root) => [root, root.querySelector("noscript")?.textContent ?? ""]));
+  // (none of the layout's classes and sizes stays: the figure shows as a figure)
   const showFallback = (root) => {
-    root.classList.remove("orders-demo-ready", "orders-demo-fading");
-    root.classList.add("orders-demo-failed");
+    root.className = "orders-demo orders-demo-failed";
+    root.removeAttribute("style");
     root.innerHTML = fallbacks.get(root);
   };
+  // a demo that cannot start stops listening to the page, the window and its observers (its life
+  // ends: start() ties them to it)
   const begin = () => {
     for (const root of roots) {
+      const life = new AbortController();
       try {
-        start(root, window.SHAPIQ_ORDERS);
+        start(root, window.SHAPIQ_ORDERS, life.signal);
       } catch (error) {
         console.error("The explanation of every order could not start:", error);
+        life.abort();
         showFallback(root);
       }
     }

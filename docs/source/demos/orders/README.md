@@ -49,7 +49,7 @@ All options are optional:
 | Option | HTML attribute | Values | Effect |
 |---|---|---|---|
 | `:anchor:` | `id` | any id | An id, to link to the demo. |
-| `:fallback:` | `<noscript><img>` | a path under `_static/` | The image shown without JavaScript, and when the demo fails. |
+| `:fallback:` | `<noscript><img>` | a path under `_static/` | The image shown without JavaScript, and when the demo fails. Without it, the demo shows nothing then. (The write-up's first four steps have none, on purpose: the last step shows the whole figure.) |
 | `:alt:` | the image's `alt` | text | The fallback image's alt text. |
 | `:step:` | `data-step` | `problem`, `mechanism`, `shapley`, `interactions`, `full` | Shows one step of the step-by-step figure (see below). Without it, the demo shows everything. |
 | `:select:` | `data-select` | `none`, `mechanism`, `full`, or an order (`1`, `2`, ...) | What the demo points at while the reader points at nothing. |
@@ -123,6 +123,13 @@ With the docs' 16px root font, 40rem is 640px, so the phone layout and the wide 
 The stage (the layers, the slider left of them and the plot right of them) has a narrow variant
 below 560px of its own width (`orders-demo-narrow`): smaller gaps, and a narrower plot.
 
+The window's height also bounds the layers, in every layout. It is read as
+`document.documentElement.clientHeight` (`viewportHeight()`), not `innerHeight`, so that a phone's
+toolbars coming and going as the page scrolls do not resize the stack. With the card above the
+layers, the stack is at most the window's height minus 96px (`WINDOW_ROOM`), which matters on a
+phone on its side. `relayout()` runs again when the stage's width or the window's height
+changes.
+
 ### Beside the layers (`orders-demo-beside`)
 
 On a wide screen, `fitColumns()` in `demo.js` sizes everything to the window:
@@ -157,23 +164,40 @@ layers shrink to fit the window.
   `body[data-theme="light"]` (Furo's three modes). The script re-inks the chip when `data-theme`
   changes.
 - **Motion**: `prefers-reduced-motion: reduce` turns off every transition and animation in the demo
-  (CSS), and the script's own movement.
+  (CSS, pseudo-elements included), and the script's own movement.
+- **Browsers**: container queries and `cqw` need Safari 16 and Firefox 110; `color-mix()` needs
+  Safari 16.2 and Firefox 113. Where `color-mix()` is missing, the chip falls back to its solid
+  color (an `@supports` rule), so its words stay legible.
 
 ## Input and states
 
-- **Pointing** at an explanation is how the reader explores. It can be done by hovering a layer,
-  by keyboard focus on a row of the plot, by tapping a layer or a row (a tap pins it, and another
-  tap lets go), by dragging the slider's handle, or by hovering along the plot.
+- **Pointing** at an explanation is how the reader explores. It can be done by hovering a layer
+  or the plot, by keyboard focus on a row of the plot, by clicking or tapping a layer or the plot
+  (a tap pins the explanation, and another tap lets go), or with the slider.
+- **The slider**: with a mouse, a press anywhere on its column goes to the stop there and drags
+  on. On a touch screen, a drag starts only at the handle (its hit area is 44px), and a tap on the
+  column goes to the stop there. A touch that scrolls the page, starting on the column or on the
+  plot, changes nothing. Touch pointers are captured implicitly by what they land on, so the drag
+  is tracked by its own pointer id, not by `hasPointerCapture()`.
+- **Touch gestures**: a vertical drag scrolls the page and a pinch zooms it, everywhere on the
+  demo (`touch-action: pan-y pinch-zoom`; `auto` in Safari, which does not support
+  `pinch-zoom`). A horizontal swipe across the layers steps through the examples, unless the page
+  is zoomed in. Tap highlights are off.
 - **Keyboard**: the chip explains with Enter or Space. The plot's rows are buttons: ArrowUp and
   ArrowDown move between them, and Escape lets go. The slider's handle moves with the arrow keys,
   Home and End.
+
+- **Screen readers**: a visually hidden status line (`.orders-demo-status`, `aria-live`) says the
+  example chosen, once, in the demo where it was chosen. The problem's parts are not a live region,
+  since they flip through random letters to the next example. After the chip is explained from
+  the keyboard, focus moves to the slider's handle.
 
 The script toggles state classes on the container, which are useful in tests:
 
 | Class | Meaning |
 |---|---|
 | `orders-demo-ready` | The demo has started. |
-| `orders-demo-failed` | The data did not load, or the demo threw while starting. The fallback is shown. |
+| `orders-demo-failed` | The data did not load, or the demo threw while starting. The fallback is shown: the container keeps no other class and no inline style, and the demo's observers and its window and document listeners are removed (`start()` ties them to an `AbortSignal`, `life`). |
 | `orders-demo-veiled` | Not explained yet: the problem alone. |
 | `orders-demo-revealing` | The build-up after the click on the chip. |
 | `orders-demo-wide`, `orders-demo-beside`, `orders-demo-narrow` | The layouts above. |
@@ -200,9 +224,11 @@ Written by `compute/pack.py`. Shape, in short:
     }],                                // (heatmap: count, scale, rows instead)
     between,                           // optional: the blank orders' explanations, by order
     fits,                              // the plot: every order's R^2
-    largest,                           // the largest value, for the marks' scale
+    largest,                           // the highest order with an interaction (the trees' depth,
+                                       // the network's receptive field, the proxy's depth): every
+                                       // order above it equals the full decomposition
     // and, by kind: atoms, bonds, coords (graph); features, values, layout (tree); image, grid,
-    // tokens (image-text); predictions, quartiles (heatmap)
+    // tokens (image-text); features, predictions, quartiles (heatmap)
   }],
 }
 ```
@@ -245,8 +271,10 @@ problem's card.
    the landing page's demo in a 1440 x 652 window, explained, with the mouse on the plot's row of
    order 2. At that height the demo is 976 x 628 CSS px, nearly the FIxLIP card's aspect. It is
    captured at a device scale factor of 1.879, so that it fits, unscaled, inside a 1952 x 1252
-   frame like `hero_fixlip_demo.png`'s: white, a 1 px `#e2e6f3` edge, 13 px corners, the demo in
-   its middle.
+   frame like `hero_fixlip_demo.png`'s: white, a `#e2e6f3` edge of 2 image px (1 CSS px at 2x),
+   corners of 26 image px (13 CSS px), the demo in its middle. The FIxLIP card's image is the
+   FIxLIP demo, 976 CSS px wide, at a device scale factor of 1.918 (the giraffe, "Clique", CLIP,
+   6 players, its invitation dismissed), in the same frame.
 
 ### Things that are easy to break
 

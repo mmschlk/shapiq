@@ -6,6 +6,7 @@
   clear: both;
   margin: 2rem 0 0.75rem;
   container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  -webkit-tap-highlight-color: transparent; /* a tap shows what it points at, no box over the photo */
   --fixlip-ink: var(--color-foreground-primary, #1b1e27);
   --fixlip-muted: var(--color-foreground-secondary, #5b6275);
   --fixlip-sheet: var(--shapiq-surface, #ffffff);
