@@ -1,0 +1,367 @@
+/* The illustration "lab-waterfall" (illustration.js): a waterfall from the average prediction to the
+   prediction for one house, one brick per unit S of 𝒮, its height e(S) on the price axis (E = ℝ),
+   and under the bricks a matrix of dots that names the units. Red is positive, blue negative, amber
+   marks features and prices (docs/STYLE_GUIDE.md). */
+
+.lwf {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+.lwf-cal,
+.lwf-math {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  letter-spacing: 0;
+}
+
+.lwf-math {
+  font-style: italic;
+}
+
+/* -- the head: 𝒮 = the switch, and the explanation it gives ------------------------------------ */
+
+.lwf-head {
+  display: grid;
+  justify-items: start;
+  gap: 0.45rem;
+}
+
+.lwf-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.lwf-pick-symbol {
+  color: var(--shapiq-amber-ink);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.lwf-pick-equals {
+  color: var(--shapiq-text-muted);
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.1rem;
+}
+
+.lwf-short {
+  display: none;
+}
+
+.lwf-method {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.lwf-method b {
+  font-weight: 650;
+}
+
+.lwf-method-rest {
+  color: var(--shapiq-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* where the readout can take two lines, it keeps their room, so that the page stays */
+@container (width < 34rem) {
+  .lwf-readout {
+    min-height: 3em;
+    align-content: start;
+  }
+}
+
+@container (width < 24rem) {
+  .lwf-long {
+    display: none;
+  }
+
+  .lwf-short {
+    display: inline;
+  }
+
+  .lwf .shapiq-ill-segment {
+    padding: 0 0.62rem;
+  }
+
+  .lwf-pick-equals {
+    display: none;
+  }
+}
+
+/* -- the plot ------------------------------------------------------------------------------------ */
+
+.lwf-plot {
+  position: relative; /* the tag's place */
+}
+
+.lwf-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.lwf-svg:focus-visible {
+  outline: 2px solid var(--shapiq-ill-ink);
+  outline-offset: 4px;
+  border-radius: var(--shapiq-radius-small);
+}
+
+.lwf-svg text {
+  fill: var(--color-foreground-primary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lwf-axis {
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 1;
+}
+
+.lwf-gridline {
+  stroke: var(--shapiq-border);
+  stroke-width: 1;
+}
+
+.lwf-svg .lwf-tick {
+  fill: var(--shapiq-text-muted);
+  font-size: 10.5px;
+}
+
+.lwf-svg .lwf-name {
+  fill: var(--shapiq-amber-ink);
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 17px;
+}
+
+.lwf-svg .lwf-name-note {
+  fill: var(--shapiq-text-muted);
+  font-size: 10.5px;
+}
+
+/* the average and this house: prices, amber */
+.lwf-ref {
+  stroke: var(--shapiq-amber);
+  stroke-dasharray: 4 3;
+  stroke-width: 1.4;
+}
+
+.lwf-svg .lwf-ref-value {
+  fill: var(--shapiq-amber-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lwf-svg .lwf-ref-note {
+  fill: var(--shapiq-text-muted);
+  font-size: 10.5px;
+}
+
+/* the total, which never moves */
+.lwf-bracket {
+  fill: none;
+  stroke: var(--color-foreground-primary);
+  stroke-width: 1.5;
+}
+
+.lwf-svg .lwf-total-value {
+  font-size: 13px;
+  font-weight: 700;
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+.lwf-svg .lwf-total-note {
+  fill: var(--shapiq-text-muted);
+  font-size: 12px;
+}
+
+.lwf-narrow .lwf-total-value {
+  font-size: 12px;
+}
+
+.lwf-narrow .lwf-ref-value {
+  font-size: 11px;
+}
+
+.lwf-narrow .lwf-ref-note {
+  font-size: 10px;
+}
+
+.lwf-svg .lwf-pos-ink,
+b.lwf-pos-ink {
+  fill: var(--shapiq-red-ink);
+  color: var(--shapiq-red-ink);
+}
+
+.lwf-svg .lwf-neg-ink,
+b.lwf-neg-ink {
+  fill: var(--shapiq-blue-ink);
+  color: var(--shapiq-blue-ink);
+}
+
+/* -- the bricks ---------------------------------------------------------------------------------- */
+
+.lwf-pos .lwf-rect,
+.lwf-projection.lwf-pos {
+  fill: var(--shapiq-red);
+}
+
+.lwf-neg .lwf-rect,
+.lwf-projection.lwf-neg {
+  fill: var(--shapiq-blue);
+}
+
+.lwf-brick.is-hot .lwf-rect {
+  stroke: var(--color-foreground-primary);
+  stroke-width: 1.5;
+}
+
+.lwf-conn {
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+.lwf-svg .lwf-value {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lwf-pos .lwf-value {
+  fill: var(--shapiq-red-ink);
+}
+
+.lwf-neg .lwf-value {
+  fill: var(--shapiq-blue-ink);
+}
+
+.lwf-band {
+  fill: var(--shapiq-amber-soft);
+  fill-opacity: 0.8;
+}
+
+.lwf-guide {
+  stroke: var(--shapiq-text-muted);
+  stroke-dasharray: 1 3;
+  stroke-width: 1;
+}
+
+/* -- the matrix of units: a column per set S, a dot per feature ---------------------------------- */
+
+.lwf-row {
+  stroke: var(--shapiq-border);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.lwf-dot {
+  fill: var(--shapiq-border);
+}
+
+.lwf-dot.is-in {
+  fill: var(--shapiq-amber);
+}
+
+.lwf-stem {
+  stroke: var(--shapiq-amber);
+  stroke-linecap: round;
+}
+
+.lwf-svg .lwf-row-name {
+  fill: var(--color-foreground-primary);
+  font-size: 11.5px;
+}
+
+.lwf-badge circle {
+  fill: color-mix(in srgb, var(--shapiq-amber) 16%, var(--shapiq-surface));
+}
+
+.lwf-svg .lwf-badge text {
+  fill: var(--shapiq-amber-ink);
+  font-size: 10px;
+  font-weight: 700;
+  dominant-baseline: central;
+  text-anchor: middle;
+}
+
+/* -- the tag e(S) on the brick in focus, and the readout ------------------------------------------ */
+
+.lwf-tag {
+  --lwf-tip: 50%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.18rem 0.55rem;
+  border: 1px solid var(--color-foreground-primary);
+  border-radius: 999px;
+  background: var(--color-background-primary);
+  color: var(--color-foreground-primary);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform;
+}
+
+.lwf-tag .lwf-math {
+  font-size: 1.1em;
+}
+
+/* its tip, on the brick */
+.lwf-tag::after {
+  position: absolute;
+  bottom: -5px;
+  left: var(--lwf-tip);
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid var(--color-foreground-primary);
+  border-bottom: 1px solid var(--color-foreground-primary);
+  background: var(--color-background-primary);
+  content: "";
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.lwf-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.6rem;
+  min-height: 1.4em;
+  margin: 0;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lwf-read-names {
+  color: var(--shapiq-text-muted);
+}
+
+.lwf-read-value {
+  white-space: nowrap;
+}
+
+.lwf-read-to {
+  margin-right: 0.3rem;
+  color: var(--shapiq-text-muted);
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+}
+
+.lwf-readout .lwf-math {
+  font-size: 1.1em;
+}
+
+.lwf-foot {
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--shapiq-border);
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
