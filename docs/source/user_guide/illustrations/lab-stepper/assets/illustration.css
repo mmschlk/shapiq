@@ -744,6 +744,10 @@ span.lst-neg {
   text-align: center;
 }
 
+.lst-nowrap {
+  white-space: nowrap;
+}
+
 .lst-sum:empty {
   display: none;
 }
@@ -881,11 +885,38 @@ span.lst-neg {
   .lst-next {
     min-width: 5.6rem;
   }
+
+  /* the prediction's words on two lines */
+  .lst-out-label > span:not(.lst-out-sep) {
+    display: block;
+  }
+
+  .lst-out-sep {
+    display: none;
+  }
 }
 
 @container (width < 21rem) {
   .lst {
     --lst-col: 2.35rem;
+    --lst-to: 0.85rem;
+  }
+
+  .lst-nav {
+    column-gap: 0.4rem;
+  }
+
+  .lst-buttons {
+    gap: 0.3rem;
+  }
+
+  .lst-back {
+    padding: 0 0.75rem;
+  }
+
+  .lst-next {
+    min-width: 5.1rem;
+    padding: 0 0.75rem;
   }
 
   .lst-steps-item + .lst-steps-item::before {

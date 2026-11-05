@@ -152,6 +152,8 @@ def main() -> None:
 
     names = [name for name, *_ in FEATURES]
     partition = [tuple(names.index(name) for name in part) for part in PARTITION]
+    # the first and last value of each feature's grid of the surfaces; the patient lies on the grid
+    axes = [[grid(i, GRID_2D)[0], grid(i, GRID_2D)[-1]] for i in range(n)]
     surfaces, pure = {}, {}
     for i, j in itertools.combinations(range(n), 2):
         zi, zj = grid(i, GRID_2D), grid(j, GRID_2D)
@@ -160,7 +162,7 @@ def main() -> None:
         only_j = predict_with({j: zj})[None, :]
         key = f"{i}-{j}"
         if (i, j) in partition:
-            surfaces[key] = {"x": zi.tolist(), "y": zj.tolist(), "z": both.tolist()}
+            surfaces[key] = both.tolist()
         pure[key] = (both - only_i - only_j + prediction).tolist()
 
     baseline = float(table[()])
@@ -195,8 +197,9 @@ def main() -> None:
         "partition_shapley": _round(group_values, 2),
         "partition_shown": shown(group_values, total),
         "interactions": _round(pairs, 2),
-        "curves": _round(curves, 1),
-        "surfaces": _round(surfaces, 1),
+        "curves": [{"x": _round(c["x"], 3), "y": _round(c["y"], 1)} for c in curves],
+        "axes": _round([[float(v) for v in axis] for axis in axes], 3),
+        "surfaces": _round(surfaces, 1),  # rows: the first feature of the pair, columns: the second
         "pure": _round(pure, 2),
     }
     text = json.dumps(out, separators=(",", ":"), ensure_ascii=False)

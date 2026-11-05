@@ -132,7 +132,7 @@ window.shapiqIllustrations?.define("lab-stepper", async (stage, kit) => {
       symbol: "<i>e</i>",
       label: "Explanation",
       text: () =>
-        `The <strong>explanation</strong> answers every unit, <i>S</i> ↦ <i>e</i>(<i>S</i>): here, ${METHODS[`${state.units}-${state.space}`]}.`,
+        `The <strong>explanation</strong> answers every unit, <span class="lst-nowrap"><i>S</i> ↦ <i>e</i>(<i>S</i>)</span>: here, ${METHODS[`${state.units}-${state.space}`]}.`,
     },
   ];
 
@@ -231,7 +231,8 @@ window.shapiqIllustrations?.define("lab-stepper", async (stage, kit) => {
   const gaugeMark = el("span", "lst-gauge-mark");
   gaugeMark.style.left = `${baseline}%`;
   gauge.append(gaugeFill, gaugeMark);
-  const outLabel = el("span", "lst-out-label", `chance to survive; average ${baseline}%`);
+  const outLabel = el("span", "lst-out-label");
+  outLabel.innerHTML = `<span>chance to survive</span><span class="lst-out-sep">; </span><span>average ${baseline}%</span>`;
   outText.append(outValue, gauge, outLabel);
   out.append(modelChip, el("span", "lst-out-arrow", "→"), outText);
   head.appendChild(out);
@@ -419,7 +420,7 @@ window.shapiqIllustrations?.define("lab-stepper", async (stage, kit) => {
     const width = Math.max(60, Math.round(rows[0]?.answer.getBoundingClientRect().width || 200));
     const values = UNITS[state.units].values;
     const short = width < 170; // without "pp" beside the bars, as the caption says it
-    const room = short ? 30 : 48;
+    const room = short ? (width < 110 ? 25 : 30) : 48;
     const lo = Math.min(0, ...values);
     const hi = Math.max(0, ...values);
     const x0 = lo < 0 ? room : 4;
@@ -724,8 +725,8 @@ window.shapiqIllustrations?.define("lab-stepper", async (stage, kit) => {
       return;
     }
     sum.innerHTML =
-      `They add up: average ${baseline}% <span class="${total >= 0 ? "lst-pos" : "lst-neg"}">${total >= 0 ? "+" : MINUS} ${Math.abs(total)}&#8239;pp</span> ` +
-      `= her ${prediction}%`;
+      `They add up: <span class="lst-nowrap">average ${baseline}% <span class="${total >= 0 ? "lst-pos" : "lst-neg"}">${total >= 0 ? "+" : MINUS}&nbsp;${Math.abs(total)}&#8239;pp</span> ` +
+      `= her&nbsp;${prediction}%</span>`;
     if (animate && moving()) sum.animate([{ opacity: 0, transform: "translateY(-4px)" }, { opacity: 1, transform: "none" }], { duration: 360, delay, fill: "backwards" });
   }
 

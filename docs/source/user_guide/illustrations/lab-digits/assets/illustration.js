@@ -385,7 +385,7 @@ window.shapiqIllustrations?.define("lab-digits", async (stage, kit) => {
           width: cell + 0.3,
           height: cell + 0.3,
         }, group);
-        rect.style.fill = fillOf(Math.abs(z) < 0.0005 ? 0 : z, reach);
+        rect.style.fill = fillOf(Math.abs(z) < 0.0005 ? 0 : z, reach, 1.25);
       }),
     );
     svg("rect", { x, y, width: size, height: size, class: "dig-surface-frame" }, group);

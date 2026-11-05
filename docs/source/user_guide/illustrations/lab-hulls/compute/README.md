@@ -23,7 +23,9 @@ with both signs: the body (BMI 30.6, blood pressure 121) raises the prediction, 
 
 The illustration shows values to one decimal. The Shapley values of the features and those of the
 units are also stored rounded so that they add up to the shown prediction minus the shown average
-(largest remainders): 174.8 − 152.2 = 22.6.
+(largest remainders): 174.8 − 152.2 = 22.6. To keep the file small, the explanations are stored to
+2 decimals, the curves' predictions and the surfaces to 1, the pure interactions to 2, and the
+grids' values to 3 (the surfaces store only the first and last value of each feature's grid).
 
 Run it from the repository's root, with shapiq and scikit-learn installed (it takes about 4
 seconds):

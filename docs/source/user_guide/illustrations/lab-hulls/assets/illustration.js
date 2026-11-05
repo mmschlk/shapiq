@@ -283,7 +283,7 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
 
   // -- the explanations: number tags and curve glyphs ------------------------------------------------
 
-  const allCurves = [...data.curves.flatMap((c) => c.y), ...Object.values(data.surfaces).flatMap((s) => s.z.flat())];
+  const allCurves = [...data.curves.flatMap((c) => c.y), ...Object.values(data.surfaces).flatMap((z) => z.flat())];
   const curveLo = Math.min(...allCurves);
   const curveHi = Math.max(...allCurves);
   const pureReach = Math.max(...Object.values(data.pure).flatMap((g) => g.flat().map(Math.abs)));
@@ -303,7 +303,7 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
   // is the patient
   function drawSurface(parent, [i, j], kind, size) {
     const key = `${i}-${j}`;
-    const grid = kind === "pure" ? data.pure[key] : data.surfaces[key].z;
+    const grid = kind === "pure" ? data.pure[key] : data.surfaces[key];
     const cells = grid.length;
     const cell = size / cells;
     const heat = svg("g", { class: "lh-heat" }, parent);
@@ -317,13 +317,12 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
       });
     });
     svg("rect", { x: 0, y: 0, width: size, height: size, class: "lh-frame" }, parent);
-    const axis = (k) => (kind === "pure" || !data.surfaces[key] ? null : k === i ? data.surfaces[key].x : data.surfaces[key].y);
-    // the grids pass through the patient's values: the patient sits on a cell of each axis
-    const at = (k, values) => {
-      const xs = values ?? data.curves[k].x;
-      return ((features[k].value - xs[0]) / (xs.at(-1) - xs[0])) * (size - cell) + cell / 2;
+    // the grids pass through the patient's values: the patient sits on the middle of a cell
+    const at = (k) => {
+      const [lo, hi] = data.axes[k];
+      return ((features[k].value - lo) / (hi - lo)) * (size - cell) + cell / 2;
     };
-    svg("circle", { cx: at(j, axis(j)), cy: size - at(i, axis(i)), r: Math.max(2, size / 16), class: "lh-marker" }, parent);
+    svg("circle", { cx: at(j), cy: size - at(i), r: Math.max(2, size / 16), class: "lh-marker" }, parent);
   }
 
   // a tag: the number of a unit, or its curve or surface, on the edge of its shape
@@ -396,7 +395,7 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
   };
 
   // the tint of a shape: red or blue by the sign of its number, deeper for a larger one (on one scale
-  // for all the numbers); for curves, a light gray
+  // for all the numbers, by its square root); for curves, a light amber
   const maxNumber = Math.max(...Object.values(COLLECTIONS).flatMap((c) => c.values.map(Math.abs)));
   const tintOf = (space, v) => (space === "numbers" ? { sign: v >= 0 ? "pos" : "neg", mix: 7 + 33 * Math.sqrt(Math.abs(v) / maxNumber) } : { sign: "none", mix: 100 });
   const paint = (unit, tint) => {
@@ -478,7 +477,7 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
   }
 
   // the units of a collection, with their numbers and tags, ordered so the strongest lies on top
-  function build(collection, space) {
+  function build(collection) {
     const c = COLLECTIONS[collection];
     return c.sets
       .map((ids, k) => ({ ids, value: c.values[k] }))
@@ -603,7 +602,7 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
     const pure = state.collection === "pairs";
     drawSurface(node, ids, pure ? "pure" : "surface", size);
     box.appendChild(node);
-    const grid = pure ? data.pure[keyOf(ids)] : data.surfaces[keyOf(ids)].z;
+    const grid = pure ? data.pure[keyOf(ids)] : data.surfaces[keyOf(ids)];
     const flat = grid.flat();
     const [lo, hi] = [Math.min(...flat), Math.max(...flat)];
     box.appendChild(el("span", "lh-map-range", pure ? `${signed(lo)} to ${signed(hi)}` : `${plain(lo)} to ${plain(hi)}`));
@@ -710,7 +709,7 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
     // a new collection: the shapes morph (what still fades from a change before goes at once)
     for (const o of dying) o.g.remove();
     const old = units;
-    const made = build(state.collection, state.space).map(({ ids, value }) => ({ ids, value, key: keyOf(ids) }));
+    const made = build(state.collection).map(({ ids, value }) => ({ ids, value, key: keyOf(ids) }));
     const { sources, fates } = plan(old, made);
     const kept = new Set();
     units = made.map((m, k) => {
@@ -842,7 +841,7 @@ window.shapiqIllustrations?.define("lab-hulls", async (stage, kit) => {
   // -- the start: the dots, then the shapes around them, then their explanations ----------------------
 
   geo = geometry(Math.max(260, root.clientWidth));
-  units = build(state.collection, state.space).map(({ ids, value }) => {
+  units = build(state.collection).map(({ ids, value }) => {
     const unit = makeUnit(ids, value);
     unit.tag = makeTag(state.collection, state.space, ids, value);
     paint(unit, tintOf(state.space, value));
