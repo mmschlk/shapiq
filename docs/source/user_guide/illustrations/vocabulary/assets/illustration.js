@@ -49,7 +49,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       id: "table",
       label: "Table",
       what: "the columns of a table",
-      model: "gradient boosting",
+      model: { short: "Boosting", title: "Tree ensemble", icon: "tree" },
       output: ["predicted price", (p) => `$${Math.round(PRICE * 100 * p)}k`],
       build: buildTable,
     },
@@ -57,7 +57,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       id: "image",
       label: "Image",
       what: "the patches of an image",
-      model: "vision transformer",
+      model: { short: "ViT", title: "Black box", icon: "box" },
       output: ["predicted class", () => "house"],
       build: buildImage,
     },
@@ -65,7 +65,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       id: "text",
       label: "Text",
       what: "the tokens of a text",
-      model: "language model",
+      model: { short: "LM", title: "Black box", icon: "box" },
       output: ["predicted sentiment", () => "positive"],
       build: buildText,
     },
@@ -73,7 +73,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       id: "graph",
       label: "Graph",
       what: "the nodes of a graph",
-      model: "graph neural network",
+      model: { short: "GNN", title: "Graph neural network", icon: "graph" },
       output: ["predicted property", () => "mutagenic"],
       build: buildGraph,
     },
@@ -202,6 +202,35 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       <circle cx="250" cy="172" r="26" fill="#5f9e69"/><circle cx="236" cy="184" r="16" fill="#6aab74"/>
     </symbol>`;
 
+  // the models' icons, as the orders demo draws them (demos/orders/assets/demo.js): a decision tree
+  // for tree ensembles, a graph for graph neural networks, and a black box for any other model
+  const ICONS = {
+    tree:
+      '<rect x="11" y="3" width="10" height="6" rx="1.5"/><path d="M16 9v3.5M7 16v-3.5h17V16"/>' +
+      '<circle class="voc-icon-leaf" cx="7" cy="19" r="3"/><rect x="19" y="16" width="10" height="6" rx="1.5"/>' +
+      '<path d="M24 22v3M19.5 27v-2h9v2"/><circle class="voc-icon-leaf" cx="19.5" cy="29" r="2"/>' +
+      '<circle class="voc-icon-leaf" cx="28.5" cy="29" r="2"/>',
+    graph:
+      '<path d="M9 7l14 2 5 9-6 9-13-1-5-9zM9 7l7 9 12 2M16 16l-7 10"/>' +
+      [[9, 7], [23, 9], [28, 18], [22, 27], [9, 26], [4, 17], [16, 16]]
+        .map(([x, y]) => `<circle class="voc-icon-node" cx="${x}" cy="${y}" r="2.6"/>`)
+        .join(""),
+    box:
+      '<path class="voc-icon-side" d="M4 10l12 6v13L4 23z"/>' +
+      '<path class="voc-icon-side voc-icon-right" d="M28 10l-12 6v13l12-6z"/>' +
+      '<path class="voc-icon-side voc-icon-top" d="M16 4l12 6-12 6-12-6z"/>',
+  };
+  const icon = (name) => {
+    const node = svg("svg", { viewBox: "0 0 32 32", "aria-hidden": "true", class: `voc-icon voc-icon-${name}` });
+    node.innerHTML = ICONS[name];
+    return node;
+  };
+  const label = (html) => {
+    const node = el("p", "voc-column-label");
+    node.innerHTML = html;
+    return node;
+  };
+
   // -- the layout ----------------------------------------------------------------------------------
 
   const root = el("div", "voc");
@@ -219,19 +248,33 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
   head.append(switcher.node, tagline);
 
   const body = el("div", "voc-body");
+  const inputColumn = el("div", "voc-input-column");
   const input = el("div", "voc-input");
+  inputColumn.append(label('input <span class="shapiq-ill-math">x</span>'), input);
   const features = el("div", "voc-features");
-  const featuresLabel = el("p", "voc-column-label", "features");
   const chips = el("div", "voc-chips");
-  features.append(featuresLabel, chips);
+  features.append(label("features"), chips);
   const model = el("div", "voc-model");
   const box = el("div", "voc-model-box");
-  box.append(el("span", "voc-model-f", "F"), el("span", "voc-model-name"));
+  const boxIcon = el("span", "voc-model-icon");
+  box.append(
+    el("span", "voc-tag shapiq-ill-math", "F"),
+    boxIcon,
+    el("strong", "voc-model-name"),
+    el("span", "voc-model-title"),
+  );
+  const flow = el("div", "voc-flow");
+  flow.setAttribute("aria-hidden", "true");
+  flow.appendChild(el("span", "voc-flow-dashes"));
   const output = el("div", "voc-output");
-  output.append(el("span", "voc-output-label"), el("span", "voc-output-value"));
-  model.append(el("p", "voc-column-label", "model"), box, output);
+  output.append(
+    el("span", "voc-tag shapiq-ill-math", "F(x)"),
+    el("span", "voc-output-label"),
+    el("span", "voc-output-value"),
+  );
+  model.append(label('model <span class="shapiq-ill-math">F</span>'), box, flow, output);
   const wires = svg("svg", { class: "voc-wires", "aria-hidden": "true" });
-  body.append(input, features, model, wires);
+  body.append(inputColumn, features, model, wires);
 
   const foot = el("p", "voc-foot");
   foot.innerHTML =
@@ -373,7 +416,10 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     index = next;
     switcher.set(modality.id);
     tagline.innerHTML = `The model reads <strong>${modality.what}</strong>.`;
-    box.querySelector(".voc-model-name").textContent = modality.model;
+    boxIcon.replaceChildren(icon(modality.model.icon));
+    box.querySelector(".voc-model-name").textContent = modality.model.short;
+    box.querySelector(".voc-model-title").textContent = modality.model.title;
+    box.classList.toggle("voc-model-black", modality.model.icon === "box");
     output.querySelector(".voc-output-label").textContent = modality.output[0];
     output.querySelector(".voc-output-value").textContent = modality.output[1](1);
     output.classList.remove("is-shown");
@@ -438,7 +484,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     await wait(520);
     if (!alive()) return;
     const finish = () => {
-      box.classList.remove("is-thinking");
+      box.classList.remove("is-reading");
       box.animate([{ transform: "scale(1)" }, { transform: "scale(1.07)" }, { transform: "scale(1)" }], {
         duration: 420,
         easing: "cubic-bezier(0.3, 1.4, 0.5, 1)",
@@ -454,7 +500,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       });
       scheduleNext();
     };
-    box.classList.add("is-thinking");
+    box.classList.add("is-reading");
     let arrived = 0;
     into.forEach((path, k) => {
       const pulse = svg("circle", { r: 3.4, class: "voc-pulse" }, wires);

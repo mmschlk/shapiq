@@ -17,7 +17,8 @@
 // features (docs/STYLE_GUIDE.md).
 window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
   const { el, svg, tween, ease, reducedMotion, segmented, loadScript } = kit;
-  await loadScript(`${kit.root}data.js`);
+  // the data that the page loaded before this script, or, where it is missing, loaded here
+  if (!window.SHAPIQ_UNITS_AND_FORMS) await loadScript(`${kit.root}data.js?v=${kit.version}`);
   const data = window.SHAPIQ_UNITS_AND_FORMS;
   const features = data.features;
   const n = features.length;
@@ -168,8 +169,8 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     const labelWidth = Math.min(122, width * 0.34);
     const lo = Math.min(0, ...values);
     const hi = Math.max(0, ...values);
-    const x0 = labelWidth + 48;
-    const x1 = width - 50;
+    const x0 = labelWidth + 56; // room for the labels of negative values
+    const x1 = width - 62; // and of positive ones
     const x = (v) => x0 + ((v - lo) / (hi - lo)) * (x1 - x0);
     const row = 30;
     const height = n * row + 46;
@@ -387,7 +388,7 @@ window.shapiqIllustrations?.define("units-and-forms", async (stage, kit) => {
     if (!still()) marker.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 14 * 2 * cells, fill: "backwards" });
     const legend = svg("g", {}, chart);
     const lx = ox + size + 12;
-    if (lx + 52 <= width) {
+    if (lx + 62 <= width) {
       for (let s = 0; s < 24; s++) {
         const z = kind === "pure" ? reach - (2 * reach * s) / 23 : hi - ((hi - lo) * s) / 23;
         const r = svg("rect", { x: lx, y: oy + (size / 24) * s, width: 8, height: size / 24 + 0.5 }, legend);

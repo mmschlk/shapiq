@@ -56,6 +56,10 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
 - **Every theme, width, and setting.** An illustration works in the light and the dark theme
   (colors from the tokens), at the width of a phone, and for docs opened from disk (data as a
   script, `data.js`). Without scripts, the directive's `alt` text describes it.
+- **As the demos.** An illustration sits open on the page, without a card around it, and its
+  controls look as the demos' (`source/demos/orders`): the option chosen in a black pill that
+  slides, black focus rings. A model is a chip with the demos' icon: gray where an explanation
+  can use its structure (trees, graphs), black for a black box.
 - How to build one is in `source/user_guide/illustrations/README.md`.
 
 ## Writing

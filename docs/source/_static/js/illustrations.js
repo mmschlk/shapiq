@@ -1,7 +1,8 @@
 // The shared part of the user guide's illustrations (_ext/shapiq_illustrations.py). An
 // illustration's script defines it with shapiqIllustrations.define(name, start); start(stage, kit)
 // builds it in the stage of every figure of that name on the page. The kit has the URL of the
-// illustration's assets (root) and the helpers below: elements, data loading, tweens that respect
+// illustration's assets (root), the checksum of its data (version: the page loads data.js before the
+// script; where it is missing, the script loads it with ?v=version), and the helpers below: elements, data loading, tweens that respect
 // reduced motion, visibility, and the segmented control (pills with a sliding thumb) that the
 // illustrations share.
 (() => {
@@ -80,22 +81,33 @@
     }).observe(node);
   };
 
-  // a radio group of pills with a thumb that slides to the checked one; arrow keys move between
-  // them. options: [[value, label], ...]; onChange(value, byUser) runs when the value changes.
+  // a radio group of options, as the demos' switches (demos/orders): the one chosen sits in a black
+  // pill, a copy of the options in the chosen colors cut to it, which slides to the next one chosen,
+  // so that every label turns exactly as the pill passes over it. Arrow keys move between them.
+  // options: [[value, label], ...]; onChange(value, byUser) runs when the value changes.
   const segmented = (label, options, onChange) => {
     const group = el("div", "shapiq-ill-segmented");
     group.setAttribute("role", "radiogroup");
     group.setAttribute("aria-label", label);
-    const thumb = el("span", "shapiq-ill-segmented-thumb");
-    thumb.setAttribute("aria-hidden", "true");
-    group.appendChild(thumb);
+    const pill = el("div", "shapiq-ill-segmented-pill");
+    pill.setAttribute("aria-hidden", "true");
     const buttons = new Map();
     let value = null;
+    let placed = false;
     const place = () => {
       const button = buttons.get(value);
-      if (!button) return;
-      thumb.style.width = `${button.offsetWidth}px`;
-      thumb.style.transform = `translateX(${button.offsetLeft}px)`;
+      if (!button || !group.clientWidth) return;
+      const top = button.offsetTop;
+      const left = button.offsetLeft;
+      const right = group.clientWidth - left - button.offsetWidth;
+      const bottom = group.clientHeight - top - button.offsetHeight;
+      // the first time without sliding there
+      if (!placed) pill.style.transition = "none";
+      pill.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px round 999px)`;
+      if (!placed) {
+        placed = true;
+        requestAnimationFrame(() => requestAnimationFrame(() => pill.style.removeProperty("transition")));
+      }
     };
     const set = (next, byUser = false) => {
       if (next === value) return;
@@ -122,7 +134,9 @@
       });
       buttons.set(key, button);
       group.appendChild(button);
+      pill.appendChild(el("span", "shapiq-ill-segment", text));
     });
+    group.appendChild(pill);
     new ResizeObserver(place).observe(group);
     return { node: group, set, get value() { return value; } };
   };
@@ -141,7 +155,9 @@
         const description = stage.getAttribute("aria-label") ?? "";
         stage.replaceChildren();
         Promise.resolve()
-          .then(() => start(stage, { ...kit, root: figure.dataset.root }))
+          .then(() =>
+            start(stage, { ...kit, root: figure.dataset.root, version: figure.dataset.version ?? "" }),
+          )
           .then(() => figure.classList.add("shapiq-illustration-ready"))
           .catch((error) => {
             console.error(`The illustration "${name}" could not start:`, error);

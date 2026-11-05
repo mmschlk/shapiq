@@ -18,16 +18,24 @@ caption::
     The caption, with **markup**, $math$ and {cite:p}`Key`.
     ```
 
-It writes ``<figure class="shapiq-illustration" data-illustration="<name>" data-root="...">``, whose
-``data-root`` is the URL of the illustration's assets relative to the page, with an empty stage
-that the illustration's script fills, and adds the shared script and stylesheet of all
-illustrations (``_static/js/illustrations.js``, ``_static/css/illustrations.css``) and the
-illustration's own to the page. Without JavaScript, the stage shows the ``alt`` text.
+It writes ``<figure class="shapiq-illustration" data-illustration="<name>" data-root="..."
+data-version="...">``, whose ``data-root`` is the URL of the illustration's assets relative to the
+page and ``data-version`` a checksum of its ``data.js``, with an empty stage that the
+illustration's script fills. It adds the shared script and stylesheet of all illustrations
+(``_static/js/illustrations.js``, ``_static/css/illustrations.css``) and the illustration's own to
+the page, its data (if any) deferred just before its script, so that both load at once; where the
+data is missing, the script loads it by ``data-root`` and ``data-version``, past browsers' caches.
+Without JavaScript, the stage shows the ``alt`` text; outside HTML, an illustration is left out.
+
+As for the demos (``_ext/shapiq_demos.py``), the assets are copied before the pages are written, so
+that Sphinx adds its checksums to their links, and they are dependencies of the pages that embed
+them, so that a change to them writes these pages again.
 """
 
 from __future__ import annotations
 
 import shutil
+import zlib
 from html import escape
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -44,6 +52,7 @@ if TYPE_CHECKING:
 
 _FOLDER = ("user_guide", "illustrations")  # the illustrations' folder, relative to the sources
 _ASSETS = ("illustration.js", "illustration.css")  # the files that every assets folder has
+_DATA = "data.js"  # the illustration's data, if it has any
 
 
 class IllustrationNode(nodes.General, nodes.Element):
@@ -67,7 +76,12 @@ class IllustrationDirective(SphinxDirective):
         if missing := [file for file in _ASSETS if not (assets / file).is_file()]:
             msg = f"the illustration {name!r} has no {', '.join(missing)} in {assets}"
             raise self.error(msg)
-        node = IllustrationNode(illustration=name, alt=self.options.get("alt", ""))
+        for file in (*_ASSETS, _DATA):
+            if (assets / file).is_file():
+                self.env.note_dependency(str(assets / file))
+        data = assets / _DATA
+        version = f"{zlib.crc32(data.read_bytes()):08x}" if data.is_file() else ""
+        node = IllustrationNode(illustration=name, alt=self.options.get("alt", ""), version=version)
         if "anchor" in self.options:
             node["ids"].append(self.options["anchor"])
         if self.content:
@@ -84,7 +98,11 @@ def _visit(self: HTML5Translator, node: IllustrationNode) -> None:
             node,
             "figure",
             CLASS=f"shapiq-illustration shapiq-illustration-{name}",
-            **{"data-illustration": name, "data-root": root},
+            **{
+                "data-illustration": name,
+                "data-root": root,
+                "data-version": node.get("version", ""),
+            },
         )
     )
     alt = escape(node["alt"])
@@ -100,6 +118,11 @@ def _depart(self: HTML5Translator, node: IllustrationNode) -> None:
     if node.children:
         self.body.append("</figcaption>")
     self.body.append("</figure>\n")
+
+
+def _skip(self: nodes.NodeVisitor, node: IllustrationNode) -> None:  # noqa: ARG001
+    """Leave an illustration out of a build that is not HTML (text, LaTeX, ...)."""
+    raise nodes.SkipNode
 
 
 def _add_assets(
@@ -118,16 +141,20 @@ def _add_assets(
     # the stylesheets after html_css_files, whose tokens.css they use; the shared script first
     app.add_css_file("css/illustrations.css", priority=900)
     app.add_js_file("js/illustrations.js", loading_method="defer", priority=600)
+    folder = Path(app.srcdir).joinpath(*_FOLDER)
     for name in names:
         app.add_css_file(f"illustrations/{name}/illustration.css", priority=910)
+        # the data, if any, just before the script and loaded alongside it
+        if (folder / name / "assets" / _DATA).is_file():
+            app.add_js_file(f"illustrations/{name}/{_DATA}", loading_method="defer", priority=605)
         app.add_js_file(
             f"illustrations/{name}/illustration.js", loading_method="defer", priority=610
         )
 
 
-def _copy_assets(app: Sphinx, exception: Exception | None) -> None:
-    """Copy every illustration's assets to ``_static/illustrations/<name>/`` of the built docs."""
-    if exception is not None or app.builder.format != "html":
+def _copy_assets(app: Sphinx, env: object) -> None:  # noqa: ARG001
+    """Copy every illustration's assets to ``_static/illustrations/<name>/``, before the pages."""
+    if app.builder.format != "html":
         return
     for assets in sorted(Path(app.srcdir).joinpath(*_FOLDER).glob("*/assets")):
         target = Path(app.outdir) / "_static" / "illustrations" / assets.parent.name
@@ -136,8 +163,21 @@ def _copy_assets(app: Sphinx, exception: Exception | None) -> None:
 
 def setup(app: Sphinx) -> ExtensionMetadata:
     """Register the directive, its node and the assets."""
-    app.add_node(IllustrationNode, html=(_visit, _depart))
+    skip = (_skip, None)
+    app.add_node(
+        IllustrationNode,
+        html=(_visit, _depart),
+        latex=skip,
+        text=skip,
+        man=skip,
+        texinfo=skip,
+    )
     app.add_directive("shapiq-illustration", IllustrationDirective)
     app.connect("html-page-context", _add_assets)
-    app.connect("build-finished", _copy_assets)
-    return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}
+    app.connect("env-updated", _copy_assets)
+    return {
+        "version": "1.0",
+        "env_version": 1,  # the nodes carry a version: environments of earlier builds are read again
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
+    }

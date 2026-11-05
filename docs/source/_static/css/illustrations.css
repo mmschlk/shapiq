@@ -1,21 +1,22 @@
 /* The shared styles of the user guide's illustrations (_ext/shapiq_illustrations.py,
-   _static/js/illustrations.js): the figure and its card, the caption, the segmented control, and
-   the chips of features. Features are violet (docs/STYLE_GUIDE.md): red and blue are for positive
-   and negative values, amber for references. */
+   _static/js/illustrations.js): the figure, open on the page as the demos (no card around it), the
+   caption, the switch, and the chips of features. Controls look as the demos' (demos/orders): a
+   black pill on the option chosen, black focus rings. Features are violet (docs/STYLE_GUIDE.md):
+   red and blue are for positive and negative values, amber for references. */
 
 figure.shapiq-illustration {
-  margin: 1.75rem 0;
+  clear: both;
+  margin: 1.5rem 0 1rem;
+  --shapiq-ill-ink: var(--color-foreground-primary, #1b1e27);
+  --shapiq-ill-control: 2.35rem; /* the height of a switch, as the demos' */
+  --shapiq-ill-glide: cubic-bezier(0.45, 0, 0.15, 1); /* for what moves a distance: the pill */
 }
 
 .shapiq-illustration-stage {
   position: relative;
-  padding: 1rem 1.15rem 1.1rem;
-  border: 1px solid var(--shapiq-border);
-  border-radius: var(--shapiq-radius);
-  background: var(--shapiq-surface);
-  box-shadow: var(--shapiq-shadow);
-  container-type: inline-size; /* the layout follows the card's width, not the window's */
-  overflow: hidden;
+  container-type: inline-size; /* the layout follows the figure's width, not the window's */
+  overflow-x: clip; /* nothing that moves widens the page */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* while the script builds the illustration, the card keeps about its room, so the page stays */
@@ -32,7 +33,7 @@ figure.shapiq-illustration {
 }
 
 .shapiq-illustration-caption {
-  margin-top: 0.65rem;
+  margin-top: 0.9rem;
   color: var(--shapiq-text-muted);
   font-size: 0.9em;
 }
@@ -41,57 +42,79 @@ figure.shapiq-illustration {
   margin: 0;
 }
 
-/* -- segmented control: pills with a sliding thumb ------------------------------------------- */
+/* -- the switch: options on a track, the one chosen in a black pill that slides (as the demos') - */
 
 .shapiq-ill-segmented {
-  position: relative;
+  position: relative; /* the pill's place */
   display: inline-flex;
   flex-wrap: nowrap;
   padding: 3px;
   border: 1px solid var(--shapiq-border);
   border-radius: 999px;
   background: var(--shapiq-surface-raised);
-  isolation: isolate;
-}
-
-.shapiq-ill-segmented-thumb {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 0;
-  z-index: -1;
-  border-radius: 999px;
-  background: var(--shapiq-surface);
-  box-shadow:
-    0 1px 2px rgba(20, 28, 60, 0.12),
-    0 0 0 1px var(--shapiq-border);
-  transition:
-    transform calc(var(--shapiq-duration) * 1.6) cubic-bezier(0.3, 1.3, 0.5, 1),
-    width calc(var(--shapiq-duration) * 1.6) cubic-bezier(0.3, 1.3, 0.5, 1);
 }
 
 .shapiq-ill-segment {
-  padding: 0.28rem 0.85rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--shapiq-ill-control) - 8px);
+  padding: 0 0.85rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--shapiq-text-muted);
+  color: var(--color-foreground-secondary, #5b6275);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 600;
+  line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
-  transition: color var(--shapiq-duration) var(--shapiq-ease);
+  transition:
+    color var(--shapiq-duration) var(--shapiq-ease),
+    transform 120ms var(--shapiq-ease);
 }
 
-.shapiq-ill-segment:hover,
-.shapiq-ill-segment[aria-checked="true"] {
-  color: var(--color-foreground-primary);
+@media (hover: hover) {
+  .shapiq-ill-segment:hover {
+    color: var(--shapiq-ill-ink);
+  }
+}
+
+.shapiq-ill-segment:active {
+  transform: scale(0.96);
 }
 
 .shapiq-ill-segment:focus-visible {
-  outline: 2px solid var(--shapiq-violet);
-  outline-offset: 1px;
+  outline: 2px solid var(--shapiq-ill-ink);
+  outline-offset: 2px;
+}
+
+/* the pill: a copy of the options, laid out as they are, over them, in the colors of the one
+   chosen, cut to it (illustrations.js), which slides to the next one */
+.shapiq-ill-segmented-pill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  padding: 3px;
+  border-radius: inherit;
+  background: var(--shapiq-ill-ink);
+  pointer-events: none;
+  transition: clip-path 380ms var(--shapiq-ill-glide);
+}
+
+.shapiq-ill-segmented-pill .shapiq-ill-segment {
+  color: var(--shapiq-surface);
+}
+
+/* a symbol in a label set in capitals, as mathematics sets it: x, F, E */
+.shapiq-ill-math {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.12em;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* -- chips: one per feature --------------------------------------------------------------------- */
@@ -122,8 +145,12 @@ button.shapiq-ill-chip {
   cursor: pointer;
 }
 
+button.shapiq-ill-chip:active {
+  transform: scale(0.96);
+}
+
 .shapiq-ill-chip:focus-visible {
-  outline: 2px solid var(--shapiq-violet);
+  outline: 2px solid var(--shapiq-ill-ink);
   outline-offset: 2px;
 }
 
@@ -173,9 +200,12 @@ button.shapiq-ill-chip {
   color: var(--shapiq-text-muted);
 }
 
+/* with reduced motion, nothing in an illustration moves: no transition, no animation */
 @media (prefers-reduced-motion: reduce) {
-  .shapiq-ill-segmented-thumb,
-  .shapiq-ill-chip {
-    transition: none;
+  .shapiq-illustration *,
+  .shapiq-illustration *::before,
+  .shapiq-illustration *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }

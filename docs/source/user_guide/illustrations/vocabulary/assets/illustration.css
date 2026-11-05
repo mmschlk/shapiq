@@ -57,9 +57,12 @@
   }
 }
 
-.voc-input {
+.voc-input-column {
   position: relative;
   z-index: 2;
+}
+
+.voc-input {
   display: grid;
   place-items: center;
   min-height: 13.5rem;
@@ -107,10 +110,9 @@
 
 @container (max-width: 39.99rem) {
   .voc-model {
-    grid-template-columns: auto auto;
     align-items: center;
     justify-content: center;
-    column-gap: 1.25rem;
+    column-gap: 0.5rem;
   }
 
   .voc-model > .voc-column-label {
@@ -119,82 +121,207 @@
   }
 }
 
-/* -- the model: a box with a gradient ring that turns while it reads ----------------------------- */
+/* -- the model: a chip, as the orders demo draws a model (demos/orders/assets/demo.css), gray where
+   an explanation can use its structure (trees, graphs), black for a black box; its symbol F in its
+   corner. Then the flowing dashes to its prediction F(x), on a card ------------------------------ */
 
 .voc-model-box {
+  --voc-chip: #5d6577; /* dark enough for its light words, 4.5:1 */
   position: relative;
   display: grid;
-  place-items: center;
+  justify-items: center;
   align-content: center;
-  width: 6.75rem;
-  aspect-ratio: 1;
-  border-radius: 1.1rem;
-  background: var(--shapiq-surface);
-  box-shadow: var(--shapiq-shadow);
-  isolation: isolate;
+  gap: 0.15rem;
+  box-sizing: border-box;
+  width: 7.75rem;
+  min-height: 6.6rem;
+  padding: 1rem 0.5rem 0.55rem;
+  border: 1px solid #ccd3e6;
+  border-radius: 10px;
+  background: var(--voc-chip);
+  box-shadow:
+    0 8px 20px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f2f4f8;
+  text-align: center;
+  transition:
+    background 520ms var(--shapiq-ease),
+    box-shadow 520ms var(--shapiq-ease);
 }
 
-.voc-model-box::before {
-  content: "";
+.voc-model-box.voc-model-black {
+  --voc-chip: #15171d;
+}
+
+/* while the features arrive, a violet glow: they are what it reads */
+.voc-model-box.is-reading {
+  box-shadow:
+    0 8px 20px -8px rgba(0, 0, 0, 0.45),
+    0 0 0 4px var(--shapiq-violet-soft),
+    0 0 18px var(--shapiq-violet-soft);
+}
+
+.voc-tag {
   position: absolute;
-  inset: -2px;
-  z-index: -1;
-  border-radius: calc(1.1rem + 2px);
-  background: conic-gradient(from var(--voc-angle, 0deg), #fd4578, #6a57cd, #699bff, #7faefe, #fd4578);
-  opacity: 0.55;
-}
-
-.voc-model-box::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: 1.1rem;
-  background: var(--shapiq-surface);
-}
-
-@property --voc-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-.voc-model-box.is-thinking::before {
-  opacity: 1;
-  animation: voc-turn 0.9s linear infinite;
-}
-
-@keyframes voc-turn {
-  to {
-    --voc-angle: 360deg;
-  }
-}
-
-.voc-model-f {
-  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
-  font-size: 2.3rem;
-  font-style: italic;
+  top: 0.4rem;
+  left: 0.6rem;
+  font-size: 0.8rem;
   line-height: 1;
 }
 
+.voc-model-box .voc-tag {
+  color: #a9afc0;
+}
+
+.voc-model-icon {
+  display: grid;
+}
+
+.voc-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-bottom: 0.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.voc-icon-node {
+  fill: var(--color-background-primary, #ffffff);
+}
+
+.voc-icon-leaf {
+  fill: currentColor;
+  stroke: none;
+}
+
+.voc-icon-side {
+  fill: #15171d;
+  stroke: #ffffff;
+  stroke-width: 1;
+}
+
+.voc-icon-right {
+  fill: #2b2f3a;
+}
+
+.voc-icon-top {
+  fill: #4b5161;
+}
+
 .voc-model-name {
-  margin-top: 0.35rem;
-  padding: 0 0.4rem;
-  color: var(--shapiq-text-muted);
-  font-size: 0.68rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
   line-height: 1.2;
 }
 
+.voc-model-title {
+  color: #a9afc0;
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+/* the flowing dashes from the model to its prediction: a strip of dashes moved by a transform in a
+   box that clips it, as the orders demo's wires (down, beside the features; right, on a phone) */
+.voc-flow {
+  position: relative;
+  width: 2px;
+  height: 1.3rem;
+  margin-bottom: 0.45rem;
+}
+
+.voc-flow-dashes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.voc-flow-dashes::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(180deg, var(--shapiq-text-muted) 0 6px, transparent 6px) 0 0 / 100% 12px
+    repeat-y;
+  animation: voc-flow-down 0.9s linear infinite;
+}
+
+.voc-flow::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  border: 4.5px solid transparent;
+  border-bottom: 0;
+  border-top: 8px solid var(--shapiq-text-muted);
+  translate: -50% 0;
+}
+
+@keyframes voc-flow-down {
+  to {
+    transform: translateY(12px);
+  }
+}
+
+@keyframes voc-flow-right {
+  to {
+    transform: translateX(12px);
+  }
+}
+
+@container (max-width: 39.99rem) {
+  .voc-model {
+    grid-template-columns: auto auto auto;
+  }
+
+  .voc-flow {
+    width: 1.6rem;
+    height: 2px;
+    margin: 0 0.45rem 0 0;
+  }
+
+  .voc-flow-dashes::before {
+    top: 0;
+    left: -12px;
+    background: linear-gradient(90deg, var(--shapiq-text-muted) 0 6px, transparent 6px) 0 0 / 12px 100%
+      repeat-x;
+    animation-name: voc-flow-right;
+  }
+
+  .voc-flow::after {
+    top: 50%;
+    right: -7px;
+    bottom: auto;
+    left: auto;
+    border: 4.5px solid transparent;
+    border-right: 0;
+    border-left: 8px solid var(--shapiq-text-muted);
+    translate: 0 -50%;
+  }
+}
+
+/* the prediction, on a card as the orders demo's f(x), tagged F(x) */
 .voc-output {
+  position: relative;
   display: grid;
-  gap: 0.15rem;
-  min-width: 7rem;
-  padding: 0.45rem 0.8rem;
+  gap: 0.1rem;
+  box-sizing: border-box;
+  min-width: 7.75rem;
+  padding: 1.15rem 0.85rem 0.55rem;
   border: 1px solid var(--shapiq-border);
-  border-radius: var(--shapiq-radius-small);
-  background: var(--shapiq-surface-raised);
+  border-radius: 10px;
+  background: var(--shapiq-surface);
+  box-shadow: 0 1px 3px rgba(20, 28, 60, 0.14);
   opacity: 0;
   transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-output .voc-tag {
+  color: var(--shapiq-text-muted);
 }
 
 .voc-output.is-shown {
@@ -207,7 +334,7 @@
 }
 
 .voc-output-value {
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -433,7 +560,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .voc-model-box.is-thinking::before {
+  .voc-flow-dashes::before {
     animation: none;
   }
 }
