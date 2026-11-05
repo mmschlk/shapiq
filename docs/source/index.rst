@@ -68,24 +68,27 @@ Shapley Interactions for Machine Learning
 
       Python 3.12+ · MIT license · Published at NeurIPS 2024
 
-.. the FIxLIP demo of demos/fixlip, in a section that README.md links to (#interactive-demo); the
-   static figure shows without JavaScript (and when the demo cannot start)
+.. the orders demo of demos/orders: one prediction explained at every order, from the Shapley values
+   to the full decomposition; the static figure shows without JavaScript (and when the demo cannot
+   start)
 
-.. _interactive-demo:
+Why Shapley Interactions?
+-------------------------
 
-Explaining Vision-Language Models
----------------------------------
+A Shapley value is one number per feature that mixes the feature's own effect with its joint
+effects with other features. Shapley interactions separate them. For a house in San Francisco,
+the Shapley values credit latitude and longitude separately; the interactions of order 2 show
+that latitude matters only together with longitude, as the location of the house. Every order of
+interaction explains more of the model, up to the full decomposition, which is the model itself.
 
-.. shapiq-demo:: fixlip
-   :fallback: images/hero_siglip2.png
-   :alt: A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
+.. shapiq-demo:: orders
+   :fallback: images/hero_orders.png
+   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 29, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
 
-.. container:: fixlip-demo-caption-text
+.. container:: orders-demo-caption-text
 
-   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2
-   :cite:p:`Tschannen.2025` and CLIP :cite:p:`Radford.2021` match a photo and its caption by the
-   interactions of image regions and words, as in FIxLIP :cite:p:`Baniecki.2025`, approximated
-   with ProxySHAP :cite:p:`Thies.2026`. :doc:`More about this demo <demos/fixlip/index>`.
+   One prediction, explained at every order of interaction, and how much of the model each order
+   explains. :doc:`Step by step, and how it was computed <introduction/how-much-explained>`.
 
 
 Install
@@ -166,21 +169,24 @@ The tuples are the players (features): ``(0,)`` is the effect of the median inco
 explains any model, plots the values, and computes values of games.
 
 
-Why Shapley Interactions?
--------------------------
+.. the FIxLIP demo of demos/fixlip, in a section that README.md links to (#interactive-demo); the
+   static figure shows without JavaScript (and when the demo cannot start)
 
-A Shapley value is one number per feature that mixes the feature's own effect with its joint
-effects with other features. Shapley interactions separate them. For a house in San Francisco,
-the Shapley values credit latitude and longitude separately; the interactions of order 2 show
-that latitude matters only together with longitude, as the location of the house.
+.. _interactive-demo:
 
-.. figure:: _static/images/motivation_sv_and_si.png
-   :figclass: shapiq-figure
-   :alt: Force plots of the Shapley values and of the Shapley interactions of order 2 of a
-         California house: the interactions credit latitude and longitude jointly.
+Explaining Vision-Language Models
+---------------------------------
 
-   The predicted price of a house explained with Shapley values (top) and with Shapley
-   interactions of order 2 (bottom). Read more in :doc:`introduction/index`.
+.. shapiq-demo:: fixlip
+   :fallback: images/hero_siglip2.png
+   :alt: A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
+
+.. container:: fixlip-demo-caption-text
+
+   Which words go with which parts of the image? ``shapiq`` explains how well SigLIP 2
+   :cite:p:`Tschannen.2025` and CLIP :cite:p:`Radford.2021` match a photo and its caption by the
+   interactions of image regions and words, as in FIxLIP :cite:p:`Baniecki.2025`, approximated
+   with ProxySHAP :cite:p:`Thies.2026`. :doc:`More about this demo <demos/fixlip/index>`.
 
 
 What's Inside
@@ -301,9 +307,16 @@ More details, such as imputers and parallel computation, are in
 Learn More
 ----------
 
-.. grid:: 1 1 3 3
+.. grid:: 1 2 2 2
    :gutter: 3
    :class-container: shapiq-cards
+
+   .. grid-item-card:: :octicon:`stack` How Much Does an Explanation Explain?
+      :link: introduction/how-much-explained
+      :link-type: doc
+      :class-card: shapiq-card
+
+      From the Shapley values to the full decomposition, one figure, step by step.
 
    .. grid-item-card:: :octicon:`light-bulb` Shapley Interactions
       :link: introduction/index
@@ -355,6 +368,7 @@ If you enjoy using ``shapiq``, please consider citing our NeurIPS paper :cite:p:
 
    introduction/installation
    introduction/start
+   introduction/how-much-explained
    introduction/index
    introduction/why-use-shapiq
 

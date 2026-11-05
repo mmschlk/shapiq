@@ -1,0 +1,2619 @@
+/* The explanation of every order (demo.js; see demos/orders/index.rst): layers of paper above the
+   input's card, the Shapley values on top and the full decomposition the last, the mechanism below
+   the card, and beside them, upright, a plot of their fit. */
+
+.orders-demo {
+  position: relative; /* for the line that builds the explanation */
+  clear: both;
+  margin: 1.5rem 0 1rem;
+  container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  isolation: isolate; /* the sheets' and the slider's z-index stay inside the demo, under the page's */
+  -webkit-tap-highlight-color: transparent; /* a tap shows what it points at, no box over the layers */
+  /* the docs' tokens (tokens.css, Furo), with fallbacks for a page without them */
+  --orders-ink: var(--color-foreground-primary, #1b1e27);
+  --orders-muted: var(--color-foreground-secondary, #5b6275);
+  --orders-sheet: var(--shapiq-surface, #ffffff);
+  --orders-page: var(--color-background-primary, #ffffff);
+  --orders-raised: var(--shapiq-surface-raised, #f7f8fc);
+  --orders-line: var(--shapiq-border, #e2e6f3);
+  --orders-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --orders-duration: var(--shapiq-duration, 220ms);
+  --orders-glide: cubic-bezier(0.45, 0, 0.15, 1); /* for what moves a distance: the pill */
+  --orders-control: 2.35rem; /* the height of the switch */
+  /* the sheets and their rows, moving to their places */
+  --orders-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --orders-move: 640ms;
+  --orders-edge: #ccd3e6;
+  --orders-shade: rgba(20, 28, 60, 0.14);
+  /* the black box stays black in both themes; on a dark page, its edges show */
+  --orders-box-edge: #ffffff;
+  /* the estimation gap in the plot: the fit an estimated full decomposition falls short of, in gray:
+     neither an explanation's color, nor the mechanism's */
+  --orders-gap: var(--orders-muted);
+  /* the floating layers: paper, as the card's, near opaque (what a layer
+     covers of the layers below it barely shows through, until a layer is pointed at), and their
+     edge */
+  --orders-layer-edge: rgba(91, 98, 117, 0.45);
+  --orders-layer-film: rgba(255, 255, 255, 0.92);
+  /* projected, the light of the explanation pointed at down onto the input: green */
+  --orders-xai-edge: rgba(22, 163, 74, 0.8);
+  --orders-xai-beam: rgba(22, 163, 74, 0.16);
+  /* the mechanism: orange, its paper with a blueprint's lines, the box it casts up to the card, and
+     its name */
+  --orders-mech-edge: rgba(240, 118, 0, 0.75);
+  --orders-mech-film: rgba(255, 246, 234, 0.9);
+  --orders-mech-line: rgba(240, 118, 0, 0.09);
+  --orders-mech-beam: rgba(240, 118, 0, 0.18);
+  --orders-mech-ink: #d96200;
+  /* the problem's chip of a model whose structure the explanation uses, what a chip clears to (and
+     its words, then), and the light out of it */
+  --orders-chip-gray: #5d6577; /* dark enough for its light words, 4.5:1 */
+  --orders-glass: var(--orders-sheet);
+  --orders-glass-ink: var(--orders-ink);
+  --orders-cast: rgba(27, 30, 39, 0.07);
+  /* beside the stack, the light is a round glow out of the chip, fading from its middle: stronger
+     there than the cone's, which it spreads over less */
+  --orders-cast-glow: rgba(27, 30, 39, 0.12);
+  --orders-xai-glow: rgba(22, 163, 74, 0.26);
+  --orders-mech-glow: rgba(240, 118, 0, 0.28);
+}
+
+body[data-theme="dark"] .orders-demo {
+  --orders-edge: #3b4152;
+  --orders-shade: rgba(0, 0, 0, 0.45);
+  --orders-box-edge: #9aa1b4;
+  --orders-layer-edge: rgba(170, 178, 196, 0.4);
+  --orders-layer-film: rgba(30, 33, 42, 0.92);
+  --orders-xai-edge: rgba(74, 222, 128, 0.75);
+  --orders-xai-beam: rgba(74, 222, 128, 0.14);
+  --orders-mech-edge: rgba(255, 150, 40, 0.7);
+  --orders-mech-film: rgba(46, 32, 18, 0.9);
+  --orders-mech-line: rgba(255, 150, 40, 0.08);
+  --orders-mech-beam: rgba(255, 150, 40, 0.18);
+  --orders-mech-ink: #ffa23f;
+  --orders-chip-gray: #5a6172;
+  --orders-glass: #c6cdda;
+  --orders-glass-ink: #1b1e27;
+  --orders-cast: rgba(220, 226, 240, 0.06);
+  --orders-cast-glow: rgba(220, 226, 240, 0.1);
+  --orders-xai-glow: rgba(74, 222, 128, 0.22);
+  --orders-mech-glow: rgba(255, 150, 40, 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .orders-demo {
+    --orders-edge: #3b4152;
+    --orders-shade: rgba(0, 0, 0, 0.45);
+    --orders-box-edge: #9aa1b4;
+      --orders-layer-edge: rgba(170, 178, 196, 0.4);
+    --orders-layer-film: rgba(30, 33, 42, 0.92);
+    --orders-xai-edge: rgba(74, 222, 128, 0.75);
+    --orders-xai-beam: rgba(74, 222, 128, 0.14);
+    --orders-mech-edge: rgba(255, 150, 40, 0.7);
+    --orders-mech-film: rgba(46, 32, 18, 0.9);
+    --orders-mech-line: rgba(255, 150, 40, 0.08);
+    --orders-mech-beam: rgba(255, 150, 40, 0.18);
+    --orders-mech-ink: #ffa23f;
+    --orders-chip-gray: #5a6172;
+    --orders-glass: #c6cdda;
+    --orders-glass-ink: #1b1e27;
+    --orders-cast: rgba(220, 226, 240, 0.06);
+    --orders-cast-glow: rgba(220, 226, 240, 0.1);
+    --orders-xai-glow: rgba(74, 222, 128, 0.22);
+    --orders-mech-glow: rgba(255, 150, 40, 0.28);
+  }
+}
+
+/* choosing an example: the stack, its rows and what the plot plots fade out (demo.js draws the
+   example chosen when they have), and in again with it; the plan above them stays, and what it
+   shows flips, and so does the plot's frame */
+.orders-demo-stack,
+.orders-demo-ladder,
+.orders-demo-side-data {
+  transition: opacity 420ms var(--orders-ease);
+  will-change: opacity; /* a layer of its own already: a fade neither starts nor ends with a repaint */
+}
+
+/* the stack, swiped (demo.js): aside by --orders-shift, and fading with the swipe; what the plot
+   plots only fades */
+.orders-demo-side-data {
+  opacity: var(--orders-swipe-opacity, 1);
+}
+
+.orders-demo-stack {
+  translate: var(--orders-shift, 0px) 0;
+  opacity: var(--orders-swipe-opacity, 1);
+  transition:
+    opacity 420ms var(--orders-ease),
+    translate 420ms var(--orders-ease);
+  will-change: opacity, translate;
+}
+
+/* stepped from, it leaves to the side, out of view, as a swipe carries it on: it keeps its opacity,
+   and speeds up as it goes */
+.orders-demo-fading.orders-demo-leaving .orders-demo-stack {
+  opacity: var(--orders-swipe-opacity, 1);
+  transition:
+    opacity 240ms cubic-bezier(0.4, 0, 1, 1),
+    translate 240ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* while a finger swipes it, it follows at once; a new stack and plot take their side at once (over
+   the leaving rule, which is still on then) */
+.orders-demo.orders-demo-swiping :is(.orders-demo-stack, .orders-demo-side-data),
+.orders-demo.orders-demo-jump :is(.orders-demo-stack, .orders-demo-side-data) {
+  transition: none;
+}
+
+.orders-demo-fading :is(.orders-demo-stack, .orders-demo-ladder, .orders-demo-side-data) {
+  opacity: 0;
+  transition-duration: 160ms;
+}
+
+/* a new example takes its places at once, without moving there */
+.orders-demo-instant :is(.orders-demo-sheet, .orders-demo-row, .orders-demo-face, .orders-demo-meter-fill),
+.orders-demo-instant .orders-demo-row::before {
+  transition: none;
+}
+
+/* while the script builds the demo, it keeps about the demo's room, so the page does not jump: the
+   room of the problem alone, as the demo starts (unexplained) */
+@media (scripting: enabled) {
+  .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
+    min-height: 13.25rem;
+  }
+}
+
+@media (scripting: enabled) and (max-width: 45em) {
+  .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
+    min-height: 11.75rem;
+  }
+}
+
+/* the static figure, until the demo has loaded (and without JavaScript) */
+.orders-demo-fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* -- the examples ------------------------------------------------------------------------------ */
+
+/* as wide as the problem below it, from the input's left edge to the prediction's right one */
+.orders-demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  padding: 0 1px;
+}
+
+/* the examples share the bar's width */
+.orders-demo-switch {
+  position: relative; /* the pill's place */
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  padding: 3px;
+  border: 1px solid var(--orders-line);
+  border-radius: 1.3rem;
+  background: var(--orders-raised);
+}
+
+.orders-demo-option {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: calc(var(--orders-control) - 8px); /* the switch, one row high, as high as a control */
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--orders-muted);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--orders-duration) var(--orders-ease),
+    transform 120ms var(--orders-ease);
+}
+
+@media (hover: hover) {
+  .orders-demo-option:hover {
+    color: var(--orders-ink);
+  }
+}
+
+.orders-demo-option:active {
+  transform: scale(0.96);
+}
+
+/* the pill around the example chosen: a copy of the examples, laid out as they are, over them,
+   in the colors of the one chosen, cut to the pill (demo.js), which slides to the next one */
+.orders-demo-pill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 3px;
+  border-radius: inherit;
+  background: var(--orders-ink);
+  pointer-events: none;
+  transition: clip-path 380ms var(--orders-glide);
+}
+
+.orders-demo-pill .orders-demo-option {
+  color: var(--orders-sheet);
+}
+
+.orders-demo-option:focus-visible,
+.orders-demo-mechanism-row:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 2px;
+}
+
+/* where the examples would not fit in a row: a stepper through them, the example shown between a
+   button to the previous and one to the next */
+.orders-demo-stepper {
+  display: none;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  height: var(--orders-control);
+  padding: 3px;
+  border: 1px solid var(--orders-line);
+  border-radius: 999px;
+  background: var(--orders-raised);
+}
+
+/* with the stepper, under the stack: a dot for every example, the one shown dark */
+.orders-demo-dots {
+  display: none;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 0.4rem;
+}
+
+.orders-demo-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--orders-edge);
+  transition:
+    background var(--orders-duration) var(--orders-ease),
+    scale var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-dots .orders-demo-dot-on {
+  background: var(--orders-ink);
+  scale: 1.25;
+}
+
+/* one example alone (data-examples): nothing to choose, no tabs, no stepper and no dots */
+.orders-demo.orders-demo-single :is(.orders-demo-bar, .orders-demo-dots) {
+  display: none;
+}
+
+@container (max-width: 45rem) {
+  .orders-demo-switch {
+    display: none;
+  }
+
+  .orders-demo-stepper,
+  .orders-demo-dots {
+    display: flex;
+  }
+}
+
+.orders-demo-step {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--orders-control) - 8px);
+  height: calc(var(--orders-control) - 8px);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--orders-ink);
+  color: var(--orders-sheet);
+  cursor: pointer;
+  transition: transform 120ms var(--orders-ease);
+}
+
+.orders-demo-step:active {
+  transform: scale(0.96);
+}
+
+.orders-demo-step:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 2px;
+}
+
+.orders-demo-step svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orders-demo-step-shown {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--orders-ink);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.orders-demo-step-shown strong {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.orders-demo-step-count {
+  color: var(--orders-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the example stepped to comes in from the side it was stepped to */
+.orders-demo-step-enter {
+  animation: orders-demo-step-enter 420ms var(--orders-ease) both;
+}
+
+@keyframes orders-demo-step-enter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--orders-step-from, 0));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* -- the stage: the layers (in .orders-demo-stack), and the ladder of their fits -------------- */
+
+.orders-demo-stage {
+  position: relative;
+  overflow-x: clip; /* a stack swiped aside does not widen the page */
+  /* a swipe sideways steps through the examples (demo.js), up or down scrolls the page */
+  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
+}
+
+/* (Safari knows no pinch-zoom here, and pan-y alone would keep a pinch from zooming the page: there,
+   the browser's own, and a swipe sideways is kept from it by demo.js) */
+@supports not (touch-action: pinch-zoom) {
+  .orders-demo-stage,
+  .orders-demo-rail,
+  .orders-demo-plot-cover {
+    touch-action: auto;
+  }
+}
+
+/* the icons: lines in the text's color; the black box solid, its sides shaded */
+.orders-demo-icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orders-demo-icon-node {
+  fill: var(--orders-page);
+}
+
+.orders-demo-icon-leaf {
+  fill: currentColor;
+  stroke: none;
+}
+
+.orders-demo-icon-side {
+  fill: #15171d;
+  stroke: var(--orders-box-edge);
+  stroke-width: 1;
+}
+
+.orders-demo-icon-right {
+  fill: #2b2f3a;
+}
+
+.orders-demo-icon-top {
+  fill: #4b5161;
+}
+
+.orders-demo-option-icon {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 2.2;
+}
+
+/* -- above the stack, the plan: the problem, as machine learning draws it (the input x wired through
+   the model f, a chip, to its prediction f(x)), and the light of the explanation, cast out of the
+   chip onto a card: the input seen from above with the explanation pointed at on it, the orders to
+   explain at, and a few words. The chip clears as far as the explanation fits ------------------ */
+
+.orders-demo-plan-window {
+  overflow-x: clip;
+}
+
+/* on a wide screen, the full stack beside the card (demo.js: orders-demo-beside): the problem on
+   top, as always, and below it the card of the explanation in a narrow column left of the layers,
+   the light out of the chip falling onto it there. The plan's boxes give way to the demo's grid, its
+   window and its figure taking no box of their own; the card, a container of its own, lays out its
+   face above its words, as on a phone. The card and the stage as wide as demo.js fits them, and
+   what they leave of the demo to either side of them, the problem above as wide as the demo */
+.orders-demo-beside {
+  display: grid;
+  grid-template-areas:
+    "bar bar bar bar"
+    "flow flow flow flow"
+    ". why stage ."
+    "dots dots dots dots";
+  grid-template-columns:
+    minmax(0, 1fr) var(--orders-why-column, 16.25rem) var(--orders-stage-column, minmax(0, 2fr))
+    minmax(0, 1fr);
+  align-items: start;
+}
+
+.orders-demo-beside > .orders-demo-bar {
+  grid-area: bar;
+}
+
+.orders-demo-beside :is(.orders-demo-plan-window, .orders-demo-plan) {
+  display: contents;
+}
+
+.orders-demo-beside .orders-demo-flow {
+  grid-area: flow;
+  justify-self: center;
+  margin: 1rem 0 2rem; /* (the plan's: above, and where the light falls) */
+}
+
+.orders-demo-beside .orders-demo-why {
+  grid-area: why;
+  align-self: center; /* in the stack's middle, clear of the light's edge above it */
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 0.6rem;
+  width: auto;
+  margin: 0 1.25rem 4px 0; /* (the air before the stage; its shadow) */
+  container-type: inline-size;
+}
+
+/* beside the layers, the card is no box: no edge, no paper, no shadow, and no question, the light
+   says it; its face, as wide as the column, unframed (pointed at, it takes its color as ever); its
+   words below it, grown into the column as far as their widest text lets them (demo.js), in a block
+   in the column's middle, so that they neither move nor leave the column lopsided */
+.orders-demo.orders-demo-beside .orders-demo-why {
+  padding: 0;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+}
+
+.orders-demo-beside .orders-demo-why > .orders-demo-plan-eyebrow {
+  display: none;
+}
+
+.orders-demo-beside .orders-demo-plan-view {
+  width: min(100%, var(--orders-why-face, 22rem)); /* (as large as the layers: demo.js) */
+  border-color: transparent;
+  background: none;
+}
+
+.orders-demo-beside .orders-demo-plan-text {
+  justify-self: center;
+  font-size: 0.85rem;
+}
+
+.orders-demo-beside .orders-demo-meter {
+  width: 6.5em;
+}
+
+.orders-demo-beside > .orders-demo-stage {
+  grid-area: stage;
+}
+
+.orders-demo-beside > .orders-demo-dots {
+  grid-area: dots;
+}
+
+.orders-demo-plan {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2rem; /* where the light falls */
+  margin: 1rem 0 0;
+  padding: 0 1px 4px; /* the card's shadow, inside its window */
+}
+
+/* x, f, f(x): as mathematics sets them, also in a label in capitals */
+.orders-demo-math {
+  font-family: inherit;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* the card's question, in the ink, f(x) in the red of the prediction it asks about */
+.orders-demo-plan-eyebrow {
+  color: var(--orders-ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* on the card's top edge, in the middle, where the light out of the chip meets it: a pill on the
+   line, which takes no room in the card, its edge the card's (in its color, pointed at) */
+.orders-demo-why > .orders-demo-plan-eyebrow {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 50%;
+  padding: 0.12rem 0.65rem 0.14rem;
+  border: 1px solid;
+  border-color: inherit;
+  border-radius: 999px;
+  background: var(--orders-sheet);
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  transition: border-color 360ms var(--orders-ease);
+}
+
+.orders-demo-plan-eyebrow .orders-demo-math {
+  color: rgb(255, 13, 87);
+  font-size: 1.08em;
+}
+
+/* the input: a face, a table of a house's features, a matrix of houses, or (small, on a phone) the
+   glyph of a table */
+.orders-demo-input-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.orders-demo-input-glyph rect,
+.orders-demo-input-glyph path {
+  fill: none;
+  stroke: var(--orders-muted);
+  stroke-width: 6;
+  stroke-linejoin: round;
+}
+
+.orders-demo-input-matrix rect {
+  fill: var(--orders-line);
+}
+
+.orders-demo-input-matrix .orders-demo-input-head {
+  fill: var(--orders-muted);
+}
+
+.orders-demo-input-matrix text {
+  fill: var(--orders-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.orders-demo-input-table {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 0.05rem 0.8rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 6px;
+  background: var(--orders-sheet);
+  box-shadow: 0 1px 3px var(--orders-shade);
+  font-family: system-ui, sans-serif;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.orders-demo-input-cell {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+  color: var(--orders-muted);
+}
+
+.orders-demo-input-cell strong {
+  color: var(--orders-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* a house's table, or on a phone the glyph of a table, in its place */
+.orders-demo-input-small {
+  display: none;
+}
+
+.orders-demo-input-small .orders-demo-input-face {
+  box-sizing: border-box;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 6px;
+  background: var(--orders-sheet);
+}
+
+/* the problem: the input and a wire into the chip at its left, a wire out of it to the prediction at
+   its right, and the chip in the middle */
+.orders-demo-flow {
+  /* the size of its parts, one for all three */
+  --orders-wire-width: 11.5rem;
+  --orders-wire-height: 6.6rem;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+}
+
+.orders-demo-wire-side {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* the problem's three parts, as tall as one another, their middles on the wires' line: the input,
+   the model's chip and the prediction, each with its symbol in its corner */
+.orders-demo-wire-x,
+.orders-demo-wire-chip,
+.orders-demo-wire-out {
+  position: relative;
+  display: grid;
+  flex: none;
+  align-content: center;
+  justify-items: center;
+  gap: 0.2rem;
+  box-sizing: border-box;
+  width: var(--orders-wire-width);
+  height: var(--orders-wire-height);
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* what a part shows: a flap, which turns into its place (demo.js) */
+.orders-demo-wire-x,
+.orders-demo-wire-chip,
+.orders-demo-wire-out {
+  perspective: 32rem;
+}
+
+/* (about its middle, as a split flap's; and scaled down about it, where it would not fit its box) */
+.orders-demo-wire-shows {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  backface-visibility: hidden;
+}
+
+.orders-demo-wire-icon-slot {
+  display: grid;
+}
+
+.orders-demo-wire-x,
+.orders-demo-wire-out {
+  padding: 0.6rem 0.85rem 0.5rem;
+  border: 1px solid var(--orders-line);
+  box-shadow: 0 1px 3px var(--orders-shade);
+}
+
+/* its input clear of the symbol in its corner */
+.orders-demo-wire-x {
+  justify-items: unsafe center; /* what is wider than the box, as it shrinks to fit it (demo.js) */
+  padding: 1.1rem 0.55rem 0.5rem;
+  background: var(--orders-sheet);
+}
+
+.orders-demo-wire-tag {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.6rem;
+  color: var(--orders-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+/* the input, as large as the box allows above its name */
+.orders-demo-wire-face {
+  height: calc(var(--orders-wire-height) - 2.75rem);
+  aspect-ratio: 1;
+}
+
+.orders-demo-wire-face.orders-demo-wire-table {
+  height: auto;
+  aspect-ratio: auto;
+}
+
+/* in the box, the table and its glyph have no frame of their own; the table, a little tighter, fits
+   the box, in its middle (and, should it not, it shrinks there, demo.js, rather than to one side) */
+.orders-demo-wire-x :is(.orders-demo-input-table, .orders-demo-input-small .orders-demo-input-face) {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.orders-demo-wire-x .orders-demo-input-table {
+  gap: 0.05rem 0.65rem;
+  font-size: 0.62rem;
+}
+
+.orders-demo-wire-x .orders-demo-input-cell {
+  gap: 0.35rem;
+}
+
+.orders-demo-wire-x .orders-demo-wire-shows {
+  max-width: none;
+}
+
+.orders-demo-wire-name {
+  color: var(--orders-muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* the wires: dashes flowing from x to f(x), and an arrowhead where they arrive */
+.orders-demo-wire-line {
+  position: relative;
+  flex: 1 1 2rem;
+  min-width: 1.5rem;
+  height: 2px;
+  margin: 0 0.75rem;
+}
+
+/* its dashes flow: a strip of them, one step of the flow longer than the wire, moved along by a
+   transform in a box that clips it (the browser's compositor moves it; a moving background would be
+   painted anew every frame) */
+.orders-demo-wire-dashes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* a dash and a gap, the tile that flows: as long as one step of the flow, so that the dashes come
+   in at the wire's start without a seam */
+.orders-demo-wire-dashes::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: -12px;
+  background: linear-gradient(90deg, var(--orders-muted) 0 6px, transparent 6px) 0 0 / 12px 100% repeat-x;
+  content: "";
+  animation: orders-demo-wire 0.9s linear infinite;
+}
+
+.orders-demo-wire-line::after {
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  border: 4.5px solid transparent;
+  border-right: 0;
+  border-left: 8px solid var(--orders-muted);
+  content: "";
+  translate: 0 -50%;
+}
+
+@keyframes orders-demo-wire {
+  to {
+    transform: translateX(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo-wire-dashes::before {
+    animation: none;
+  }
+}
+
+/* the model's chip: black for a black box, gray for a model whose structure the explanation uses; it
+   clears towards the card's paper as far as the explanation pointed at fits (demo.js sets
+   --orders-clear, from 0 to the explanation's R^2) */
+.orders-demo-wire-chip {
+  --orders-chip: #15171d;
+  padding: 0.9rem 0.5rem 0.5rem;
+  border: 1px solid var(--orders-edge);
+  background: color-mix(in srgb, var(--orders-chip) calc((1 - var(--orders-clear, 0)) * 100%), var(--orders-glass));
+  box-shadow:
+    0 8px 20px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  /* its words: in whichever ink reads better on it as it clears (demo.js) */
+  color: var(--orders-chip-ink, #f2f4f8);
+  transition:
+    background 520ms var(--orders-ease),
+    color 520ms var(--orders-ease);
+}
+
+/* (where color-mix is unknown, Safari before 16.2, the chip keeps its color, and its words show) */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .orders-demo-wire-chip {
+    background: var(--orders-chip);
+  }
+}
+
+.orders-demo-wire-chip.orders-demo-chip-gray {
+  --orders-chip: var(--orders-chip-gray);
+}
+
+/* its small print: as faint as it can be and still read (demo.js) */
+.orders-demo-wire-chip .orders-demo-wire-tag {
+  color: var(--orders-chip-soft, #a9afc0);
+  transition: color 520ms var(--orders-ease);
+}
+
+.orders-demo-wire-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-bottom: 0.1rem;
+}
+
+.orders-demo-wire-chip strong {
+  font-size: 1.12rem;
+  letter-spacing: 0.01em;
+}
+
+.orders-demo-chip-note {
+  color: var(--orders-chip-soft, #a9afc0);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  transition: color 520ms var(--orders-ease);
+}
+
+/* unexplained (data-reveal="click"), the demo is the problem alone, and the chip a button that
+   explains it: it calls, a ring going out of it, a tab under it */
+.orders-demo-veiled :is(.orders-demo-cast, .orders-demo-why, .orders-demo-stage, .orders-demo-dots) {
+  display: none;
+}
+
+.orders-demo-veiled .orders-demo-plan {
+  padding-bottom: 3.2rem; /* the tab's room */
+}
+
+/* a caption below the demo, on a page that embeds it (the landing page) */
+.orders-demo-caption-text p {
+  margin: 0 0 2rem;
+  color: var(--shapiq-text-muted, var(--color-foreground-secondary, #5b6275));
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* the problem alone, as a step of a post (data-step="problem"): no tab, nothing to call for */
+.orders-demo-veiled[data-step="problem"] .orders-demo-plan {
+  padding-bottom: 4px;
+}
+
+.orders-demo-wire-chip.orders-demo-chip-call {
+  cursor: pointer;
+  animation: orders-demo-call 2.2s var(--orders-ease) infinite;
+}
+
+.orders-demo-chip-call:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 4px;
+}
+
+@keyframes orders-demo-call {
+  0% {
+    box-shadow:
+      0 8px 20px -8px rgba(0, 0, 0, 0.45),
+      0 0 0 0 rgba(255, 13, 87, 0.45);
+  }
+
+  70%,
+  100% {
+    box-shadow:
+      0 8px 20px -8px rgba(0, 0, 0, 0.45),
+      0 0 0 14px rgba(255, 13, 87, 0);
+  }
+}
+
+.orders-demo-chip-explain {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: 50%;
+  padding: 0.42rem 1.05rem 0.47rem;
+  border-radius: 999px;
+  background: var(--orders-ink);
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.45);
+  color: var(--orders-sheet);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  translate: -50% 0;
+  animation: orders-demo-bob 2.2s ease-in-out infinite;
+}
+
+/* its arrow, down to where the explanation will be */
+.orders-demo-chip-explain::after {
+  content: " ↓";
+}
+
+@keyframes orders-demo-bob {
+  50% {
+    translate: -50% 3px;
+  }
+}
+
+@media (hover: hover) {
+  .orders-demo-chip-call:hover {
+    --orders-clear: 0.12; /* it gives a little, as a button does */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo-wire-chip.orders-demo-chip-call,
+  .orders-demo-chip-explain {
+    animation: none;
+  }
+}
+
+/* explained, it is built from the top down: the light pours out of the chip, and every part comes
+   by how far below it it lies (demo.js sets --orders-at, its moment): the card, the sheets one after
+   the other and their rows, the slider, and the plot beside them, drawn down */
+.orders-demo-revealing .orders-demo-cast {
+  animation: orders-demo-pour 420ms var(--orders-ease) both;
+}
+
+.orders-demo-revealing .orders-demo-why {
+  animation: orders-demo-materialize 520ms var(--orders-settle) var(--orders-at, 0ms) both;
+}
+
+.orders-demo-revealing .orders-demo-sheet {
+  animation: orders-demo-drop 560ms var(--orders-settle) var(--orders-at, 0ms) both;
+}
+
+.orders-demo-revealing :is(.orders-demo-row, .orders-demo-rail, .orders-demo-dots) {
+  animation: orders-demo-appear 420ms var(--orders-ease) var(--orders-at, 0ms) both;
+}
+
+/* the plot beside the sheets, drawn down */
+.orders-demo-revealing .orders-demo-side {
+  animation: orders-demo-pour var(--orders-side-time, 900ms) linear var(--orders-at, 0ms) both;
+}
+
+@keyframes orders-demo-pour {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+/* the card comes from the top down too: unveiled downwards, out of a blur */
+@keyframes orders-demo-materialize {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    clip-path: inset(0 0 100% 0 round 12px);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0 round 12px);
+  }
+}
+
+@keyframes orders-demo-drop {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    translate: 0 -28px;
+  }
+}
+
+@keyframes orders-demo-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+/* the prediction, in the red of what raises it: what the explanations explain */
+.orders-demo-wire-out {
+  padding-top: 0.9rem;
+  background: var(--orders-raised);
+}
+
+.orders-demo-wire-out strong {
+  color: rgb(255, 13, 87);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.orders-demo-wire-note {
+  max-width: 10rem;
+  color: var(--orders-muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+/* the light out of the chip onto the card (demo.js draws it from corner to corner) */
+.orders-demo-cast {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.orders-demo-cast-top {
+  stop-color: var(--orders-cast);
+}
+
+.orders-demo-cast-bottom {
+  stop-color: var(--orders-cast);
+  stop-opacity: 0.3;
+}
+
+.orders-demo-cast-glow {
+  stop-color: var(--orders-cast-glow);
+}
+
+.orders-demo-plan-xai .orders-demo-cast-glow {
+  stop-color: var(--orders-xai-glow);
+}
+
+.orders-demo-plan-mechanism .orders-demo-cast-glow {
+  stop-color: var(--orders-mech-glow);
+}
+
+.orders-demo-cast-edges {
+  fill: none;
+  stroke: var(--orders-muted);
+  stroke-dasharray: 3 3;
+  stroke-width: 0.8;
+  opacity: 0.5;
+  transition: opacity 520ms var(--orders-ease);
+}
+
+.orders-demo-cast polygon {
+  opacity: 0.6;
+  transition: opacity 520ms var(--orders-ease);
+}
+
+/* while an explanation is applied, the light is on */
+.orders-demo-plan-lit .orders-demo-cast polygon {
+  opacity: 1;
+}
+
+.orders-demo-plan-lit .orders-demo-cast-edges {
+  opacity: 0.85;
+}
+
+/* the mechanism pointed at: the card, its face and the light onto it, in the mechanism's orange */
+.orders-demo-plan-mechanism .orders-demo-cast-top,
+.orders-demo-plan-mechanism .orders-demo-cast-bottom {
+  stop-color: var(--orders-mech-beam);
+}
+
+.orders-demo-plan-mechanism .orders-demo-cast-edges {
+  stroke: var(--orders-mech-edge);
+}
+
+.orders-demo-plan-mechanism .orders-demo-why {
+  border-color: var(--orders-mech-edge);
+  box-shadow: 0 2px 14px -4px var(--orders-mech-beam);
+}
+
+.orders-demo-plan-mechanism .orders-demo-plan-view {
+  border-color: var(--orders-mech-edge);
+  background:
+    repeating-linear-gradient(0deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(90deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    var(--orders-mech-film);
+}
+
+.orders-demo-plan-mechanism :is(.orders-demo-plan-title strong, .orders-demo-r2) {
+  color: var(--orders-mech-ink);
+}
+
+.orders-demo-plan-mechanism .orders-demo-meter-fill {
+  background: var(--orders-mech-edge);
+  opacity: 1;
+}
+
+/* an explanation pointed at: the light onto the card, the card's edge, and its face's, a little green,
+   as its light on the input (less than the mechanism's orange: no wash, no lines, its words in ink) */
+.orders-demo-plan-xai .orders-demo-cast-top,
+.orders-demo-plan-xai .orders-demo-cast-bottom {
+  stop-color: var(--orders-xai-beam);
+}
+
+.orders-demo-plan-xai .orders-demo-cast-edges {
+  stroke: var(--orders-xai-edge);
+}
+
+.orders-demo-plan-xai .orders-demo-why {
+  border-color: color-mix(in srgb, var(--orders-xai-edge) 55%, transparent);
+  box-shadow: 0 2px 14px -6px var(--orders-xai-beam);
+}
+
+.orders-demo-plan-xai .orders-demo-plan-view {
+  border-color: color-mix(in srgb, var(--orders-xai-edge) 45%, transparent);
+}
+
+.orders-demo-plan-xai .orders-demo-meter-fill {
+  background: var(--orders-xai-edge);
+  opacity: 1;
+}
+
+/* the face's name, in its bottom left corner, as on its layer: beside the stack, where the face is
+   as large as a layer (in the card, too small to read); faint at rest, as the layers' names, in ink
+   where an explanation is pointed at, and in its orange, the mechanism's */
+.orders-demo-plan-tag {
+  display: none;
+}
+
+.orders-demo-beside .orders-demo-plan-tag {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.orders-demo-plan-tag .orders-demo-tag {
+  fill: var(--orders-layer-edge);
+  transition: fill 360ms var(--orders-ease);
+}
+
+.orders-demo-plan-xai .orders-demo-plan-tag .orders-demo-tag {
+  fill: var(--orders-ink);
+}
+
+.orders-demo-plan-mechanism .orders-demo-plan-tag .orders-demo-tag {
+  fill: var(--orders-mech-ink);
+}
+
+/* the card of the explanation: the face, and beside it a few words, in its middle */
+.orders-demo-why {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 23rem);
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+  box-sizing: border-box;
+  width: min(100%, 38rem);
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 12px;
+  background: var(--orders-sheet);
+  box-shadow: 0 1px 3px var(--orders-shade);
+  transition:
+    border-color 360ms var(--orders-ease),
+    box-shadow 360ms var(--orders-ease);
+}
+
+.orders-demo-plan-view {
+  position: relative; /* its name's place */
+  flex: none;
+  box-sizing: border-box;
+  width: 10rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--orders-line);
+  border-radius: 8px;
+  background: var(--orders-sheet);
+}
+
+.orders-demo-plan-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: orders-demo-plan-in 220ms var(--orders-ease);
+}
+
+/* a face shown anew comes in, briefly */
+@keyframes orders-demo-plan-in {
+  from {
+    opacity: 0.35;
+  }
+}
+
+.orders-demo-plan-text,
+.orders-demo-plan-words {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+/* the words' column: as wide whatever it says, and as tall as the most it can say (demo.js), its
+   words from the top: the card, and what is in it, stay in place */
+.orders-demo-plan-text {
+  align-content: start;
+  color: var(--orders-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* a copy of the column, out of view, to measure it by */
+.orders-demo-plan-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* every line a line, whatever it says: none breaks, and none moves as the next explanation shows;
+   where one would not fit the column, all shrink alike (demo.js sets the fit; the lines' sizes are
+   in em of the words') */
+.orders-demo-plan-words {
+  font-size: calc(1em * var(--orders-words-fit, 1));
+}
+
+.orders-demo-plan-words > * {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* where what an explanation holds would not fit a line, it has two, whatever it says */
+.orders-demo-plan-words.orders-demo-plan-two .orders-demo-plan-what {
+  display: -webkit-box;
+  min-height: 2.8em;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.orders-demo-plan-title {
+  font-size: 1.12em;
+}
+
+.orders-demo-plan-title strong {
+  margin-right: 0.3em;
+  color: var(--orders-ink);
+}
+
+/* beside the stack, where the face wears the layer's name, the title gives its order instead */
+.orders-demo-plan-ordered,
+.orders-demo-beside .orders-demo-plan-named {
+  display: none;
+}
+
+.orders-demo-beside .orders-demo-plan-ordered {
+  display: inline;
+}
+
+/* under its name, what it holds, its bar by its R^2, and what it was explained with, and how */
+.orders-demo-plan-fit {
+  font-variant-numeric: tabular-nums;
+}
+
+.orders-demo-plan-fit .orders-demo-meter {
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: 0.05em;
+}
+
+.orders-demo-plan-method {
+  font-size: 0.94em;
+}
+
+.orders-demo-plan-method strong {
+  color: var(--orders-ink);
+  font-weight: 600;
+}
+
+/* red and blue, as the marks */
+.orders-demo-plan-legend {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.15rem 0.9rem;
+  font-size: 0.88em;
+}
+
+.orders-demo-plan-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.orders-demo-plan-key i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+}
+
+.orders-demo-plan-up {
+  background: rgb(255, 13, 87);
+}
+
+.orders-demo-plan-down {
+  background: rgb(30, 136, 229);
+}
+
+@container (max-width: 40rem) {
+  .orders-demo-plan {
+    gap: 1.5rem;
+  }
+
+  .orders-demo-input-large {
+    display: none;
+  }
+
+  .orders-demo-input-small {
+    display: block;
+  }
+
+  /* the three parts and the shortest wires fit the demo's width, as the bar above does */
+  .orders-demo-flow {
+    --orders-wire-width: min(6.1rem, calc((100cqw - 2.4rem - 2px) / 3));
+    --orders-wire-height: 5.2rem;
+  }
+
+  /* on a phone, without its name */
+  .orders-demo-wire-face {
+    height: calc(var(--orders-wire-height) - 1.9rem);
+  }
+
+  .orders-demo-wire-x {
+    padding: 0.9rem 0.45rem 0.45rem;
+  }
+
+  .orders-demo-wire-line {
+    min-width: 0.6rem;
+    margin: 0 0.3rem;
+  }
+
+  .orders-demo-wire-chip {
+    padding: 0.8rem 0.35rem 0.4rem;
+  }
+
+  .orders-demo-wire-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .orders-demo-wire-chip strong {
+    font-size: 0.92rem;
+  }
+
+  .orders-demo-chip-note {
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .orders-demo-wire-name {
+    display: none;
+  }
+
+  .orders-demo-wire-out {
+    padding: 0.9rem 0.4rem 0.45rem;
+  }
+
+  .orders-demo-wire-out strong {
+    font-size: 0.88rem;
+  }
+
+  .orders-demo-wire-note {
+    display: none;
+  }
+
+  .orders-demo-plan-eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+  }
+
+  .orders-demo-why {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.95rem 0.65rem 0.65rem; /* (above the words, the question's pill) */
+  }
+
+  .orders-demo-plan-view {
+    width: 5.5rem;
+  }
+
+  .orders-demo-plan-text {
+    font-size: 0.8rem;
+  }
+
+  .orders-demo-plan-title {
+    font-size: 1.1em;
+  }
+
+  .orders-demo-meter {
+    width: 3.6em;
+  }
+
+  /* on a phone, what it was explained with, without how, and the estimation gap as the gap: the
+     room is the order's */
+  .orders-demo-plan-how,
+  .orders-demo-plan-long {
+    display: none;
+  }
+}
+
+/* the stack's window: from the slider's column to the stage's edge, it cuts off a stack swiped
+   aside; the stack within lies over the whole stage, as the rows' coordinates assume */
+.orders-demo-view {
+  position: absolute;
+  inset: 0 0 0 calc(var(--orders-rail, 0px) - 6px);
+  overflow-x: clip;
+}
+
+.orders-demo-stack {
+  position: absolute;
+  inset: 0 0 0 calc(6px - var(--orders-rail, 0px));
+}
+
+.orders-demo-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--orders-line);
+  border-radius: 3%;
+  background: var(--orders-sheet);
+  /* the edge below the face (demo.js sets its offset in the face's coordinates), and a shadow */
+  box-shadow:
+    var(--orders-edge-x, 0) var(--orders-edge-y, 4px) 0 0 var(--orders-edge),
+    calc(var(--orders-edge-x, 0) * 2.5) calc(var(--orders-edge-y, 4px) * 2.5) 18px 0 var(--orders-shade);
+  cursor: pointer;
+  transition:
+    transform var(--orders-move) var(--orders-settle),
+    box-shadow var(--orders-move) var(--orders-settle);
+  will-change: transform;
+}
+
+.orders-demo-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity var(--orders-move) var(--orders-settle);
+  will-change: opacity; /* a layer of its own: stepping back neither starts nor ends with a repaint */
+}
+
+/* while a layer is pointed at, the others step back */
+.orders-demo-receded .orders-demo-face {
+  opacity: 0.45;
+}
+
+/* the blank sheets of the orders between order 4 and the full decomposition */
+.orders-demo-blank {
+  border-style: dashed;
+  border-color: var(--orders-edge);
+  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
+  cursor: default;
+}
+
+/* pointed at, a blank layer shows its order's explanation (demo.js), fading in */
+.orders-demo-blank > .orders-demo-face {
+  animation: orders-demo-blank-in 260ms var(--orders-ease) both;
+}
+
+@keyframes orders-demo-blank-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.orders-demo-blank.orders-demo-peek {
+  border-style: solid;
+  border-color: var(--orders-ink);
+}
+
+.orders-demo-tag {
+  fill: var(--orders-ink);
+  font-size: 4.6px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.orders-demo-bonds line {
+  stroke: var(--orders-ink);
+  stroke-width: 0.45;
+  stroke-linecap: round;
+}
+
+.orders-demo-halo-ground {
+  fill: var(--orders-sheet);
+}
+
+.orders-demo-atoms circle {
+  fill: var(--orders-sheet);
+  stroke: var(--orders-ink);
+  stroke-width: 0.35;
+}
+
+.orders-demo-atoms text,
+.orders-demo-tokens text {
+  fill: var(--orders-ink);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.orders-demo-atoms text {
+  font-size: 2.5px;
+  font-weight: 600;
+}
+
+/* one house: the names and values of its features, around the circle */
+.orders-demo-features text {
+  dominant-baseline: central;
+}
+
+.orders-demo-feature-name {
+  fill: var(--orders-ink);
+  font-size: 3.4px;
+  font-weight: 700;
+}
+
+.orders-demo-feature-value {
+  fill: var(--orders-muted);
+  font-size: 2.8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* one house: the levels of its tree, the links of the groups to their features, their values */
+.orders-demo-tree-levels line {
+  stroke: var(--orders-line);
+  stroke-width: 0.25;
+  stroke-dasharray: 0.8 1.2;
+}
+
+.orders-demo-tree-levels text {
+  fill: var(--orders-muted);
+  font-size: 2.4px;
+  font-variant-numeric: tabular-nums;
+  dominant-baseline: central;
+}
+
+.orders-demo-tree-links path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.orders-demo-tree-groups text {
+  fill: var(--orders-ink);
+  font-size: 2.4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  dominant-baseline: central;
+}
+
+/* many houses: the heatmap, its rows, and the prediction of every house */
+.orders-demo-heat-cells {
+  image-rendering: pixelated;
+}
+
+.orders-demo-heat-rows line {
+  stroke: var(--orders-line);
+  stroke-width: 0.15;
+}
+
+.orders-demo-heat-label {
+  fill: var(--orders-muted);
+  font-size: 2.5px;
+  text-anchor: end;
+  dominant-baseline: central;
+}
+
+.orders-demo-heat-area {
+  fill: var(--orders-ink);
+  opacity: 0.07;
+}
+
+.orders-demo-heat-line {
+  fill: none;
+  stroke: var(--orders-ink);
+  stroke-width: 0.45;
+  stroke-linejoin: round;
+}
+
+.orders-demo-wash {
+  fill: var(--orders-sheet);
+  opacity: 0.3;
+}
+
+.orders-demo-grid line {
+  stroke: #ffffff;
+  stroke-opacity: 0.35;
+  stroke-width: 0.2;
+}
+
+.orders-demo-tokens rect:not(.orders-demo-tint) {
+  fill: var(--orders-raised);
+  stroke: var(--orders-line);
+  stroke-width: 0.3;
+}
+
+.orders-demo-tokens text {
+  font-size: 3.4px;
+  font-weight: 600;
+}
+
+/* -- the floating layers: the input on a card, every explanation on a layer of paper above it
+   (they lie on the card at rest, and float off it, unfold, while open), and below the card the
+   mechanism under it all ------------------------------------------------------------------- */
+
+/* a layer: paper with an edge below, nothing but the explanation's marks on it */
+.orders-demo-sheet.orders-demo-layer {
+  border-color: var(--orders-layer-edge);
+  background: var(--orders-layer-film);
+  box-shadow: var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-edge);
+  transition:
+    transform var(--orders-move) var(--orders-settle),
+    opacity 360ms var(--orders-ease),
+    box-shadow 360ms var(--orders-ease),
+    background 360ms var(--orders-ease),
+    border-color 360ms var(--orders-ease);
+}
+
+.orders-demo-layer .orders-demo-tag {
+  fill: var(--orders-layer-edge);
+  transition: fill 360ms var(--orders-ease);
+}
+
+/* the layer pointed at: its name in ink, as the input's (the mechanism's in its orange, below) */
+.orders-demo-layer.orders-demo-pointed .orders-demo-tag {
+  fill: var(--orders-ink);
+}
+
+/* while a layer is pointed at, the stack stays as it is, the others' marks fading, and the layer
+   pointed at shows in green, as the light it casts: its edge, a glow, and its paper tinted (the
+   mechanism's, below the card, in its own orange) */
+.orders-demo.orders-demo-floating .orders-demo-sheet.orders-demo-layer.orders-demo-pointed:not(.orders-demo-deep) {
+  border-style: solid;
+  border-color: var(--orders-xai-edge);
+  background: color-mix(in srgb, var(--orders-xai-beam) 55%, var(--orders-layer-film));
+  box-shadow:
+    var(--orders-edge-x, 0) var(--orders-edge-y, 2px) 0 0 var(--orders-xai-edge),
+    0 0 16px 2px var(--orders-xai-beam);
+}
+
+/* at rest, they lie on the card: only the top one shows, its marks on the input, without its film */
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-layer {
+  opacity: 0;
+}
+
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-layer.orders-demo-top {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* at rest, the card's name gives way to the top layer's, which lies on it */
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-card .orders-demo-tag {
+  opacity: 0;
+}
+
+/* the card wears the marks of the layer pointed at, projected (and the rows of layers at rest
+   point at nothing: their lines show only while the layers float) */
+.orders-demo-projection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.orders-demo-projection svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  opacity: 0.85;
+}
+
+.orders-demo.orders-demo-floating .orders-demo-row::before {
+  transition:
+    width var(--orders-move) var(--orders-settle),
+    opacity 360ms var(--orders-ease);
+}
+
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-row::before {
+  opacity: 0;
+}
+
+/* a new example's layers take their places at once, as its sheets do */
+.orders-demo-instant .orders-demo-layer {
+  transition: none;
+}
+
+/* the light from the layer pointed at down to the card */
+.orders-demo-beam {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 360ms var(--orders-ease);
+}
+
+.orders-demo-beam.orders-demo-beam-on {
+  opacity: 1;
+}
+
+/* the light of the explanation pointed at down onto the input: a green box, as the mechanism's is
+   orange, its edges drawn */
+.orders-demo-beam-top {
+  stop-color: var(--orders-xai-beam);
+}
+
+.orders-demo-beam-bottom {
+  stop-color: var(--orders-xai-beam);
+  stop-opacity: 0.45;
+}
+
+.orders-demo-beam-edges {
+  fill: none;
+  stroke: var(--orders-xai-edge);
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+/* and the input it falls on, edged in green, wearing the explanation's marks */
+.orders-demo-card.orders-demo-lit {
+  border-color: var(--orders-xai-edge);
+  box-shadow:
+    var(--orders-edge-x, 0) var(--orders-edge-y, 4px) 0 0 var(--orders-edge),
+    0 0 0 1px var(--orders-xai-edge),
+    calc(var(--orders-edge-x, 0) * 2.5) calc(var(--orders-edge-y, 4px) * 2.5) 18px 0 var(--orders-shade);
+}
+
+/* the mechanism: blueprint-like, amber, hidden under the card at rest */
+
+.orders-demo-sheet.orders-demo-layer.orders-demo-deep {
+  border-color: var(--orders-mech-edge);
+  background:
+    repeating-linear-gradient(0deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(90deg, var(--orders-mech-line) 0 1px, transparent 1px 8px),
+    var(--orders-mech-film);
+}
+
+.orders-demo-deep .orders-demo-tag {
+  fill: var(--orders-mech-edge);
+}
+
+.orders-demo-deep.orders-demo-pointed .orders-demo-tag {
+  fill: var(--orders-mech-ink);
+}
+
+/* 2^n, the terms the mechanism could have */
+.orders-demo-power sup {
+  margin-left: 0.05em;
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+/* estimated, the mechanism shows blurred, as only an estimate shows it: its layer, its light on the
+   input's card, and the plan's face of it (demo.js marks them, and defines the blur: an SVG
+   filter, which Safari draws on SVG's shapes, as it does not a CSS blur()) */
+.orders-demo-estimated .orders-demo-face > :not(.orders-demo-tag),
+.orders-demo-plan-view.orders-demo-estimated .orders-demo-plan-face > * {
+  filter: var(--orders-blur, blur(1.6px));
+}
+
+/* the filter's own svg takes no room */
+.orders-demo-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* the example chosen, said once to a screen reader (demo.js): out of view, and out of the grid */
+.orders-demo-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* at rest, under the card: only its edge shows below the card's */
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-layer.orders-demo-deep {
+  opacity: 1;
+}
+
+.orders-demo.orders-demo-floating:not(.orders-demo-open) .orders-demo-deep .orders-demo-face {
+  opacity: 0;
+}
+
+/* its light, rising under the card: a wash of its amber paper, the box between them, its edges
+   drawn */
+.orders-demo-beam-deep .orders-demo-beam-top,
+.orders-demo-beam-deep .orders-demo-beam-bottom {
+  stop-color: var(--orders-mech-beam);
+}
+
+.orders-demo-beam-tip {
+  fill: var(--orders-xai-edge);
+}
+
+.orders-demo-beam-deep .orders-demo-beam-tip {
+  fill: var(--orders-mech-edge);
+}
+
+.orders-demo-beam-deep .orders-demo-beam-edges {
+  stroke: var(--orders-mech-edge);
+  stroke-width: 1;
+  stroke-dasharray: none;
+  opacity: 0.85;
+}
+
+/* the slider of the orders, in its column left of the stack (demo.js places its parts): an arrow
+   down, every order below more complex, a tick at every sheet, and a handle on it */
+.orders-demo-rail {
+  position: absolute;
+  z-index: 100; /* over the stack, which spans the stage: no sheet comes into the column */
+  top: 0;
+  bottom: 0;
+  left: 0;
+  cursor: pointer;
+  /* a drag up or down the column scrolls the page, a pinch zooms it; the handle's drags it */
+  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
+}
+
+/* the line darkens downwards, to its arrowhead: the explanations grow more complex (thin, as the
+   mechanism's) */
+.orders-demo-rail-line {
+  position: absolute;
+  top: 0;
+  left: calc(var(--orders-rail-line) - 0.25px);
+  width: 1.5px;
+  border-radius: 1px;
+  /* (from the layer pointed at down, --orders-split on, green: demo.js) */
+  background: linear-gradient(var(--orders-edge), var(--orders-muted) var(--orders-split, 100%), var(--orders-xai-edge) var(--orders-split, 100%));
+}
+
+.orders-demo-rail-line::after {
+  position: absolute;
+  bottom: -6px;
+  left: -4.25px;
+  border: 5px solid transparent;
+  border-top: 7px solid var(--orders-muted);
+  border-bottom: 0;
+  content: "";
+}
+
+.orders-demo-rail-line-lit::after {
+  border-top-color: var(--orders-xai-edge);
+}
+
+.orders-demo-rail-label {
+  position: absolute;
+  left: calc(var(--orders-rail-line) - 1.65rem);
+  color: var(--orders-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* the mechanism's arrow's, in its orange, from its tip down */
+.orders-demo-rail-mech-label {
+  color: var(--orders-mech-ink);
+  transform: none;
+}
+
+/* (where it has no room: still laid out, so that its length is known) */
+.orders-demo-rail-mech-label-off {
+  visibility: hidden;
+}
+
+.orders-demo-rail-label em {
+  font-style: italic;
+}
+
+/* a hollow circle at every layer, as the mechanism's handle; a small one at every blank layer,
+   behind the large ones where they meet (on a phone, smaller still, the blank layers lying close) */
+.orders-demo-tick {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: calc(var(--orders-rail-line) - 6.5px);
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--orders-muted);
+  border-radius: 50%;
+  margin-top: -7px;
+  background: var(--orders-page);
+}
+
+.orders-demo-tick-blank {
+  z-index: 0;
+  left: calc(var(--orders-rail-line) - 2.5px);
+  width: 6px;
+  height: 6px;
+  border-width: 1.5px;
+  margin-top: -3px;
+}
+
+.orders-demo-narrow .orders-demo-tick-blank {
+  left: calc(var(--orders-rail-line) - 1.5px);
+  width: 4px;
+  height: 4px;
+  border-width: 1px;
+  margin-top: -2px;
+}
+
+/* the handle: the circle of the order pointed at, filled, over the others */
+.orders-demo-thumb {
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  left: calc(var(--orders-rail-line) - 6.5px);
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--orders-ink);
+  border-radius: 50%;
+  background: var(--orders-ink);
+  box-shadow: 0 1px 4px var(--orders-shade);
+  cursor: grab;
+  touch-action: none; /* dragging the handle does not scroll the page */
+  transition:
+    translate 320ms var(--orders-settle),
+    scale var(--orders-duration) var(--orders-ease),
+    opacity var(--orders-duration) var(--orders-ease),
+    background var(--orders-duration) var(--orders-ease),
+    box-shadow var(--orders-duration) var(--orders-ease);
+}
+
+/* (a finger wide where it is touched: a drag starts at the handle, on a touch screen) */
+.orders-demo-thumb::before {
+  position: absolute;
+  inset: -15px;
+  border-radius: 50%;
+  content: "";
+}
+
+/* at rest, no circle is filled, and no handle shows above them (but for the keyboard's focus) */
+.orders-demo-thumb-rest {
+  border-color: var(--orders-muted);
+  background: var(--orders-page);
+  box-shadow: none;
+}
+
+.orders-demo-thumb-rest:not(:focus-visible) {
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .orders-demo-rail:hover .orders-demo-thumb {
+    scale: 1.12;
+  }
+}
+
+.orders-demo-thumb:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 3px;
+}
+
+/* while dragged, the handle follows the pointer at once */
+.orders-demo-dragging,
+.orders-demo-dragging .orders-demo-thumb {
+  cursor: grabbing;
+}
+
+.orders-demo-dragging .orders-demo-thumb {
+  transition: none;
+}
+
+/* the line of the layer pointed at, from the slider's handle to its left corner (demo.js), solid as
+   its row's on the right */
+.orders-demo-rail-lead {
+  position: absolute;
+  z-index: 60;
+  top: -0.5px; /* its middle at the corner's height */
+  left: 0;
+  width: 0;
+  border-top: 1px solid var(--orders-ink);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    translate var(--orders-move) var(--orders-settle),
+    width var(--orders-move) var(--orders-settle),
+    opacity var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-rail-lead-on {
+  opacity: 1;
+}
+
+.orders-demo-rail-lead-deep {
+  border-color: var(--orders-mech-edge);
+}
+
+.orders-demo-rail-lead-lit {
+  border-color: var(--orders-xai-edge);
+}
+
+/* the mechanism's handle, apart from the arrow, at its height, on a thinner, orange arrow up to the
+   input (demo.js places them): pointed at, it brings out the mechanism, and fills */
+.orders-demo-rail-mech-line {
+  position: absolute;
+  top: 0;
+  left: calc(var(--orders-rail-line) - 0.25px);
+  width: 1.5px;
+  border-radius: 1px;
+  background: var(--orders-mech-edge);
+  pointer-events: none;
+}
+
+.orders-demo-rail-mech-line::before {
+  position: absolute;
+  top: -1px;
+  left: -4.25px;
+  border: 5px solid transparent;
+  border-top: 0;
+  border-bottom: 7px solid var(--orders-mech-edge);
+  content: "";
+}
+
+.orders-demo-rail-mech {
+  position: absolute;
+  top: -7px;
+  left: calc(var(--orders-rail-line) - 6.5px);
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--orders-mech-edge);
+  border-radius: 50%;
+  background: var(--orders-page);
+  cursor: pointer;
+  transition:
+    background var(--orders-duration) var(--orders-ease),
+    scale var(--orders-duration) var(--orders-ease);
+}
+
+@media (hover: hover) {
+  .orders-demo-rail-mech:hover {
+    scale: 1.15;
+  }
+}
+
+.orders-demo-rail-mech-on {
+  background: var(--orders-mech-edge);
+}
+
+/* the slider's handle, brought down to the mechanism, on its handle, in its orange; on an
+   explanation, in the green of its light */
+.orders-demo-thumb.orders-demo-thumb-mechanism {
+  border-color: var(--orders-mech-edge);
+  background: var(--orders-mech-edge);
+}
+
+.orders-demo-thumb.orders-demo-thumb-lit {
+  border-color: var(--orders-xai-edge);
+  background: var(--orders-xai-edge);
+}
+
+/* the invitation over the top layer (demo.js places it), as the Explain tab under the chip: tap a
+   layer, or with a mouse, hover one; it goes once a layer is pointed at, and while the explanation
+   is built, or the layers are swiped or change */
+.orders-demo-hint {
+  position: absolute;
+  z-index: 90;
+  padding: 0.38rem 0.95rem 0.42rem;
+  border-radius: 999px;
+  background: var(--orders-ink);
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.45);
+  color: var(--orders-sheet);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: orders-demo-hint-bob 2.2s ease-in-out infinite;
+  transition: opacity 360ms var(--orders-ease);
+}
+
+@keyframes orders-demo-hint-bob {
+  50% {
+    translate: 0 3px;
+  }
+}
+
+.orders-demo-hint-hover {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .orders-demo-hint-touch {
+    display: none;
+  }
+
+  .orders-demo-hint-hover {
+    display: inline;
+  }
+}
+
+.orders-demo-hinted .orders-demo-hint,
+.orders-demo-revealing .orders-demo-hint,
+.orders-demo-swiping .orders-demo-hint,
+.orders-demo-fading .orders-demo-hint {
+  opacity: 0;
+}
+
+/* (gone for good, it stops bobbing: an endless animation keeps what the page paints after it on
+   layers of its own) */
+.orders-demo-hinted .orders-demo-hint {
+  animation: none;
+}
+
+/* out of view, the endless animations rest (demo.js: orders-demo-away), and nothing is painted
+   for them */
+.orders-demo-away :is(.orders-demo-wire-chip.orders-demo-chip-call, .orders-demo-chip-explain, .orders-demo-hint, .orders-demo-rail-nudge),
+.orders-demo-away .orders-demo-wire-dashes::before {
+  animation-play-state: paused;
+}
+
+@container (max-width: 40rem) {
+  .orders-demo-hint {
+    padding: 0.3rem 0.75rem 0.34rem;
+    font-size: 0.78rem;
+  }
+}
+
+/* on a narrow screen, the invitation is at the slider instead, small, not over the layers: its first
+   circle calls, as the chip does before it is explained, and "Tap" beside it points at it */
+.orders-demo-rail-nudge {
+  position: absolute;
+  z-index: 3;
+  top: -7px;
+  left: calc(var(--orders-rail-line) - 6.5px);
+  display: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: orders-demo-nudge 1.8s var(--orders-ease) infinite;
+  transition: opacity 360ms var(--orders-ease);
+}
+
+.orders-demo-narrow .orders-demo-rail-nudge {
+  display: block;
+}
+
+.orders-demo-narrow .orders-demo-hint {
+  display: none;
+}
+
+/* (beside its card, on a wide screen, the stage is narrow, but the invitation is the wide screen's,
+   over the layers; on a touch screen, the slider's, as on a phone) */
+.orders-demo-beside.orders-demo-narrow .orders-demo-rail-nudge {
+  display: none;
+}
+
+.orders-demo-beside.orders-demo-narrow .orders-demo-hint {
+  display: revert;
+}
+
+@media (hover: none) {
+  .orders-demo-beside.orders-demo-narrow .orders-demo-rail-nudge {
+    display: block;
+  }
+
+  .orders-demo-beside.orders-demo-narrow .orders-demo-hint {
+    display: none;
+  }
+}
+
+/* where the one thing to point at is pointed at already, at rest, nothing invites (demo.js) */
+.orders-demo.orders-demo-uninvited :is(.orders-demo-hint, .orders-demo-rail-nudge) {
+  display: none;
+}
+
+.orders-demo-hinted .orders-demo-rail-nudge,
+.orders-demo-revealing .orders-demo-rail-nudge {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes orders-demo-nudge {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--orders-ink) 45%, transparent);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--orders-ink) 0%, transparent);
+  }
+}
+
+/* "Tap", right of the circle, pointing both ways: left at the circle, right at the layer */
+.orders-demo-rail-nudge-word {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 9px);
+  padding: 0.12rem 0.42rem 0.16rem;
+  border-radius: 999px;
+  background: var(--orders-ink);
+  color: var(--orders-sheet);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+.orders-demo-rail-nudge-word::before {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  border: 4px solid transparent;
+  border-right: 5px solid var(--orders-ink);
+  border-left: 0;
+  margin-top: -4px;
+  content: "";
+}
+
+.orders-demo-rail-nudge-word::after {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  border: 4px solid transparent;
+  border-right: 0;
+  border-left: 5px solid var(--orders-ink);
+  margin-top: -4px;
+  content: "";
+}
+
+/* the ladder: a row per sheet, beside its right corner: its line from the corner, on to the sheet's
+   point in the plot (demo.js), and a button for the keyboard, which the card above speaks for (the
+   ring on the plot its focus). Unfolded, the rows of the input and of the mechanism name them,
+   under the plot, as the plot names its axis */
+.orders-demo-ladder {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.orders-demo-row {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--orders-ink);
+  font: inherit;
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform var(--orders-move) var(--orders-settle);
+}
+
+/* the line from the sheet's right corner to its row (its middle at the corner's height, as the
+   plot's line it goes on to) */
+.orders-demo-row::before {
+  position: absolute;
+  top: 50%;
+  margin-top: -0.5px;
+  right: 100%;
+  width: var(--orders-lead, 0);
+  border-top: 1px dashed var(--orders-edge);
+  content: "";
+  transition: width var(--orders-move) var(--orders-settle);
+}
+
+.orders-demo-active::before {
+  border-top-style: solid;
+  border-color: var(--orders-ink);
+}
+
+.orders-demo-row-label {
+  padding-left: 0.4rem;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* the input's row names it, and points at nothing */
+.orders-demo-card-row {
+  pointer-events: none;
+  cursor: default;
+}
+
+/* the mechanism's name, in its orange; where only an estimate shows the mechanism, it says so, on
+   a line hanging below it: the row's line still meets the name */
+.orders-demo-mechanism-row .orders-demo-row-label {
+  position: relative;
+  color: var(--orders-mech-ink);
+}
+
+.orders-demo-row-note {
+  position: absolute;
+  top: 100%;
+  left: 0.4rem;
+  font-weight: 500;
+}
+
+.orders-demo-narrow .orders-demo-row-note {
+  right: 0;
+  left: auto;
+}
+
+/* on narrow screens, smaller, to fit the narrow column, and should they not, into the gap left of
+   it rather than off the stage */
+.orders-demo-narrow .orders-demo-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.orders-demo-narrow .orders-demo-row-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-left: 0.15rem;
+  font-size: 10px;
+}
+
+/* the card's bar by its R^2, as wide whatever it shows, and the R^2 with its verdict */
+.orders-demo-meter {
+  position: relative;
+  flex: none;
+  width: 5.3em;
+  height: 0.47em;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--orders-line);
+}
+
+.orders-demo-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--orders-ink);
+  opacity: 0.7;
+}
+
+.orders-demo-r2 {
+  color: var(--orders-ink);
+  font-weight: 700;
+}
+
+.orders-demo-r2::before {
+  content: "R² ";
+  color: var(--orders-muted);
+  font-weight: 500;
+}
+
+.orders-demo-verdict {
+  font-size: 0.88em;
+  letter-spacing: 0.02em;
+}
+
+/* after the R^2, with its comma */
+.orders-demo-verdict::before {
+  content: ", ";
+}
+
+/* an estimated mechanism's: what its estimate falls short of 1, the estimation gap, hatched on the
+   bar, and named, as the plot shades and names it */
+.orders-demo-meter-gap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(-45deg, var(--orders-gap) 0 1.5px, transparent 1.5px 3.5px);
+}
+
+.orders-demo-plan-gap {
+  color: var(--orders-gap);
+  font-weight: 600;
+}
+
+/* -- beside the stack: the plot of the fit, upright, where the rows' lines lead (demo.js) ------- */
+
+.orders-demo-side {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the frame: its rules drawn a unit long and stretched to the stack (their stroke unstretched), so
+   that they, and the ticks and name over them, move to the next example's stack */
+.orders-demo-side-rule {
+  vector-effect: non-scaling-stroke;
+}
+
+.orders-demo-side-frame :is(line, text) {
+  transition: transform 520ms var(--orders-settle);
+}
+
+/* a row's line, on from the row to its point */
+.orders-demo-side-lead {
+  stroke: var(--orders-edge);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.orders-demo-side-lead-on {
+  stroke: var(--orders-ink);
+  stroke-dasharray: none;
+}
+
+.orders-demo-plot-grid line {
+  stroke: var(--orders-line);
+  stroke-width: 1;
+}
+
+.orders-demo-plot-tick,
+.orders-demo-plot-axis {
+  fill: var(--orders-muted);
+  font-size: 11px;
+  dominant-baseline: central;
+}
+
+.orders-demo-plot-axis {
+  font-size: 10.5px;
+  font-style: italic;
+}
+
+/* the estimation gap: what an estimated full decomposition's fit falls short of 1, hatched */
+.orders-demo-plot-gap-fill {
+  fill: var(--orders-gap);
+  opacity: 0.08;
+}
+
+.orders-demo-plot-gap-hatch {
+  stroke: var(--orders-gap);
+  stroke-width: 1.2;
+  opacity: 0.5;
+}
+
+.orders-demo-plot-gap-label {
+  fill: var(--orders-gap);
+  font-style: normal;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--orders-page);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+/* the axis's name */
+.orders-demo-plot-label {
+  fill: var(--orders-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  dominant-baseline: central;
+}
+
+/* the area left of the line: the line's ink, darkest where the line runs furthest right, fading to
+   the axis */
+.orders-demo-plot-fade-top {
+  stop-color: var(--orders-ink);
+  stop-opacity: 0.16;
+}
+
+.orders-demo-plot-fade-bottom {
+  stop-color: var(--orders-ink);
+  stop-opacity: 0.01;
+}
+
+.orders-demo-plot-line {
+  fill: none;
+  stroke: var(--orders-ink);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.orders-demo-plot-skipped {
+  stroke-dasharray: 3 4;
+}
+
+.orders-demo-plot-dot {
+  fill: var(--orders-ink);
+  stroke: var(--orders-sheet);
+  stroke-width: 1.5;
+}
+
+.orders-demo-plot-between {
+  fill: var(--orders-sheet);
+  stroke: var(--orders-muted);
+  stroke-width: 1.25;
+}
+
+/* the ring on the line at the order pointed at */
+.orders-demo-plot-marker {
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 260ms var(--orders-settle),
+    opacity var(--orders-duration) var(--orders-ease);
+}
+
+.orders-demo-plot-pointing .orders-demo-plot-marker {
+  opacity: 1;
+}
+
+.orders-demo-plot-marker circle {
+  fill: var(--orders-sheet);
+  stroke: var(--orders-ink);
+  stroke-width: 2;
+}
+
+.orders-demo-plot-marker .orders-demo-plot-core {
+  fill: var(--orders-ink);
+  stroke: none;
+}
+
+/* the R^2 of the order pointed at, by its ring */
+.orders-demo-plot-value {
+  fill: var(--orders-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: var(--orders-page);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.orders-demo-plot-cover {
+  fill: transparent;
+  cursor: crosshair;
+  pointer-events: all;
+  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-demo *,
+  .orders-demo *::before,
+  .orders-demo *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

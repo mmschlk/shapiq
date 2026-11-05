@@ -40,9 +40,8 @@
     ["full", "Full explanation", "Full"],
   ];
 
-  const loader = document.createElement("script");
-  loader.src = `${root.dataset.root}data.js`;
-  loader.onload = () => {
+  // the data: already on the page (the docs load it before this script, alongside it), or loaded now
+  const begin = () => {
     try {
       start(window.SHAPIQ_FIXLIP);
     } catch (error) {
@@ -50,8 +49,15 @@
       showFallback();
     }
   };
-  loader.onerror = showFallback;
-  document.head.appendChild(loader);
+  if (window.SHAPIQ_FIXLIP) {
+    queueMicrotask(begin); // (once this script has run to its end: start() uses what it defines below)
+  } else {
+    const loader = document.createElement("script");
+    loader.src = `${root.dataset.root}data.js?v=${root.dataset.version ?? ""}`; // past caches
+    loader.onload = begin;
+    loader.onerror = showFallback;
+    document.head.appendChild(loader);
+  }
 
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -91,6 +97,14 @@
     if (below >= 0.75) return "high";
     if (below >= 0.25) return "typical";
     return value > norms.unrelated[19] ? "low" : "like unrelated";
+  };
+  // how well an explanation fits, in the orders demo's words: very good from R^2 = 0.95, good from
+  // 0.8, workable from 0.6, else poor
+  const fitVerdict = (r2) => {
+    if (r2 >= 0.95) return "very good";
+    if (r2 >= 0.8) return "good";
+    if (r2 >= 0.6) return "workable";
+    return "poor";
   };
   // a region of the photo as a background: the photo at grid times its size, moved to the region
   const region = (node, url, k, grid) => {
@@ -193,8 +207,16 @@
     const edges = document.createElementNS(SVG, "svg");
     edges.setAttribute("class", "fixlip-demo-edges");
     edges.setAttribute("aria-hidden", "true");
+    // the invitation over the photo, as the orders demo's over its layers: tap a region or a word,
+    // or with a mouse, hover one; it goes once one is pointed at, and without an explanation
+    const hint = el("span", "fixlip-demo-hint");
+    hint.setAttribute("aria-hidden", "true");
+    hint.append(
+      el("span", "fixlip-demo-hint-touch", "Tap a region or a word"),
+      el("span", "fixlip-demo-hint-hover", "Hover a region or a word"),
+    );
     // the edges before the caption: over its tokens' chips (see the CSS), under their words
-    stage.append(frame, spoken, edges, caption);
+    stage.append(frame, spoken, edges, caption, hint);
 
     const panel = el("div", "fixlip-demo-panel");
     const title = el("p", "fixlip-demo-title");
@@ -216,9 +238,11 @@
     larger.setAttribute("aria-label", "More players in the clique");
     sizer.append(smaller, sizeLabel, larger);
     const legend = el("p", "fixlip-demo-legend");
-    legend.innerHTML =
-      '<span class="fixlip-demo-key fixlip-demo-key-red"></span>raises the similarity' +
-      '<span class="fixlip-demo-key fixlip-demo-key-blue"></span>lowers it';
+    for (const [color, meaning] of [["red", "raises the similarity"], ["blue", "lowers it"]]) {
+      const key = el("span", "fixlip-demo-key");
+      key.append(el("i", `fixlip-demo-key-${color}`), meaning);
+      legend.append(key);
+    }
     const meta = el("p", "fixlip-demo-meta");
     const live = el("p", "fixlip-demo-live");
     live.setAttribute("aria-live", "polite");
@@ -305,6 +329,42 @@
       models.append(button);
       return button;
     });
+    // the pill around the option chosen, which slides to the next one chosen, as in the orders
+    // demo: a copy of the options over them, in the colors of the one chosen, cut to the pill, so
+    // that every label turns as the pill passes over it
+    const pillOf = (group, buttons) => {
+      const pill = el("div", "fixlip-demo-pill");
+      pill.setAttribute("aria-hidden", "true");
+      for (const button of buttons) {
+        const copy = el("span", "fixlip-demo-option");
+        copy.append(...[...button.childNodes].map((node) => node.cloneNode(true)));
+        pill.append(copy);
+      }
+      group.append(pill);
+      return pill;
+    };
+    const viewPill = pillOf(views, viewButtons);
+    const modelPill = pillOf(models, modelButtons);
+    // it slides there, unless instant (while the demo builds itself, or when the options change
+    // their size)
+    function movePill(pill, option, instant) {
+      const [top, left] = [option.offsetTop, option.offsetLeft];
+      const right = pill.clientWidth - left - option.offsetWidth;
+      const bottom = pill.clientHeight - top - option.offsetHeight;
+      if (instant) pill.style.transition = "none";
+      pill.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px round 999px)`;
+      if (instant) {
+        pill.getBoundingClientRect();
+        pill.style.transition = "";
+      }
+    }
+    const chosen = (buttons) => buttons.find((b) => b.getAttribute("aria-pressed") === "true") ?? buttons[0];
+    const movePills = () => {
+      movePill(viewPill, chosen(viewButtons), true);
+      movePill(modelPill, chosen(modelButtons), true);
+    };
+    for (const group of [views, models]) new ResizeObserver(movePills).observe(group);
+
     const step = (button, by) =>
       button.addEventListener("click", () => {
         if (button.getAttribute("aria-disabled") !== "true") setSize(state.size + by);
@@ -373,6 +433,7 @@
         b.setAttribute("aria-pressed", String(data.models[k].id === state.model));
         b.disabled = !has(state.image, data.models[k].id);
       });
+      movePill(modelPill, chosen(modelButtons), !started);
       photo.src = `${root.dataset.root}${image.id}.jpg`;
       photo.alt = image.alt ?? "";
 
@@ -423,13 +484,36 @@
       Object.assign(el("a", "", image.credit?.license ?? ""), { href: image.credit?.licenseUrl ?? "" }),
       ", cropped.",
     ];
-    const metaText = (image, model, e) => [
-      `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}` +
-        (model.norms ? `, ${verdict(e.similarity, model.norms)}` : "") +
-        `. Explained by ${data.method}` +
-        (e.r2 === undefined ? ". " : `; the explanation fits held-out coalitions with R² = ${e.r2.toFixed(2)}. `),
-      ...creditText(image),
-    ];
+    // under the explanation, as on the orders demo's card: a bar by its fit (R^2 on held-out
+    // coalitions) with a word for it, what it was explained with, the model's similarity, and the
+    // photo's credit, a line each
+    const metaText = (image, model, e) => {
+      const line = (className, ...content) => {
+        const node = el("span", `fixlip-demo-meta-line ${className}`);
+        node.append(...content);
+        return node;
+      };
+      const lines = [];
+      if (e.r2 !== undefined) {
+        const meter = el("span", "fixlip-demo-meter");
+        const fill = el("span", "fixlip-demo-meter-fill");
+        fill.style.width = `${Math.max(0, Math.min(1, e.r2)) * 100}%`;
+        meter.append(fill);
+        const fit = line("fixlip-demo-fit", meter, el("span", "fixlip-demo-r2", e.r2.toFixed(2)), `, ${fitVerdict(e.r2)}`);
+        fit.title = "How well the explanation predicts the similarity of coalitions it was not computed from";
+        lines.push(fit);
+      }
+      lines.push(line("fixlip-demo-method", "Explained with ", el("strong", "", data.method.split(" from ")[0]), ", estimated"));
+      lines.push(
+        line(
+          "fixlip-demo-model",
+          `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}` +
+            (model.norms ? `, ${verdict(e.similarity, model.norms)}` : ""),
+        ),
+      );
+      lines.push(line("fixlip-demo-credit", ...creditText(image)));
+      return lines;
+    };
     // the word for the similarity, its place on the scale (the middle 90% of unrelated pairs and of
     // photos with their own caption), and the share of photos with their own caption below it
     function setScale(norms, value) {
@@ -680,6 +764,7 @@
       state.view = view;
       state.pinned = false;
       viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === view)));
+      movePill(viewPill, chosen(viewButtons), !started);
       setShift();
       root.classList.toggle("fixlip-demo-full", view === "full");
       root.classList.toggle("fixlip-demo-none", view === "none");
@@ -746,6 +831,7 @@
     function show(player, announce = false) {
       state.focus = player;
       root.classList.toggle("fixlip-demo-focused", player !== null);
+      if (player !== null && started) root.classList.add("fixlip-demo-hinted");
       if (player !== null || state.view !== "none") list.replaceChildren(); // (it fades out otherwise)
       let message;
       if (player !== null) message = showPlayer(player);
@@ -777,7 +863,7 @@
         button.style.removeProperty("color");
       });
       const regions = clique.filter((k) => k < regionCount).length;
-      title.textContent = "The players that raise the similarity the most together";
+      title.replaceChildren(el("strong", "", "Clique"), " the players that raise the similarity most together");
       const tokens = clique.length - regions;
       detail.replaceChildren(
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
@@ -808,7 +894,7 @@
         button.style.setProperty("--fixlip-tint", color);
         button.classList.toggle("fixlip-demo-strong", alpha > 0.55);
       });
-      title.textContent = "The full explanation";
+      title.replaceChildren(el("strong", "", "Full explanation"), " every player, alone and in pairs");
       detail.textContent =
         "Each region and word is colored by what it adds alone; " +
         `lines link the ${STRONGEST} strongest interactions. Listed: the strongest image–text pairs.`;
@@ -850,9 +936,9 @@
         const swatch = el("span", "fixlip-demo-swatch fixlip-demo-swatch-region fixlip-demo-swatch-title");
         swatch.setAttribute("aria-hidden", "true");
         region(swatch, photo.src, player, grid);
-        title.replaceChildren("Interactions of ", swatch, ` ${place(player)}`);
+        title.replaceChildren(el("strong", "", "Interactions"), " of ", swatch, ` ${place(player)}`);
       } else {
-        title.textContent = `Interactions of ${name(player)}`;
+        title.replaceChildren(el("strong", "", "Interactions"), ` of ${name(player)}`);
       }
       detail.replaceChildren(
         "On its own, it adds ",

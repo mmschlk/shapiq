@@ -25,6 +25,16 @@ takes too long or needs too large a model to run with the docs, and it shows wha
       image regions and words of five COCO photos, explained as in FIxLIP and computed with
       ProxySHAP.
 
+   .. grid-item-card:: From Shapley values to the full decomposition
+      :link: ../introduction/how-much-explained
+      :link-type: doc
+      :img-top: /_static/images/hero_orders_demo.png
+      :img-alt: The orders demo on a wide screen: a molecule's GCN prediction explained at every order, as layers from the Shapley values to the full decomposition above the molecule and the model's mechanism; the layer of order 2 is pointed at, its explanation shown on the card beside the layers, its fit to the model (R² = 0.88) on the plot beside them.
+
+      How much of a model does an explanation explain? One prediction, explained at every order of
+      interaction, from the Shapley values to the full decomposition, which adds up to the model:
+      a molecule, houses, TabPFN and SigLIP 2, the figure built up step by step.
+
 .. toctree::
    :hidden:
 
