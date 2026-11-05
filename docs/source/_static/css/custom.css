@@ -81,6 +81,87 @@ table.docutils {
   border-radius: var(--shapiq-radius-small);
 }
 
+/* -- Definitions --------------------------------------------------------------------------------- */
+
+/* A definition of the user guide (an admonition of the class "definition", docs/STYLE_GUIDE.md) is
+   set apart as a book of mathematics sets its environments: a raised card with an amber bar and a
+   soft amber light in its corner, as a numbered element; its kind and number as a small amber
+   label over its name ("Definition 2.1 *Name*" in the source); the text in the size of the page;
+   the terms it defines marked as with a highlighter */
+div.admonition.definition {
+  position: relative;
+  margin: 1.75rem 0;
+  padding: 1.1rem 1.4rem 1.15rem 1.6rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background:
+    radial-gradient(32rem 12rem at 0 0, var(--shapiq-amber-soft), transparent 70%),
+    var(--shapiq-surface-raised);
+  box-shadow: var(--shapiq-shadow);
+  font-size: var(--font-size--normal, 1rem);
+}
+
+div.admonition.definition::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: linear-gradient(var(--shapiq-amber), color-mix(in srgb, var(--shapiq-amber) 25%, transparent));
+}
+
+/* followed from a reference, a ring of soft amber */
+div.admonition.definition:target {
+  box-shadow:
+    0 0 0 4px var(--shapiq-amber-soft),
+    var(--shapiq-shadow);
+}
+
+div.admonition.definition > .admonition-title {
+  margin: 0 0 0.7rem;
+  padding: 0;
+  background: none;
+  color: var(--shapiq-amber-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+div.admonition.definition > .admonition-title::before {
+  content: none;
+}
+
+div.admonition.definition > .admonition-title em {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--color-foreground-primary);
+  font-size: 1.12rem;
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+div.admonition.definition > p {
+  margin: 0.55rem 0;
+}
+
+div.admonition.definition > :last-child {
+  margin-bottom: 0;
+}
+
+div.admonition.definition strong {
+  padding: 0 0.1em;
+  border-radius: 0.15em;
+  background: linear-gradient(transparent 55%, var(--shapiq-amber-soft) 55%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 .sidebar-logo {
   max-width: 8.5rem;
 }
@@ -125,11 +206,12 @@ a.shapiq-notation:hover::after {
   transform: scaleX(1);
 }
 
-/* references to numbered elements, such as an equation's "(1)" ({eq}) or a figure's "Fig. 1"
-   ({numref}), are amber (docs/STYLE_GUIDE.md): underlined in amber, and on hover with a thicker
+/* references to numbered elements, such as an equation's "(1)" ({eq}), a figure's "Fig. 1"
+   ({numref}), or a definition (a {ref} to its label "def-..."), are amber (docs/STYLE_GUIDE.md): underlined in amber, and on hover with a thicker
    underline and the offset shadow of the notation's symbols. Links to pages and citations keep the
    link color; the "¶" next to an equation's number is not a reference */
 a.reference[href*="#equation-"],
+a.reference[href*="#def-"],
 a.reference:has(> .std-numref) {
   color: inherit;
   text-decoration-line: underline;
@@ -142,6 +224,7 @@ a.reference:has(> .std-numref) {
 }
 
 a.reference[href*="#equation-"]:hover,
+a.reference[href*="#def-"]:hover,
 a.reference:has(> .std-numref):hover {
   color: inherit;
   text-decoration-color: var(--shapiq-amber);

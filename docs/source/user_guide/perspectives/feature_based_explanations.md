@@ -20,8 +20,9 @@ feature-based explanation speaks about them. Point at a feature to see where it 
 - **A running example.** A house in the California housing data: which features drive its predicted
   price? Latitude and longitude matter only together, as the location of the house.
 
-```{admonition} Definition 2.1 (Feature-Based Explanation)
-:class: note
+```{admonition} Definition 2.1 *Feature-Based Explanation*
+:class: definition
+:name: def-feature-based-explanation
 
 Let $\model : \featurespace \to \outputspace$ be a trained model on the features
 $\players = \{1, \dots, \nplayers\}$. A **feature-based explanation** is a map
@@ -56,5 +57,6 @@ the explanation looks like. Pick the units and the space, then the features.
   how the output of the model changes {cite:p}`Covert.2021`.
 - **What is not covered.** Counterfactual, example-based, and concept-based explanations do not
   explain through subsets of features {cite:p}`Muschalik.2026{Sec. 2.3}`.
-- **What the definition leaves open.** Definition 2.1 says nothing about how $\expl(S)$ is computed:
-  each of the three lenses of this part answers this in its own language.
+- **What the definition leaves open.** {ref}`Definition 2.1 <def-feature-based-explanation>` says
+  nothing about how $\expl(S)$ is computed: each of the three lenses of this part answers this in its
+  own language.

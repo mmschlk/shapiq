@@ -12,10 +12,12 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
   examples, not as decoration. The theme's own colors (the blue of links, the red of the current page
   in the navigation) stay as they are.
 - **Amber is the docs' color**, the one touch of color beside red and blue. It marks what a reader
-  can point at or follow: references to numbered elements (equations, figures, tables), the symbols
-  of the notation, and, in illustrations, the features (players), what they light up, and values
+  can point at or follow: numbered elements (definitions) and references to them (equations,
+  figures, tables, definitions), the symbols of the notation, and, in illustrations, the features (players), what they light up, and values
   that are neither positive nor negative, such as a predicted price. No other accent color: no
   violet, no purple.
+- **Red and blue for text in their inks**, `--shapiq-red-ink` and `--shapiq-blue-ink` (4.5:1 in both
+  themes); on solid red, text is dark (`--shapiq-on-red`), on solid blue, white.
 - **Amber for lines and fills, its ink for text.** `--shapiq-amber` draws lines, underlines, and
   fills; text in amber uses `--shapiq-amber-ink` (5:1 on the page in both themes), and highlights
   `--shapiq-amber-soft`. On solid amber, text is dark in both themes.
@@ -26,8 +28,9 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
 
 - **References to numbered elements are underlined in amber**, and more pronounced on hover: a
   thicker underline and an amber offset shadow. `custom.css` styles references made with `{eq}`
-  (equations) and `{numref}` (figures, tables) this way. Refer to a numbered element with these
-  roles, never with a plain link or as plain text such as "(1)".
+  (equations), `{numref}` (figures, tables), and `{ref}` to a `def-...` label (definitions) this
+  way. Refer to a numbered element with these roles, never with a plain link or as plain text such
+  as "(1)".
 - **Symbols of the notation are amber only on hover**, so that equations stay clean. Each links to
   its row of the notation page.
 - Links to pages (`{doc}`, `{ref}`) and citations keep the theme's link color.
@@ -73,6 +76,10 @@ How to write pages (math, citations, comments, building) is in `source/user_guid
 - **Cite the source** of every definition, result, and method, with the keys of `references.bib`
   (`Author.Year`). A note after the key points into the source: `` {cite:t}`Muschalik.2026{Def. 2.1}` ``.
 - **Label every displayed equation the text refers to**, and refer to it with `{eq}`.
+- **Definitions are cards**: an admonition of the class `definition`, titled with its kind, number,
+  and name (`Definition 2.1 *Feature-Based Explanation*`), labeled `def-...`, with the terms it
+  defines in bold. Refer to it with `` {ref}`Definition 2.1 <def-...>` ``, which is underlined in
+  amber as a numbered element. Other admonitions (notes, tips) keep the theme's style.
 - Notes for authors (sources, open decisions) go into comments (`%`), which do not render.
 
 ## Checking a Change

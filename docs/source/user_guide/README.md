@@ -47,6 +47,25 @@ row in `notation.md` that starts with `<span id="notation-<macro>"></span>`.
 | `\game` | $\nu$ | the explanation game |
 | `\E`, `\Var`, `\R` | $\mathbb{E}$, $\mathbb{V}$, $\mathbb{R}$ | expectation, variance, real numbers |
 
+## Definitions
+
+A definition is an admonition of the class `definition`, with its kind and number, then its name in
+`*...*`, and a label that starts with `def-`:
+
+````markdown
+```{admonition} Definition 2.1 *Feature-Based Explanation*
+:class: definition
+:name: def-feature-based-explanation
+
+Let $\model : \featurespace \to \outputspace$ be ... A **feature-based explanation** is a map ...
+```
+
+As {ref}`Definition 2.1 <def-feature-based-explanation>` says, ...
+````
+
+It renders as a card: "Definition 2.1" as a small amber label over the name, and the terms it defines
+(`**...**`) marked in amber. References to it are underlined in amber, as those to equations.
+
 ## Illustrations
 
 Interactive figures go in with the `shapiq-illustration` directive; how they work and how to

@@ -20,8 +20,9 @@ of them, we fix what they have in common, following {cite:t}`Muschalik.2026{Def.
 
 ## The Definition
 
-```{admonition} Definition 1.1 (Feature-based explanation)
-:class: note
+```{admonition} Definition 1.1 *Feature-Based Explanation*
+:class: definition
+:name: def-showcase-explanation
 
 Let $\model : \featurespace \to \R$ be a trained model on the features
 $\players = \{1, \dots, \nplayers\}$.[^notation] A **feature-based explanation** is a map
