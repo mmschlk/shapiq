@@ -1,8 +1,8 @@
 // The illustration "vocabulary" (chapter 2.1 of the user guide): features are the universal
 // language of machine learning models. Four inputs, a row of a table, a photo, a sentence, and a
 // molecule, split into their features: the columns, the patches, the tokens, and the atoms. Each
-// feature flies out of its place in the input as a chip, wires connect them, and pulses carry them
-// into one model f, which predicts. Whatever the input, the model reads features, and an
+// feature flies out of its place in the input as a chip, its number on the place it left, and pulses
+// carry the features into one model f, which predicts. Whatever the input, the model reads features, and an
 // explanation speaks about them. When the illustration is first seen, it cycles through the four
 // inputs until the reader picks one; pointing at a chip or at a part of the input lights up the
 // pair. With reduced motion, nothing flies and nothing cycles.
@@ -33,24 +33,21 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     ["Lon.", "Longitude", (v) => v.toFixed(2).replace("-", "−"), "in degrees east"],
   ];
   const TOKENS = ["the", "movie", "was", "not", "bad", "at", "all"];
-  const MOLECULE = [
-    // symbol, name, x, y: a nitrobenzene, as in the mutagenic molecules of MUTAG; the ring from
-    // its right atom counterclockwise, then the nitro group
+  const ATOMS = [
+    // symbol, name, x, y, and where its number sits: a nitrobenzene, as in the mutagenic molecules
+    // of MUTAG, numbered as chemists do, the ring from the atom that holds the nitro group
     ...[0, 1, 2, 3, 4, 5].map((k) => {
       const angle = (Math.PI / 3) * k;
-      return ["C", "carbon", 112 + 54 * Math.cos(angle), 120 - 54 * Math.sin(angle)];
+      const [x, y] = [112 + 54 * Math.cos(angle), 120 - 54 * Math.sin(angle)];
+      // outside the ring, away from its center; the first below its bond to the nitrogen
+      const out = k === 0 ? [180, 143] : [x + 24 * Math.cos(angle), y - 24 * Math.sin(angle)];
+      return ["C", "carbon", x, y, ...out];
     }),
-    ["N", "nitrogen", 216, 120],
-    ["O", "oxygen", 256, 84],
-    ["O", "oxygen", 256, 156],
+    ["N", "nitrogen", 216, 120, 216, 146],
+    ["O", "oxygen", 256, 84, 284, 84],
+    ["O", "oxygen", 256, 156, 284, 156],
   ];
-  const MOLECULE_BONDS = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [0, 6], [6, 7], [6, 8]];
-  // the atoms numbered as their wires leave the molecule (drawWires): the upper ones, which rise,
-  // from left to right, then the lower ones, which drop, from right to left; so the wires reach
-  // their chips without crossing
-  const ORDER = [3, 2, 1, 0, 6, 7, 8, 5, 4];
-  const ATOMS = ORDER.map((k) => MOLECULE[k]);
-  const BONDS = MOLECULE_BONDS.map(([a, b]) => [ORDER.indexOf(a), ORDER.indexOf(b)]);
+  const BONDS = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [0, 6], [6, 7], [6, 8]];
 
   const MODALITIES = [
     {
@@ -87,18 +84,40 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     },
   ];
 
+  // The parts of an input carry the numbers of their features, as their chips do: whatever the
+  // input, its features are numbered 1, …, d. An HTML number, or an SVG one at (x, y).
+  const badge = (k) => {
+    const node = el("span", "voc-badge", String(k + 1));
+    node.setAttribute("aria-hidden", "true");
+    return node;
+  };
+  const badgeIn = (parent, k, x, y, r) => {
+    const group = svg("g", { class: "voc-badge-svg", transform: `translate(${x} ${y})`, "aria-hidden": "true" }, parent);
+    svg("circle", { r }, group);
+    svg("text", {}, group).textContent = String(k + 1);
+    return group;
+  };
+
   // each build function fills the input panel (its one element) and returns the features: per
-  // feature, the chip's label and value, its preview, the parts of the input it lights up (the first
-  // is where its chip flies from), and where its wire attaches (drawWires): the part (anchor, else
-  // the first), whether it is round, and its port, "lane" or "center"
+  // feature, the chip's label and value, its preview, its number on the input (badge), and the
+  // parts of the input it lights up (the first is where its chip flies from)
   function buildTable(panel) {
     const table = el("table", "voc-table");
-    const head = table.createTHead().insertRow();
+    const numbers = table.createTHead().insertRow();
+    numbers.className = "voc-table-index";
+    const head = table.tHead.insertRow();
     const parts = COLUMNS.map(() => []);
+    const badges = COLUMNS.map((column, k) => {
+      const cell = el("th");
+      const node = badge(k);
+      cell.appendChild(node);
+      numbers.appendChild(cell);
+      return node;
+    });
     COLUMNS.forEach(([short], k) => {
       const th = el("th", "", short);
       head.appendChild(th);
-      parts[k].push(th);
+      parts[k].push(th, badges[k]);
     });
     const body = table.createTBody();
     HOUSES.forEach((house, row) => {
@@ -117,15 +136,13 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     cell.colSpan = COLUMNS.length;
     cell.textContent = "⋮";
     panel.appendChild(table);
-    // the wires attach to the heads of the columns: the column is the feature
+    // the number heads the column: the column is the feature
     return COLUMNS.map(([, name, format, unit], k) => ({
       text: name,
       value: format(HOUSES[0][k]),
       unit,
+      badge: badges[k],
       parts: parts[k],
-      anchor: parts[k][1],
-      port: "lane",
-      feet: true,
     }));
   }
 
@@ -141,6 +158,8 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
         );
       }
     }
+    // each patch numbered in its corner
+    const badges = patches.map((patch, k) => badgeIn(picture, k, (k % 3) * 100 + 17, Math.floor(k / 3) * 100 + 17, 12));
     panel.appendChild(picture);
     return patches.map((patch, k) => {
       const preview = svg("svg", {
@@ -149,19 +168,26 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
         "aria-hidden": "true",
       });
       svg("use", { href: `#${uid}-scene`, width: 300, height: 300 }, preview);
-      return { text: `patch ${k + 1}`, value: "", preview, parts: [patch], port: "center" };
+      return { text: `patch ${k + 1}`, value: "", preview, badge: badges[k], parts: [patch, badges[k]] };
     });
   }
 
   function buildText(panel) {
     const sentence = el("p", "voc-sentence");
-    const tokens = TOKENS.map((token) => {
+    // each token numbered under it
+    const tokens = TOKENS.map((token, k) => {
       const span = el("span", "voc-token", token);
+      span.appendChild(badge(k));
       sentence.appendChild(span);
       return span;
     });
     panel.appendChild(sentence);
-    return tokens.map((span, k) => ({ text: `“${TOKENS[k]}”`, value: "", parts: [span], port: "lane" }));
+    return tokens.map((span, k) => ({
+      text: `“${TOKENS[k]}”`,
+      value: "",
+      badge: span.lastChild,
+      parts: [span],
+    }));
   }
 
   function buildGraph(panel) {
@@ -181,13 +207,14 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
       svg("text", {}, group).textContent = symbol;
       return group;
     });
+    // each atom numbered beside it, as in a drawing of chemistry
+    const badges = ATOMS.map(([, , , , bx, by], k) => badgeIn(graph, k, bx, by, 10));
     panel.appendChild(graph);
     return atoms.map((group, k) => ({
       text: ATOMS[k][0],
       value: ATOMS[k][1],
-      parts: [group],
-      round: true,
-      port: "lane",
+      badge: badges[k],
+      parts: [group, badges[k]],
     }));
   }
 
@@ -323,12 +350,8 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
 
   // -- wires ---------------------------------------------------------------------------------------
 
-  // The wires run in front of the input, from a port on each part to its chip, and from the chips
-  // into the model. Wide, they run to the right, narrow, down.
-  const center = (rect, base) => [
-    rect.left + rect.width / 2 - base.left,
-    rect.top + rect.height / 2 - base.top,
-  ];
+  // The wires from the chips into the model, which the pulses run along. Wide, they run to the
+  // right, narrow, down. (The input is not wired to its chips: its parts carry their numbers.)
   const curve = ([x1, y1], [x2, y2], horizontal) => {
     if (horizontal) {
       const mid = (x1 + x2) / 2;
@@ -338,117 +361,35 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     return `M${x1} ${y1} C${x1} ${mid} ${x2} ${mid} ${x2} ${y2}`;
   };
 
-  // The wire from a part to its chip. Wide, a part on a lane rises from its top into a lane over the
-  // input (in its upper half) or drops from its bottom into a lane under it (in its lower half),
-  // runs out of the input, and curves to its chip: the further left the part, the outer its lane,
-  // so that no lane crosses the riser of another part, and as the features are numbered, the lanes
-  // reach their chips in order. A patch of the image sends its wire from its center, through the
-  // picture. Narrow, the columns of the table drop from their feet; the other parts send their
-  // wires from their edge (or rim), toward the chip.
-  const lanesOf = (base) => {
-    const content = input.firstElementChild.getBoundingClientRect();
-    const middle = content.top + content.height / 2;
-    const rects = current.features.map((f) => (f.anchor ?? f.parts[0]).getBoundingClientRect());
-    const up = rects.map((r) => r.top + r.height / 2 <= middle + 1);
-    const laned = (j) => current.features[j].port === "lane";
-    const top = Math.min(...rects.filter((r, j) => laned(j) && up[j]).map((r) => r.top));
-    const bottom = Math.max(...rects.filter((r, j) => laned(j) && !up[j]).map((r) => r.bottom));
-    return rects.map((r, k) => {
-      const x = r.left + r.width / 2;
-      const outer = rects.filter((q, j) => laned(j) && up[j] === up[k] && q.left + q.width / 2 > x + 0.5).length;
-      return {
-        up: up[k],
-        x: x - base.left,
-        y: (up[k] ? r.top : r.bottom) - base.top,
-        lane: up[k] ? top - base.top - 9 - 6 * outer : bottom - base.top + 9 + 6 * outer,
-        end: content.right - base.left + 6,
-      };
-    });
-  };
-
-  const lead = (feature, route, to, horizontal, base) => {
-    const [x2, y2] = to;
-    if (feature.port === "lane" && horizontal) {
-      const { up, x, y, lane, end } = route;
-      const r = Math.min(6, Math.abs(y - lane));
-      const mid = (end + x2) / 2;
-      return {
-        from: [x, y],
-        d:
-          `M${x} ${y} V${up ? lane + r : lane - r} Q${x} ${lane} ${x + r} ${lane} H${end} ` +
-          `C${mid} ${lane} ${mid} ${y2} ${x2} ${y2}`,
-      };
-    }
-    const part = (feature.anchor ?? feature.parts[0]).getBoundingClientRect();
-    if (feature.feet) {
-      const from = [part.left + part.width / 2 - base.left, input.firstElementChild.getBoundingClientRect().bottom - base.top];
-      return { from, d: curve(from, to, false) };
-    }
-    const [cx, cy] = center(part, base);
-    const length = Math.hypot(x2 - cx, y2 - cy) || 1;
-    const [ux, uy] = [(x2 - cx) / length, (y2 - cy) / length];
-    let reach = 0;
-    if (feature.round) reach = part.width / 2;
-    else if (feature.port !== "center") {
-      reach = Math.min(part.width / 2 / Math.max(Math.abs(ux), 1e-6), part.height / 2 / Math.max(Math.abs(uy), 1e-6));
-    }
-    const from = [cx + ux * reach, cy + uy * reach];
-    const pull = 0.32 * Math.hypot(x2 - from[0], y2 - from[1]);
-    const c1 = [from[0] + ux * pull, from[1] + uy * pull];
-    const c2 = horizontal ? [x2 - 0.42 * (x2 - from[0]), y2] : [x2, y2 - 0.42 * (y2 - from[1])];
-    return { from, d: `M${from[0]} ${from[1]} C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${x2} ${y2}` };
-  };
-
-  // draws the wires from the input to the chips and from the chips to the model; returns the paths
-  // into the model, for the pulses
+  // draws the wires; returns them, for the pulses
   const drawWires = (animate) => {
     const base = body.getBoundingClientRect();
     wires.setAttribute("viewBox", `0 0 ${base.width} ${base.height}`);
     wires.replaceChildren();
     const boxRect = box.getBoundingClientRect();
     const horizontal = features.getBoundingClientRect().left > input.getBoundingClientRect().right - 4;
-    const routes = lanesOf(base);
-    const leads = svg("g", {}, wires);
-    const ports = svg("g", {}, wires);
-    const into = [];
-    current.wires = current.features.map((feature, k) => {
-      const chip = current.chips[k].getBoundingClientRect();
-      const chipIn = horizontal
-        ? [chip.left - base.left, chip.top + chip.height / 2 - base.top]
-        : [chip.left + chip.width / 2 - base.left, chip.top - base.top];
+    const modelIn = horizontal
+      ? [boxRect.left - base.left, boxRect.top + boxRect.height / 2 - base.top]
+      : [boxRect.left + boxRect.width / 2 - base.left, boxRect.top - base.top];
+    const into = current.chips.map((node, k) => {
+      const chip = node.getBoundingClientRect();
       const chipOut = horizontal
         ? [chip.right - base.left, chip.top + chip.height / 2 - base.top]
         : [chip.left + chip.width / 2 - base.left, chip.bottom - base.top];
-      const modelIn = horizontal
-        ? [boxRect.left - base.left, boxRect.top + boxRect.height / 2 - base.top]
-        : [boxRect.left + boxRect.width / 2 - base.left, boxRect.top - base.top];
-      const { from, d } = lead(feature, routes[k], chipIn, horizontal, base);
-      // a casing in the color of the page under each wire, so that it reads in front of the input
-      const casing = svg("path", { d, class: "voc-wire-casing" }, leads);
-      const a = svg("path", { d, class: "voc-wire" }, leads);
-      const port = svg("circle", { cx: from[0], cy: from[1], r: 3.6, class: "voc-port" }, ports);
-      const b = svg("path", { d: curve(chipOut, modelIn, horizontal), class: "voc-wire voc-wire-model" }, wires);
-      into.push(b);
+      const wire = svg("path", { d: curve(chipOut, modelIn, horizontal), class: "voc-wire" }, wires);
       if (animate && !reducedMotion()) {
-        for (const [path, delay] of [[casing, 0], [a, 0], [b, 160]]) {
-          const length = path.getTotalLength();
-          path.style.strokeDasharray = `${length}`;
-          path.animate([{ strokeDashoffset: length }, { strokeDashoffset: 0 }], {
-            duration: 520,
-            delay: delay + 28 * k,
-            easing: "cubic-bezier(0.4, 0, 0.2, 1)",
-            fill: "backwards",
-          });
-        }
-        port.animate([{ transform: "scale(0)" }, { transform: "scale(1.5)", offset: 0.6 }, { transform: "none" }], {
-          duration: 420,
+        const length = wire.getTotalLength();
+        wire.style.strokeDasharray = `${length}`;
+        wire.animate([{ strokeDashoffset: length }, { strokeDashoffset: 0 }], {
+          duration: 520,
           delay: 28 * k,
-          easing: "cubic-bezier(0.3, 1.4, 0.5, 1)",
+          easing: "cubic-bezier(0.4, 0, 0.2, 1)",
           fill: "backwards",
         });
       }
-      return [casing, a, port, b];
+      return wire;
     });
+    current.wires = into.map((wire) => [wire]);
     setActive(active);
     return into;
   };
@@ -505,6 +446,8 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     const modality = MODALITIES[next];
     const moving = !reducedMotion();
     waiting = false;
+    // the parts are not numbered yet: their numbers come with the chips
+    input.classList.toggle("voc-unnamed", moving);
     pinned = null;
     setActive(null);
     box.classList.remove("is-reading");
@@ -549,6 +492,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     count.textContent = String(built.length);
 
     if (!moving) {
+      input.classList.remove("voc-unnamed");
       drawWires(false);
       showPrediction(true);
       return;
@@ -584,7 +528,16 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
           delay: 100 + gap * k,
         });
       }
+      built[k].badge.animate(
+        [
+          { opacity: 0, transform: "scale(0.2)" },
+          { opacity: 1, transform: "scale(1.3)", offset: 0.6 },
+          { opacity: 1, transform: "none" },
+        ],
+        { duration: 420, delay: 90 + gap * k, easing: "cubic-bezier(0.3, 1.4, 0.5, 1)", fill: "backwards" },
+      );
     });
+    input.classList.remove("voc-unnamed");
     await wait(140 + gap * made.length + flight - 200);
     if (!alive()) return;
 
@@ -727,6 +680,7 @@ window.shapiqIllustrations?.define("vocabulary", (stage, kit) => {
     show(0, { intro: true });
     run += 1; // stop that first run after its setup: it plays when seen
     chips.style.visibility = "hidden";
+    input.classList.add("voc-unnamed");
     showPrediction(false);
     waiting = true;
   }

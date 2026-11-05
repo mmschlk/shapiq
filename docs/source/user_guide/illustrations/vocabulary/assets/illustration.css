@@ -89,7 +89,7 @@ body[data-theme="dark"] .voc {
   }
 }
 
-/* the wires run in front of the input, behind the chips and the model */
+/* the wires from the chips to the model run behind the chips and the model */
 .voc-input-column {
   position: relative;
   z-index: 1;
@@ -403,46 +403,15 @@ body[data-theme="dark"] .voc {
     stroke-width var(--shapiq-duration) var(--shapiq-ease);
 }
 
-.voc-wire-model {
-  opacity: 0.4;
-}
 
-/* under each wire from the input, a casing in the color of the page: the wire reads in front of
-   what it crosses */
-.voc-wire-casing {
-  fill: none;
-  stroke: var(--color-background-primary, #fff);
-  stroke-linecap: round;
-  stroke-width: 4.5;
-  opacity: 0.85;
-  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
-}
-
-/* the port of a wire on its part: an amber dot in a ring of the page's color */
-.voc-port {
-  fill: var(--shapiq-amber);
-  stroke: var(--color-background-primary, #fff);
-  stroke-width: 1.75;
-  transform-box: fill-box;
-  transform-origin: center;
-  transition:
-    opacity var(--shapiq-duration) var(--shapiq-ease),
-    transform var(--shapiq-duration) var(--shapiq-ease);
-}
 
 .voc-pulse {
   fill: var(--shapiq-amber);
   filter: drop-shadow(0 0 3px var(--shapiq-amber));
 }
 
-.voc-pointing .voc-wire,
-.voc-pointing .voc-wire-casing,
-.voc-pointing .voc-port {
+.voc-pointing .voc-wire {
   opacity: 0.12;
-}
-
-.voc-pointing .voc-wire-casing.is-active {
-  opacity: 0.85;
 }
 
 .voc-pointing .voc-wire.is-active {
@@ -450,16 +419,74 @@ body[data-theme="dark"] .voc {
   stroke-width: 2.4;
 }
 
-.voc-pointing .voc-port.is-active {
-  opacity: 1;
-  transform: scale(1.4);
-}
 
 .voc-pointing .voc-chip:not(.is-active) {
   opacity: 0.55;
 }
 
 /* -- the inputs --------------------------------------------------------------------------------- */
+
+/* the number of a part's feature, as on its chip (.shapiq-ill-chip-index): opaque, to sit on a
+   picture; solid amber while the feature is pointed at; hidden until its chip flies out */
+.voc-badge {
+  display: inline-grid;
+  box-sizing: border-box;
+  place-items: center;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--shapiq-amber) 16%, var(--shapiq-surface));
+  color: var(--shapiq-amber-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-indent: 0;
+  transition:
+    background-color var(--shapiq-duration) var(--shapiq-ease),
+    color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc .voc-badge.is-active,
+.voc .voc-token.is-active > .voc-badge {
+  background: var(--shapiq-amber);
+  color: #1b1e27;
+}
+
+.voc-badge-svg {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.voc-badge-svg circle {
+  fill: color-mix(in srgb, var(--shapiq-amber) 16%, var(--shapiq-surface));
+  stroke: var(--shapiq-surface);
+  stroke-width: 2.5;
+  transition: fill var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-badge-svg text {
+  fill: var(--shapiq-amber-ink);
+  font-size: 13px;
+  font-weight: 700;
+  dominant-baseline: central;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.voc-badge-svg.is-active circle {
+  fill: var(--shapiq-amber);
+}
+
+.voc-badge-svg.is-active text {
+  fill: #1b1e27;
+}
+
+.voc-unnamed .voc-badge,
+.voc-unnamed .voc-badge-svg {
+  opacity: 0;
+}
 
 .voc-table {
   width: 100%;
@@ -481,6 +508,11 @@ body[data-theme="dark"] .voc {
 .voc-table th {
   color: var(--shapiq-text-muted);
   font-weight: 700;
+}
+
+.voc-table-index th {
+  padding-bottom: 0.15rem;
+  border-bottom: 0;
 }
 
 .voc-table-house td {
@@ -531,9 +563,9 @@ body[data-theme="dark"] .voc {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 1.45rem 0.35rem;
   margin: 0;
-  padding: 0.9rem 1rem;
+  padding: 0.9rem 1rem 2.3rem;
   border: 1px dashed var(--shapiq-border);
   border-radius: var(--shapiq-radius-small);
   background: var(--shapiq-surface-raised);
@@ -542,12 +574,20 @@ body[data-theme="dark"] .voc {
 }
 
 .voc-token {
+  position: relative;
   padding: 0 0.3rem;
   border-bottom: 2px solid var(--shapiq-amber-soft);
   border-radius: 5px;
   transition:
     background-color var(--shapiq-duration) var(--shapiq-ease),
     border-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.voc-token > .voc-badge {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% 0.3rem;
 }
 
 .voc-token.is-active {
