@@ -99,6 +99,10 @@
   const ROOMY = 0.22;
   // (the card beside the layers, little: the room is narrow, and nothing slides out any more)
   const ROOMY_BESIDE = 0.05;
+  // beside the layers, the card as large as they are: its face this share of their width, and its
+  // column as wide, or, where they are small, as wide as its words need at the least (rem)
+  const FACE_BESIDE = 0.8;
+  const WORDS_BESIDE = 14;
   // pixels: below the full stack beside its card, the room left in the window
   const WINDOW_MARGIN = 24;
   // milliseconds: how long a layer takes to move to its place (demo.css: --orders-move)
@@ -882,9 +886,8 @@
     // -- geometry: the size of the sheets, the stage, and every sheet's place ------------------------
 
     function measure() {
-      // beside the card, the layers as large as the window's height lets them be, and the card's
-      // column as wide as what they leave of the demo, so that the slider and the plot stay close
-      // to them
+      // beside the card, the layers as large as the window's height lets them be, and the card as
+      // large as they are (fitColumns)
       const besides = root.classList.contains("orders-demo-beside");
       const tallSide = besides ? fitColumns() : Infinity;
       const width = stage.clientWidth;
@@ -918,11 +921,13 @@
     }
 
     // beside the card: the layers' side as the window's height, below what is above them in the demo,
-    // lets it be, and the card's column (--orders-why-column) as wide as the stage's width they leave
-    // (between 28% of the demo, at least 15rem, and 26rem): the stage as wide as they, the slider and
-    // the plot need, as narrow
-    // or wide a stage lays them out (the plot's column a sixth of it, up to its widest). The stage's
-    // column (--orders-stage-column) no wider: what the card leaves too, the two share, around them
+    // lets it be, and the card as large as they are, growing and shrinking with them: its face
+    // (--orders-why-face) a share of their width, its column (--orders-why-column) as wide, or as
+    // wide as its words need at the least. The stage's column (--orders-stage-column) as wide as
+    // the layers, the slider and the plot need, as narrow or wide a stage lays them out (the plot's
+    // column a sixth of it, up to its widest). Where the demo is too narrow for both, the two give
+    // way together: the largest layers for which they fit; where it is wider, what is left of it is
+    // around them (demo.css)
     function fitColumns() {
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
       const n = Math.max(...data.examples.map(shownSheets));
@@ -930,19 +935,36 @@
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
       const above = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
       const tall = window.innerHeight - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
-      const side = Math.max(110, Math.min(360, tall / (TILT * spread + layers + DEPTH)));
-      const layersWidth = side * (1 + ROOMY_BESIDE) * spread;
-      const need = (lead, gap, plot) => {
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const free = root.clientWidth - 1.25 * rem;
+      const need = (layersWidth, lead, gap, plot) => {
         const base = RAIL + lead + layersWidth + gap;
         return Math.max(base / 0.83, base + Math.min(plot, (base / 0.83) * 0.17)) + 4;
       };
-      const wide = need(24, 28, 120);
-      const stageWidth = wide >= 560 ? wide : need(14, 10, 71);
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const free = root.clientWidth - 1.25 * rem;
-      const column = Math.max(15 * rem, 0.28 * root.clientWidth, Math.min(26 * rem, free - stageWidth));
-      root.style.setProperty("--orders-why-column", `${Math.floor(column)}px`);
-      root.style.setProperty("--orders-stage-column", `${Math.floor(Math.min(free - column, stageWidth))}px`);
+      const stageFor = (side) => {
+        const layersWidth = side * (1 + ROOMY_BESIDE) * spread;
+        const wide = need(layersWidth, 24, 28, 120);
+        return wide >= 560 ? wide : need(layersWidth, 14, 10, 71);
+      };
+      const faceFor = (side) => FACE_BESIDE * side * spread;
+      const columnFor = (side) => Math.max(WORDS_BESIDE * rem, faceFor(side));
+      const fits = (side) => stageFor(side) + columnFor(side) <= free;
+      let side = Math.max(110, Math.min(360, tall / (TILT * spread + layers + DEPTH)));
+      // (the stage and the card both grow with the layers: the largest that fit, found by halves)
+      if (!fits(side)) {
+        let [low, high] = [110, side];
+        for (let k = 0; k < 20; k++) {
+          const middle = (low + high) / 2;
+          if (fits(middle)) low = middle;
+          else high = middle;
+        }
+        side = low;
+      }
+      const column = columnFor(side);
+      // (the card's column holds the air before the stage too: demo.css)
+      root.style.setProperty("--orders-why-column", `${Math.floor(column + 1.25 * rem)}px`);
+      root.style.setProperty("--orders-why-face", `${Math.floor(faceFor(side))}px`);
+      root.style.setProperty("--orders-stage-column", `${Math.floor(Math.max(0, Math.min(free - column, stageFor(side))))}px`);
       return side;
     }
 

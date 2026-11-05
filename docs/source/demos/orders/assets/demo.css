@@ -446,18 +446,19 @@ body[data-theme="dark"] .orders-demo {
    top, as always, and below it the card of the explanation in a narrow column left of the layers,
    the light out of the chip falling onto it there. The plan's boxes give way to the demo's grid, its
    window and its figure taking no box of their own; the card, a container of its own, lays out its
-   face above its words, as on a phone */
+   face above its words, as on a phone. The card and the stage as wide as demo.js fits them, and
+   what they leave of the demo to either side of them, the problem above as wide as the demo */
 .orders-demo-beside {
   display: grid;
   grid-template-areas:
-    "bar bar"
-    "flow flow"
-    "why stage"
-    "dots dots";
-  grid-template-columns: var(--orders-why-column, 15rem) var(--orders-stage-column, minmax(0, 1fr));
+    "bar bar bar bar"
+    "flow flow flow flow"
+    ". why stage ."
+    "dots dots dots dots";
+  grid-template-columns:
+    minmax(0, 1fr) var(--orders-why-column, 16.25rem) var(--orders-stage-column, minmax(0, 2fr))
+    minmax(0, 1fr);
   align-items: start;
-  justify-content: center;
-  column-gap: 1.25rem;
 }
 
 .orders-demo-beside > .orders-demo-bar {
@@ -481,7 +482,7 @@ body[data-theme="dark"] .orders-demo {
   justify-items: center;
   gap: 0.6rem;
   width: auto;
-  margin-bottom: 4px; /* (its shadow) */
+  margin: 0 1.25rem 4px 0; /* (the air before the stage; its shadow) */
   container-type: inline-size;
 }
 
@@ -501,7 +502,7 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-beside .orders-demo-plan-view {
-  width: min(100%, 22rem);
+  width: min(100%, var(--orders-why-face, 22rem)); /* (as large as the layers: demo.js) */
   border-color: transparent;
   background: none;
 }
