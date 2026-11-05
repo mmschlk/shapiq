@@ -1231,19 +1231,14 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-sheet);
 }
 
+/* (swapped at once as the layer pointed at changes: every face draws the input in the same place,
+   so only the marks change; a fade on every swap made the card flicker as the pointer ran over the
+   stack. A new example's card fades as a whole: demo.js, flap) */
 .orders-demo-plan-face {
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
-  animation: orders-demo-plan-in 220ms var(--orders-ease);
-}
-
-/* a face shown anew comes in, briefly */
-@keyframes orders-demo-plan-in {
-  from {
-    opacity: 0.35;
-  }
 }
 
 .orders-demo-plan-text,
@@ -2460,15 +2455,8 @@ body[data-theme="dark"] .orders-demo {
   font-variant-numeric: tabular-nums;
 }
 
-/* the frame: its rules drawn a unit long and stretched to the stack (their stroke unstretched), so
-   that they, and the ticks and name over them, move to the next example's stack */
-.orders-demo-side-rule {
-  vector-effect: non-scaling-stroke;
-}
-
-.orders-demo-side-frame :is(line, text) {
-  transition: transform 520ms var(--orders-settle);
-}
+/* the frame: its rules, and the ticks and name over them, glide to the next example's stack (demo.js
+   moves their attributes: no CSS transforms on SVG elements, which Safari draws its own way) */
 
 /* a row's line, on from the row to its point */
 .orders-demo-side-lead {
@@ -2569,9 +2557,7 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-plot-marker {
   opacity: 0;
   pointer-events: none;
-  transition:
-    transform 260ms var(--orders-settle),
-    opacity var(--orders-duration) var(--orders-ease);
+  transition: opacity var(--orders-duration) var(--orders-ease); /* (its place glides: demo.js) */
 }
 
 .orders-demo-plot-pointing .orders-demo-plot-marker {

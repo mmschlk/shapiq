@@ -313,6 +313,14 @@ problem's card.
   `ResizeObserver`, on window resize, and on `data-plan` changes.
 - **No globals**: everything is scoped under `.orders-demo` (CSS) and inside the IIFE (JS). The
   only globals are `window.SHAPIQ_ORDERS`, and the `orders-demo-example` event on `document`.
+- **No CSS transforms on SVG elements**: Safari draws a CSS `transform` (and its transition) on an
+  element inside an `<svg>` its own way, so the faithfulness plot's frame drifted off its data
+  there. Place SVG elements with their attributes (`x`, `y`, `x1`, ..., `transform="..."`), in
+  the same coordinates as the data, and move them with `glide()`. CSS transforms on HTML elements
+  (the layers, the rows, the slider) are fine.
+- **The card's face swaps at once**: every face draws the input in the same place, so pointing at
+  another layer only changes the marks. Do not give `.orders-demo-plan-face` an animation: it
+  would replay on every swap, and the card would flicker as the pointer runs over the stack.
 
 ### Performance
 
@@ -334,4 +342,6 @@ The demo is meant to cost nothing while nobody uses it. Keep it that way:
 - **Steps** draw only the sheets they show (`sheetsOf()`, `drawAhead()`).
 - **Nothing per frame**: there is no `requestAnimationFrame` loop that runs without changing
   something. The light out of the chip is redrawn by `relayout()` and the plan's
-  `ResizeObserver`.
+  `ResizeObserver`. The only frame-by-frame work is `glide()`, which moves the plot's frame (520ms,
+  to the next example's stack) and its ring (260ms, to the order pointed at), and stops when they
+  arrive.
