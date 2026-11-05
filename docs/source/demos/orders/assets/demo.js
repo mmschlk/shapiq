@@ -2099,6 +2099,30 @@
     // row keeps its line from the sheet's corner, on to its point. It ends at the last explanation:
     // the input and the mechanism below them are no explanations ---------------------------------
 
+    // an SVG element moved to new values over a while, frame by frame, settling as --orders-settle
+    // does (its places are attributes, which CSS does not transition); at once where there is no
+    // way yet, or with reduced motion. A new move takes over from where the last one is
+    const glides = new WeakMap();
+    function glide(node, target, ms, apply) {
+      const last = glides.get(node);
+      cancelAnimationFrame(last?.frame ?? 0);
+      if (!last || ms === 0 || reducedMotion()) {
+        apply(target);
+        glides.set(node, { at: target, frame: 0 });
+        return;
+      }
+      const [from, start, now] = [last.at, performance.now(), { at: last.at, frame: 0 }];
+      glides.set(node, now);
+      const step = (time) => {
+        const k = Math.min(1, (time - start) / ms);
+        const eased = 1 - (1 - k) ** 4;
+        now.at = from.map((value, i) => value + (target[i] - value) * eased);
+        apply(now.at);
+        if (k < 1) now.frame = requestAnimationFrame(step);
+      };
+      now.frame = requestAnimationFrame(step);
+    }
+
     let sideMarks = null;
     function drawSide() {
       sideData.replaceChildren();
@@ -2141,32 +2165,39 @@
       const [top, bottom] = [points[0].y - 12, points.at(-1).y + 12];
 
       // the frame, made for the stage's width: three rules, and at the top, a tick at each, the
-      // axis's lowest R^2, its middle and 1, and over them its name (over the plot's middle, or, where the plot is narrower than its name, ending
-      // at its right). It spans the stack: for the next example's, it stretches or shrinks (demo.css)
-      if (sideFrame.dataset.width !== String(g.width)) {
+      // axis's lowest R^2, its middle and 1, and over them its name (over the plot's middle, or, where
+      // the plot is narrower than its name, ending at its right). It spans the stack: for the next
+      // example's, it stretches or shrinks, gliding there. Its places are the elements' attributes,
+      // in the plot's own coordinates, as the data's are: CSS transforms on SVG elements are not drawn
+      // alike in every browser (in Safari, the frame drifted off the data)
+      const rebuilt = sideFrame.dataset.width !== String(g.width);
+      if (rebuilt) {
         sideFrame.dataset.width = g.width;
         sideFrame.replaceChildren();
         const grid = add(sideFrame, "g", { class: "orders-demo-plot-grid" });
         for (let k = 0; k <= 2; k++) {
           const at = f(x0 + (k / 2) * (x1 - x0));
-          add(grid, "line", { class: "orders-demo-side-rule", "data-x": at, x1: 0, x2: 0, y1: 0, y2: 1 });
-          add(sideFrame, "text", { class: "orders-demo-plot-tick orders-demo-side-level", "data-x": at, "text-anchor": "middle" });
+          add(grid, "line", { class: "orders-demo-side-rule", x1: at, x2: at, y1: 0, y2: 0 });
+          add(sideFrame, "text", { class: "orders-demo-plot-tick orders-demo-side-level", x: at, y: 0, "text-anchor": "middle" });
         }
         const roomy = x1 - x0 >= 104;
-        add(sideFrame, "text", { class: "orders-demo-plot-label orders-demo-side-name", "data-x": f(roomy ? (x0 + x1) / 2 : x1), "text-anchor": roomy ? "middle" : "end" }, "faithfulness (R²)");
+        add(sideFrame, "text", { class: "orders-demo-plot-label orders-demo-side-name", x: f(roomy ? (x0 + x1) / 2 : x1), y: 0, "text-anchor": roomy ? "middle" : "end" }, "faithfulness (R²)");
       }
-      const to = (node, y, scale = "") => {
-        node.style.transform = `translate(${node.dataset.x}px, ${f(y)}px)${scale}`;
-      };
-      for (const rule of sideFrame.querySelectorAll(".orders-demo-side-rule")) to(rule, top, ` scale(1, ${f(bottom - top)})`);
-      [...sideFrame.querySelectorAll(".orders-demo-side-level")].forEach((tick, k) => {
-        to(tick, top - 9);
+      const [rules, ticks, name] = [sideFrame.querySelectorAll(".orders-demo-side-rule"), sideFrame.querySelectorAll(".orders-demo-side-level"), sideFrame.querySelector(".orders-demo-side-name")];
+      glide(sideFrame, [top, bottom], rebuilt ? 0 : 520, ([from, to]) => {
+        for (const rule of rules) {
+          rule.setAttribute("y1", f(from));
+          rule.setAttribute("y2", f(to));
+        }
+        for (const tick of ticks) tick.setAttribute("y", f(from - 9));
+        name.setAttribute("y", f(from - 25));
+      });
+      [...ticks].forEach((tick, k) => {
         // (on a narrow screen, without the leading zero: .5, .75)
         const level = low + (k / 2) * (1 - low);
         const text = g.narrow && level > 0 && level < 1 ? String(level).slice(1) : String(level);
         if (tick.textContent !== text) say(tick, text, tick.textContent !== "");
       });
-      to(sideFrame.querySelector(".orders-demo-side-name"), top - 25);
 
       // a name's width below the plot: measured, or, while the plot is hidden, as its letters make it
       const widthOf = (text) => {
@@ -2257,7 +2288,9 @@
       for (const [item, lead] of sideMarks.leads) lead.classList.toggle("orders-demo-side-lead-on", item === pointed);
       if (!at) return;
       const [cx, cy] = [roundTo(sideMarks.x(at.r2), 1), roundTo(at.y, 1)];
-      sideMarks.ring.style.transform = `translate(${cx}px, ${cy}px)`;
+      // (gliding there, as the frame does: its place is its attribute)
+      const ring = sideMarks.ring;
+      glide(ring, [cx, cy], 260, ([x, y]) => ring.setAttribute("transform", `translate(${roundTo(x, 1)} ${roundTo(y, 1)})`));
       // (right of it only where it fits on the stage)
       const right = cx - 58 < sideMarks.left && cx + 60 <= geometry.width;
       sideMarks.value.textContent = `R² ${fit2(at.r2)}`;
