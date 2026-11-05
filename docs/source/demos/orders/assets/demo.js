@@ -1560,9 +1560,9 @@
       unfoldAfter = performance.now() + (reducedMotion() ? 300 : building + 500);
       unfold();
     }
-    // the explanation built from the top down: a line runs down from the chip, and every part comes
-    // as it passes, the card, the sheets one after the other with their rows, and the plot beside
-    // them, drawn down with it (demo.css): each part's moment is how far below the chip it lies
+    // the explanation built from the top down: every part comes by how far below the chip it lies,
+    // the card, the sheets one after the other with their rows, and the plot beside them, drawn
+    // down (demo.css)
     let building = 0;
     function buildUp() {
       const box = root.getBoundingClientRect();
@@ -1577,11 +1577,8 @@
       for (const node of [why, rail, dots, side, ...items.map((item) => item.node), ...ladder.children]) {
         node.style.setProperty("--orders-at", at(node));
       }
-      // the plot beside the sheets is drawn down as the line passes it
+      // the plot beside the sheets is drawn down in the time the build takes to pass it
       side.style.setProperty("--orders-side-time", `${Math.round((stage.clientHeight / length) * building)}ms`);
-      root.style.setProperty("--orders-scan-from", `${roundTo(from, 1)}px`);
-      root.style.setProperty("--orders-scan-length", `${roundTo(length, 1)}px`);
-      root.style.setProperty("--orders-scan-time", `${building}ms`);
       root.classList.remove("orders-demo-revealing");
       root.getBoundingClientRect(); // anew
       root.classList.add("orders-demo-revealing");

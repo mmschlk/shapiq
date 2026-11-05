@@ -936,42 +936,9 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-/* explained, it is built from the top down: a line runs down from the chip, the light pours out
-   of it, and every part comes as the line passes it (demo.js sets --orders-at, its moment, and the
-   line's start, length and time): the card, the sheets one after the other and their rows, the
-   slider, and the plot beside them, drawn down with the line */
-.orders-demo-revealing::after {
-  position: absolute;
-  z-index: -1; /* behind what it builds: it shows between the parts, not over them */
-  top: var(--orders-scan-from, 0);
-  right: 0;
-  left: 0;
-  height: 2.5rem;
-  margin-top: -2.5rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--orders-ink) 30%, transparent);
-  background: linear-gradient(transparent, color-mix(in srgb, var(--orders-ink) 6%, transparent));
-  content: "";
-  pointer-events: none;
-  animation: orders-demo-scan var(--orders-scan-time, 1.5s) cubic-bezier(0.45, 0, 0.55, 1) both;
-}
-
-@keyframes orders-demo-scan {
-  from {
-    opacity: 0;
-    translate: 0 0;
-  }
-
-  8%,
-  88% {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-    translate: 0 var(--orders-scan-length, 0);
-  }
-}
-
+/* explained, it is built from the top down: the light pours out of the chip, and every part comes
+   by how far below it it lies (demo.js sets --orders-at, its moment): the card, the sheets one after
+   the other and their rows, the slider, and the plot beside them, drawn down */
 .orders-demo-revealing .orders-demo-cast {
   animation: orders-demo-pour 420ms var(--orders-ease) both;
 }
@@ -988,7 +955,7 @@ body[data-theme="dark"] .orders-demo {
   animation: orders-demo-appear 420ms var(--orders-ease) var(--orders-at, 0ms) both;
 }
 
-/* the plot beside the sheets, drawn down with the line */
+/* the plot beside the sheets, drawn down */
 .orders-demo-revealing .orders-demo-side {
   animation: orders-demo-pour var(--orders-side-time, 900ms) linear var(--orders-at, 0ms) both;
 }
