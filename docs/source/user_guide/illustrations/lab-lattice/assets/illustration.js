@@ -184,7 +184,7 @@ window.shapiqIllustrations?.define("lab-lattice", async (stage, kit) => {
   cornerRight.innerHTML =
     '<span class="llt-key"><span class="llt-swatch is-lit"></span><span>a unit <i>S</i> ∈ <span class="llt-cal">𝒮</span></span></span>' +
     '<span class="llt-key"><span class="llt-swatch"></span><span>not in <span class="llt-cal">𝒮</span></span></span>' +
-    '<span class="llt-key llt-key-hint">click a set to add or remove it</span>';
+    `<span class="llt-key llt-key-hint">${hover.matches ? "click" : "tap"} a set to add or remove it</span>`;
   lattice.append(cornerLeft, cornerRight);
 
   const nodes = new Map();
@@ -758,7 +758,7 @@ window.shapiqIllustrations?.define("lab-lattice", async (stage, kit) => {
     } else if (state.mode === "custom") {
       sum.innerHTML = state.members.size
         ? `Your ${state.members.size} ${state.members.size === 1 ? "set adds" : "sets add"} up to ${amount(parts, "llt-amber")}; all 16 sets add up to ${predicted}, this hour's prediction.`
-        : "No set is lit: click sets to pick your own units.";
+        : `No set is lit: ${hover.matches ? "click" : "tap"} sets to pick your own units.`;
     } else {
       const total = predicted - average;
       sum.innerHTML = `They add up: average ${average} <span class="${sign(total)}">${total >= 0 ? "+" : minus} ${Math.abs(total)}</span> = ${amount(predicted, "llt-amber")} rentals, this hour's prediction.`;

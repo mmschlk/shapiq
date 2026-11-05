@@ -117,6 +117,7 @@
 }
 
 .llt-choice-value {
+  box-sizing: border-box;
   width: 0; /* as wide as its column, which its switch sets */
   min-width: 100%;
   margin: 0;

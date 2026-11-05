@@ -24,8 +24,8 @@ humid working-day morning: Thursday, 19 May 2011, 8:00. It writes `../assets/dat
 Displayed numbers are whole rentals, rounded so that the parts add up to the shown total (largest
 remainders); the raw values are kept with 2 decimals, the curves with 1.
 
-Run it from the repository's root, with shapiq and scikit-learn installed (about 10 seconds after
-the download):
+Run it from the repository's root, with shapiq and scikit-learn installed (10 to 20 seconds after
+the download; on a busy machine, `OMP_NUM_THREADS=1` keeps it fast):
 
 ```bash
 python docs/source/user_guide/illustrations/lab-lattice/compute/compute.py
