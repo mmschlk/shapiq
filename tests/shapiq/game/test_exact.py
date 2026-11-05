@@ -10,7 +10,7 @@ import pytest
 from shapiq.game.exact import ExactComputer
 from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
 from shapiq.game.table import TableGame
-from shapiq.game.weights import DDWeightedBanzhafWeight
+from shapiq.game.weights import WeightedBanzhafWeight
 from shapiq.index import (
     BanzhafInteractionIndex,
     BanzhafValue,
@@ -88,12 +88,12 @@ def test_exact_matches_the_index_definition(index, weight):
 def test_game_and_index_batches_broadcast_and_the_computer_runs_under_jit():
     computer = ExactComputer.from_game(TableGame(TABLES, FinitePlayers(N_PLAYERS)))
     p_values = jnp.array([0.3, 0.5, 0.7])
-    index = WeightedBanzhafValue(weights=DDWeightedBanzhafWeight(p_values))
+    index = WeightedBanzhafValue(weights=WeightedBanzhafWeight(p_values))
 
     every_pair = computer[:, None](index)  # (games, p values)
     jitted = jax.jit(lambda c: c(ShapleyValue()).values)(computer)
     single = ExactComputer.from_game(TableGame(TABLES[1], FinitePlayers(N_PLAYERS)))
-    single_p = WeightedBanzhafValue(weights=DDWeightedBanzhafWeight(p_values[2]))
+    single_p = WeightedBanzhafValue(weights=WeightedBanzhafWeight(p_values[2]))
 
     assert every_pair.shape == (2, 3)
     assert jnp.allclose(every_pair[1, 2].values, single(single_p).values, atol=1e-6)

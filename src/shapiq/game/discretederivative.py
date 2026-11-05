@@ -199,9 +199,9 @@ class WeightedDiscreteDerivative[P, V: JaxLike](
     ) -> Shaped[JaxValue, "*batch"]:
         derivative, interaction = _derivative(self.game, self.interaction, self.order, coalition)
         disjoint = ~jnp.any(coalition & interaction, axis=-1)  # (*coalition_batch, *i_batch)
-        weights = self.weights.compute(
-            coalition=jnp.sum(coalition, axis=-1),
-            interaction=jnp.sum(interaction, axis=-1),
+        weights = self.weights.discrete_derivative_weight(
+            size=jnp.sum(coalition, axis=-1),
+            order=jnp.sum(interaction, axis=-1),
             n_players=self.game.n_players,
         )  # (*coalition_batch, *interaction_batch)
         return jax_multiply(weights * disjoint, derivative)  # (*coalition_batch, *i_batch)
@@ -253,7 +253,7 @@ class WeightedGameValue[P, V: JaxLike](
             coalition & self.interaction, axis=-1
         )  # (*coalition_batch, *interaction_batch)
         sign = (-1) ** (interaction_sizes - overlap_sizes)
-        weights = sign * self.weights.compute(
+        weights = sign * self.weights.discrete_derivative_weight(
             coalition_sizes - overlap_sizes, interaction_sizes, self.game.n_players
         )  # (*coalition_batch, *interaction_batch)
         return jax_multiply(

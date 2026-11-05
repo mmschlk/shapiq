@@ -13,8 +13,8 @@ from shapiq.game.discretederivative import WeightedGameValue, subset_patterns
 from shapiq.game.finite import FinitePlayerGame
 from shapiq.game.game import Game
 from shapiq.game.table import TableGame
-from shapiq.game.weights import DiscreteDerivativeWeight, Weight
-from shapiq.index import Index
+from shapiq.game.weights import DiscreteDerivativeWeight
+from shapiq.index import DiscreteDerivativeIndex
 from shapiq.typing import typechecked
 
 
@@ -42,21 +42,16 @@ class ExactComputer(JaxAxisProtected[jax.Array]):
         values = jnp.moveaxis(game(coalitions), 0, -1)  # (*batch, 2**n_players)
         return cls(table=TableGame(values, game.players))
 
-    def __call__[R: Game](self, index: Index[Weight, R]) -> R:
-        """Compute ``index`` exactly and package it as the index's result game.
+    @typechecked
+    def __call__[R: Game](self, index: DiscreteDerivativeIndex[R]) -> R:
+        """Compute ``index`` from its discrete-derivative weights and package its result game.
 
         The game and index batches broadcast like arrays: align them explicitly, e.g.
         ``computer[:, None](index)`` for every game with every index.
-
-        Raises:
-            NotImplementedError: The index's weight family has no exact route yet.
         """
         interactions = index.interactions(self.table.n_players)
-        if isinstance(index.weights, DiscreteDerivativeWeight):
-            values = _discrete_derivative_values(self.table, index.weights, interactions)
-        else:
-            msg = f"No exact route for {type(index.weights).__name__} weights."
-            raise NotImplementedError(msg)
+        # The index exposes the weights that define it, so it serves as the weights itself.
+        values = _discrete_derivative_values(self.table, index, interactions)
         return index.build(values, interactions, self.table.players)
 
 

@@ -69,17 +69,19 @@ def test_additivity_must_bound_the_interactions(game_class):
         )
 
 
-def test_additive_moebius_game_is_a_moebius_game_with_implicit_singletons():
+def test_additive_moebius_game_matches_its_permuted_singletons_and_rejects_other_sets():
     values = jnp.array([[1.0, 2.0, 3.0], [-1.0, 0.5, 4.0]])
     players = FinitePlayers(N_PLAYERS)
-    singletons = jnp.eye(N_PLAYERS, dtype=bool)
-    additive = AdditiveMoebiusGame(values=values, players=players)
+    singletons = jnp.eye(N_PLAYERS, dtype=bool)[jnp.array([2, 0, 1])]
+    additive = AdditiveMoebiusGame(values=values, interactions=singletons, players=players)
     stored = SetMoebiusGame(values=values, interactions=singletons, players=players, additivity=1)
     expected = stored(SETS[:, None])
+    repeated = singletons[jnp.array([0, 0, 1])]
 
     assert isinstance(additive, MoebiusGame)
     assert additive.additivity == 1
-    assert jnp.array_equal(additive.interactions, singletons)
     assert jnp.allclose(additive(SETS[:, None]), expected)
     assert jnp.allclose(additive[1](SETS), expected[:, 1])
     assert jnp.allclose(jax.jit(lambda g, c: g(c))(additive, SETS[:, None]), expected)
+    with pytest.raises(ValueError, match="permutation"):
+        AdditiveMoebiusGame(values=values, interactions=repeated, players=players)

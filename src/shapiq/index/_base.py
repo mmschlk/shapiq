@@ -1,28 +1,67 @@
-"""Interaction indices: weights, the interaction sets they cover, and the game they produce."""
+"""Interaction Indices as classes, containing weights and the resulting game type.
+
+``DiscreteDerivativeIndex`` and ``LeastSquaresIndex`` are protocols for the two main representations of interaction indices. Algorithms accept an index through the protocol of the
+representation they use. Each Index class has a `build` method that packages the computed coefficients into an resulting game type, appropriate for the representation of the coefficients.
+"""
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import ClassVar, override
+from typing import ClassVar, Protocol, override, runtime_checkable
 
 import jax
-import jax.numpy as jnp
-from jax.core import Tracer
-from jaxtyping import Bool, Float, Shaped
+from jaxtyping import Bool, Float, Int, Shaped
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.game import Game
 from shapiq.game.discretederivative import subset_patterns
 from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
 from shapiq.game.weights import (
-    DDAlphaBetaWeight,
-    DDBanzhafWeight,
-    DDShapleyWeight,
-    DDWeightedBanzhafWeight,
+    AlphaBetaWeight,
+    BanzhafWeight,
     DiscreteDerivativeWeight,
+    LeastSquaresWeight,
+    ShapleyWeight,
     Weight,
+    WeightedBanzhafWeight,
 )
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+
+
+@runtime_checkable
+class DiscreteDerivativeIndex[R: Game](DiscreteDerivativeWeight, Protocol):
+    """An index defined by discrete-derivative weights, e.g. for exact or Monte Carlo routes."""
+
+    def interactions(self, n_players: int) -> Bool[jax.Array, "n_interactions {n_players}"]:
+        """Return the interaction sets this index assigns coefficients to."""
+        ...
+
+    def build(
+        self,
+        values: Float[jax.Array, "*batch n_interactions"],
+        interactions: Bool[jax.Array, "n_interactions n_players"],
+        players: Shaped[FinitePlayers, "#*batch"],
+    ) -> R:
+        """Package coefficients on ``interactions`` into this index's result game."""
+        ...
+
+
+@runtime_checkable
+class LeastSquaresIndex[R: Game](LeastSquaresWeight, Protocol):
+    """An index defined as a weighted least-squares fit, e.g. for KernelSHAP-type routes."""
+
+    def interactions(self, n_players: int) -> Bool[jax.Array, "n_interactions {n_players}"]:
+        """Return the interaction sets this index assigns coefficients to."""
+        ...
+
+    def build(
+        self,
+        values: Float[jax.Array, "*batch n_interactions"],
+        interactions: Bool[jax.Array, "n_interactions n_players"],
+        players: Shaped[FinitePlayers, "#*batch"],
+    ) -> R:
+        """Package coefficients on ``interactions`` into this index's result game."""
+        ...
 
 
 @typechecked
@@ -66,13 +105,21 @@ class Index[W: Weight, R: Game](JaxAxisProtected[jax.Array]):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class SemivalueIndex[W: DiscreteDerivativeWeight](Index[W, AdditiveMoebiusGame]):
+class SemivalueIndex[W: DiscreteDerivativeWeight](
+    Index[W, AdditiveMoebiusGame], DiscreteDerivativeIndex[AdditiveMoebiusGame]
+):
     """A batch of semivalues: one coefficient per player, packaged as an additive game."""
 
     weights: W
     # Fixed to singletons, so the result is always additive.
     min_order: int = field(default=1, init=False)
     max_order: int = field(default=1, init=False)
+
+    def discrete_derivative_weight(
+        self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the discrete-derivative weights that define this semivalue."""
+        return self.weights.discrete_derivative_weight(size, order, n_players)
 
     @override
     def build(
@@ -82,17 +129,24 @@ class SemivalueIndex[W: DiscreteDerivativeWeight](Index[W, AdditiveMoebiusGame])
         players: Shaped[FinitePlayers, "#*batch"],
     ) -> AdditiveMoebiusGame:
         """Package one coefficient per player; ``interactions`` are the singletons by construction."""
-        del interactions
-        return AdditiveMoebiusGame(values=values, players=players)
+        return AdditiveMoebiusGame(values=values, players=players, interactions=interactions)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class CardinalInteractionIndex[W: DiscreteDerivativeWeight](Index[W, SetMoebiusGame]):
+class CardinalInteractionIndex[W: DiscreteDerivativeWeight](
+    Index[W, SetMoebiusGame], DiscreteDerivativeIndex[SetMoebiusGame]
+):
     """A batch of cardinal interaction indices, building an k-additive game on the Moebius Basis."""
 
     weights: W
     min_order: int = 1
+
+    def discrete_derivative_weight(
+        self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the discrete-derivative weights that define this index."""
+        return self.weights.discrete_derivative_weight(size, order, n_players)
 
     @override
     def build(
@@ -109,55 +163,91 @@ class CardinalInteractionIndex[W: DiscreteDerivativeWeight](Index[W, SetMoebiusG
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class ShapleyValue(SemivalueIndex[DDShapleyWeight]):
+class ShapleyValue(SemivalueIndex[ShapleyWeight], LeastSquaresIndex[AdditiveMoebiusGame]):
     """The Shapley value."""
 
-    weights: DDShapleyWeight = field(default_factory=DDShapleyWeight)
+    weights: ShapleyWeight = field(default_factory=ShapleyWeight)
+
+    def least_squares_weight(
+        self, size: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the Shapley kernel: the Shapley value is its efficient least-squares fit."""
+        return self.weights.least_squares_weight(size, n_players)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class BanzhafValue(SemivalueIndex[DDBanzhafWeight]):
+class BanzhafValue(SemivalueIndex[BanzhafWeight], LeastSquaresIndex[AdditiveMoebiusGame]):
     """The Banzhaf value."""
 
-    weights: DDBanzhafWeight = field(default_factory=DDBanzhafWeight)
+    weights: BanzhafWeight = field(default_factory=BanzhafWeight)
+
+    def least_squares_weight(
+        self, size: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the uniform kernel: the Banzhaf value is its least-squares fit."""
+        return self.weights.least_squares_weight(size, n_players)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class WeightedBanzhafValue(SemivalueIndex[DDWeightedBanzhafWeight]):
+class WeightedBanzhafValue(
+    SemivalueIndex[WeightedBanzhafWeight], LeastSquaresIndex[AdditiveMoebiusGame]
+):
     """The weighted Banzhaf value; a batch of ``p`` values becomes the index batch."""
 
-    weights: DDWeightedBanzhafWeight
+    weights: WeightedBanzhafWeight
+
+    def least_squares_weight(
+        self, size: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the product kernel: the weighted Banzhaf value is its least-squares fit."""
+        return self.weights.least_squares_weight(size, n_players)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class ShapleyInteractionIndex(CardinalInteractionIndex[DDShapleyWeight]):
+class BetaSemivalue(SemivalueIndex[AlphaBetaWeight]):
+    """The Beta(alpha, beta) semivalue; a batch of parameters becomes the index batch."""
+
+    weights: AlphaBetaWeight
+
+
+@typechecked
+@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
+class ShapleyInteractionIndex(CardinalInteractionIndex[ShapleyWeight]):
     """The Shapley interaction index (SII)."""
 
-    weights: DDShapleyWeight = field(default_factory=DDShapleyWeight)
+    weights: ShapleyWeight = field(default_factory=ShapleyWeight)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class BanzhafInteractionIndex(CardinalInteractionIndex[DDBanzhafWeight]):
+class BanzhafInteractionIndex(CardinalInteractionIndex[BanzhafWeight]):
     """The Banzhaf interaction index (BII)."""
 
-    weights: DDBanzhafWeight = field(default_factory=DDBanzhafWeight)
+    weights: BanzhafWeight = field(default_factory=BanzhafWeight)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class WeightedBanzhafInteractionIndex(CardinalInteractionIndex[DDWeightedBanzhafWeight]):
+class WeightedBanzhafInteractionIndex(CardinalInteractionIndex[WeightedBanzhafWeight]):
     """The weighted Banzhaf interaction index; a batch of ``p`` values becomes the index batch."""
 
-    weights: DDWeightedBanzhafWeight
+    weights: WeightedBanzhafWeight
 
 
 @typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True, init=False)
-class FaithfulShapleyTopOrderIndex(CardinalInteractionIndex[DDAlphaBetaWeight]):
+@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
+class BetaInteractionIndex(CardinalInteractionIndex[AlphaBetaWeight]):
+    """The Beta(alpha, beta) interaction index; a batch of parameters becomes the index batch."""
+
+    weights: AlphaBetaWeight
+
+
+@typechecked
+@dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
+class FaithfulShapleyTopOrderIndex(CardinalInteractionIndex[ShapleyWeight]):
     """Top-order Faithful Shapley interactions (FSII) of order ``k = max_order``.
 
     Tsai et al. (2023, Theorem 19) give the order-k FSII coefficients as discrete derivatives
@@ -166,51 +256,38 @@ class FaithfulShapleyTopOrderIndex(CardinalInteractionIndex[DDAlphaBetaWeight]):
     alpha-beta family, B(t+k, n-t) / B(k, k): a random fill level q ~ Beta(k, k) around 1/2.
     k = 1 recovers the Shapley value; large k approaches the Banzhaf weighting.
 
-    Only the top-order coefficients are computed; as Möbius coefficients they are the top
-    part of the FSII approximation, not the whole k-additive fit.
+    The index carries the Shapley weights of its family; its discrete-derivative weights are
+    the Beta(k, k) weights derived from ``max_order``. Only the top-order coefficients are
+    computed; as Möbius coefficients they are the top part of the FSII approximation, not the
+    whole k-additive fit.
     """
 
-    def __init__(
-        self,
-        *,
-        max_order: int,
-        min_order: int | None = None,
-        weights: DDAlphaBetaWeight | None = None,
-    ) -> None:
-        """Derive the Beta(k, k) weights from ``max_order``.
-
-        ``replace`` passes every field back in, so ``min_order`` and ``weights`` stay accepted;
-        a user passes only ``max_order``.
-        """
-        if weights is None:
-            weights = DDAlphaBetaWeight(alpha=float(max_order), beta=float(max_order))
-        object.__setattr__(self, "weights", weights)
-        object.__setattr__(self, "min_order", max_order if min_order is None else min_order)
-        object.__setattr__(self, "max_order", max_order)
-        self.__post_init__()
+    weights: ShapleyWeight = field(default_factory=ShapleyWeight)
+    # Derived from max_order: only the top order is covered.
+    min_order: int = field(init=False)
 
     @override
     def __post_init__(self) -> None:
-        """Check that only the top order is covered and the weights are Beta(k, k).
+        """Cover only ``max_order``.
 
         Raises:
-            ValueError: ``min_order`` differs from ``max_order``, or alpha/beta differ from it.
+            ValueError: ``max_order`` is negative.
         """
+        object.__setattr__(self, "min_order", self.max_order)
         Index.__post_init__(self)
-        if self.min_order != self.max_order:
-            msg = "Top-order FSII covers only max_order; min_order must equal it."
-            raise ValueError(msg)
-        alpha, beta = self.weights.alpha, self.weights.beta
-        # Inside jit the weights are traced and cannot be checked.
-        concrete = not isinstance(alpha, Tracer) and not isinstance(beta, Tracer)
-        if concrete and not (jnp.all(alpha == self.max_order) and jnp.all(beta == self.max_order)):
-            msg = "Top-order FSII needs Beta(max_order, max_order) weights."
-            raise ValueError(msg)
+
+    @override
+    def discrete_derivative_weight(
+        self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
+    ) -> Float[jax.Array, "*batch"]:
+        """Return the Beta(k, k) weights with ``k = max_order``."""
+        k = float(self.max_order)
+        return AlphaBetaWeight(alpha=k, beta=k).discrete_derivative_weight(size, order, n_players)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True, kw_only=True)
-class FaithfulBanzhafTopOrderIndex(CardinalInteractionIndex[DDBanzhafWeight]):
+class FaithfulBanzhafTopOrderIndex(CardinalInteractionIndex[BanzhafWeight]):
     """Top-order Faithful Banzhaf interactions (FBII) of order ``max_order``.
 
     Tsai et al. (2023, Theorem 17) give the top-order FBII coefficients with the Banzhaf
@@ -220,7 +297,7 @@ class FaithfulBanzhafTopOrderIndex(CardinalInteractionIndex[DDBanzhafWeight]):
     part of the FBII approximation, not the whole k-additive fit.
     """
 
-    weights: DDBanzhafWeight = field(default_factory=DDBanzhafWeight)
+    weights: BanzhafWeight = field(default_factory=BanzhafWeight)
     # Derived from max_order: only the top order is covered.
     min_order: int = field(init=False)
 

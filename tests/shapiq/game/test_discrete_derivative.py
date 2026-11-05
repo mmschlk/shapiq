@@ -20,10 +20,10 @@ from shapiq.game.discretederivative import (
     subset_patterns,
 )
 from shapiq.game.weights import (
-    DDAlphaBetaWeight,
-    DDBanzhafWeight,
-    DDShapleyWeight,
-    DDWeightedBanzhafWeight,
+    AlphaBetaWeight,
+    BanzhafWeight,
+    ShapleyWeight,
+    WeightedBanzhafWeight,
 )
 from shapiq.players import FinitePlayers
 
@@ -86,14 +86,14 @@ def _beta(alpha, beta):
 
 # Each case: weights (scalar or batched along a leading axis) and one closed form per batch entry.
 WEIGHT_CASES = {
-    "shapley": (DDShapleyWeight(), [_shapley]),
-    "banzhaf": (DDBanzhafWeight(), [_banzhaf]),
+    "shapley": (ShapleyWeight(), [_shapley]),
+    "banzhaf": (BanzhafWeight(), [_banzhaf]),
     "weighted-banzhaf-batch": (
-        DDWeightedBanzhafWeight(jnp.array([0.3, 0.5, 0.9])[:, None]),
+        WeightedBanzhafWeight(jnp.array([0.3, 0.5, 0.9])[:, None]),
         [_weighted_banzhaf(p) for p in (0.3, 0.5, 0.9)],
     ),
     "beta-batch": (
-        DDAlphaBetaWeight(jnp.array([1.0, 4.0, 1.0])[:, None], jnp.array([1.0, 1.0, 4.0])[:, None]),
+        AlphaBetaWeight(jnp.array([1.0, 4.0, 1.0])[:, None], jnp.array([1.0, 1.0, 4.0])[:, None]),
         [_shapley, _beta(4.0, 1.0), _beta(1.0, 4.0)],
     ),
 }
@@ -171,9 +171,7 @@ def test_discrete_derivative_is_the_pair_derivative():
 
 
 def test_shared_game_stays_compact_under_basic_indexing():
-    index = _index(
-        COEFFICIENTS, jnp.stack([_coalition(*pair) for pair in PAIRS]), DDBanzhafWeight()
-    )
+    index = _index(COEFFICIENTS, jnp.stack([_coalition(*pair) for pair in PAIRS]), BanzhafWeight())
     coalitions = jnp.stack([_coalition(3), _coalition(0), _coalition()])[:, None, :]
     expected = _expected(coalitions[:, 0], _banzhaf)
 
@@ -193,7 +191,7 @@ def test_shared_game_stays_compact_under_basic_indexing():
 
 def test_game_batch_broadcasts_a_single_interaction():
     coefficients = jnp.stack([COEFFICIENTS, -COEFFICIENTS[::-1]])
-    index = _index(coefficients, _coalition(0, 1), DDBanzhafWeight())
+    index = _index(coefficients, _coalition(0, 1), BanzhafWeight())
 
     assert index.shape == (2,)
     assert index.interaction.shape == (2, N_PLAYERS)
@@ -235,7 +233,7 @@ def test_index_is_constructible_and_batchable_inside_jit(index_class):
 
     def total(p):
         index = index_class(
-            game=game, weights=DDWeightedBanzhafWeight(p), interaction=interactions, **extra
+            game=game, weights=WeightedBanzhafWeight(p), interaction=interactions, **extra
         )
         return jnp.sum(index(_query(all_coalitions, index)), axis=0)
 
@@ -256,7 +254,7 @@ def test_weight_batch_is_part_of_the_index_batch(index_class):
     def index_for(p):
         return index_class(
             game=_CubicGame(COEFFICIENTS, FinitePlayers(N_PLAYERS)),
-            weights=DDWeightedBanzhafWeight(p),
+            weights=WeightedBanzhafWeight(p),
             interaction=interactions,
             **extra,
         )

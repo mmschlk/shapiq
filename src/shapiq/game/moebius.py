@@ -5,7 +5,8 @@ from typing import ClassVar, Literal, override
 
 import jax
 import jax.numpy as jnp
-from jaxtyping import Bool, Float, Shaped
+from jax.core import Tracer
+from jaxtyping import Bool, Shaped
 from ndlike.jax_like import JaxLike
 
 from shapiq.game import Additive
@@ -26,8 +27,7 @@ class MoebiusGame[P, V: JaxLike](BasisGame[P, V]):
     def _basis(
         self, coalition: Bool[jax.Array, "#*batch {self.players.n_players}"]
     ) -> Shaped[jax.Array, "#*batch n_interactions"]:
-        """Return whether every interaction T is contained in S."""
-        # T ⊆ S iff no player of T is missing from S.
+        """Return whether every interaction T is contained in S (T ⊆ S)."""
         return ~jnp.any(self.interactions & ~coalition[..., None, :], axis=-1)
 
 
@@ -47,29 +47,32 @@ class SetMoebiusGame[P, V: JaxLike](MoebiusGame[P, V]):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class AdditiveMoebiusGame[P, V: JaxLike](MoebiusGame[P, V], Additive):
-    """A batch of additive games: ``values[..., i]`` is the Möbius coefficient of player position ``i``.
+class AdditiveMoebiusGame[P, V: JaxLike](SetMoebiusGame[P, V], Additive):
+    """A batch of additive games: ``values[..., t]`` is the Möbius coefficient of ``interactions[t]``.
 
-    The interactions are the singletons in position order and are not stored.
+    The interactions are the singletons in any order, each player exactly once, so
+    ``values[..., t]`` belongs to the player in ``interactions[t]``, not to position ``t``.
     """
 
-    values: Float[jax.Array, "*batch {players.n_players}"] = field()
+    additivity: Literal[1] = field(default=1, init=False)
 
-    @property
-    @override
-    def interactions(self) -> Bool[jax.Array, "n_players n_players"]:
-        """Return the singletons, one per player position."""
-        return jnp.eye(self.players.n_players, dtype=bool)
+    def __post_init__(self) -> None:
+        """Check that the interactions are a permutation of the singletons, when concrete.
 
-    @property
-    @override
-    def additivity(self) -> Literal[1]:
-        """Return the singleton interaction-order bound."""
-        return 1
+        Raises:
+            ValueError: An interaction is no singleton, or a player is missing or repeated.
+        """
+        SetMoebiusGame.__post_init__(self)
+        if not isinstance(self.interactions, Tracer):
+            rows_single = jnp.all(jnp.sum(self.interactions, axis=-1) == 1)
+            each_player_once = jnp.all(jnp.sum(self.interactions, axis=-2) == 1)
+            if not (rows_single and each_player_once):
+                msg = "AdditiveMoebiusGame interactions must be a permutation of the singletons."
+                raise ValueError(msg)
 
     @override
     def _basis(
         self, coalition: Bool[jax.Array, "#*batch {self.players.n_players}"]
-    ) -> Shaped[jax.Array, "#*batch n_players"]:
-        """Return player membership, which is containment for singletons."""
-        return coalition
+    ) -> Shaped[jax.Array, "#*batch n_interactions"]:
+        """Matches the player of each singleton interaction to the coalition, ignoring order."""
+        return jnp.take(coalition, jnp.argmax(self.interactions, axis=-1), axis=-1)
