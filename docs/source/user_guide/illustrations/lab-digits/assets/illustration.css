@@ -1,0 +1,757 @@
+/* The illustration "lab-digits" (illustration.js): Definition 2.1 on an image model. The units 𝒮
+   cut a handwritten digit into patches, rows, or pairs; the explanation e takes each unit to a
+   point or a curve of the explanation space E. Red is positive, blue negative, amber marks the
+   features (docs/STYLE_GUIDE.md). */
+
+.dig {
+  --dig-paper: var(--shapiq-surface);
+  --dig-ink: var(--color-foreground-primary, #1b1e27);
+  --dig-cut: var(--color-background-primary, #ffffff);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+.dig-cal,
+.dig i,
+.dig-symbol {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  letter-spacing: 0;
+}
+
+/* -- the body: the units on the image, the explanation e, the space E -------------------------------- */
+
+.dig-body {
+  position: relative; /* the values fly over it */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+@container (width >= 34rem) {
+  .dig-body {
+    grid-template-columns: minmax(0, 1.08fr) 5.6rem minmax(0, 1fr);
+    gap: 0 0.4rem;
+    align-items: stretch;
+  }
+}
+
+.dig-part {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  align-content: start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.dig-part-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.dig-symbol {
+  color: var(--shapiq-amber-ink);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.dig-part-name {
+  color: var(--shapiq-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dig-part .shapiq-ill-segmented {
+  justify-self: start;
+}
+
+.dig-notation {
+  min-height: 1.4em;
+  margin: 0;
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+/* a part that just came or changed glows once in amber */
+.dig-part.is-lit .dig-part-head .dig-symbol,
+.dig-arrow.is-lit .dig-symbol {
+  animation: dig-lit 1100ms ease-out;
+}
+
+.dig-part.is-lit .dig-map-box,
+.dig-part.is-lit .dig-space-box {
+  animation: dig-box-lit 1100ms ease-out;
+}
+
+@keyframes dig-lit {
+  0% {
+    text-shadow: 0 0 0 transparent;
+    transform: none;
+  }
+  30% {
+    text-shadow: 0 0 14px var(--shapiq-amber);
+    transform: scale(1.25);
+  }
+  100% {
+    text-shadow: 0 0 0 transparent;
+    transform: none;
+  }
+}
+
+@keyframes dig-box-lit {
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  30% {
+    box-shadow: 0 0 0 5px var(--shapiq-amber-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* -- the image ------------------------------------------------------------------------------------- */
+
+.dig-map-box {
+  justify-self: center;
+  width: 100%;
+  max-width: 24rem;
+  border-radius: 14px;
+}
+
+.dig-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  border-radius: 14px;
+  touch-action: manipulation;
+}
+
+.dig-map:focus-visible {
+  outline: 2px solid var(--shapiq-ill-ink);
+  outline-offset: 3px;
+}
+
+.dig-paper {
+  fill: var(--dig-paper);
+}
+
+.dig-fill {
+  stroke: none;
+  transition: fill 600ms var(--shapiq-ease);
+}
+
+.dig-ink rect {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* the digit: its pixels, as dark as their ink (--a); painted by the explanation, the faintest stay
+   visible; under curves and arcs, they step back */
+.dig-ink rect {
+  opacity: calc(0.15 + 0.7 * var(--a));
+  transform: scale(0.93);
+  transition:
+    fill 700ms var(--shapiq-ease),
+    opacity 700ms var(--shapiq-ease),
+    transform 700ms var(--shapiq-ease);
+}
+
+.dig-quiet .dig-ink rect {
+  opacity: calc(0.2 * var(--a));
+}
+
+.dig-intro .dig-ink rect {
+  fill: var(--dig-ink) !important;
+  opacity: var(--a);
+  transform: none;
+}
+
+/* until the explanation comes, the image is the bare digit: no colors, nothing pointed at */
+.dig-intro .dig-fill {
+  fill: var(--dig-paper) !important;
+}
+
+.dig-intro .dig-badge.is-active circle {
+  fill: color-mix(in srgb, var(--shapiq-amber) 18%, var(--dig-paper));
+}
+
+.dig-intro .dig-badge.is-active text {
+  fill: var(--shapiq-amber-ink);
+}
+
+.dig-intro .dig-dot,
+.dig-intro .dig-dot-label,
+.dig-intro .dig-line,
+.dig-intro .dig-surface-big {
+  opacity: 0;
+}
+
+.dig-cuts line {
+  stroke: var(--dig-cut);
+  stroke-width: 6;
+  stroke-linecap: square;
+  transition:
+    stroke-width 500ms var(--shapiq-ease),
+    opacity 500ms var(--shapiq-ease);
+}
+
+.dig-cuts line.is-inside {
+  stroke-width: 1.5;
+  opacity: 0.55;
+}
+
+/* before the units cut it, the digit is whole */
+.dig-intro:not(.dig-cut) .dig-cuts line {
+  stroke-width: 0;
+}
+
+.dig-frame {
+  fill: none;
+  stroke: var(--shapiq-border);
+}
+
+.dig-badge {
+  pointer-events: none;
+}
+
+.dig-badge circle {
+  fill: color-mix(in srgb, var(--shapiq-amber) 18%, var(--dig-paper));
+  stroke: var(--dig-paper);
+  stroke-width: 2.5;
+  transition: fill var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.dig-badge text {
+  fill: var(--shapiq-amber-ink);
+  font-size: 13px;
+  font-weight: 700;
+  dominant-baseline: central;
+  text-anchor: middle;
+}
+
+.dig-badge.is-active circle {
+  fill: var(--shapiq-amber);
+}
+
+.dig-badge.is-active text {
+  fill: #1b1e27;
+}
+
+.dig-intro:not(.dig-cut) .dig-badge {
+  opacity: 0;
+}
+
+.dig-content,
+.dig-arcs {
+  transition: opacity 400ms var(--shapiq-ease);
+}
+
+.dig-intro .dig-content,
+.dig-intro .dig-arcs {
+  opacity: 0;
+}
+
+.dig-label rect {
+  fill: color-mix(in srgb, var(--dig-paper) 88%, transparent);
+  stroke: none;
+}
+
+.dig-value {
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dig-label.dig-pos .dig-value {
+  fill: var(--shapiq-red-ink);
+}
+
+.dig-label.dig-neg .dig-value {
+  fill: var(--shapiq-blue-ink);
+}
+
+.dig-label.dig-zero .dig-value {
+  fill: var(--shapiq-text-muted);
+  font-weight: 600;
+}
+
+.dig-curve-box {
+  fill: none;
+  stroke: none;
+}
+
+.dig-curve {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dig-curve-base {
+  stroke: var(--shapiq-text-muted);
+  stroke-opacity: 0.35;
+}
+
+/* the unit pointed at: an amber outline */
+.dig-focus {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-width: 4;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px var(--shapiq-amber-soft));
+}
+
+.dig-intro .dig-focus {
+  opacity: 0;
+}
+
+.dig-hit {
+  fill: transparent;
+  stroke: none;
+  cursor: pointer;
+}
+
+.dig-hit-arc {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 22;
+}
+
+/* pairs: arcs between the centers of their patches */
+.dig-arc {
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0.85;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.dig-arc.dig-pos {
+  stroke: var(--shapiq-red);
+}
+
+.dig-arc.dig-neg {
+  stroke: var(--shapiq-blue);
+}
+
+.dig-arc.dig-curve {
+  stroke: var(--shapiq-amber);
+}
+
+/* pairs do not cut the image: its patches stay apart by a faint line */
+.dig-pairs .dig-cuts line {
+  stroke: var(--shapiq-border);
+  stroke-width: 1.5;
+}
+
+/* the value of a pair on its arc, while it is pointed at */
+.dig-pair:not(.is-active) .dig-pill {
+  display: none;
+}
+
+.dig-arc-end {
+  fill: var(--dig-ink);
+  stroke: var(--dig-paper);
+  stroke-width: 2;
+}
+
+.dig-pair {
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.dig-arcs.is-pointing .dig-pair:not(.is-active) {
+  opacity: 0.3;
+}
+
+.dig-pair.is-active .dig-arc {
+  opacity: 1;
+}
+
+.dig-pill rect {
+  fill: var(--dig-paper);
+  stroke: var(--shapiq-border);
+}
+
+.dig-pill-text {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dig-surface rect {
+  stroke: none;
+}
+
+.dig-surface .dig-surface-frame {
+  fill: none;
+  stroke: var(--shapiq-border);
+  stroke-width: 1;
+}
+
+.dig-pair .dig-surface .dig-surface-frame {
+  stroke: var(--dig-ink);
+  stroke-opacity: 0.5;
+}
+
+/* the surfaces of the strongest pairs in E, side by side; the one pointed at in an amber ring */
+.dig-multiple {
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.dig-space .dig-multiple-label {
+  fill: var(--shapiq-text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dig-multiple-ring {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2.5;
+  transition: stroke var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.dig-multiple.is-active .dig-multiple-ring {
+  stroke: var(--shapiq-amber);
+}
+
+.dig-space .dig-multiple.is-active .dig-multiple-label {
+  fill: var(--shapiq-amber-ink);
+}
+
+.dig-intro .dig-multiple {
+  opacity: 0;
+}
+
+/* -- the explanation e: an arrow from the units to the space ------------------------------------------ */
+
+/* narrow: a line under the image, the arrow pointing down to the space */
+.dig-arrow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.15rem 0.55rem;
+  padding: 0.15rem 0.1rem;
+}
+
+.dig-arrow .dig-symbol {
+  grid-row: 1 / 3;
+  font-size: 1.6rem;
+  font-style: italic;
+}
+
+.dig-arrow-line {
+  position: relative;
+  grid-row: 1 / 3;
+  width: 2px;
+  height: 2.2rem;
+  margin: 0 0.3rem;
+  background: var(--shapiq-amber);
+}
+
+.dig-arrow-line::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: -5px;
+  border-top: 9px solid var(--shapiq-amber);
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+}
+
+.dig-arrow .dig-part-name {
+  align-self: end;
+}
+
+.dig-method {
+  align-self: start;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+/* wide: between the image and the space, the arrow pointing right */
+@container (width >= 34rem) {
+  .dig-arrow {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    justify-items: center;
+    gap: 0.4rem;
+    padding: 0;
+    /* centered on the image and the space, below their heads */
+    margin-top: 6.4rem;
+    text-align: center;
+  }
+
+  .dig-arrow .dig-symbol,
+  .dig-arrow-line {
+    grid-row: auto;
+  }
+
+  .dig-arrow-line {
+    width: 100%;
+    height: 2px;
+    margin: 0;
+  }
+
+  .dig-arrow-line::after {
+    top: -5px;
+    right: -1px;
+    bottom: auto;
+    left: auto;
+    border-top: 6px solid transparent;
+    border-right: 0;
+    border-bottom: 6px solid transparent;
+    border-left: 9px solid var(--shapiq-amber);
+  }
+
+  .dig-arrow .dig-part-name {
+    align-self: auto;
+    font-size: 0.64rem;
+    line-height: 1.3;
+  }
+
+  .dig-method {
+    align-self: auto;
+    font-size: 0.78rem;
+  }
+}
+
+/* -- the space E -------------------------------------------------------------------------------------- */
+
+.dig-space-box {
+  position: relative;
+  height: 13rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 14px;
+  background: var(--shapiq-surface-raised);
+}
+
+@container (width >= 34rem) {
+  .dig-space-box {
+    /* as tall as the image beside it */
+    height: auto;
+    min-height: 13rem;
+  }
+}
+
+.dig-space {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.dig-space-gloss {
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.dig-space text {
+  fill: var(--color-foreground-primary);
+  font-size: 12px;
+}
+
+.dig-space .dig-axis-label {
+  fill: var(--shapiq-text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dig-space .dig-axis-caption {
+  fill: var(--shapiq-text-muted);
+  font-size: 11px;
+}
+
+.dig-axis-line {
+  stroke: var(--shapiq-text-muted);
+  stroke-opacity: 0.6;
+}
+
+.dig-axis-tick {
+  stroke: var(--shapiq-text-muted);
+  stroke-opacity: 0.6;
+}
+
+.dig-axis-grid {
+  stroke: var(--shapiq-border);
+  stroke-dasharray: 3 3;
+}
+
+.dig-axis-zero {
+  stroke: var(--shapiq-text-muted);
+  stroke-opacity: 0.35;
+  stroke-dasharray: 2 3;
+}
+
+.dig-dot {
+  stroke: var(--shapiq-surface-raised);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition:
+    r var(--shapiq-duration) var(--shapiq-ease),
+    stroke var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.dig-dot.dig-pos {
+  fill: var(--shapiq-red);
+}
+
+.dig-dot.dig-neg {
+  fill: var(--shapiq-blue);
+}
+
+.dig-dot.dig-zero {
+  fill: var(--shapiq-text-muted);
+}
+
+.dig-dot.is-active {
+  stroke: var(--shapiq-amber);
+  stroke-width: 3.5;
+}
+
+.dig-space .dig-dot-label {
+  fill: var(--shapiq-amber-ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.dig-line {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-width: 1.6;
+  stroke-opacity: 0.45;
+  stroke-linejoin: round;
+  pointer-events: none;
+  transition:
+    stroke-width var(--shapiq-duration) var(--shapiq-ease),
+    stroke-opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.dig-line.is-active {
+  stroke-width: 3.5;
+  stroke-opacity: 1;
+}
+
+.dig-line-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  cursor: pointer;
+}
+
+/* the values on their way from the image into E */
+.dig-fly {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dig-spark {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--shapiq-surface-raised);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--shapiq-amber-soft);
+}
+
+.dig-spark.dig-pos {
+  background: var(--shapiq-red);
+}
+
+.dig-spark.dig-neg {
+  background: var(--shapiq-blue);
+}
+
+.dig-spark.dig-zero {
+  background: var(--shapiq-text-muted);
+}
+
+/* -- the explanation in words, the sum, and the model ------------------------------------------------ */
+
+.dig-readout {
+  min-height: 2.8em;
+  margin: 0.2rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.dig-e {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.1rem;
+}
+
+.dig-set {
+  padding: 0 0.1rem;
+  color: var(--shapiq-amber-ink);
+  font-family: var(--font-stack, sans-serif);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.dig-readout-gloss {
+  display: block;
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
+
+strong.dig-pos,
+span.dig-pos {
+  color: var(--shapiq-red-ink);
+  font-weight: 700;
+}
+
+strong.dig-neg,
+span.dig-neg {
+  color: var(--shapiq-blue-ink);
+  font-weight: 700;
+}
+
+
+
+.dig-pill-text.dig-pos {
+  fill: var(--shapiq-red-ink);
+}
+
+.dig-pill-text.dig-neg {
+  fill: var(--shapiq-blue-ink);
+}
+
+.dig-equation {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.dig-foot {
+  margin: 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--shapiq-border);
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
+
+.dig-foot strong {
+  color: var(--color-foreground-primary);
+}

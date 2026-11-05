@@ -1,0 +1,676 @@
+/* The illustration "lab-lattice" (illustration.js): Definition 2.1 as a lit lattice. The three
+   parts named on top (the units 𝒮 and the explanation space E, two switches, and the explanation e
+   they give), the features D of the hour, the 16 sets of the features as the Hasse diagram of 2^D
+   (the units lit, each with its explanation e(S)), and a panel with one set larger. Red is positive,
+   blue negative, amber marks the features and the lit sets (docs/STYLE_GUIDE.md). */
+
+.llt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
+}
+
+.llt-cal,
+.llt i,
+.llt-sym {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  letter-spacing: 0;
+}
+
+.llt-amber {
+  color: var(--shapiq-amber-ink);
+  font-weight: 700;
+}
+
+/* -- the three parts: two choices and the explanation they give -------------------------------- */
+
+.llt-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+@container (width >= 28rem) {
+  .llt-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .llt-choice-e {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (width >= 40rem) {
+  .llt-head {
+    grid-template-columns: auto auto minmax(8rem, 1fr);
+    column-gap: 1.4rem;
+  }
+
+  .llt-choice-e {
+    grid-column: auto;
+  }
+}
+
+.llt-choice {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.llt-choice-e {
+  padding: 0.1rem 0 0.15rem 0.9rem;
+  border-left: 2px solid var(--shapiq-amber);
+}
+
+/* the explanation glows once when it changes */
+.llt-choice-e.is-changed {
+  animation: llt-changed 900ms ease-out;
+}
+
+@keyframes llt-changed {
+  0% {
+    background: transparent;
+  }
+  30% {
+    background: var(--shapiq-amber-soft);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.llt-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.llt-sym {
+  color: var(--shapiq-amber-ink);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.llt-sym i {
+  font-style: italic;
+}
+
+.llt-label-words {
+  color: var(--shapiq-text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.llt-method {
+  margin: 0;
+  min-height: calc(var(--shapiq-ill-control) - 2px);
+  display: flex;
+  align-items: center;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.llt-choice-value {
+  width: 0; /* as wide as its column, which its switch sets */
+  min-width: 100%;
+  margin: 0;
+  padding-left: 0.2rem;
+  color: var(--shapiq-text-muted);
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.llt-choice-value .llt-cal {
+  color: var(--color-foreground-primary);
+}
+
+.llt-method-note {
+  margin: -0.2rem 0 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.llt-method-note:empty {
+  display: none;
+}
+
+/* the switch of the units, when the reader picked sets of their own: no option is chosen */
+.llt-units-switch.is-custom .shapiq-ill-segmented-pill {
+  opacity: 0;
+}
+
+/* -- the features of the hour -------------------------------------------------------------------- */
+
+.llt-features {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.llt-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.llt-chip {
+  padding-right: 0.55rem;
+}
+
+/* -- the lattice ---------------------------------------------------------------------------------- */
+
+.llt-lattice {
+  position: relative;
+  margin-top: 0.4rem;
+}
+
+.llt-lattice.is-waiting {
+  visibility: hidden;
+}
+
+.llt-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.llt-edge {
+  stroke: var(--shapiq-border);
+  stroke-width: 1.2;
+  transition: stroke var(--shapiq-duration) var(--shapiq-ease);
+}
+
+body[data-theme="dark"] .llt-edge {
+  stroke: #3d4252;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .llt-edge {
+    stroke: #3d4252;
+  }
+}
+
+/* the lines of the set in focus: to its subsets above and its supersets below */
+.llt-edge.is-focus {
+  stroke: var(--shapiq-amber);
+  stroke-width: 1.6;
+}
+
+.llt-corner {
+  position: absolute;
+  top: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.llt-corner-left {
+  left: 4px;
+}
+
+.llt-corner-right {
+  right: 4px;
+  justify-items: end;
+  text-align: right;
+}
+
+.llt-corner-big {
+  color: var(--shapiq-amber-ink);
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.llt-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.llt-swatch {
+  flex: none;
+  width: 0.95rem;
+  height: 0.7rem;
+  border: 1px dashed var(--shapiq-text-muted);
+  border-radius: 3px;
+}
+
+.llt-swatch.is-lit {
+  border: 1.5px solid var(--shapiq-amber);
+  background: var(--shapiq-amber-soft);
+}
+
+.llt-lattice.is-small .llt-corner {
+  font-size: 0.66rem;
+}
+
+.llt-key-hint {
+  margin-top: 0.15rem;
+  font-style: italic;
+}
+
+.llt-lattice.is-small .llt-key-hint {
+  display: none;
+}
+
+/* a set: dashed and quiet; lit, as a unit of 𝒮, solid amber with its explanation */
+.llt-node {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 6px;
+  border: 1px dashed color-mix(in oklab, var(--shapiq-text-muted) 55%, transparent);
+  border-radius: 10px;
+  background: var(--color-background-primary);
+  color: var(--shapiq-text-muted);
+  overflow: hidden;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color var(--shapiq-duration) var(--shapiq-ease),
+    background-color var(--shapiq-duration) var(--shapiq-ease),
+    box-shadow var(--shapiq-duration) var(--shapiq-ease),
+    transform var(--shapiq-duration) var(--shapiq-ease),
+    top 320ms var(--shapiq-ill-glide),
+    height 320ms var(--shapiq-ill-glide);
+}
+
+.llt-lattice.is-small .llt-node {
+  padding: 3px;
+  border-radius: 7px;
+}
+
+.llt-node.is-lit {
+  border: 1.5px solid var(--shapiq-amber);
+  background:
+    linear-gradient(var(--shapiq-amber-soft), transparent 70%),
+    var(--shapiq-surface-raised);
+  color: var(--color-foreground-primary);
+}
+
+.llt-node.is-focus {
+  box-shadow: 0 0 0 3px var(--shapiq-amber-soft);
+}
+
+.llt-node.is-focus:not(.is-lit) {
+  border-color: var(--shapiq-amber);
+}
+
+@media (hover: hover) {
+  .llt-node:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.llt-node:active {
+  transform: scale(0.97);
+}
+
+.llt-node:focus-visible {
+  outline: 2px solid var(--shapiq-ill-ink);
+  outline-offset: 2px;
+}
+
+/* a set that just joined the units glows once */
+.llt-node.is-lighting {
+  animation: llt-light 700ms ease-out;
+}
+
+@keyframes llt-light {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--shapiq-amber) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+.llt-set {
+  flex: none;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  white-space: nowrap;
+  transition:
+    background-color var(--shapiq-duration) var(--shapiq-ease),
+    color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.llt-lattice.is-small .llt-set {
+  padding: 0 0.15rem;
+  font-size: 0.6rem;
+  letter-spacing: -0.02em;
+  line-height: 1.5;
+}
+
+.llt-node-empty .llt-set {
+  font-size: 0.95rem;
+  line-height: 1.05;
+}
+
+.llt-node.is-lit .llt-set {
+  background: var(--shapiq-amber-soft);
+  color: var(--shapiq-amber-ink);
+}
+
+.llt-body {
+  position: relative;
+  display: grid;
+  flex: 1;
+  width: 100%;
+  place-items: center;
+}
+
+.llt-body > svg {
+  grid-area: 1 / 1;
+}
+
+.llt-e {
+  display: block;
+  overflow: visible;
+}
+
+/* -- the explanations: numbers, curves, surfaces ----------------------------------------------- */
+
+.llt-num {
+  fill: var(--color-foreground-primary);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.llt-lattice.is-small .llt-num {
+  font-size: 11px;
+}
+
+.llt-num.llt-pos {
+  fill: var(--shapiq-red-ink);
+}
+
+.llt-num.llt-neg {
+  fill: var(--shapiq-blue-ink);
+}
+
+.llt-num.llt-zero {
+  fill: var(--shapiq-text-muted);
+}
+
+.llt-num.llt-num-neutral {
+  fill: var(--shapiq-amber-ink);
+}
+
+.llt-num-note,
+.llt-mini-value {
+  fill: var(--shapiq-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.llt-mini-value {
+  fill: var(--shapiq-amber-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.llt-bar.llt-pos {
+  fill: var(--shapiq-red);
+}
+
+.llt-bar.llt-neg {
+  fill: var(--shapiq-blue);
+}
+
+.llt-bar.llt-zero {
+  fill: var(--shapiq-text-muted);
+}
+
+.llt-zero-line {
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+
+.llt-line {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.llt-line-amber {
+  stroke: var(--shapiq-amber);
+}
+
+.llt-line-pos {
+  stroke: var(--shapiq-red);
+}
+
+.llt-line-neg {
+  stroke: var(--shapiq-blue);
+}
+
+.llt-dashed {
+  stroke-dasharray: 3 2.5;
+  stroke-width: 1.3;
+}
+
+.llt-faint {
+  opacity: 0.55;
+}
+
+.llt-area {
+  stroke: none;
+}
+
+.llt-area-amber {
+  fill: var(--shapiq-amber-soft);
+}
+
+.llt-area-pos {
+  fill: color-mix(in oklab, var(--shapiq-red) 16%, transparent);
+}
+
+.llt-area-neg {
+  fill: color-mix(in oklab, var(--shapiq-blue) 16%, transparent);
+}
+
+.llt-dot {
+  fill: var(--color-foreground-primary);
+  stroke: var(--shapiq-surface);
+  stroke-width: 1.5;
+}
+
+.llt-frame {
+  fill: none;
+  stroke: var(--shapiq-border);
+}
+
+/* -- the panel: the set in focus, larger --------------------------------------------------------- */
+
+.llt-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem 1.4rem;
+  min-height: 6.5rem;
+  padding: 0.85rem 1rem 0.9rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface-raised);
+}
+
+@container (width >= 36rem) {
+  .llt-panel.is-curve {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+.llt-panel-text {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.llt-panel-text p {
+  margin: 0;
+}
+
+.llt-panel-set {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.llt-panel-equation {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.llt-panel-equation strong.llt-pos {
+  color: var(--shapiq-red-ink);
+}
+
+.llt-panel-equation strong.llt-neg {
+  color: var(--shapiq-blue-ink);
+}
+
+.llt-panel-equation strong.llt-zero {
+  color: var(--shapiq-text-muted);
+}
+
+.llt-set-inline {
+  margin-right: 0.2rem;
+  padding: 0.02rem 0.35rem;
+  border-radius: 999px;
+  background: var(--shapiq-amber-soft);
+  color: var(--shapiq-amber-ink);
+  font-size: 0.85em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.llt-unit {
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
+
+.llt-panel-meaning {
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.llt-panel-hint {
+  color: var(--shapiq-text-muted);
+  font-size: 0.76rem;
+}
+
+.llt-panel-figure {
+  display: none;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.llt-panel.is-curve .llt-panel-figure {
+  display: grid;
+}
+
+.llt-panel-graphic {
+  min-width: 0;
+}
+
+.llt-panel-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.llt-panel-readout {
+  min-height: 1.3em;
+  margin: 0;
+  color: var(--color-foreground-primary);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.llt-panel-svg text {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.llt-axis-tick {
+  fill: var(--shapiq-text-muted);
+}
+
+.llt-axis-name {
+  fill: var(--shapiq-text-muted);
+  font-weight: 600;
+}
+
+.llt-axis-value {
+  fill: var(--shapiq-amber-ink);
+  font-weight: 700;
+}
+
+.llt-axis-line {
+  stroke: var(--shapiq-text-muted);
+  opacity: 0.6;
+}
+
+.llt-axis-legend {
+  fill: var(--color-foreground-primary);
+}
+
+.llt-legend-dashed {
+  fill: var(--shapiq-text-muted);
+}
+
+/* -- the sum and the model ----------------------------------------------------------------------- */
+
+.llt-sum {
+  margin: -0.2rem 0 0;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.llt-sum .llt-pos {
+  color: var(--shapiq-red-ink);
+  font-weight: 700;
+}
+
+.llt-sum .llt-neg {
+  color: var(--shapiq-blue-ink);
+  font-weight: 700;
+}
+
+.llt-foot {
+  margin: 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--shapiq-border);
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}

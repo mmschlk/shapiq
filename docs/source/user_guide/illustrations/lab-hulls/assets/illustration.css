@@ -1,0 +1,455 @@
+/* The illustration "lab-hulls" (illustration.js): Definition 2.1 drawn on the features. The features
+   are amber dots, a unit is a shape around the dots of its features, and its explanation lives on
+   the shape: a tint and a tag. Red is positive, blue negative, amber marks features
+   (docs/STYLE_GUIDE.md). */
+
+.lh {
+  --lh-paper: var(--color-background-primary, #fff); /* what the shapes are tinted against */
+  --lh-ink: var(--color-foreground-primary, #1b1e27);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+.lh.is-waiting .lh-stage,
+.lh.is-waiting .lh-map,
+.lh.is-waiting .lh-definition {
+  visibility: hidden;
+}
+
+.lh-cal,
+.lh i,
+.lh-sym {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  letter-spacing: 0;
+}
+
+/* -- the two choices: the units and the explanation space ---------------------------------------- */
+
+.lh-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.75rem;
+  align-items: end;
+}
+
+.lh-control {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.lh-control .shapiq-ill-segmented {
+  justify-self: start;
+}
+
+.lh-control-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.lh-sym {
+  color: var(--shapiq-amber-ink);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.lh-name {
+  color: var(--shapiq-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* 𝒮 = ..., E = ..., e = the method: the definition, filled in */
+.lh-definition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.4rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.98rem;
+}
+
+.lh-def {
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  white-space: nowrap;
+  border-radius: 4px;
+}
+
+.lh-def-method b {
+  font-family: var(--font-stack, system-ui, sans-serif);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+/* -- the stage -------------------------------------------------------------------------------------- */
+
+.lh-stage {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lh-stage:focus {
+  outline: none;
+}
+
+.lh-stage:focus-visible {
+  outline: 2px solid var(--lh-ink);
+  outline-offset: 4px;
+  border-radius: var(--shapiq-radius-small);
+}
+
+/* a unit: its shape, tinted by its explanation, and its outline above all the tints */
+.lh-fill {
+  stroke: none;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.lh-fill.is-pos {
+  fill: color-mix(in oklab, var(--shapiq-red) var(--lh-mix, 20%), var(--lh-paper));
+}
+
+.lh-fill.is-neg {
+  fill: color-mix(in oklab, var(--shapiq-blue) var(--lh-mix, 20%), var(--lh-paper));
+}
+
+/* for curves, a light amber: what is neither positive nor negative */
+.lh-fill.is-none {
+  fill: color-mix(in oklab, var(--shapiq-amber) calc(var(--lh-mix, 100%) * 0.1), var(--lh-paper));
+}
+
+.lh-outline {
+  fill: none;
+  stroke: color-mix(in oklab, var(--lh-ink) 42%, var(--lh-paper));
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  transition:
+    opacity var(--shapiq-duration) var(--shapiq-ease),
+    stroke var(--shapiq-duration) var(--shapiq-ease),
+    stroke-width var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.lh-unit {
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.lh-unit.is-default .lh-outline {
+  stroke: color-mix(in oklab, var(--lh-ink) 62%, var(--lh-paper));
+  stroke-width: 1.6;
+}
+
+.lh-unit.is-lit .lh-outline {
+  stroke: color-mix(in oklab, var(--lh-ink) 85%, var(--lh-paper));
+  stroke-width: 1.8;
+}
+
+.lh-unit.is-dim {
+  opacity: 0.28;
+}
+
+/* a pair without its tag: a lighter outline */
+.lh-unit.is-quiet:not(.is-lit) .lh-outline {
+  stroke: color-mix(in oklab, var(--lh-ink) 22%, var(--lh-paper));
+  stroke-width: 1;
+}
+
+/* the features */
+.lh-dot circle {
+  fill: var(--shapiq-amber);
+  stroke: var(--lh-paper);
+  stroke-width: 2;
+}
+
+.lh-dot text {
+  fill: #1b1e27; /* on solid amber, dark in both themes */
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-dot > g {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* a label keeps a rim of paper around its letters, legible over the shapes */
+.lh-label {
+  font-size: 12.5px;
+  paint-order: stroke;
+  stroke: var(--lh-paper);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+
+.lh-label-name {
+  fill: var(--lh-ink);
+  font-weight: 600;
+}
+
+.lh-label-value {
+  fill: var(--shapiq-text-muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-dot,
+.lh-label {
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.lh-dot.is-dim,
+.lh-label.is-dim {
+  opacity: 0.45;
+}
+
+/* the feature in focus, for its pairs: an amber halo */
+.lh-dot.is-focus circle {
+  stroke: var(--shapiq-amber);
+  stroke-opacity: 0.35;
+  stroke-width: 7;
+  paint-order: stroke;
+}
+
+/* a tag: the explanation of a unit on the edge of its shape */
+.lh-tag {
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+  pointer-events: none;
+}
+
+.lh-tag > g {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--shapiq-duration) var(--shapiq-ease);
+}
+
+/* the tag of the unit in focus comes forward */
+.lh-tag.is-focus > g {
+  transform: scale(1.12);
+}
+
+.lh-tag.is-dim {
+  opacity: 0.3;
+}
+
+.lh-tag.is-hidden,
+.lh-tag.is-waiting {
+  opacity: 0;
+}
+
+.lh-tag-box {
+  fill: var(--lh-paper);
+  stroke-width: 1.25;
+}
+
+.is-pos > .lh-tag-box {
+  stroke: var(--shapiq-red);
+}
+
+.is-neg > .lh-tag-box {
+  stroke: var(--shapiq-blue);
+}
+
+.lh-tag-card {
+  stroke: color-mix(in oklab, var(--lh-ink) 30%, var(--lh-paper));
+  filter: drop-shadow(0 1px 2px rgba(20, 28, 60, 0.12));
+}
+
+.lh-tag-text {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.is-pos > .lh-tag-text {
+  fill: var(--shapiq-red-ink);
+}
+
+.is-neg > .lh-tag-text {
+  fill: var(--shapiq-blue-ink);
+}
+
+/* curves and surfaces */
+.lh-line {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.lh-area {
+  fill: var(--shapiq-amber-soft);
+  stroke: none;
+}
+
+.lh-marker {
+  fill: var(--lh-ink);
+  stroke: var(--lh-paper);
+  stroke-width: 1.2;
+}
+
+.lh-heat rect {
+  stroke: none;
+}
+
+.lh-frame {
+  fill: none;
+  stroke: color-mix(in oklab, var(--lh-ink) 25%, var(--lh-paper));
+  stroke-width: 0.8;
+}
+
+.lh-axis {
+  fill: var(--shapiq-text-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- S ↦ e(S) for the unit in focus ------------------------------------------------------------------ */
+
+.lh-map {
+  display: grid;
+  gap: 0.2rem;
+  min-height: 4.6rem;
+  padding: 0.55rem 0.8rem 0.6rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface-raised);
+}
+
+.lh-map-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+  min-height: 3.2rem;
+  font-size: 0.9rem;
+}
+
+.lh-map-unit {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+  min-width: 0;
+}
+
+.lh-map-s,
+.lh-map-e {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.lh-map-s i,
+.lh-map-e i {
+  font-size: 1.08rem;
+}
+
+.lh-set {
+  flex: none;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  background: var(--shapiq-amber-soft);
+  color: var(--shapiq-amber-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lh-map-names {
+  font-weight: 600;
+}
+
+.lh-map-to {
+  color: var(--shapiq-text-muted);
+  font-family: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  font-size: 1.1rem;
+}
+
+.lh-map-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-map-value.is-pos,
+.lh-sum .is-pos {
+  color: var(--shapiq-red-ink);
+}
+
+.lh-map-value.is-neg,
+.lh-sum .is-neg {
+  color: var(--shapiq-blue-ink);
+}
+
+.lh-map-glyph {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  white-space: normal;
+}
+
+.lh-map-glyph svg {
+  display: block;
+  overflow: visible;
+}
+
+.lh-map-range {
+  color: var(--shapiq-text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lh-map-gloss {
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+/* -- the sum, and the model ------------------------------------------------------------------------ */
+
+.lh-sum {
+  margin: 0;
+  min-height: 1.3em;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.lh-sum .is-pos,
+.lh-sum .is-neg {
+  font-weight: 650;
+}
+
+.lh-foot {
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--shapiq-border);
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+}
+
+@container (width < 34rem) {
+  .lh-head {
+    gap: 0.6rem 1rem;
+  }
+
+  .lh-definition {
+    gap: 0.15rem 1rem;
+    font-size: 0.92rem;
+  }
+
+  .lh-map {
+    padding: 0.5rem 0.65rem;
+  }
+}

@@ -1,0 +1,909 @@
+/* The illustration "lab-stepper" (illustration.js): Definition 2.1 as three questions and then the
+   answer. A step bar on top, the question of the step, the choices it asks for, and one picture: the
+   passenger's five features as the heads of five columns, the model's prediction beside them, and
+   one row per unit, its features marked by dots in their columns, ↦, and its answer. Red is
+   positive, blue negative, amber marks features (docs/STYLE_GUIDE.md). */
+
+.lst {
+  --lst-col: 4.2rem; /* a feature's column */
+  --lst-set: 3.8rem; /* the unit as a set, {1, 3} */
+  --lst-to: 1.6rem; /* ↦ */
+  --lst-row: 2.2rem;
+  --lst-math: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.lst i,
+.lst-cal,
+.lst-symbol,
+.lst-notation {
+  font-family: var(--lst-math);
+  letter-spacing: 0;
+}
+
+.lst [hidden] {
+  display: none !important;
+}
+
+/* -- the steps: 1 · 2 · 3 · 4, Back and Next -------------------------------------------------------- */
+
+.lst-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.lst-steps {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lst-steps-item {
+  display: flex;
+  align-items: flex-start;
+  margin: 0;
+}
+
+/* the line from one step to the next, at the height of the dots, drawn in ink once the step before
+   it is done */
+.lst-steps-item + .lst-steps-item::before {
+  content: "";
+  flex: none;
+  width: 1.6rem;
+  height: 2px;
+  margin: calc(0.15rem + 0.825rem - 1px) 0.25rem 0;
+  border-radius: 1px;
+  background: var(--shapiq-border);
+  transition: background-color 300ms var(--shapiq-ease);
+}
+
+.lst-steps-item.is-done + .lst-steps-item::before {
+  background: var(--shapiq-ill-ink);
+}
+
+/* a step: its number in a dot, its name under it */
+.lst-step {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.1rem;
+  border: 0;
+  border-radius: var(--shapiq-radius-small);
+  background: transparent;
+  color: var(--shapiq-text-muted);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lst-step:focus-visible {
+  outline: 2px solid var(--shapiq-ill-ink);
+  outline-offset: 2px;
+}
+
+.lst-step-dot {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  box-sizing: border-box;
+  border: 1.5px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface);
+  color: var(--shapiq-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color 300ms var(--shapiq-ease),
+    border-color 300ms var(--shapiq-ease),
+    color 300ms var(--shapiq-ease),
+    transform 300ms var(--shapiq-ease);
+}
+
+.lst-steps-item.is-done .lst-step-dot {
+  border-color: var(--shapiq-ill-ink);
+  color: var(--shapiq-ill-ink);
+}
+
+.lst-step[aria-current="step"] {
+  color: var(--shapiq-ill-ink);
+}
+
+.lst-step[aria-current="step"] .lst-step-dot {
+  border-color: var(--shapiq-ill-ink);
+  background: var(--shapiq-ill-ink);
+  color: var(--shapiq-surface);
+  transform: scale(1.08);
+}
+
+@media (hover: hover) {
+  .lst-step:hover {
+    color: var(--shapiq-ill-ink);
+  }
+
+  .lst-step:hover .lst-step-dot {
+    border-color: var(--shapiq-ill-ink);
+  }
+}
+
+.lst-step-symbol {
+  font-size: 1.08em;
+  font-weight: 400;
+}
+
+.lst-step-symbol i {
+  font-weight: 400;
+}
+
+/* the buttons: Back, quiet, and Next, a black pill, as the switches' chosen option */
+.lst-buttons {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.lst-back,
+.lst-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: var(--shapiq-ill-control);
+  box-sizing: border-box;
+  padding: 0 1rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+  color: var(--shapiq-ill-ink);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 120ms var(--shapiq-ease),
+    opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+/* as wide for "Next" as for "Start over", so that nothing moves when it changes */
+.lst-next {
+  min-width: 8.4rem;
+  border-color: var(--shapiq-ill-ink);
+  background: var(--shapiq-ill-ink);
+  color: var(--shapiq-surface);
+}
+
+.lst-next-short {
+  display: none;
+}
+
+.lst-back:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lst-back:not(:disabled):active,
+.lst-next:active {
+  transform: scale(0.96);
+}
+
+.lst-back:focus-visible,
+.lst-next:focus-visible {
+  outline: 2px solid var(--shapiq-ill-ink);
+  outline-offset: 2px;
+}
+
+/* -- the question of the step -------------------------------------------------------------------- */
+
+/* room for two lines, three where the figure is narrow, so that the picture stays in place */
+.lst-question {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  align-items: baseline;
+  min-height: 2.95rem;
+}
+
+.lst-symbol {
+  color: var(--shapiq-amber-ink);
+  font-size: 2rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.lst-sentence {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
+.lst-sentence strong {
+  font-weight: 650;
+}
+
+/* -- the picture: the features as column heads, and the prediction -------------------------------- */
+
+.lst-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lst-grid {
+  display: grid;
+  grid-template-columns: repeat(5, var(--lst-col)) var(--lst-set) var(--lst-to) minmax(0, 1fr);
+  align-items: center;
+}
+
+.lst-feature {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  margin: 0 0.2rem;
+  padding: 0.45rem 0.1rem 0.5rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface-raised);
+  text-align: center;
+}
+
+.lst-feature {
+  transition:
+    border-color var(--shapiq-duration) var(--shapiq-ease),
+    box-shadow var(--shapiq-duration) var(--shapiq-ease);
+}
+
+/* a feature of the unit pointed at, or picked */
+.lst-feature.is-on {
+  border-color: var(--shapiq-amber);
+  box-shadow: 0 0 0 3px var(--shapiq-amber-soft);
+}
+
+.lst-index {
+  transform-origin: center;
+}
+
+.lst-feature-label {
+  color: var(--shapiq-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.lst-feature-value {
+  font-size: 0.86rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.lst-out {
+  grid-column: 6 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding-left: 1rem;
+}
+
+/* the model: a gray chip with a tree, as the demos draw a model whose structure an explanation can
+   use (docs/STYLE_GUIDE.md) */
+.lst-model {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9px;
+  background: #5d6577;
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.5);
+  color: #f2f4f8;
+}
+
+.lst-model svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.lst-model .lst-leaf {
+  fill: currentColor;
+  stroke: none;
+}
+
+.lst-out-arrow {
+  flex: none;
+  color: var(--shapiq-text-muted);
+}
+
+.lst-out-text {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.lst-out-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  line-height: 1;
+}
+
+.lst-out-symbol {
+  color: var(--shapiq-text-muted);
+  font-size: 0.95rem;
+}
+
+.lst-out-number {
+  color: var(--shapiq-amber-ink);
+  font-size: 1.55rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* her chance on a line from 0 to 100%, the average marked */
+.lst-gauge {
+  position: relative;
+  display: block;
+  max-width: 11rem;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--shapiq-border);
+}
+
+.lst-gauge-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: var(--shapiq-amber);
+}
+
+.lst-gauge-mark {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--shapiq-ill-ink);
+}
+
+.lst-out-label {
+  color: var(--shapiq-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+/* before it is first seen, the passenger waits unseen; the intro brings it in */
+.lst.is-waiting .lst-feature,
+.lst.is-waiting .lst-out {
+  opacity: 0;
+}
+
+/* -- the choices, as the heads of the two sides of the map: S ∈ 𝒮 = … ↦ e(S) ∈ E = … ------------- */
+
+.lst-caption {
+  align-items: start;
+  margin-top: 1rem;
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--shapiq-border);
+}
+
+.lst-choice {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.lst-choice-units {
+  grid-column: 1 / 7;
+  padding-left: 0.3rem;
+}
+
+.lst-choice-space {
+  grid-column: 8;
+}
+
+/* a choice before its step: its room kept, so that nothing moves when it comes */
+.lst-choice.is-off {
+  visibility: hidden;
+}
+
+.lst-notation {
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 1rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.lst-notation-unit {
+  font-family: var(--font-stack, sans-serif);
+  font-size: 0.8rem;
+}
+
+.lst-caption-to {
+  grid-column: 7;
+  color: var(--shapiq-text-muted);
+  font-family: var(--lst-math);
+  line-height: 1.3;
+  text-align: center;
+}
+
+.lst[data-step="1"] .lst-caption {
+  display: none;
+}
+
+.lst[data-step="2"] .lst-caption-to,
+.lst[data-step="2"] .lst-to {
+  visibility: hidden;
+}
+
+/* -- the rows: one per unit ------------------------------------------------------------------------ */
+
+.lst-rows {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding-top: 0.3rem;
+}
+
+.lst-row {
+  position: relative;
+  min-height: var(--lst-row);
+  border-radius: var(--shapiq-radius-small);
+  outline: none;
+  cursor: default;
+  transition: background-color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.lst-rows[data-kind$="-curves"] .lst-row {
+  min-height: 5rem;
+}
+
+.lst-rows[data-kind="pairs-curves"] .lst-row {
+  min-height: 3.1rem;
+}
+
+.lst:not([data-step="1"], [data-step="2"]) .lst-row {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .lst:not([data-step="1"], [data-step="2"]) .lst-row:hover {
+    background: var(--shapiq-amber-soft);
+  }
+}
+
+.lst-row.is-focus {
+  background: var(--shapiq-amber-soft);
+  box-shadow: inset 3px 0 0 var(--shapiq-amber);
+}
+
+.lst-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--shapiq-ill-ink);
+}
+
+.lst-row.is-leaving {
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.lst-cell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-row: 1;
+  place-items: center;
+  pointer-events: none; /* a dot that falls past the pointer does not count as pointing at its row */
+}
+
+.lst-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--shapiq-amber);
+  box-shadow: 0 0 0 3px var(--color-background-primary, #fff);
+}
+
+.lst-row.is-focus .lst-dot,
+.lst-row:hover .lst-dot {
+  box-shadow: none;
+}
+
+.lst-dot.lst-ghost {
+  width: 0.42rem;
+  height: 0.42rem;
+  border: 1.5px solid var(--shapiq-border);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* the line that joins the features of a set, from the first dot to the last */
+.lst-link {
+  grid-row: 1;
+  pointer-events: none;
+  align-self: center;
+  height: 3px;
+  margin: 0 calc(var(--lst-col) / 2);
+  border-radius: 2px;
+  background: var(--shapiq-amber);
+  transform-origin: left center;
+}
+
+.lst-set {
+  grid-column: 6;
+  grid-row: 1;
+  justify-self: start;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background: var(--shapiq-amber-soft);
+  color: var(--shapiq-amber-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.lst-to {
+  grid-column: 7;
+  grid-row: 1;
+  color: var(--shapiq-text-muted);
+  font-family: var(--lst-math);
+  text-align: center;
+}
+
+.lst-answer {
+  grid-column: 8;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 1.6rem;
+}
+
+/* an answer that waits: a question mark */
+.lst-q {
+  display: inline-grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.35rem;
+  margin-left: 0.2rem;
+  border: 1.5px dashed var(--shapiq-border);
+  border-radius: 6px;
+  color: var(--shapiq-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.lst-e {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.lst-e text {
+  fill: var(--color-foreground-primary);
+  font-size: 12px;
+}
+
+.lst-e .lst-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lst-e .lst-tick,
+.lst-e .lst-range {
+  fill: var(--shapiq-text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lst-e .lst-range,
+.lst-e .lst-end {
+  font-size: 11px;
+}
+
+.lst-e .lst-end {
+  fill: var(--shapiq-text-muted);
+}
+
+.lst-e .lst-end-mine {
+  fill: var(--shapiq-amber-ink);
+  font-weight: 700;
+}
+
+.lst-zero {
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.lst-bar {
+  stroke: none;
+}
+
+.lst-pos {
+  fill: var(--shapiq-red);
+}
+
+.lst-neg {
+  fill: var(--shapiq-blue);
+}
+
+/* text in red or blue: their inks, 4.5:1 */
+.lst-e text.lst-pos {
+  fill: var(--shapiq-red-ink);
+}
+
+.lst-e text.lst-neg {
+  fill: var(--shapiq-blue-ink);
+}
+
+.lst-e text.lst-nil {
+  fill: var(--shapiq-text-muted);
+}
+
+span.lst-nil {
+  color: var(--shapiq-text-muted);
+  font-weight: 650;
+}
+
+span.lst-pos {
+  color: var(--shapiq-red-ink);
+  font-weight: 650;
+}
+
+span.lst-neg {
+  color: var(--shapiq-blue-ink);
+  font-weight: 650;
+}
+
+.lst-axis {
+  stroke: var(--shapiq-border);
+  stroke-width: 1;
+}
+
+.lst-average {
+  stroke: var(--shapiq-text-muted);
+  stroke-dasharray: 2 3;
+  stroke-width: 1;
+  opacity: 0.45;
+}
+
+.lst-line {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.lst-area {
+  fill: var(--shapiq-amber-soft);
+  stroke: none;
+}
+
+.lst-line-other {
+  stroke: var(--shapiq-text-muted);
+  stroke-width: 1.3;
+  opacity: 0.55;
+}
+
+.lst-point {
+  fill: var(--shapiq-amber);
+}
+
+.lst-her {
+  fill: var(--color-foreground-primary);
+  stroke: var(--shapiq-surface);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.lst-cell-rect {
+  stroke: none;
+}
+
+.lst-frame {
+  fill: none;
+  stroke: var(--shapiq-border);
+}
+
+/* -- under the picture: the sum, the readout, and where the numbers come from ------------------------ */
+
+.lst-sum {
+  margin: 0.6rem 0 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.lst-sum:empty {
+  display: none;
+}
+
+.lst-readout {
+  min-height: 2.6em;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.lst[data-step="1"] .lst-readout,
+.lst[data-step="2"] .lst-readout {
+  min-height: 0;
+}
+
+.lst-foot {
+  margin: 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--shapiq-border);
+  color: var(--shapiq-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* -- narrower figures -------------------------------------------------------------------------------- */
+
+@container (width < 42rem) {
+  .lst {
+    --lst-col: 3.6rem;
+    --lst-set: 3.6rem;
+  }
+
+  .lst-step-label {
+    display: none;
+  }
+
+  .lst-notation {
+    font-size: 0.95rem;
+  }
+}
+
+@container (width < 32rem) {
+  .lst {
+    --lst-col: 2.75rem;
+    --lst-set: 0px;
+    --lst-to: 1.1rem;
+    gap: 0.85rem;
+  }
+
+  .lst-set {
+    display: none;
+  }
+
+  .lst-feature {
+    margin: 0 0.1rem;
+    padding: 0.35rem 0 0.4rem;
+    border-radius: 9px;
+  }
+
+  .lst-feature-label {
+    font-size: 0.64rem;
+  }
+
+  .lst-feature-value {
+    font-size: 0.72rem;
+  }
+
+  .lst-out {
+    gap: 0.35rem;
+    padding-left: 0.5rem;
+  }
+
+  .lst-model,
+  .lst-out-arrow {
+    display: none;
+  }
+
+  .lst-out-number {
+    font-size: 1.3rem;
+  }
+
+  .lst-question {
+    grid-template-columns: 1.9rem minmax(0, 1fr);
+    min-height: 4.2rem;
+  }
+
+  .lst-symbol {
+    font-size: 1.7rem;
+  }
+
+  .lst-sentence {
+    font-size: 0.96rem;
+  }
+
+  /* the choices one under the other */
+  .lst-caption {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .lst-choice-units,
+  .lst-choice-space {
+    grid-column: 1;
+    padding-left: 0;
+  }
+
+  .lst-caption-to {
+    display: none;
+  }
+
+  .lst[data-step="2"] .lst-choice-space {
+    display: none;
+  }
+
+  .lst-steps-item + .lst-steps-item::before {
+    width: 0.9rem;
+    margin-inline: 0.2rem;
+  }
+
+  .lst-button-text,
+  .lst-next-long {
+    display: none;
+  }
+
+  .lst-next-short {
+    display: inline;
+  }
+
+  .lst-back {
+    padding: 0 0.85rem;
+  }
+
+  .lst-next {
+    min-width: 5.6rem;
+  }
+}
+
+@container (width < 21rem) {
+  .lst {
+    --lst-col: 2.35rem;
+  }
+
+  .lst-steps-item + .lst-steps-item::before {
+    width: 0.55rem;
+    margin-inline: 0.15rem;
+  }
+
+  .lst-step-dot {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .lst-steps-item + .lst-steps-item::before {
+    margin-top: calc(0.15rem + 0.75rem - 1px);
+  }
+
+  .lst-feature-value {
+    font-size: 0.66rem;
+  }
+
+}
