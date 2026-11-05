@@ -39,6 +39,12 @@ container by the class, uses the data the page loaded (or, where it is missing, 
 JavaScript, the container shows the fallback image, a file of `_static/` (all options are
 optional). Builders other than HTML leave demos out.
 
+Three more options are passed on to the demo's script, as `data-step`, `data-select` and
+`data-examples`, for the demos that read them (the orders demo does, the FIxLIP demo does not):
+`:step:` shows one step of a figure built up step by step, `:select:` what it points at at rest,
+and `:examples:` only the examples it names, in that order (`:examples: tabpfn`, or
+`house, houses`). `orders/README.md` lists their values.
+
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).
 
