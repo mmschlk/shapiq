@@ -2,11 +2,11 @@
 
 .. image:: _static/logo/logo_shapiq_light.svg
    :class: shapiq-hero-logo only-light
-   :alt: The shapiq logo: a network of red and blue players, linked by their interactions
+   :alt: The shapiq logo: a network of players, linked by their interactions; red ones are positive, blue ones negative, and the stronger they are, the deeper their color
 
 .. image:: _static/logo/logo_shapiq_dark.svg
    :class: shapiq-hero-logo only-dark
-   :alt: The shapiq logo: a network of red and blue players, linked by their interactions
+   :alt: The shapiq logo: a network of players, linked by their interactions; red ones are positive, blue ones negative, and the stronger they are, the deeper their color
 
 Shapley Interactions for Machine Learning
 =========================================
