@@ -98,9 +98,7 @@ def _split(keys: Key[jax.Array, "*batch"], num: int) -> tuple[Key[jax.Array, "*b
     return tuple(parts[:, i].reshape(keys.shape) for i in range(num))
 
 
-def _uniform(
-    keys: Key[jax.Array, "*batch"], shape: tuple[int, ...]
-) -> Float[jax.Array, "*batch ..."]:
+def _uniform(keys: Key[jax.Array, "#*batch"], shape: tuple[int, ...]) -> Float[jax.Array, "*batch"]:
     """Draw uniforms of ``shape`` per key, independently across the batch."""
     draws = jax.vmap(lambda key: jax.random.uniform(key, shape))(keys.reshape(-1))
     return draws.reshape(*keys.shape, *shape)
