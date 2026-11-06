@@ -98,7 +98,7 @@ def _split(keys: Key[jax.Array, "*batch"], num: int) -> tuple[Key[jax.Array, "*b
     return tuple(parts[:, i].reshape(keys.shape) for i in range(num))
 
 
-def _uniform(keys: Key[jax.Array, "#*batch"], shape: tuple[int, ...]) -> Float[jax.Array, "*batch"]:
+def _uniform(keys: Key[jax.Array, "*batch"], shape: tuple[int, ...]) -> Float[jax.Array, "..."]:
     """Draw uniforms of ``shape`` per key, independently across the batch."""
     draws = jax.vmap(lambda key: jax.random.uniform(key, shape))(keys.reshape(-1))
     return draws.reshape(*keys.shape, *shape)
@@ -123,7 +123,7 @@ class SizeSampler(RandomSampler[SamplingState]):
     """Sample coalitions based on size probabilities, uniform within each size."""
 
     def _allocate(
-        self, key: jax.Array, _state: SamplingState[Any], budget: int
+        self, key: Key[jax.Array, "*batch"], _state: SamplingState[Any], budget: int
     ) -> Int[jax.Array, "*batch n_sizes"]:
         """Allocate the budget across sizes based on the sampler's weights."""
         weights = jnp.broadcast_to(self.weights, (*self.shape, self.n_players + 1))
@@ -155,7 +155,7 @@ class SizeSampler(RandomSampler[SamplingState]):
         return jnp.take_along_axis(log_weight_per_size, sizes, axis=-1)  # (*batch, budget)
 
     def _draw(
-        self, key: jax.Array, sizes: Int[jax.Array, "*batch budget"]
+        self, key: Key[jax.Array, "*batch"], sizes: Int[jax.Array, "*batch budget"]
     ) -> Bool[jax.Array, "*batch budget n_players"]:
         """Draw one uniform coalition of each row's size, independently across rows.
 
