@@ -1,10 +1,6 @@
----
-orphan: true
----
-
 # Lab: Five Concepts for Definition 2.1
 
-% A page of the lab, not in the guide's table of contents: concepts for the illustration of
+% A page of the lab, listed after the showcase: concepts for the illustration of
 % Definition 2.1 (2.1 Feature-Based Explanations), to compare and to pick from. Each lives in
 % user_guide/illustrations/lab-<name>/ with its compute script; delete the ones not chosen.
 

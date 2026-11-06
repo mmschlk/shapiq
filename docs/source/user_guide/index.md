@@ -15,4 +15,5 @@ methods/index
 
 notation
 showcase
+lab/definition_concepts
 ```
