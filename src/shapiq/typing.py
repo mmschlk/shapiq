@@ -4,4 +4,4 @@ from beartype import beartype
 from jaxtyping import jaxtyped
 
 # pytest --typeguard replaces this before collection for exhaustive checks.
-typechecked = jaxtyped(typechecker=beartype)
+typechecked = jaxtyped(typechecker=beartype, include_typechecker_message=True)

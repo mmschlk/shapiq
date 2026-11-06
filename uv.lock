@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -186,12 +186,8 @@ wheels = [
 
 [[package]]
 name = "beartype"
-version = "0.23.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/79/34/c0cfdaee9c796c8381439fed0fcab62810753b8b0adb1ec88fa7f41eaa5d/beartype-0.23.1.tar.gz", hash = "sha256:8b805f246b32931c74f2b321ea0939fe5bb2ff43c12a3eff19cc4c854b832e1d", size = 1993714, upload-time = "2026-10-11T05:36:55.251Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/cb/2f6aa982e2860c1156830db3da7f823b71784ed7d533ca289ea9b6c6347a/beartype-0.23.1-py3-none-any.whl", hash = "sha256:4461b4dc57e3fdd6c8a8464b22cf118002eea107c33e9fef651c69068ab3cce3", size = 1582101, upload-time = "2026-10-11T05:36:52.431Z" },
-]
+version = "0.23.2"
+source = { git = "https://github.com/Cortys/beartype.git?branch=feat%2Funion-instancecheck-str#cfde10c0ec554eabef83951934e3c4f40fc50b41" }
 
 [[package]]
 name = "beautifulsoup4"
@@ -1130,13 +1126,9 @@ wheels = [
 [[package]]
 name = "jaxtyping"
 version = "0.3.11"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/Cortys/jaxtyping.git?branch=custom-array-shape-error-msgs#cb8fec9c52637c7533ff50414f3ef87b55de6bde" }
 dependencies = [
     { name = "wadler-lindig" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/91/c1/091b8852bd7cbf50bd655543c8506033cf4029300c67f8c176c1286879a9/jaxtyping-0.3.11.tar.gz", hash = "sha256:b09c14acf6686feb9e0df5b0d8c6e7c5b6f8d36bf059ee54cd522a186c2ef050", size = 46489, upload-time = "2026-06-13T18:35:23.167Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8b/38/c66bbdc5047f4776c2bd3e47e5295a350e3fa44d5b8942105e71c2a876a0/jaxtyping-0.3.11-py3-none-any.whl", hash = "sha256:8a4bedc4e3f963fa82df41bd13c7ebc2bad925601eb48614c65798f21329d4e3", size = 56593, upload-time = "2026-06-13T18:35:22.01Z" },
 ]
 
 [[package]]
@@ -3364,11 +3356,11 @@ test-typeguard = [
 [package.metadata]
 requires-dist = [
     { name = "array-api-compat", specifier = ">=1.14.0" },
-    { name = "beartype", specifier = ">=0.23.1" },
+    { name = "beartype", git = "https://github.com/Cortys/beartype.git?branch=feat%2Funion-instancecheck-str" },
     { name = "colour" },
     { name = "flextype", specifier = ">=0.3.0" },
     { name = "jax", specifier = ">=0.10.1" },
-    { name = "jaxtyping", specifier = ">=0.3.11" },
+    { name = "jaxtyping", git = "https://github.com/Cortys/jaxtyping.git?branch=custom-array-shape-error-msgs" },
     { name = "matplotlib" },
     { name = "ndlike", specifier = ">=0.3.2" },
     { name = "numpy" },

@@ -242,6 +242,10 @@ force-wrap-aliases = true
 no-lines-before = ["future"]
 
 
+[tool.uv.sources]
+jaxtyping = { git = "https://github.com/Cortys/jaxtyping.git", branch = "custom-array-shape-error-msgs" }
+beartype = { git = "https://github.com/Cortys/beartype.git", branch = "feat/union-instancecheck-str" }
+
 [dependency-groups]
 all_ml = [
     "tabpfn>=2.1.3",
