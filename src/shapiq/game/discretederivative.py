@@ -59,24 +59,6 @@ def powerset(
     return jnp.any(onehot & patterns, axis=-2)  # (n_subsets, *batch, n_players)
 
 
-def broadcast_interaction(
-    game: FinitePlayerGame,
-    interaction: Bool[jax.Array, "#*batch {game.n_players}"]
-    | UInt8[jax.Array, "#*batch ({game.n_players}+7)//8"],
-) -> Bool[jax.Array, "*batch n_players"]:
-    """Validate (packed) interactions, unpack and broadcast them with the game batch.
-
-    The game is not broadcast; it stays compact via ``broadcasted_batch``.
-    """
-    if not game.is_valid(interaction):
-        msg = "Interaction is inadmissible for this game."
-        raise ValueError(msg)
-    if interaction.dtype == jnp.uint8:
-        interaction = unpack_bool_coalition(interaction, game.n_players)
-    shape = jnp.broadcast_shapes(game.shape, interaction.shape[:-1])
-    return jnp.broadcast_to(interaction, (*shape, interaction.shape[-1]))
-
-
 def _check_order(interaction: jax.Array, order: int) -> None:
     """Check that every interaction has ``order`` players; skipped inside jit.
 
@@ -96,8 +78,10 @@ def _derivative(
     coalition: Bool[jax.Array, "*coalition_batch n_players"],
 ) -> JaxValue:
     """Return Δ_T v(S) = sum over L ⊆ T of (-1)**|T - L| v(S | L)."""
-    # Broadcast the interaction to match the coalition batch shape
-    broadcasted_shape = jnp.broadcast_shapes(coalition.shape[:-1], interaction.shape[:-1])
+    # Include the game batch so the subset axis stays outside every evaluation batch axis.
+    broadcasted_shape = jnp.broadcast_shapes(
+        game.shape, coalition.shape[:-1], interaction.shape[:-1]
+    )
     interaction = jnp.broadcast_to(
         interaction, (*broadcasted_shape, interaction.shape[-1])
     )  # (*coalition_batch, *interaction_batch, n_players)
@@ -130,14 +114,19 @@ class DiscreteDerivative[P, V: JaxLike](
         Bool[jax.Array, "#*batch {game.n_players}"]
         | UInt8[jax.Array, "#*batch ({game.n_players}+7)//8"]
     )
-    # The interactions carry the full batch shape; the game stays compact and broadcasts into it.
+    # Both fields stay compact; their broadcast determines the logical batch shape.
     protected_axes: ClassVar[dict[str, int]] = {"interaction": 1, "game": 0}
-    broadcasted_batch: ClassVar[set[str]] = {"game"}
+    broadcasted_batch: ClassVar[set[str]] = {"interaction", "game"}
     order: int
 
     def __post_init__(self) -> None:
-        """Validate the interaction and broadcast it to match the game batch."""
-        interaction = broadcast_interaction(self.game, self.interaction)
+        """Validate the interaction and unpack it without expanding its batch."""
+        interaction = self.interaction
+        if not self.game.is_valid(interaction):
+            msg = "Interaction is inadmissible for this game."
+            raise ValueError(msg)
+        if interaction.dtype == jnp.uint8:
+            interaction = unpack_bool_coalition(interaction, self.game.n_players)
         _check_order(interaction, self.order)
         object.__setattr__(self, "interaction", interaction)
 

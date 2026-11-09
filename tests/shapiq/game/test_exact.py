@@ -1,11 +1,12 @@
 """The exact computer matches the index definitions and broadcasts game and index batches."""
 
 from itertools import chain, combinations
-from math import exp, factorial, lgamma
+from math import exp, factorial, lgamma, prod
 
 import jax
 import jax.numpy as jnp
 import pytest
+from ndlike.jax_functions import jax_broadcast_to
 
 from shapiq.game.exact import ExactComputer
 from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
@@ -74,26 +75,31 @@ def _brute_force(table: list[float], weight, interactions: list[tuple[int, ...]]
         (AlphaBetaIndex(alpha=4.0, beta=1.0, max_order=2), _beta_4_1),
     ],
 )
-def test_exact_matches_the_index_definition(index, weight):
+@pytest.mark.parametrize("index_shape", [(), (3, 1)])
+def test_exact_matches_the_index_definition(index, weight, index_shape):
+    index = jax_broadcast_to(index, index_shape)
     computer = ExactComputer.from_game(TableGame(TABLES, FinitePlayers(N_PLAYERS)))
     result = computer(index)
     sets = [tuple(int(i) for i in jnp.flatnonzero(row)) for row in index.interactions(N_PLAYERS)]
     expected = jnp.array([_brute_force(table.tolist(), weight, sets) for table in TABLES])
 
     assert isinstance(result, AdditiveMoebiusGame | SetMoebiusGame)
+    assert result.shape == jnp.broadcast_shapes((2,), index_shape)
     assert jnp.allclose(result.values, expected, atol=1e-5)
 
 
-def test_game_and_index_batches_broadcast_and_the_computer_runs_under_jit():
+@pytest.mark.parametrize("index_shape", [(3,), (2, 3)])
+def test_game_and_index_batches_broadcast_and_the_computer_runs_under_jit(index_shape):
     computer = ExactComputer.from_game(TableGame(TABLES, FinitePlayers(N_PLAYERS)))
-    p_values = jnp.array([0.3, 0.5, 0.7])
+    p_values = jnp.linspace(0.3, 0.7, prod(index_shape)).reshape(index_shape)
     index = WeightedBanzhafIndex(p=p_values, max_order=2)
 
-    every_pair = computer[:, None](index)  # (games, p values)
+    every_pair = computer.reshape(2, *(1,) * index.ndim)(index)  # (games, *index_batch)
     jitted = jax.jit(lambda c: c(ShapleyValueIndex()).values)(computer)
     single = ExactComputer.from_game(TableGame(TABLES[1], FinitePlayers(N_PLAYERS)))
-    single_p = WeightedBanzhafIndex(p=p_values[2], max_order=2)
+    last = (-1,) * index.ndim
+    single_p = WeightedBanzhafIndex(p=p_values[last], max_order=2)
 
-    assert every_pair.shape == (2, 3)
-    assert jnp.allclose(every_pair[1, 2].values, single(single_p).values, atol=1e-6)
+    assert every_pair.shape == (2, *index_shape)
+    assert jnp.allclose(every_pair[1, *last].values, single(single_p).values, atol=1e-6)
     assert jnp.allclose(jitted, computer(ShapleyValueIndex()).values, atol=1e-5)

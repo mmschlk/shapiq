@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -1907,15 +1907,15 @@ wheels = [
 
 [[package]]
 name = "ndlike"
-version = "0.3.2"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flextype" },
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/57/5822ade9f2f87d463088ee7efb4024a8ff0797fc9267476b5b0721fb7beb/ndlike-0.3.2.tar.gz", hash = "sha256:a61fc03fa0a336fd4778958394f16bf9407a223e0954b98ba6878ee379ce7986", size = 59710, upload-time = "2026-11-04T19:18:01.192Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/90/82d19328789e2a9fcbc741fab9e8148ab6e5d7b0b695cbc39103872bcaf5/ndlike-0.4.0.tar.gz", hash = "sha256:435e12f2bd8145f075732a3ccfc6075dc019223a92e0a114134254951ceb8a93", size = 61262, upload-time = "2026-11-09T23:08:44.201Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/c0/309f690475a525ba9ef341b5ffcf3fa9695bc0cede851c822755604ddc48/ndlike-0.3.2-py3-none-any.whl", hash = "sha256:80d9b6ac72549da2ccf5a61d0e5eec2701ab248e70080f4b965552ceca599748", size = 64962, upload-time = "2026-11-04T19:17:59.828Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/0b/d8fe3281d47a50eb419172fa7746ed82c91a252d608fe912e2b94b84db4d/ndlike-0.4.0-py3-none-any.whl", hash = "sha256:c1d2d01f0a8397e914da9d5870c52b896077c9860a65a270624d11dc46a44b54", size = 66136, upload-time = "2026-11-09T23:08:42.861Z" },
 ]
 
 [[package]]
@@ -3362,7 +3362,7 @@ requires-dist = [
     { name = "jax", specifier = ">=0.10.1" },
     { name = "jaxtyping", git = "https://github.com/Cortys/jaxtyping.git?branch=custom-array-shape-error-msgs" },
     { name = "matplotlib" },
-    { name = "ndlike", specifier = ">=0.3.2" },
+    { name = "ndlike", specifier = ">=0.4.0" },
     { name = "numpy" },
 ]
 

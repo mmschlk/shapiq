@@ -11,7 +11,7 @@ from typing import Any, ClassVar, Protocol, override, runtime_checkable
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
-from jaxtyping import Bool, Float, Int, Shaped
+from jaxtyping import Bool, Float, Int, Shaped, UInt8
 from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
@@ -20,6 +20,8 @@ from shapiq.game.discretederivative import subset_patterns
 from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+
+_BATCH = jnp.empty((0,), dtype=jnp.uint8)
 
 
 def _log_binom(n: int, k: Int[jax.Array, "*batch"]) -> Float[jax.Array, "*batch"]:
@@ -134,6 +136,7 @@ class WeightedBanzhafIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]
 
     p: float | Float[jax.Array, "#*batch"]
     protected_axes: ClassVar[dict[str, int]] = {"p": 0}
+    broadcasted_batch: ClassVar[set[str]] = {"p"}
 
     def __post_init__(self) -> None:
         """Store ``p`` as an array, so it has a batch shape."""
@@ -144,19 +147,21 @@ class WeightedBanzhafIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]
         self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
     ) -> Float[jax.Array, "*batch"]:
         """Return the weighted Banzhaf weights."""
+        size = jnp.broadcast_to(size, jnp.broadcast_shapes(self.shape, size.shape))
         return self.p**size * (1 - self.p) ** (n_players - size - order)
 
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class BanzhafIndex(WeightedBanzhafIndex):
-    """The Banzhaf index, a weighted Banzhaf index with p = 1/2.
+    """The Banzhaf index, with p fixed to 1/2."""
 
-    ``p`` stays a field so ndlike can rebuild the weights; it is always one half.
-    """
-
-    # init=False once ndlike can rebuild init=False protected fields; until then, never pass it.
-    p: float | Float[jax.Array, "#*batch"] = 0.5
+    p: float | Float[jax.Array, "#*batch"] = field(default=0.5, init=False)
+    # Carry the logical batch shape without storing any elements.
+    _batch: UInt8[jax.Array, "*batch 0"] = field(
+        default_factory=lambda: _BATCH, kw_only=True, repr=False
+    )
+    protected_axes: ClassVar[dict[str, int]] = {"_batch": 1}
 
 
 @typechecked
@@ -171,14 +176,12 @@ class AlphaBetaIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]):
     alpha: float | Float[jax.Array, "#*batch"]
     beta: float | Float[jax.Array, "#*batch"]
     protected_axes: ClassVar[dict[str, int]] = {"alpha": 0, "beta": 0}
+    broadcasted_batch: ClassVar[set[str]] = {"alpha", "beta"}
 
     def __post_init__(self) -> None:
-        """Broadcast alpha and beta to a common batch shape, as required for protected fields."""
-        alpha, beta = jnp.broadcast_arrays(
-            jnp.asarray(self.alpha, dtype=float), jnp.asarray(self.beta, dtype=float)
-        )
-        object.__setattr__(self, "alpha", alpha)
-        object.__setattr__(self, "beta", beta)
+        """Store alpha and beta as arrays without expanding their batches."""
+        object.__setattr__(self, "alpha", jnp.asarray(self.alpha, dtype=float))
+        object.__setattr__(self, "beta", jnp.asarray(self.beta, dtype=float))
 
     @override
     def discrete_derivative_weight(
@@ -194,17 +197,22 @@ class AlphaBetaIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]):
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class ShapleyInteractionIndex(AlphaBetaIndex):
-    """The Shapley interaction index."""
+    """The Shapley interaction index, with alpha and beta fixed to one."""
 
-    # init=False once ndlike can rebuild init=False protected fields; until then, never pass them.
-    alpha: float | Float[jax.Array, "#*batch"] = 1.0
-    beta: float | Float[jax.Array, "#*batch"] = 1.0
+    alpha: float | Float[jax.Array, "#*batch"] = field(default=1.0, init=False)
+    beta: float | Float[jax.Array, "#*batch"] = field(default=1.0, init=False)
+    # Carry the logical batch shape without storing any elements.
+    _batch: UInt8[jax.Array, "*batch 0"] = field(
+        default_factory=lambda: _BATCH, kw_only=True, repr=False
+    )
+    protected_axes: ClassVar[dict[str, int]] = {"_batch": 1}
 
     @override
     def discrete_derivative_weight(
         self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
     ) -> Float[jax.Array, "*batch"]:
         """Return the Shapley weights: the Shapley value is its discrete-derivative fit."""
+        size = jnp.broadcast_to(size, jnp.broadcast_shapes(self.shape, size.shape))
         return 1 / ((n_players - order + 1) * jsp.special.comb(n_players - order, size))
 
 
@@ -218,6 +226,7 @@ class ShapleyValueIndex(SemivalueIndex, ShapleyInteractionIndex, LeastSquaresInd
         self, size: Int[jax.Array, "#*batch"], n_players: int
     ) -> Float[jax.Array, "*batch"]:
         """Return the Shapley kernel: the Shapley value is its efficient least-squares fit."""
+        size = jnp.broadcast_to(size, jnp.broadcast_shapes(self.shape, size.shape))
         interior = (size > 0) & (size < n_players)
         s = jnp.clip(size, 1, max(n_players - 1, 1))
         log_kernel = (

@@ -1,4 +1,4 @@
-"""Discrete derivative games keep a shared game compact across interactions."""
+"""Discrete derivative games keep broadcasted games and interactions compact."""
 
 from dataclasses import dataclass
 from math import comb
@@ -87,22 +87,45 @@ def test_shared_game_stays_compact_under_basic_indexing():
     for result, evaluated, expected_result in [
         (derivative[1], derivative[1](query), expected[:, 1:2]),
         (derivative[1:], derivative[1:](query), expected[:, 1:]),
-        (derivative.reshape(3, 1), derivative.reshape(3, 1)(query[:, None]), expected[..., None]),
     ]:
         assert result.game.shape == ()
         assert jnp.allclose(evaluated, expected_result, rtol=1e-5)
 
+    reshaped = derivative.reshape(3, 1)
+    assert reshaped.shape == (3, 1)
+    assert jnp.allclose(reshaped(query[:, None]), expected[..., None], rtol=1e-5)
 
-def test_game_batch_broadcasts_a_single_interaction():
+
+@pytest.mark.parametrize("packed", [False, True], ids=["bool", "packed"])
+def test_game_batch_broadcasts_a_single_interaction(packed):
     coefficients = jnp.stack([COEFFICIENTS, -COEFFICIENTS[::-1]])
-    derivative = _pairs_derivative(coefficients, _coalition(0, 1))
+    interaction = _coalition(0, 1)
+    derivative = _pairs_derivative(
+        coefficients, pack_bool_coalition(interaction) if packed else interaction
+    )
 
     assert derivative.shape == (2,)
-    assert derivative.interaction.shape == (2, N_PLAYERS)
+    assert derivative.interaction.shape == (N_PLAYERS,)
+    assert derivative[1].interaction.shape == (N_PLAYERS,)
+    assert derivative[1:].interaction.shape == (N_PLAYERS,)
     assert jnp.allclose(
         derivative(_coalition(2)),
         jnp.array([_derivative(c, _coalition(2), 0, 1) for c in coefficients]),
     )
+
+
+def test_game_and_interaction_batches_broadcast_together():
+    coefficients = jnp.stack([COEFFICIENTS, -COEFFICIENTS[::-1]])
+    derivative = _pairs_derivative(coefficients[:, None, :])
+    coalition = _coalition(3)
+    expected = jnp.stack([_pair_derivatives(c, coalition[None, :])[0] for c in coefficients])
+
+    assert derivative.shape == (2, 3)
+    assert derivative.game.shape == (2, 1)
+    assert derivative.interaction.shape == (3, N_PLAYERS)
+    assert jnp.allclose(jax.jit(lambda d: d(coalition))(derivative), expected, rtol=1e-5)
+    assert jnp.allclose(derivative[:, 1](coalition), expected[:, 1], rtol=1e-5)
+    assert jnp.allclose(derivative.reshape(6)(coalition), expected.reshape(6), rtol=1e-5)
 
 
 def test_powerset_size_filter_is_static_under_jit():
