@@ -21,11 +21,11 @@ which falls short of 1 by the estimation gap the demo shades.
 |---|---|
 | `faithfulness.py` | What the other scripts share: the Shapley distribution (its sizes' probabilities, all its coalitions of 8 players with their probabilities, and coalitions drawn from it), an explanation's prediction of a coalition (the sum of its subsets' values, the empty one's included), the weighted R^2 beyond size, and FSII of an order. |
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2 on 10,000 coalitions drawn from the Shapley distribution (their values from the exact Möbius transform): `results/molecule.json`. |
-| `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles (test house 837) and 150 random houses exactly (interventional), at every order, with each order's R^2 exactly over all 254 coalitions but the empty and the full one, weighted by the Shapley distribution: `results/house.json`, `results/houses.json` (with the 150 houses' features, of which the demo's map uses the latitude and the longitude). |
+| `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles (test house 837) and 2,000 random test houses exactly (interventional), at every order, with each order's R^2 exactly over all 254 coalitions but the empty and the full one, weighted by the Shapley distribution: `results/house.json`, `results/houses.json` (with the 2,000 houses' features, of which the demo's map uses the latitude and the longitude). |
 | `house_tabpfn.py` | Explains the same house with TabPFN, a black box, exactly over all 256 subsets of its features with shapiq's `TabPFNImputer` (remove and contextualize), at every order, with the R^2 of `housing.py`: `results/house_tabpfn.json`. TabPFN makes one pass without randomness, so that the game is the same on every run. |
-| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment, read off its trees as a Möbius transform) from 10,000 coalitions drawn from the Shapley distribution, at every order, scored on 512 more drawn from it: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. |
-| `pack.py` | Writes the demo's data, `../assets/data.js`: the index (FSII), the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 150 houses, where each is on the map of California, and the 14 strongest features and groups of features of every order, each with its value for every house and the mean of its absolute values), and the R^2 of every order. With `--examples`, it packs only the examples named, and keeps the others as the data has them. |
-| `california.json` | The outline of California on the 150 houses' map: the state's mainland from Natural Earth's 1:50m states and provinces (public domain), simplified to 114 points. |
+| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment, read off its trees as a Möbius transform) from 10,000 coalitions drawn from the Shapley distribution, at every order, scored on 512 more drawn from it: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. With `--photo`, another photo of the FIxLIP demo, in the same way (the demo's giraffe and sign): `results/fixlip_<photo>.json`. |
+| `pack.py` | Writes the demo's data, `../assets/data.js`: the index (FSII), the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 2,000 houses, where each is on the map of California, and the 12 strongest features and groups of features of every order, each with its value for every house, as text, and the mean of its absolute values), and the R^2 of every order. It also writes the examples' words and their notes: what the demo's tip says, in a sentence, of some players and groups. With `--examples`, it packs only the examples named, and keeps the others as the data has them. |
+| `california.json` | The outline of California on the houses' map: the state's mainland from Natural Earth's 1:50m states and provinces (public domain), simplified to 114 points. |
 
 ## Run
 
@@ -41,12 +41,15 @@ python molecule.py  # downloads Mutagenicity; trains the GCN in about four minut
 python housing.py   # downloads California housing; explains 4,128 houses in under a minute
 python house_tabpfn.py  # downloads TabPFN's weights; evaluates the house's 256 subsets in four minutes
 python fixlip.py    # downloads SigLIP 2; evaluates 10,512 coalitions in about nine minutes
+python fixlip.py --photo giraffe-tree  # the other photos of "Describing images", as long each
+python fixlip.py --photo juice-theory
 python pack.py
 ```
 
 To change one example without computing the others again, run its script and pack it alone: the
 other examples stay as `../assets/data.js` has them (their words, the tabs' names and the models',
-are written anew). The houses' model is the same on every run with the versions below, to the last
+and their notes are written anew). The examples are `molecule`, `house`, `tabpfn`, `houses`,
+`fixlip` (the elephant), and the other photos of its tab, `giraffe` and `sign`. The houses' model is the same on every run with the versions below, to the last
 digit of the data:
 
 ```bash
@@ -61,6 +64,10 @@ The data of the docs was computed with Python 3.12, shapiq from the repository (
 1.8.0), torch 2.14, torch_geometric 2.8, RDKit 2026.09, XGBoost 3.4, scikit-learn 1.9 and
 woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly; GraphSHAP-IQ needs
 7,693 evaluations of it. The XGBoost model reaches R^2 = 0.848 on the test houses.
+
+The giraffe and the sign (`fixlip.py --photo`) were computed later, with torch 2.9 and transformers
+5.3, with the elephant's proxy: its depth was not chosen anew for them. Their full decompositions
+fit SigLIP 2 with R^2 = 0.78 and 0.76.
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the

@@ -1,9 +1,12 @@
-"""Explain how SigLIP 2 matches the FIxLIP demo's elephant at every order: ``results/fixlip.json``.
+"""Explain how SigLIP 2 matches a photo of the FIxLIP demo at every order: ``results/fixlip.json``.
 
-The players are SigLIP 2's 8 x 8 patches of the photo and the 10 tokens of its caption ("a small
-elephant standing next to a white bird."), and the value of a coalition is the cosine similarity of
-the photo with only the coalition's patches and the caption with only its tokens: the game of the
-FIxLIP demo, imported from its scripts (``../../fixlip/compute/explain.py``).
+The players are SigLIP 2's 8 x 8 patches of the photo and the tokens of its caption (for the
+elephant, the 10 of "a small elephant standing next to a white bird."), and the value of a
+coalition is the cosine similarity of the photo with only the coalition's patches and the caption
+with only its tokens: the game of the FIxLIP demo, imported from its scripts
+(``../../fixlip/compute/explain.py``). The photo is the elephant, or another one of the FIxLIP
+demo's (``--photo``, an id of its ``config.toml``): the demo shows the elephant, and with it the
+giraffe and the sign, explained in the same way, with the same proxy.
 
 SigLIP 2 is a black box: unlike trees or graph neural networks, it has no structure that would give
 its interactions exactly. ProxySHAP draws coalitions of the game from the Shapley distribution
@@ -36,10 +39,12 @@ misses of SigLIP 2, the estimation gap of the demo.
 Usage::
 
     python fixlip.py
+    python fixlip.py --photo giraffe-tree
 
 The game's evaluations are kept in ``results/fixlip_coalitions.npz``: the model is evaluated once
 per coalition (10,000 for the proxy and 512 to score it, a run of about nine minutes on four CPU
-cores), and a run again only fits the proxy.
+cores), and a run again only fits the proxy. Another photo's results and evaluations carry its id:
+``results/fixlip_giraffe-tree.json``, ``results/fixlip_giraffe-tree_coalitions.npz``.
 """
 
 from __future__ import annotations
@@ -108,10 +113,10 @@ class CachedGame:
         return np.array([self.values[row.tobytes()] for row in coalitions])
 
 
-def build_game(results: Path) -> tuple[shapiq.Game, list[str]]:
-    """Return the FIxLIP demo's game of SigLIP 2, the elephant and its caption, and the tokens."""
+def build_game(results: Path, photo_id: str = PHOTO) -> tuple[shapiq.Game, list[str]]:
+    """Return the FIxLIP demo's game of SigLIP 2, a photo and its caption, and the tokens."""
     config = tomllib.loads((FIXLIP / "config.toml").read_text(encoding="utf-8"))
-    photo = next(p for p in config["photos"] if p["id"] == PHOTO)
+    photo = next(p for p in config["photos"] if p["id"] == photo_id)
     model = next(m for m in config["models"] if m["id"] == MODEL)
     name = f"{model['id']}_demo"  # a name starting with "siglip" runs as SigLIP (explain.py)
     fixlip.image_text.IMAGE_TEXT_MODEL_IDS[name] = model["checkpoint"]
@@ -131,13 +136,16 @@ def main() -> None:
     """Evaluate the game, fit the proxy, and write FSII of every order: ``results/fixlip.json``."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--results", type=Path, default=HERE / "results")
+    parser.add_argument("--photo", default=PHOTO, help="a photo of the FIxLIP demo's config.toml")
     args = parser.parse_args()
     args.results.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(4)
+    # (the elephant's files have no id, the other photos' carry theirs)
+    name = "fixlip" if args.photo == PHOTO else f"fixlip_{args.photo}"
 
-    game, tokens = build_game(args.results)
+    game, tokens = build_game(args.results, args.photo)
     n = game.n_players
-    cached = CachedGame(game, args.results / "fixlip_coalitions.npz")
+    cached = CachedGame(game, args.results / f"{name}_coalitions.npz")
 
     # the proxy: ProxySHAP draws the coalitions, evaluates the game on them, and fits it (its own
     # readout, of order 1 here, is not used)
@@ -208,6 +216,7 @@ def main() -> None:
 
     result = {
         "index": "FSII",
+        "photo": args.photo,
         "grid": 8,
         "tokens": tokens,
         "largest_order": DEPTH,
@@ -215,7 +224,7 @@ def main() -> None:
         "similarity": float(game.empty_value + cached(np.ones((1, n), dtype=bool))[0]),
         "orders": orders,
     }
-    (args.results / "fixlip.json").write_text(json.dumps(result))
+    (args.results / f"{name}.json").write_text(json.dumps(result))
 
 
 if __name__ == "__main__":

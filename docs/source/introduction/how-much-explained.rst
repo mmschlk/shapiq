@@ -17,7 +17,7 @@ A Model and Its Prediction
 
 A model :math:`f` takes an input :math:`x` and returns a prediction :math:`f(x)`: whether a
 molecule is mutagenic, for a graph neural network; a house's price, for XGBoost or TabPFN; the
-prices of 150 houses across California; how well a photo matches its caption, for SigLIP 2. The
+prices of 2,000 houses across California; how well a photo matches its caption, for SigLIP 2. The
 input is made of players: atoms, features, or the photo's patches and the caption's words. Why this
 prediction?
 
@@ -61,8 +61,11 @@ a value for every pair of players, those of order 3 for every three, and so on: 
 Shapley Interactions :cite:p:`Tsai.2022`, the explanation of each order that fits the model best.
 Every order is more detailed than the one above it, and more faithful. The pairs alone recover most
 of what the Shapley values miss. Point at the other orders, or drag the slider down through them,
-and see the fit rise. On the card, a player now also says the strongest groups it is in: click a
-layer to keep it there, then point at its players.
+and see the fit rise. On the card, a player now also says the strongest groups it is in, and an
+interaction can be pointed at itself, where it is drawn between its players: it says what its
+players add alone, and what they add together, on top of that. Click a layer to keep it there, then
+point at its card. Some players and groups have a note; most have none: not every value of a model
+has a story.
 
 .. shapiq-demo:: orders
    :step: interactions
@@ -157,12 +160,12 @@ TabPFN weighs this house's features together. Pairs, latitude with longitude and
 the rooms, lift the fit to 0.84, and every order more a little further, 0.95, 0.98, up to the full
 decomposition, which fits exactly.
 
-**All houses**: 150 test houses, explained in the same way, on the map of California: a dot where
+**All houses**: 2,000 test houses, explained in the same way, on the map of California: a dot where
 every house is, in the color of what one feature, or one group of features, adds to its value or
 takes off it, and beside the map the explanation's features and groups, by how much each moves a
-house's value on average. The Shapley values credit the latitude most, by $91,000 on average: it
+house's value on average. The Shapley values credit the latitude most, by $87,000 on average: it
 raises the houses of the south and lowers those of the north, and the longitude does the opposite.
-On average, they fit with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73;
+On average, they fit with :math:`R^2 = 0.79`, and those of a quarter of all test houses below 0.73;
 with pairs of features, led by the interaction of latitude and longitude, which the map shows from
 order 2 on, the fit rises to 0.996. Point at another row to see it on the map, and at a house for
 its own values. The trees have depth 5, so no group of more than 5 features has a value, and
@@ -182,6 +185,15 @@ fit stays at 0.91, up to the full decomposition, the proxy itself; a higher orde
 better, but SigLIP 2 only as far as the proxy does. The full decomposition falls short of 1 by 0.09,
 the estimation gap: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
 SigLIP 2, which only all of them would spare.
+
+Two more photos of the FIxLIP demo are behind the same tab, explained in the same way: the small
+pictures under the input choose among them. A giraffe drinking at a pond: the pairs link the word
+"giraffe" to the giraffe's patches, and to a dead tree in the background, in which SigLIP 2 sees
+some giraffe too (:math:`R^2 = 0.22` for the Shapley values, 0.69 with pairs, 0.78 for the full
+decomposition). And a sign reading "juice theory" next to a traffic light: the model reads, its
+pairs link "juice" and "theory" to the patches of the sign's lettering, and "traffic" and "light"
+to the red light (0.28, 0.61, and 0.76). Their captions are longer and their proxies, the
+elephant's, miss more of SigLIP 2: the estimation gaps are 0.22 and 0.24.
 
 How They Were Computed
 ~~~~~~~~~~~~~~~~~~~~~~

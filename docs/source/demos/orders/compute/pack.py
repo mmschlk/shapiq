@@ -21,8 +21,9 @@ Usage::
     python pack.py --examples house houses
 
 With ``--examples``, only those examples are packed anew, from their results; the others are kept
-as the data file has them (but for their words, which are written anew), so that one example can
-change without computing all of them again.
+as the data file has them (but for their words and their notes, which are written anew), so that
+one example can change without computing all of them again. The examples are the demo's tabs
+(molecule, house, tabpfn, houses, fixlip) and the other photos of the last one (giraffe, sign).
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -47,10 +49,17 @@ BETWEEN_STRONGEST = 120
 # only nearly is (the house's order 4 misses by 3e-7)
 R2_DIGITS = 9
 COMPACTNESS = 1e10  # how hard a group's center is pulled to its atoms: si_graph_plot's default
-ROWS = 14  # of the many houses, the features and groups of features a sheet keeps: its strongest
+ROWS = 12  # of the many houses, the features and groups of features a sheet keeps: its strongest
+# the many houses' numbers as text, a character each (two for a coordinate): the printable ASCII
+# characters from "#" on, without the backslash, 91 of them, which a script's string holds as they
+# are. demo.js reads them with the same alphabet
+ALPHABET = "".join(chr(code) for code in range(35, 127) if chr(code) != "\\")
+LEVELS = (len(ALPHABET) - 1) // 2  # a value from -45 to 45 of its sheet's scale
 # the many houses' map: the state's outline (california.json, which names its source), and the
 # cities its houses cluster around, each with its longitude and latitude
 OUTLINE = HERE / "california.json"
+# the FIxLIP demo's photos, with their titles: the photos of "Describing images" are of them
+FIXLIP_CONFIG = HERE.parent.parent / "fixlip" / "compute" / "config.toml"
 PLACES = [
     ["San Francisco", -122.42, 37.77],
     ["Los Angeles", -118.24, 34.05],
@@ -229,28 +238,41 @@ def fits(result: dict[str, Any], full: int | None = None) -> list[list[float]]:
     ]
 
 
+def encode(numbers: np.ndarray, width: int = 1) -> str:
+    """Return whole numbers from 0 on as text, ``width`` characters of the alphabet each."""
+    base = len(ALPHABET)
+    if numbers.min() < 0 or numbers.max() >= base**width:
+        msg = f"numbers from {numbers.min()} to {numbers.max()} do not fit {width} characters"
+        raise ValueError(msg)
+    digits = [numbers // base**place % base for place in reversed(range(width))]
+    return "".join(ALPHABET[digit] for number in zip(*digits, strict=True) for digit in number)
+
+
 def houses_map(result: dict[str, Any], full: int) -> dict[str, Any]:
     """Return the map of the houses: where they are, their predictions and, per sheet, their rows.
 
-    The houses are sorted by their prediction, each with its longitude and latitude. A row is a
+    The houses are sorted by their prediction, each with its longitude and latitude, in hundredths
+    of a degree from the westernmost and the southernmost house, two characters each. A row is a
     feature or a group of features, of a sheet's strongest by the mean of its absolute values: its
-    players, its value for every house, as an integer from -99 to 99 of the sheet's scale (the 98th
-    percentile of its absolute values), and the mean of its absolute values, how much it moves a
-    house's value on average. The last sheet is the full decomposition, of order ``full``. With
-    them, the state's outline and the cities the map names.
+    players, its value for every house, a character each, for a whole number from -45 to 45 of the
+    sheet's scale (the 98th percentile of its absolute values), and the mean of its absolute
+    values, how much it moves a house's value on average. The last sheet is the full
+    decomposition, of order ``full``. With them, the state's outline and the cities the map names.
     """
     columns = np.argsort(result["predictions"])
+    x = np.array(result["x"])[columns]
+    west, south = float(x[:, 7].min()), float(x[:, 6].min())
 
     def rows(values: dict[str, list[float]]) -> tuple[float, list[Any]]:
         """Return the scale and the strongest rows of values."""
         strongest = sorted(values.items(), key=lambda row: -np.mean(np.abs(row[1])))[:ROWS]
         matrix = np.array([row[1] for row in strongest])[:, columns]
         scale = float(np.quantile(np.abs(matrix), 0.98))
-        quantized = np.round(np.clip(matrix / scale, -1, 1) * 99).astype(int)
+        quantized = np.round(np.clip(matrix / scale, -1, 1) * LEVELS).astype(int)
         return scale, [
             [
                 [int(player) for player in key.split(",")],
-                row.tolist(),
+                encode(row + LEVELS),
                 round(float(np.mean(np.abs(values))), 4),
             ]
             for (key, values), row in zip(strongest, quantized, strict=True)
@@ -271,9 +293,14 @@ def houses_map(result: dict[str, Any], full: int) -> dict[str, Any]:
             }
         )
     return {
-        "predictions": [round(result["predictions"][i], 3) for i in columns],
-        # (longitude, latitude: the last two features, the other way around)
-        "coords": [[round(result["x"][i][7], 2), round(result["x"][i][6], 2)] for i in columns],
+        "predictions": [round(result["predictions"][i], 2) for i in columns],
+        # (longitude and latitude are the last two features)
+        "coords": {
+            "west": round(west, 2),
+            "south": round(south, 2),
+            "lon": encode(np.round((x[:, 7] - west) * 100).astype(int), width=2),
+            "lat": encode(np.round((x[:, 6] - south) * 100).astype(int), width=2),
+        },
         "outline": json.loads(OUTLINE.read_text(encoding="utf-8"))["outline"],
         "places": PLACES,
         "sheets": out,
@@ -295,24 +322,6 @@ def house_values(x: list[float]) -> list[str]:
         f"{latitude:.2f}°N",
         f"{-longitude:.2f}°W",
     ]
-
-
-# the examples, in the order of the demo's tabs: the file of each one's results, and its words, which
-# no result gives: its tab's name, its model's, and the model as the demo shows it
-EXAMPLES = {
-    "molecule": ("molecule", {"label": "Molecule", "detail": "GCN", "model": model("graph")}),
-    "house": ("house", {"label": "One house", "detail": "XGBoost", "model": model("tree")}),
-    "tabpfn": (
-        "house_tabpfn",
-        {"label": "One house, TabPFN", "detail": "TabPFN", "model": model("tabpfn")},
-    ),
-    # (the same model as the house's, with the same average)
-    "houses": ("houses", {"label": "All houses", "detail": "XGBoost", "model": model("tree")}),
-    "fixlip": (
-        "fixlip",
-        {"label": "Describing images", "detail": "SigLIP 2", "model": model("black box")},
-    ),
-}
 
 
 def pack_molecule(molecule: dict[str, Any]) -> dict[str, Any]:
@@ -391,7 +400,7 @@ def pack_houses(houses: dict[str, Any]) -> dict[str, Any]:
     return {
         "kind": "map",
         "problem": problem(
-            input=f"{len(houses['predictions'])} houses",
+            input=f"{len(houses['predictions']):,} houses",
             output=spread,
             value="their values, predicted",
         ),
@@ -401,9 +410,10 @@ def pack_houses(houses: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def pack_fixlip(fixlip: dict[str, Any]) -> dict[str, Any]:
-    """Return the example of the photo and its caption: its patches and tokens, and its sheets."""
+def pack_photo(fixlip: dict[str, Any]) -> dict[str, Any]:
+    """Return the example of a photo and its caption: its patches and tokens, and its sheets."""
     fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
+    photo = fixlip.get("photo", "elephant")  # (the first results, the elephant's, do not name it)
     return {
         "kind": "image-text",
         "problem": problem(
@@ -412,7 +422,7 @@ def pack_fixlip(fixlip: dict[str, Any]) -> dict[str, Any]:
             value="cosine, of the photo and the caption",
         ),
         "similarity": round(fixlip["similarity"], 4),
-        "image": "../fixlip/elephant.jpg",  # the FIxLIP demo's photo, next to its assets
+        "image": f"../fixlip/{photo}.jpg",  # the FIxLIP demo's photo, next to its assets
         "grid": fixlip["grid"],
         "tokens": fixlip["tokens"],
         "largest": fixlip["largest_order"],
@@ -421,12 +431,208 @@ def pack_fixlip(fixlip: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-PACKERS = {
-    "molecule": pack_molecule,
-    "house": pack_house,
-    "tabpfn": pack_tabpfn,
-    "houses": pack_houses,
-    "fixlip": pack_fixlip,
+# -- the notes: what the demo's tip says, in a sentence, of a player or a group pointed at. Most
+# have none: not every value has a story, and a note only says what the example shows. A note's key
+# is its players, in their order, joined by commas; "many" is the note of every group of that many
+# players at the least --------------------------------------------------------------------------------
+
+
+def key(*players: int) -> str:
+    """Return the key of a player or a group: its players, in their order, joined by commas."""
+    return ",".join(str(player) for player in sorted(players))
+
+
+def notes_molecule(example: dict[str, Any]) -> dict[str, Any]:
+    """Return the notes on the molecule: its nitro groups, and the carbons with their neighbors."""
+    atoms = example["atoms"]
+    bonded: dict[int, list[int]] = {atom: [] for atom in range(len(atoms))}
+    for a, b in example["bonds"]:
+        bonded[a].append(b)
+        bonded[b].append(a)
+    notes = {}
+    for atom, element in enumerate(atoms):
+        oxygens = [other for other in bonded[atom] if atoms[other] == "O"]
+        if element == "N" and len(oxygens) == 2:
+            carbons = [other for other in bonded[atom] if atoms[other] == "C"]
+            notes[key(atom)] = (
+                "The nitrogen of a nitro group (NO₂). Nitro groups on aromatic rings are a classic "
+                "sign of a mutagen."
+            )
+            for oxygen in oxygens:
+                notes[key(oxygen)] = "An oxygen of a nitro group (NO₂)."
+                notes[key(atom, oxygen)] = (
+                    "A bond of a nitro group (NO₂). Much of what the Shapley values credit to the "
+                    "nitrogen alone is what it does with its oxygens."
+                )
+            notes[key(atom, *oxygens)] = "A nitro group (NO₂), whole."
+            notes[key(atom, *oxygens, *carbons)] = (
+                "A nitro group (NO₂) with the carbon of the ring it sits on."
+            )
+        elif element == "C" and len(bonded[atom]) == 3:
+            notes[key(atom, *bonded[atom])] = (
+                "A carbon with its three neighbors: the atoms that one layer of the GCN reads "
+                "together."
+            )
+    return notes
+
+
+def notes_house(example: dict[str, Any]) -> dict[str, Any]:
+    """Return the notes on the house that XGBoost values: its location, and its largest groups."""
+    latitude, longitude = (example["features"].index(name) for name in ("Lat", "Long"))
+    return {
+        key(latitude, longitude): (
+            "Where the house is. Alone, the latitude seems to raise its value; with the longitude, "
+            "that is taken back: the place as a whole hardly moves it."
+        ),
+        "many": [
+            4,
+            "Small print. The trees are 5 deep, so groups of 4 and 5 features have values too, but "
+            "hardly any: this model's interactions are pairs and triples.",
+        ],
+    }
+
+
+def notes_tabpfn(example: dict[str, Any]) -> dict[str, Any]:
+    """Return the notes on the house that TabPFN values: two pairs, and its large groups."""
+    index = example["features"].index
+    return {
+        key(index("Lat"), index("Long")): (
+            "Where the house is: for TabPFN, the place as a whole lowers this house's value."
+        ),
+        key(index("Income"), index("Rooms")): (
+            "Alone, the income and the rooms each raise the value; together, they take most of it "
+            "back."
+        ),
+        "many": [
+            5,
+            "No story here. A black box's values of many features are large, of both signs, and "
+            "cancel for the most part: the model is what it is.",
+        ],
+    }
+
+
+# the notes on the photos, by the photo's id: the players of each as a word of the caption (its
+# first) or a patch (its row and column in the photo, from 1), and the note
+PHOTO_NOTES: dict[str, list[tuple[list[Any], str]]] = {
+    "elephant": [
+        (
+            ["elephant"],
+            "The word the match hangs on: no other player raises the similarity as much.",
+        ),
+        ([(6, 1)], "The egret's patch."),
+        ([(6, 1), "bird"], "The egret's patch and the word for it: the model matches the two."),
+        ([(6, 1), "white"], "The egret's patch and its color in the caption."),
+        ([(5, 4), "elephant"], "A patch of the elephant and the word for it."),
+        ([(3, 5), "elephant"], "A patch of the elephant and the word for it."),
+        ([(4, 6), "elephant"], "A patch of the elephant and the word for it."),
+    ],
+    "giraffe-tree": [
+        (["giraffe"], "The word the Shapley values credit the most."),
+        ([(2, 2)], "The dead tree in the background. No giraffe, but its patch raises the match."),
+        (
+            [(2, 2), "giraffe"],
+            "The dead tree in the background and the word “giraffe”: the model sees some giraffe "
+            "in it.",
+        ),
+        ([(3, 5), "giraffe"], "A patch of the giraffe and the word for it."),
+        ([(4, 5), "giraffe"], "A patch of the giraffe and the word for it."),
+        ([(6, 5), "giraffe"], "A patch of the giraffe and the word for it."),
+        ([(3, 6), "giraffe"], "A patch of the giraffe and the word for it."),
+        (
+            ["water", "pond"],
+            "Two words for the same thing: each adds less once the other is there.",
+        ),
+    ],
+    "juice-theory": [
+        ([(5, 4)], "The end of “THEORY” on the sign."),
+        (
+            [(5, 4), "theory"],
+            "The model reads: the end of “THEORY” on the sign, and the word “theory”.",
+        ),
+        ([(5, 4), "sign"], "The sign's lettering and the word “sign”."),
+        (
+            [(5, 1), "juice"],
+            "The model reads: letters of “Juice” on the sign, and the word “juice”.",
+        ),
+        (
+            [(5, 2), "juice"],
+            "The model reads: letters of “Juice” on the sign, and the word “juice”.",
+        ),
+        ([(1, 7)], "The red light."),
+        ([(1, 7), "traffic"], "The red light and the word “traffic”."),
+        ([(1, 7), "light"], "The red light and the word “light”."),
+    ],
+}
+
+
+def notes_photo(example: dict[str, Any]) -> dict[str, Any]:
+    """Return the notes on a photo and its caption, by the photo's id (the name of its file)."""
+    grid, tokens = example["grid"], example["tokens"]
+
+    def player(named: tuple[int, int] | str) -> int:
+        if isinstance(named, str):
+            return grid * grid + tokens.index(named)
+        row, column = named
+        return (row - 1) * grid + column - 1
+
+    photo = Path(example["image"]).stem
+    return {
+        key(*(player(named) for named in players)): note
+        for players, note in PHOTO_NOTES.get(photo, [])
+    }
+
+
+def photo_words(photo: str) -> dict[str, Any]:
+    """Return the words of a photo's example: its tab's, and the photo's title in the FIxLIP demo."""
+    config = tomllib.loads((FIXLIP_CONFIG).read_text(encoding="utf-8"))
+    title = next(entry["title"] for entry in config["photos"] if entry["id"] == photo)
+    words = {"label": "Describing images", "detail": "SigLIP 2", "model": model("black box")}
+    return {**words, "photo": {"title": title}}
+
+
+# the examples: the file of each one's results, its words, which no result gives (its tab's name,
+# its model's, and the model as the demo shows it), what packs its results, and what notes it. They
+# are in the order of the demo's tabs; an example ``of`` another one has no tab: it is another
+# example of that tab (another photo and its caption), which the tab's picker shows
+EXAMPLES: dict[str, tuple[str, dict[str, Any], Any, Any]] = {
+    "molecule": (
+        "molecule",
+        {"label": "Molecule", "detail": "GCN", "model": model("graph")},
+        pack_molecule,
+        notes_molecule,
+    ),
+    "house": (
+        "house",
+        {"label": "One house", "detail": "XGBoost", "model": model("tree")},
+        pack_house,
+        notes_house,
+    ),
+    "tabpfn": (
+        "house_tabpfn",
+        {"label": "One house, TabPFN", "detail": "TabPFN", "model": model("tabpfn")},
+        pack_tabpfn,
+        notes_tabpfn,
+    ),
+    # (the same model as the house's, with the same average)
+    "houses": (
+        "houses",
+        {"label": "All houses", "detail": "XGBoost", "model": model("tree")},
+        pack_houses,
+        None,
+    ),
+    "fixlip": ("fixlip", photo_words("elephant"), pack_photo, notes_photo),
+    "giraffe": (
+        "fixlip_giraffe-tree",
+        {**photo_words("giraffe-tree"), "of": "fixlip"},
+        pack_photo,
+        notes_photo,
+    ),
+    "sign": (
+        "fixlip_juice-theory",
+        {**photo_words("juice-theory"), "of": "fixlip"},
+        pack_photo,
+        notes_photo,
+    ),
 }
 HEADER = "// The orders demo's explanations (see demo.js), written by ../compute/pack.py.\n"
 
@@ -458,14 +664,18 @@ def main() -> None:
         indices.add(old["index"])
 
     examples = []
-    for name, (file, words) in EXAMPLES.items():
+    for name, (file, words, packer, noter) in EXAMPLES.items():
         if name in args.examples:
             result = json.loads((args.results / f"{file}.json").read_text(encoding="utf-8"))
             indices.add(result["index"])
-            packed = PACKERS[name](result)
+            packed = packer(result)
         else:
-            packed = {key: value for key, value in kept[name].items() if key not in ("id", *words)}
-        examples.append({"id": name, **words, **packed})
+            written = ("id", "notes", "of", "photo", *words)  # (anew, whatever the data has)
+            packed = {name: value for name, value in kept[name].items() if name not in written}
+        example = {"id": name, **words, **packed}
+        if noter:
+            example["notes"] = noter(example)
+        examples.append(example)
     (index,) = indices  # of every order of every example, for the demo's labels
 
     data = {"index": index, "examples": examples}

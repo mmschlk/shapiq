@@ -740,6 +740,70 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-sheet);
 }
 
+/* under the input, where its tab has several (the photos of "Describing images"): a picker, a
+   small picture of each, the one shown in full color and ringed */
+.orders-demo-picks {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 8px;
+  background: var(--orders-sheet);
+  box-shadow: 0 2px 6px -2px var(--orders-shade);
+  translate: -50% 0;
+}
+
+.orders-demo-picks[hidden] {
+  display: none;
+}
+
+.orders-demo-pick {
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: var(--orders-raised) center / cover no-repeat;
+  color: var(--orders-muted);
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity var(--orders-duration) var(--orders-ease),
+    box-shadow var(--orders-duration) var(--orders-ease);
+}
+
+/* (beside the layers, where there is room under the input, larger) */
+.orders-demo-beside .orders-demo-picks {
+  top: calc(100% + 6px);
+  gap: 0.3rem;
+}
+
+.orders-demo-beside .orders-demo-pick {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.orders-demo-pick:hover,
+.orders-demo-pick:focus-visible,
+.orders-demo-pick[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.orders-demo-pick[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--orders-ink);
+}
+
+.orders-demo-pick:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 2px;
+}
+
 .orders-demo-wire-tag {
   position: absolute;
   top: 0.4rem;
@@ -1683,14 +1747,13 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-map-places text {
   fill: var(--orders-muted);
-  font-size: 2.3px;
+  font-size: 2.2px;
   text-anchor: end;
 }
 
-.orders-demo-map-houses circle {
-  fill: var(--orders-sheet);
-  stroke: var(--orders-muted);
-  stroke-width: 0.16;
+/* (the houses' dots, a picture: demo.js) */
+.orders-demo-map-dots {
+  pointer-events: none;
 }
 
 .orders-demo-map-caption text,
@@ -1805,6 +1868,20 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-tip-row b:not([class]) {
   color: var(--orders-ink);
+}
+
+/* (a sum, under a rule) */
+.orders-demo-tip-sum {
+  margin-top: 0.15rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--orders-line);
+}
+
+/* the data's note on what is pointed at, where it has one: a sentence or two, in ink */
+.orders-demo-tip-story {
+  margin-bottom: 0.25rem;
+  color: var(--orders-ink);
+  line-height: 1.35;
 }
 
 .orders-demo-tip-note {

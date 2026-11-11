@@ -12,8 +12,9 @@ example's input, with a plot of each order's fit (R^2) beside them. Above the la
 "problem" is drawn as the input `x`, wired through the model `f` (a chip) to the prediction `f(x)`.
 A card shows the explanation that is pointed at, and can be inspected: pointing at a player on it
 (an atom, a feature, a house, a patch or a word) says its values. The demo has five examples: a
-molecule (GCN), one house (XGBoost), the same house (TabPFN), 150 houses on the map of California,
-and an image and caption (SigLIP 2).
+molecule (GCN), one house (XGBoost), the same house (TabPFN), 2,000 houses on the map of
+California, and an image and caption (SigLIP 2), with two more images and captions behind the same
+tab.
 
 The demo is plain JavaScript and CSS, with no build step and no dependencies. A single
 self-contained script fills every container on a page.
@@ -114,6 +115,15 @@ example, it has no tabs, no stepper, no dots, and no swipe (`orders-demo-single`
 know are left out, with a warning in the console; if it knows none of them, it shows all the
 examples. The fallback image stays the directive's `:fallback:`: give it one that fits.
 
+### Several examples behind one tab
+
+A tab can hold more than one example: "Describing images" holds three photos with their captions.
+In the data, such an example names its tab's first one (`of: "fixlip"`); it has no tab of its own,
+and `:examples:` cannot name it. Under the input's card, a picker shows a small picture of each
+(`.orders-demo-picks`, buttons with the photo's title as their name); the tab remembers the one it
+showed last. Everything else treats it as any example: the event below carries its id (`giraffe`,
+`sign`), and every demo of the page that has its tab follows.
+
 ### Several demos on one page
 
 All containers on a page share one data load. They also show the same example: choosing an
@@ -128,7 +138,7 @@ document.addEventListener("orders-demo-example", (event) => console.log(event.de
 ```
 
 The example ids, in the order of their tabs, are `molecule`, `house`, `tabpfn`, `houses` and
-`fixlip`.
+`fixlip`; behind the last tab are also `giraffe` and `sign`.
 
 ## Layout
 
@@ -199,8 +209,12 @@ layers shrink to fit the window.
 - **Inspecting** the card's face says what the explanation shown tells of one player. With a
   mouse, hovering an atom, a feature (or a group's circle on a house's tree), a patch or a word
   brings out the strongest groups it is in, and a tip over the face lists its own value and
-  theirs. On the 150 houses' map, a row of the list shows itself on the map, and a house says its
-  prediction and its strongest values. On a touch screen, a tap does the same, and a tap elsewhere
+  theirs. An interaction can be pointed at itself: the shape of a group between its players (the
+  strongest under the pointer; a group's circle or links on a house's tree) says its players' own
+  values, what they add together on top of them, and for a pair the sum. Where the data has a note
+  on the player or the group (`notes`, written in `compute/pack.py`), the tip says it in a
+  sentence; most have none, on purpose. On the many houses' map, a row of the list shows itself on
+  the map, and a house says its prediction and its strongest values. On a touch screen, a tap does the same, and a tap elsewhere
   lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
   brings it out when pointed at. To inspect another layer's face, pin the layer first (click it):
   the pointer can then go to the card. The face is not reachable by keyboard; the "Top" line is
@@ -249,6 +263,12 @@ Written by `compute/pack.py`. Shape, in short:
   index: "FSII",                       // the interaction index of every order
   examples: [{
     id, label, detail,                 // the tab: "molecule", "Molecule", "GCN"
+    of,                                // optional: the id of its tab's first example, for another
+                                       // example of that tab (which the picker under the input shows)
+    photo,                             // optional: { title }, the picker's name of it
+    notes,                             // optional: what the tip says of a player or a group, by its
+                                       // players' key ("9", "9,14"); "many": [size, note], of every
+                                       // group of that size or more
     kind,                              // "graph" | "tree" | "map" | "image-text": how faces are drawn
     model: { icon, title, detail, method, how, short },  // the chip and the card's "Explained with"
     problem: { input, output, value }, // the problem's parts: x, f(x)
@@ -257,17 +277,19 @@ Written by `compute/pack.py`. Shape, in short:
       r2,                              // the fit, R^2 beyond size
       first, groups, count,            // the main effects, the strongest groups, how many there are
     }],                                // (map: count, scale, and rows instead, each a feature or
-                                       // a group: its players, its value for every house as an
-                                       // integer from -99 to 99 of the scale, and the mean of
-                                       // its absolute values)
+                                       // a group: its players, its value for every house as
+                                       // text, a character each (a whole number from -45 to 45
+                                       // of the scale: `read()` in demo.js), and the mean of its
+                                       // absolute values)
     between,                           // optional: the blank orders' explanations, by order
     fits,                              // the plot: every order's R^2
     largest,                           // the highest order with an interaction (the trees' depth,
                                        // the network's receptive field, the proxy's depth): every
                                        // order above it equals the full decomposition
     // and, by kind: atoms, bonds, coords (graph); features, values, layout (tree); image, grid,
-    // tokens (image-text); features, predictions, coords (every house's longitude and
-    // latitude), outline, places, quartiles (map)
+    // tokens (image-text); features, predictions, coords (the houses' longitudes and
+    // latitudes as text, two characters each: hundredths of a degree from `west` and `south`),
+    // outline, places, quartiles (map)
   }],
 }
 ```

@@ -16,11 +16,12 @@
 // and the mechanism are named below the plot.
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
-// graph convolutional network; one house and 150 houses of California housing, explained exactly by
-// shapiq's TreeExplainer for an XGBoost model of depth 5 (the 150 houses on the map of California,
-// a dot each); the same house valued by TabPFN, a black box, explained exactly over all subsets of its
-// features with shapiq's TabPFNImputer; and how SigLIP 2, a black box, matches the photo and
-// caption of the FIxLIP demo, explained by ProxySHAP through an XGBoost proxy, without adjustment.
+// graph convolutional network; one house and 2,000 houses of California housing, explained exactly
+// by shapiq's TreeExplainer for an XGBoost model of depth 5 (the 2,000 houses on the map of
+// California, a dot each); the same house valued by TabPFN, a black box, explained exactly over all subsets of its
+// features with shapiq's TabPFNImputer; and how SigLIP 2, a black box, matches a photo and its
+// caption of the FIxLIP demo, explained by ProxySHAP through an XGBoost proxy, without adjustment
+// (three photos behind one tab: a picker under the input chooses among them).
 // The full decomposition is the interactions of order n, the number of players (or of the trees'
 // depth, which already are); the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
@@ -48,7 +49,9 @@
 // fits, and what it was explained with (the input alone, the card pointed at; the mechanism's, in
 // its orange), and its strongest player or group. The card's face can be inspected: the pointer
 // over a player on it (an atom, a feature, a house, a patch or a word; on a touch screen, a tap)
-// brings out the strongest groups the player is in, and a tip says its own value and theirs. The
+// brings out the strongest groups the player is in, and a tip says its own value and theirs; over
+// an interaction, the shape of a group between its players, the tip says what its players add
+// alone and what they add together, and, where the data has a note on it, the note. The
 // chip clears as far as the explanation fits: the black box opens, all the way
 // where it is exact. The demo starts with the problem alone (unless data-reveal="open"): a click on
 // the chip explains it, and the explanation is built under it from the top down. The problem stays
@@ -244,10 +247,15 @@
   };
 
   // -- inspecting a face: on the card, a reader points at a player (an atom, a feature, a patch or
-  // a word), at a group, or at a house, and the face brings out what the explanation says of it,
-  // which the card's tip says in numbers. A face that can be inspected gives its targets, each a
-  // box around its middle in the face's square (x, y, rx, ry; round for a circle), and, for a
-  // target, what to bring out and what to say (inspectorOf) -----------------------------------------
+  // a word), at a group (its shape between its players, its circle on a house's tree), or at a
+  // house, and the face brings out what the explanation says of it, which the card's tip says in
+  // numbers, and, where the data has a note on it, in a sentence. A face that can be inspected
+  // gives its targets, each a box around its middle in the face's square (x, y, rx, ry; round for
+  // a circle), and, for a target, what to bring out and what to say (inspectorOf) -----------------
+
+  // the least share of the largest value on a sheet at which a group's shape can be pointed at:
+  // the haze of the weakest is not
+  const POINTABLE = 0.08;
 
   // the strongest groups of a sheet that hold a player, the strongest first (as the data has them)
   const groupsWith = (sheet, player, most = 4) => sheet.groups.filter(([players]) => players.includes(player)).slice(0, most);
@@ -267,12 +275,27 @@
   // a face's inspector: its targets, the one that stands for a group of players (find), and for a
   // target, a ring around it, its marks brought out, and what the explanation says of it
   // (describe: the keys of the marks to bring out, a title, and rows of a name and a value); reset
-  // puts back what an inspection changed
-  const inspectorOf = (svg, marks, targets, describe, find = () => null, reset = () => {}) => {
+  // puts back what an inspection changed. The shapes of its groups can be pointed at too
+  // (groupAt): the strongest under the pointer, as the strongest lie on top; where the players
+  // cover the face (a photo's patches), a group's shape under the pointer comes first (over)
+  const inspectorOf = (svg, marks, targets, describe, find = () => null, reset = () => {}, over = false) => {
     const ring = add(svg, "rect", { class: "orders-demo-inspect-ring", visibility: "hidden" });
+    const shapes = new WeakMap(marks.map((mark) => [mark.node, mark]));
+    const groups = new Map(); // a group's target, the same one while the pointer stays on its shape
     return {
       targets,
       find,
+      over,
+      groupAt(x, y) {
+        for (const node of document.elementsFromPoint(x, y)) {
+          if (node === svg) break;
+          const mark = shapes.get(node);
+          if (!mark || mark.plain || mark.ratio < POINTABLE) continue;
+          if (!groups.has(mark.key)) groups.set(mark.key, find(mark.key.split(",").map(Number)));
+          return groups.get(mark.key);
+        }
+        return null;
+      },
       show(target) {
         const said = describe(target);
         bringOut(svg, marks, said?.keys ?? null);
@@ -294,18 +317,28 @@
   };
 
   // what an explanation says of a player: its own value (of order 1, its Shapley value), and the
-  // strongest groups it is in; or of a group: its value, and its players' own. title names a
-  // player, in two parts; nameOf, in a word
+  // strongest groups it is in; or of a group, an interaction: its players' own values, what they
+  // add together, on top of their own, and for a pair, the sum of the three, what the pair adds
+  // in all. With it, the data's note on the player or the group, where it has one (most have
+  // none: not every value has a story). title names a player, in two parts; nameOf, in a word
   const sayOf = (example, sheet, target, title, nameOf) => {
     const words = PLAYERS[example.kind];
     if (target.group) {
       const players = target.group;
       const key = players.join(",");
       const value = sheet.groups.find(([others]) => others.join(",") === key)?.[1] ?? 0;
+      const own = players.map((player) => sheet.first[player]);
       return {
         keys: new Set([key]),
-        title: [groupName(example, players, nameOf), `${players.length} ${words.players} together`],
-        rows: [["together", value], ...(players.length <= 4 ? players.map((player) => [`${nameOf(player)} alone`, sheet.first[player]]) : [])],
+        title: [groupName(example, players, nameOf, 34), players.length === 2 ? "a pair" : `a group of ${players.length}`],
+        // (its own note, or the note of every group as large: "many")
+        story: example.notes?.[key] ?? (players.length >= (example.notes?.many?.[0] ?? Infinity) ? example.notes.many[1] : undefined),
+        rows: [
+          ...(players.length <= 4 ? players.map((player, k) => [`${nameOf(player)} alone`, own[k]]) : []),
+          ["together, on top", value],
+          ...(players.length === 2 ? [["in sum", own[0] + own[1] + value, undefined, true]] : []),
+        ],
+        when: `when ${players.length === 2 ? "both" : `all ${players.length}`} are there`,
       };
     }
     const groups = groupsWith(sheet, target.player);
@@ -313,6 +346,7 @@
     return {
       keys: new Set(groups.map(([players]) => players.join(","))),
       title: title(target.player),
+      story: example.notes?.[String(target.player)],
       rows: [
         [sheet.order === 1 ? "Shapley value" : "alone", sheet.first[target.player]],
         ...groups.map(([players, value]) => [
@@ -395,7 +429,8 @@
       example.bonds.filter((bond) => bond.includes(atom)).map(([a, b]) => example.atoms[a === atom ? b : a]),
     );
     const title = (atom) => [example.atoms[atom], `${ELEMENTS[example.atoms[atom]] ?? "atom"}, bonded to ${bonded[atom].join(", ")}`];
-    const targets = position.map(([x, y], atom) => ({ x, y, rx: radius * 1.5, ry: radius * 1.5, round: true, player: atom }));
+    // (an atom's box hardly wider than its disc: between two bonded atoms, their pair's shape shows)
+    const targets = position.map(([x, y], atom) => ({ x, y, rx: radius * 1.1, ry: radius * 1.1, round: true, player: atom }));
     // (a group: where its atoms' middle is, with no ring: its shape is brought out)
     const find = (players) =>
       players.length === 1
@@ -496,7 +531,9 @@
         });
       }
       if (shows(layer, "input")) {
-        add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
+        // (a long caption's words smaller, as their rows are)
+        const word = add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
+        if (row < 6) word.setAttribute("font-size", roundTo(row * 0.58, 2));
       }
     });
     if (layer !== "all") return null;
@@ -517,7 +554,7 @@
       group.length === 1
         ? targets[group[0]]
         : { x: group.reduce((sum, player) => sum + targets[player].x, 0) / group.length, y: Math.min(...group.map((player) => targets[player].y)), rx: 0, ry: cell / 2, group };
-    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), find);
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), find, undefined, true);
   }
 
   // one house: its explanation as a tree that grows one level per order. The features are on top,
@@ -661,15 +698,58 @@
   // the explanation's features and groups, the strongest first, by how much each moves a house's
   // value on average, the one the dots show marked. The dots show the strongest feature of the
   // Shapley values, and from order 2 on, the strongest group: what the order has that the
-  // Shapley values lack. (The card's face can be inspected: a row shows itself on the map, and a
-  // house says its own values; it returns its inspector)
+  // Shapley values lack. The houses are many: their dots are painted on a canvas, an image of the
+  // face, not drawn as elements. (The card's face can be inspected: a row shows itself on the map,
+  // and a house says its own values; it returns its inspector)
   const MAP = {
     left: 6, // the state's west, and its north (the face's units)
-    top: 20,
-    scale: 6.9, // of a degree of latitude; of longitude, less by the cosine of the state's middle
+    top: 15,
+    scale: 8, // of a degree of latitude; of longitude, less by the cosine of the state's middle
     shrink: Math.cos((37.2 * Math.PI) / 180),
-    dot: 1.05, // a house's radius
+    dot: 0.62, // a house's radius
+    pixels: 720, // the side of the canvas the dots are painted on
     rows: { top: 8.8, step: 3.9, name: 78.6, bar: 79.8, width: 9.2, value: 97.6 },
+  };
+  // the houses' numbers, written as text (../compute/pack.py): a character of this alphabet for a
+  // whole number from 0 on (a row's value, from -45 to 45 of its sheet's scale), or two for a
+  // larger one (a coordinate, in hundredths of a degree)
+  const ALPHABET = Array.from({ length: 92 }, (_, k) => String.fromCharCode(35 + k)).filter((letter) => letter !== "\\").join("");
+  const LEVELS = (ALPHABET.length - 1) / 2;
+  const read = (text, width = 1) =>
+    Array.from({ length: text.length / width }, (_, k) => {
+      let number = 0;
+      for (let place = 0; place < width; place++) number = number * ALPHABET.length + ALPHABET.indexOf(text[k * width + place]);
+      return number;
+    });
+  // an example's houses, read once: where each is (longitude, latitude), and of every sheet, its
+  // rows' values (whole numbers from -45 to 45)
+  const mapsRead = new WeakMap();
+  const readMap = (example) => {
+    if (!mapsRead.has(example)) {
+      const { west, south, lon, lat } = example.coords;
+      const [lons, lats] = [read(lon, 2), read(lat, 2)];
+      mapsRead.set(example, {
+        coords: lons.map((value, house) => [west + value / 100, south + lats[house] / 100]),
+        values: new Map(example.sheets.map((sheet) => [sheet, sheet.rows.map((row) => read(row[1]).map((value) => value - LEVELS))])),
+      });
+    }
+    return mapsRead.get(example);
+  };
+  // dots painted on a canvas, as an image of the face (its 100 x 100): each a place, a color and
+  // how opaque it is
+  const painted = (dots) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = MAP.pixels;
+    const context = canvas.getContext("2d");
+    context.scale(MAP.pixels / 100, MAP.pixels / 100);
+    for (const [x, y, color, opacity] of dots) {
+      context.globalAlpha = opacity;
+      context.fillStyle = color;
+      context.beginPath();
+      context.arc(x, y, MAP.dot, 0, 2 * Math.PI);
+      context.fill();
+    }
+    return canvas.toDataURL();
   };
   // the row the map shows at rest
   const mapRow = (sheet) => (sheet.order === 1 ? 0 : Math.max(0, sheet.rows.findIndex(([players]) => players.length > 1)));
@@ -679,9 +759,13 @@
     const west = Math.min(...example.outline.map(([lon]) => lon));
     const north = Math.max(...example.outline.map(([, lat]) => lat));
     const at = ([lon, lat]) => [roundTo(MAP.left + (lon - west) * MAP.shrink * MAP.scale, 2), roundTo(MAP.top + (north - lat) * MAP.scale, 2)];
-    const spots = example.coords.map(at);
+    const { coords, values } = readMap(example);
+    const spots = coords.map(at);
+    const picture = (dots) => add(svg, "image", { class: "orders-demo-map-dots", x: 0, y: 0, width: 100, height: 100, href: dots });
     if (shows(layer, "input")) {
       add(svg, "path", { class: "orders-demo-map-land", d: `M${example.outline.map((point) => at(point).join(" ")).join("L")}Z` });
+      // the houses, gray (a gray that shows on a light page and on a dark one)
+      picture(painted(spots.map(([x, y]) => [x, y, "rgb(122, 130, 152)", 0.42])));
       // the cities, named off the coast
       const places = add(svg, "g", { class: "orders-demo-map-places" });
       for (const [name, lon, lat] of example.places) {
@@ -689,15 +773,23 @@
         add(places, "path", { d: `M${x - 0.9} ${y}H${x + 0.9}M${x} ${y - 0.9}V${y + 0.9}` });
         add(places, "text", { x: roundTo(x - 2, 2), y: roundTo(y + 1.6, 2) }, name);
       }
-      const houses = add(svg, "g", { class: "orders-demo-map-houses" });
-      for (const [x, y] of spots) add(houses, "circle", { cx: x, cy: y, r: MAP.dot });
     }
     if (!shows(layer, "marks")) return null;
 
     const nameOf = (players) => players.map((feature) => example.features[feature]).join(" × ");
-    const valueOf = (row, house) => (sheet.rows[row][1][house] / 99) * sheet.scale;
-    const dots = add(svg, "g", { class: "orders-demo-map-dots" });
-    const circles = spots.map(([x, y]) => add(dots, "circle", { cx: x, cy: y, r: MAP.dot }));
+    const valuesOf = values.get(sheet);
+    const valueOf = (row, house) => (valuesOf[row][house] / LEVELS) * sheet.scale;
+    // the dots in the colors of a row, the strongest on top (a row's picture is painted once)
+    const pictures = new Map();
+    const pictureOf = (r) => {
+      if (!pictures.has(r)) {
+        const row = valuesOf[r];
+        const order = [...row.keys()].sort((a, b) => Math.abs(row[a]) - Math.abs(row[b]));
+        pictures.set(r, painted(order.map((house) => [...spots[house], solid(row[house]), (Math.abs(row[house]) / LEVELS) ** 0.85])));
+      }
+      return pictures.get(r);
+    };
+    const dots = picture("");
     // what the dots show, named over the map, with how many houses it raises and lowers
     const caption = add(svg, "g", { class: "orders-demo-map-caption" });
     const shown = add(caption, "text", { class: "orders-demo-map-shown", x: MAP.left, y: 4.6 });
@@ -714,34 +806,25 @@
       add(row, "text", { class: "orders-demo-map-mean", x: MAP.rows.value, y }, sized(mean));
       return row;
     });
-    // the colors' scale, in the corner the state leaves free: from what lowers a house's value the
+    // the colors' scale, under the rows, east of the state: from what lowers a house's value the
     // most (the sheet's scale, or more) to what raises it the most
     const scale = add(svg, "g", { class: "orders-demo-map-scale" });
-    const [steps, cell] = [5, 2.7];
+    const [steps, cell, middle] = [5, 2.2, 84.6];
     for (let k = -steps; k <= steps; k++) {
-      add(scale, "rect", { x: roundTo(81.5 + (k - 0.5) * cell, 2), y: 84.2, width: cell + 0.05, height: 2.2, fill: solid(k), "fill-opacity": roundTo((Math.abs(k) / steps) ** 0.85, 3) });
+      add(scale, "rect", { x: roundTo(middle + (k - 0.5) * cell, 2), y: 64.6, width: cell + 0.05, height: 2.2, fill: solid(k), "fill-opacity": roundTo((Math.abs(k) / steps) ** 0.85, 3) });
     }
-    add(scale, "text", { x: 81.5, y: 81.8, "text-anchor": "middle" }, "added to a house's value");
-    add(scale, "text", { x: roundTo(81.5 - (steps + 0.5) * cell, 2), y: 89, "text-anchor": "start" }, `−${sized(sheet.scale)}`);
-    add(scale, "text", { x: roundTo(81.5 + (steps + 0.5) * cell, 2), y: 89, "text-anchor": "end" }, `+${sized(sheet.scale)}`);
-    // the dots in the colors of a row, the strongest on top
-    let painted = -1;
+    add(scale, "text", { x: middle, y: 62.3, "text-anchor": "middle" }, "added to a house's value");
+    add(scale, "text", { x: roundTo(middle - (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "start" }, `−${sized(sheet.scale)}`);
+    add(scale, "text", { x: roundTo(middle + (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "end" }, `+${sized(sheet.scale)}`);
+    let showing = -1;
     const paint = (r) => {
-      if (r === painted) return;
-      painted = r;
-      const values = sheet.rows[r][1];
-      [...circles.keys()]
-        .sort((a, b) => Math.abs(values[a]) - Math.abs(values[b]))
-        .forEach((house) => {
-          const circle = circles[house];
-          circle.setAttribute("fill", solid(values[house]));
-          circle.setAttribute("fill-opacity", roundTo((Math.abs(values[house]) / 99) ** 0.85, 3));
-          dots.append(circle);
-        });
+      if (r === showing) return;
+      showing = r;
+      dots.setAttribute("href", pictureOf(r));
       rows.forEach((row, k) => row.classList.toggle("orders-demo-map-row-on", k === r));
       shown.textContent = nameOf(sheet.rows[r][0]);
-      const [up, down] = [values.filter((value) => value > 0).length, values.filter((value) => value < 0).length];
-      counts.textContent = `raises ${up} houses' values, lowers ${down}`;
+      const [up, down] = [valuesOf[r].filter((value) => value > 0).length, valuesOf[r].filter((value) => value < 0).length];
+      counts.textContent = `raises ${up.toLocaleString("en")} houses' values, lowers ${down.toLocaleString("en")}`;
     };
     const rest = mapRow(sheet);
     paint(rest);
@@ -752,7 +835,7 @@
         const [from, to] = [MAP.rows.name - 24, MAP.rows.value + 1];
         return { x: (from + to) / 2, y: MAP.rows.top + r * MAP.rows.step, rx: (to - from) / 2, ry: MAP.rows.step / 2, bare: true, row: r };
       }),
-      ...spots.map(([x, y], house) => ({ x, y, rx: 1.7, ry: 1.7, round: true, house })),
+      ...spots.map(([x, y], house) => ({ x, y, rx: 1.1, ry: 1.1, round: true, house })),
     ];
     const describe = (target) => {
       // a row shows itself on the map, and the map's caption says the rest
@@ -761,10 +844,11 @@
         return null;
       }
       // a house: where it is, what the model predicts for it, and the strongest of its values
+      // (in steps of a 45th of the scale, as the data has them)
       paint(rest);
-      const [lon, lat] = example.coords[target.house];
-      const strongest = sheet.rows
-        .map(([players, values], r) => [players, values[target.house], r])
+      const [lon, lat] = coords[target.house];
+      const strongest = valuesOf
+        .map((row, r) => [sheet.rows[r][0], row[target.house], r])
         .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
         .slice(0, 4);
       return {
@@ -775,7 +859,7 @@
           ...strongest.map(([players, value, r]) => [
             nameOf(players),
             valueOf(r, target.house),
-            Math.abs(value) === 99 ? `${dollars(valueOf(r, target.house))} or more` : undefined,
+            Math.abs(value) === LEVELS ? `${dollars(valueOf(r, target.house))} or more` : undefined,
           ]),
         ],
       };
@@ -815,15 +899,16 @@
   };
   // the players of an example, in words
   const PLAYERS = {
-    graph: { one: "atom", players: "atoms", point: "an atom" },
-    tree: { one: "feature", players: "features", point: "a feature" },
-    map: { one: "feature", players: "features", point: "a house" },
-    "image-text": { one: "patch or word", players: "patches and words", point: "a patch or word" },
+    graph: { one: "atom", players: "atoms", point: "an atom", group: "a link" },
+    tree: { one: "feature", players: "features", point: "a feature", group: "a group" },
+    map: { one: "feature", players: "features", point: "a house or a row" },
+    "image-text": { one: "patch or word", players: "patches and words", point: "a patch or word", group: "a link" },
   };
-  // a group's name, its players' joined, or, where that is long, how many they are
-  const groupName = (example, players, nameOf) => {
+  // a group's name, its players' joined, or, where that is long, how many they are (long: more
+  // than the card's line holds; the tip holds more)
+  const groupName = (example, players, nameOf, most = 18) => {
     const name = players.map(nameOf).join(" × ");
-    return name.length <= 18 ? name : `${players.length} ${PLAYERS[example.kind].players}`;
+    return name.length <= most ? name : `${players.length} ${PLAYERS[example.kind].players}`;
   };
   // a player's name in a word, by the example's kind: an atom's element, a feature's name, a word
   // of the caption, or a patch
@@ -837,9 +922,10 @@
         : example.features[player];
   // a value as its example's kind writes it, with its sign: a logit to two decimals, a house's
   // value in thousands of dollars, a similarity to three decimals; and what the values are of
-  const signed = (value, digits) => `${value < 0 ? "−" : "+"}${Math.abs(value).toFixed(digits)}`;
+  // (a value that rounds to nothing, without a sign)
+  const signed = (value, digits) => (Number(Math.abs(value).toFixed(digits)) === 0 ? (0).toFixed(digits) : `${value < 0 ? "−" : "+"}${Math.abs(value).toFixed(digits)}`);
   const VALUE = { graph: (value) => signed(value, 2), tree: (value) => dollars(value), map: (value) => dollars(value), "image-text": (value) => signed(value, 3) };
-  const OF = { graph: "added to the logit of the prediction", tree: "added to the house's predicted value", map: "added to the house's predicted value", "image-text": "added to the similarity" };
+  const OF = { graph: "the logit of the prediction", tree: "the house's predicted value", map: "the house's predicted value", "image-text": "the similarity" };
   // the strongest of an explanation, for the card to say and to bring out: of the Shapley values,
   // a player; of an order with groups, its strongest group; of many houses, the row their map
   // shows (its players, and the mean of its absolute values)
@@ -887,21 +973,29 @@
   let INDEX = "SII";
   let plots = 0; // the demos' plots on the page, for ids of their own
 
-  // the examples a demo shows: those data-examples names (their ids, apart by commas or spaces), in
-  // its order; without it, or where it names none the data knows, all of them
+  // the examples a demo shows, one per tab: those data-examples names (their ids, apart by commas
+  // or spaces), in its order; without it, or where it names none the data knows, all of them. An
+  // example that is another one of a tab (its `of` names the tab's first: another photo and
+  // caption) has no tab of its own
   function examplesOf(root, all) {
+    const tabs = all.examples.filter((example) => !example.of);
     const ids = (root.dataset.examples ?? "").split(/[\s,]+/).filter(Boolean);
-    const known = ids.filter((id) => all.examples.some((example) => example.id === id));
+    const known = ids.filter((id) => tabs.some((example) => example.id === id));
     if (known.length < ids.length) {
-      const ours = all.examples.map((example) => example.id).join(", ");
+      const ours = tabs.map((example) => example.id).join(", ");
       console.warn(`The explanation of every order has no example ${ids.filter((id) => !known.includes(id)).join(", ")} (it has ${ours}).`);
     }
-    return known.length ? [...new Set(known)].map((id) => all.examples.find((example) => example.id === id)) : all.examples;
+    return known.length ? [...new Set(known)].map((id) => tabs.find((example) => example.id === id)) : tabs;
   }
 
   function start(root, all, life) {
-    // (the data, as far as this demo shows it: all it does, it does with its own examples)
-    const data = { ...all, examples: examplesOf(root, all) };
+    // (the data, as far as this demo shows it: all it does, it does with its own examples: one per
+    // tab, and with each, the other examples of its tab, which the tab's picker shows)
+    const tabs = examplesOf(root, all);
+    const family = (tab) => [tab, ...all.examples.filter((example) => example.of === tab.id)];
+    const data = { ...all, examples: tabs, every: tabs.flatMap(family) };
+    const tabOf = (example) => (example.of ? tabs.find((tab) => tab.id === example.of) : example);
+    const shownOf = new Map(); // of a tab with several examples, the one it showed last
     // (one example alone: no tabs, no stepper, no swipe to another, demo.css)
     root.classList.toggle("orders-demo-single", data.examples.length === 1);
     INDEX = data.index === "k-SII" || !data.index ? "SII" : data.index;
@@ -975,7 +1069,7 @@
     const options = data.examples.map((example) => {
       const option = label(example, el("button", "orders-demo-option"));
       option.type = "button";
-      option.addEventListener("click", () => choose(example));
+      option.addEventListener("click", () => choose(shownOf.get(example.id) ?? example));
       switcher.append(option);
       pill.append(label(example, el("span", "orders-demo-option")));
       return [example.id, option];
@@ -1047,10 +1141,14 @@
     planTagHint.setAttribute("class", "orders-demo-tag-hint");
     planTagHint.setAttribute("dx", "2.4");
     const planTagWords = [["orders-demo-hint-touch", "tap"], ["orders-demo-hint-hover", "hover"]].map(([className, word]) => [add(planTagHint, "tspan", { class: className }), word]);
-    const tagFace = (name) => {
+    // (what can be pointed at: a player, and where the face shows groups, their shapes; where the
+    // name leaves no room for it, no invitation)
+    const tagFace = (name, grouped) => {
       planTagText.textContent = name;
-      for (const [node, word] of planTagWords) node.textContent = `· ${word} ${PLAYERS[current().kind].point}`;
-      if (name.length <= 20) planTagText.append(planTagHint);
+      const words = PLAYERS[current().kind];
+      const what = grouped && words.group ? `${words.point} or ${words.group}` : words.point;
+      for (const [node, word] of planTagWords) node.textContent = `· ${word} ${what}`;
+      if (name.length * 2.55 + (what.length + 8) * 1.5 <= 88) planTagText.append(planTagHint);
     };
     // the card's tip: what the explanation shown says of what is pointed at on its face
     const cardTip = el("div", "orders-demo-tip");
@@ -1071,6 +1169,35 @@
     const shows = () => el("span", "orders-demo-wire-shows");
     const [xFace, xName, xShows] = [el("span", "orders-demo-wire-face"), el("span", "orders-demo-wire-name"), shows()];
     xShows.append(xFace, xName);
+    // under the input, where its tab has several examples (the photos of "Describing images"), a
+    // picker: a small picture of each, the one shown marked
+    const picker = el("div", "orders-demo-picks");
+    picker.setAttribute("role", "group");
+    picker.setAttribute("aria-label", "Input");
+    picker.hidden = true;
+    let picks = []; // its buttons, with their examples
+    let pickerOf = null; // the tab it is of
+    function showPicker(example) {
+      const tab = tabOf(example);
+      const examples = family(tab);
+      picker.hidden = examples.length < 2;
+      if (pickerOf !== tab.id) {
+        pickerOf = tab.id;
+        picks = examples.map((other, k) => {
+          const pick = el("button", "orders-demo-pick");
+          pick.type = "button";
+          const name = other.photo?.title ?? `${tab.label} ${k + 1}`;
+          pick.setAttribute("aria-label", name);
+          pick.title = name;
+          if (other.image) pick.style.backgroundImage = `url("${root.dataset.root}${other.image}")`;
+          else pick.textContent = String(k + 1);
+          pick.addEventListener("click", () => choose(other));
+          return [other.id, pick];
+        });
+        picker.replaceChildren(...picks.map(([, pick]) => pick));
+      }
+      for (const [id, pick] of picks) pick.setAttribute("aria-pressed", String(id === example.id));
+    }
     const [chipIcon, chipName, chipNote, chipShows] = [el("span", "orders-demo-wire-icon-slot"), el("strong"), el("span", "orders-demo-chip-note"), shows()];
     chipShows.append(chipIcon, chipName, chipNote);
     const [outValue, outNote, outShows] = [el("strong"), el("span", "orders-demo-wire-note"), shows()];
@@ -1084,7 +1211,7 @@
       return line;
     };
     const into = el("div", "orders-demo-wire-side orders-demo-wire-into");
-    into.append(tagged("orders-demo-wire-x", "x", xShows), wireLine());
+    into.append(tagged("orders-demo-wire-x", "x", xShows, picker), wireLine());
     const onto = el("div", "orders-demo-wire-side orders-demo-wire-onto");
     onto.append(wireLine(), tagged("orders-demo-wire-out", "f(x)", outShows));
     flow.append(into, chip, onto);
@@ -1197,7 +1324,7 @@
     let stops = []; // the slider's: its rest, then every sheet and blank sheet, top to bottom
     let cardRow = null; // the floating layers': the input's row, beside its card
 
-    const current = () => data.examples.find((example) => example.id === state.example);
+    const current = () => data.every.find((example) => example.id === state.example);
     const sheetItems = () => items.filter((item) => item.sheet);
     const blankItems = () => items.filter((item) => !item.sheet && !item.base);
     // the slider's: no stop at the card or the mechanism; it goes through the explanations only, as
@@ -1222,8 +1349,8 @@
       const room = width - ladderWidth - gap - RAIL - lead;
       // the same height for every example: the most sheets and blank sheets of any, of those the
       // step shows
-      const n = Math.max(...data.examples.map(shownSheets));
-      const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
+      const n = Math.max(...data.every.map(shownSheets));
+      const blanks = Math.max(...data.every.map((example) => shownBlanks(example).length));
       // the floating layers' card, below them (without them, on top), and the mechanism below it
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
       // the room holds the layers, and air beside them; beside the card, the window holds them too,
@@ -1254,8 +1381,8 @@
     // around them (demo.css)
     function fitColumns() {
       const spread = Math.abs(Math.cos(TURN)) + Math.abs(Math.sin(TURN));
-      const n = Math.max(...data.examples.map(shownSheets));
-      const blanks = Math.max(...data.examples.map((example) => shownBlanks(example).length));
+      const n = Math.max(...data.every.map(shownSheets));
+      const blanks = Math.max(...data.every.map((example) => shownBlanks(example).length));
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
       const above = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
       const tall = viewportHeight() - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
@@ -1365,7 +1492,7 @@
     // the pill around the example chosen; it slides there, unless instant (as when the buttons
     // change their size)
     function movePill(instant) {
-      const option = new Map(options).get(state.example);
+      const option = new Map(options).get(tabOf(current()).id);
       const [top, left] = [option.offsetTop, option.offsetLeft];
       const right = pill.clientWidth - left - option.offsetWidth;
       const bottom = pill.clientHeight - top - option.offsetHeight;
@@ -1380,7 +1507,7 @@
     // the stepper's example: its icon, its name, and where it is among the examples, coming in from
     // the side it was stepped to from
     function showStep(example, enter = true) {
-      const position = data.examples.indexOf(example) + 1;
+      const position = data.examples.indexOf(tabOf(example)) + 1;
       shown.replaceChildren(
         icon(example.model.icon, "orders-demo-option-icon"),
         el("strong", "", example.label),
@@ -1395,9 +1522,10 @@
     // step to the next example (1) or the previous one (-1)
     function step(delta) {
       const count = data.examples.length;
-      const at = data.examples.findIndex((example) => example.id === state.example);
+      const at = data.examples.indexOf(tabOf(current()));
       stepper.style.setProperty("--orders-step-from", `${delta * 12}px`);
-      choose(data.examples[(at + delta + count) % count], delta);
+      const next = data.examples[(at + delta + count) % count];
+      choose(shownOf.get(next.id) ?? next, delta);
     }
 
     // choose an example: the pill slides to it while the stack, its fits and the plot fade out, and
@@ -1409,7 +1537,8 @@
     function choose(example, direction = 0, tell = true) {
       if (state.example === example.id) return;
       Object.assign(state, { example: example.id, active: null, blank: null, pinned: false });
-      for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
+      shownOf.set(tabOf(example).id, example);
+      for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === tabOf(example).id));
       movePill(false);
       showStep(example);
       // the plan stays: what it shows flips to the example at once, the card after the problem
@@ -1419,8 +1548,8 @@
       const choice = ++chosen;
       // every demo of the page follows (out of view, at once); the one chosen in says so, once
       if (tell) {
-        const { label, model, problem } = example;
-        status.textContent = `${label}: ${model.title}, ${problem.output} (${problem.value})`;
+        const { label, model, problem, photo } = example;
+        status.textContent = `${label}${photo ? `, ${photo.title}` : ""}: ${model.title}, ${problem.output} (${problem.value})`;
         document.dispatchEvent(new CustomEvent(EXAMPLE_EVENT, { detail: { example: example.id } }));
       }
       if (reducedMotion() || (!tell && !inView)) {
@@ -1640,6 +1769,7 @@
       const { problem, model } = example;
       xFace.className = example.kind === "tree" ? "orders-demo-wire-face orders-demo-wire-table" : "orders-demo-wire-face";
       xFace.replaceChildren(...inputFitting(example));
+      showPicker(example);
       say(xName, problem.input, flip);
       chip.classList.toggle("orders-demo-chip-black", model.icon === "box");
       chip.classList.toggle("orders-demo-chip-gray", model.icon !== "box");
@@ -1728,7 +1858,7 @@
             add(svg, "rect", { x: left + column * cell, y: top + row * cell, width: cell - 1.5, height: cell - 1.5, rx: 1.2, class: row ? "" : "orders-demo-input-head" });
           }
         }
-        add(svg, "text", { x: 50, y: 86, "text-anchor": "middle" }, `${example.predictions.length} × ${example.features.length}`);
+        add(svg, "text", { x: 50, y: 86, "text-anchor": "middle" }, `${example.predictions.length.toLocaleString("en")} × ${example.features.length}`);
       } else {
         drawFace(svg, example, example.sheets[0], "input", `orders-${plotId}-${example.id}-input`);
       }
@@ -1771,13 +1901,17 @@
       title.append(el("strong", "", said.title[0]), ` ${said.title[1]}`);
       // a row: a name, and a value in the red of what raises f(x) or the blue of what lowers it (a
       // value without a sign, as a house's prediction, in neither)
-      const rows = said.rows.map(([name, value, text]) => {
-        const row = el("div", "orders-demo-tip-row");
+      // (a sum, under a rule)
+      const rows = said.rows.map(([name, value, text, sum]) => {
+        const row = el("div", sum ? "orders-demo-tip-row orders-demo-tip-sum" : "orders-demo-tip-row");
         const tone = value === null ? "" : value >= 0 ? "orders-demo-plan-raises" : "orders-demo-plan-lowers";
         row.append(el("span", "", name), el("b", tone, text ?? VALUE[kind](value)));
         return row;
       });
-      cardTip.replaceChildren(title, ...rows, el("div", "orders-demo-tip-note", OF[kind]));
+      // the data's note on it, where it has one, under its name; and under the rows, what the
+      // values are of (a group's: when it counts)
+      const story = said.story ? [el("div", "orders-demo-tip-story", said.story)] : [];
+      cardTip.replaceChildren(title, ...story, ...rows, el("div", "orders-demo-tip-note", `added to ${OF[kind]}${said.when ? ` ${said.when}` : ""}`));
       // over its target, in the middle, or under it where there is no room above; kept in the demo
       const [face, box] = [planView.firstChild.getBoundingClientRect(), root.getBoundingClientRect()];
       const unit = face.width / 100;
@@ -1794,13 +1928,15 @@
       const face = planView.firstChild.getBoundingClientRect();
       const [x, y] = [((event.clientX - face.left) / face.width) * 100, ((event.clientY - face.top) / face.height) * 100];
       const least = ((event.pointerType === "mouse" ? 5 : 11) / face.width) * 100;
+      const group = inspector.groupAt(event.clientX, event.clientY);
+      if (group && inspector.over) return group;
       let [best, nearest] = [null, Infinity];
       for (const target of inspector.targets) {
         if (Math.abs(x - target.x) > Math.max(target.rx, least) || Math.abs(y - target.y) > Math.max(target.ry, least)) continue;
         const distance = Math.hypot(x - target.x, y - target.y);
         if (distance < nearest) [best, nearest] = [target, distance];
       }
-      return best;
+      return best ?? group;
     }
     planView.addEventListener("pointermove", (event) => {
       if (event.pointerType === "mouse") inspect(targetAt(event));
@@ -1940,7 +2076,7 @@
       };
       // (every explanation's words in a block of their own, all in the probe at once: laid out once,
       // then read, not laid out anew for every one)
-      const blocks = data.examples.flatMap((example) =>
+      const blocks = data.every.flatMap((example) =>
         [...example.sheets.map((_, index) => ({ index })), ...between(example).map(([blank]) => ({ blank })), { mechanism: true }].map(
           (pick) => {
             const block = el("span", "orders-demo-plan-words");
@@ -2001,7 +2137,11 @@
         planView.replaceChildren(face, planTag);
       }
       // named as the layer it shows: a sheet, the mechanism, or an order between
-      tagFace(state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face);
+      const faced = state.blank !== null ? betweenOf(example, state.blank) : mechanism ? example.sheets[last] : example.sheets[index];
+      tagFace(
+        state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face,
+        Boolean(faced?.groups?.length),
+      );
       // the mechanism, where only an estimate shows it, blurred
       planView.classList.toggle("orders-demo-estimated", Boolean(mechanism) && state.blank === null && estimated(example));
 
@@ -2157,7 +2297,7 @@
     // one only has to show it
     const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 100));
     function drawAhead() {
-      const example = data.examples.find((other) => (drawn.get(other.id)?.length ?? 0) < shownSheets(other));
+      const example = data.every.find((other) => (drawn.get(other.id)?.length ?? 0) < shownSheets(other));
       if (!example) return;
       const nodes = drawn.get(example.id) ?? [];
       nodes.push(drawSheet(example, nodes.length));
@@ -2170,7 +2310,7 @@
       root.classList.toggle("orders-demo-veiled", !revealed);
       wideEnough();
       Object.assign(state, { active: null, blank: null, pinned: false }); // a new example shows at rest
-      for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === example.id));
+      for (const [id, option] of options) option.setAttribute("aria-pressed", String(id === tabOf(example).id));
       stage.setAttribute("aria-label", `${example.label}: its explanations of order 1 to n, as layers above its input, with their fit`);
       stack.replaceChildren();
       for (const row of [...rows, cardRow]) row?.remove();
@@ -2990,7 +3130,7 @@
     document.addEventListener(
       EXAMPLE_EVENT,
       (event) => {
-        const example = data.examples.find((other) => other.id === event.detail?.example);
+        const example = data.every.find((other) => other.id === event.detail?.example);
         if (example) choose(example, 0, false);
       },
       { signal: life },
