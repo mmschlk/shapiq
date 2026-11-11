@@ -73,10 +73,30 @@ messages along bonds three times, so what it computes for an atom depends only o
 three bonds, its **receptive field**. As the GNN sums its atoms up and reads the sum out linearly,
 atoms that are never together in a receptive field do not interact: all their interactions are zero
 :cite:p:`Muschalik.2025`. GraphSHAP-IQ therefore evaluates the GNN only on the maskings within
-receptive fields, computes their Möbius interactions, and converts them into any index, exactly
-(:doc:`../graphshapiq-exact/index` shows how many maskings that saves). Each explanation took less
-than 15 seconds on four CPU cores, and its Möbius interactions reproduce the GNN's output on random
-maskings to :math:`10^{-5}`.
+receptive fields, computes their Möbius interactions, and converts them into any index, exactly.
+Each explanation took less than 15 seconds on four CPU cores, and its Möbius interactions reproduce
+the GNN's output on random maskings to :math:`10^{-5}`.
+
+.. _graphshapiq-exact:
+
+Exact, and still feasible
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Exact Shapley interactions of :math:`n` players take :math:`2^n` evaluations of the model: beyond a
+few dozen players, out of reach. GraphSHAP-IQ computes them exactly from the maskings within
+receptive fields, often a small fraction of all. Point at an atom (or tap it) to see its receptive
+field, and choose how many layers the GNN has:
+
+.. shapiq-demo:: graphshapiq-exact
+   :anchor: receptive-fields
+
+The numbers are those of :class:`~shapiq.graph.GraphSHAPIQ`, which plans its maskings before it
+evaluates any: they depend only on the molecule's graph and the number of layers. For cholesterol,
+28 atoms, all maskings number :math:`2^{28}`, more than a quarter of a billion. A GNN with three
+layers needs 129,664 of them, 2,070 times fewer; a GNN with two layers, 5,509; one with four,
+1,384,448. The fewer the layers and the larger the molecule, the larger the share of interactions
+that are exactly zero. For benzene, a three-layer GNN's receptive fields cover the whole ring, and
+GraphSHAP-IQ evaluates all 64 maskings: exact, but no cheaper.
 
 Explain it yourself
 ^^^^^^^^^^^^^^^^^^^
@@ -174,3 +194,6 @@ SMILES; add a molecule there, and then run:
    python train.py    # a GNN per question (once)
    python explain.py  # the explanations of every molecule and question
    python pack.py     # the demos' data, ../../graphshapiq-*/assets/data.js
+
+The molecules of the figure of receptive fields are the ``[[exact_demo]]`` entries of
+``config.toml``; ``python pack.py --demos exact`` counts their maskings again, without a GNN.

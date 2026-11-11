@@ -1,17 +1,16 @@
 # The GraphSHAP-IQ demos: notes for whoever iterates on them
 
-Four demos explain graph neural networks (GNNs) on molecules with GraphSHAP-IQ
+Two demos and a figure explain graph neural networks (GNNs) on molecules with GraphSHAP-IQ
 (Muschalik et al., 2025), computed with `shapiq.graph`. They are a counterpart to the FIxLIP demo:
 the same kind of page (a demo, then what to see, what it shows and how it was computed), for
-graphs. This folder is not a page: it holds what the four share, a library of code and styles
-(`assets/`) and the scripts that computed all four demos' data (`compute/`).
+graphs. This folder is not a page: it holds what they share, a library of code and styles
+(`assets/`) and the scripts that computed all their data (`compute/`).
 
 | Demo | Folder | What a reader does | What they should learn |
 |---|---|---|---|
 | Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions. Then switches between *Prediction* (click atoms to mask them, the GNN reruns in the browser), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. Also the reference demo. |
 | Lab | `../graphshapiq-lab` | Puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring. A Web Worker then computes the GNN's answer and the **exact** Shapley values and 2-SII over all 2ⁿ maskings, with a progress bar. | The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
-| Exact | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
-| Orders | `../graphshapiq-orders` | Picks one of 5 molecules and steps the order from 1 (Shapley values) to the full Möbius decomposition, with − and + or by a click on the curve. The SI-graph builds up and a faithfulness curve (R² beyond size) climbs. | The Shapley values are not enough: they score below 0 for every molecule. 1,3-dinitrobenzene needs pairs (0.95), dopamine order 3 (0.89), serotonin's indole many orders. |
+| Exact (a figure on the explorer's page, under "Exact, and still feasible"; no page or card of its own) | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
 
 Each demo's `index.rst` is its page, with the claims a reader can check in the demo. The cards on
 `../index.rst` use `_static/images/hero_graphshapiq_<demo>_demo.png`.
@@ -67,7 +66,7 @@ graphshapiq-<demo>/
   field. The layout breaks at a container width of 42rem, not at the viewport.
 - **Data.** `compute/config.toml` is the single source of the molecules, the questions and their
   texts (blurbs and takeaways). `explain.py` writes the full GraphSHAP-IQ results to
-  `compute/results/`, which is gitignored and not committed. `pack.py` turns them into the four
+  `compute/results/`, which is gitignored and not committed. `pack.py` turns them into the
   `data.js` files. The GNN weights are in the data as folded affine maps, which `pack_gnn` checks
   against PyTorch (≤ 1e-3).
 - **The lab computes, it does not look up.** Its worker (the `WORKER` string in
@@ -86,7 +85,8 @@ python -m http.server -d /tmp/html 8000                              # then open
 ```
 
 `-D plot_gallery=0` skips running the examples. The demos do not need them. The pages to check are
-`demos/graphshapiq-{explorer,lab,exact,orders}/index.html` and `demos/index.html` (the cards).
+`demos/graphshapiq-{explorer,lab}/index.html` (the explorer's has the exact figure too) and
+`demos/index.html` (the cards).
 
 Before you push, check every demo you changed:
 
@@ -115,18 +115,10 @@ Before you push, check every demo you changed:
 - Explorer, *Explain it yourself* snippet: 43,968 of 2¹⁶ maskings; O–O −1.72, N–O +1.32.
 - Lab, *PAINS?*: catechol >99%, resorcinol 11%, hydroquinone 25%.
 - Exact: cholesterol 2²⁸ → 129,664 (2,070×), 5,509 at 2 layers; benzene 64 = 2⁶.
-- Orders, R² beyond size: the Shapley values score below 0 for all 5 molecules. Dinitrobenzene
-  reaches 0.95 at order 2. Dopamine reaches 0.89 at order 3, with its pairs still below 0.
-  Serotonin goes 0.76 → 0.94 → 0.98.
 - GNN test F1: *Indole?* 0.98, *Mutagenic?* 0.79, *PAINS?* 0.94.
 
 ## Design decisions (and what was tried and dropped)
 
-- **Faithfulness is FSII with R² beyond size, not truncated Möbius or k-SII.** Summing the Möbius
-  interactions up to order k gives an R² that is not monotone and is often very negative (large
-  terms overshoot), so a curve of it would mislead. FSII is the best fit of each order, and R²
-  beyond size removes the trivial "more atoms, higher score" trend. This is the same method as
-  `../orders/compute/faithfulness.py`.
 - **Masking keeps bonds** and gives the atom the average atom of the GNN's training set. That is
   `GraphBaselineImputer` with a mean baseline, as in the paper.
 - **The GNN sees elements and links only**, not bond orders. That is why indigo fools the
@@ -154,8 +146,7 @@ Before you push, check every demo you changed:
   start.
 - **Merge the lab into the explorer** as a fourth view? The two share the GNNs and the scene, and
   a single demo would be simpler for readers. Decide after feedback.
-- **Mobile polish.** All four demos fit 390 px, but the explorer's molecule strip and the orders
-  demo's curve are dense there. A larger touch target for the order stepper would help.
+- **Mobile polish.** All demos fit 390 px, but the explorer's molecule strip is dense there.
 - **Exact demo:** an animation of message passing itself (features flowing along bonds, layer by
   layer) would show *why* the receptive field grows, not only that it does.
 - **More molecules / questions:** add them in `compute/config.toml` (see `compute/README.md`).
@@ -181,3 +172,12 @@ below 0) and the exact demo a fourth layer and the numbers at its bars.
 
 The suggestion from that run was to lead with the explorer (the safe reference) and feature the
 lab (the wow), with the exact and orders demos as explainer pages.
+
+The maintainer then decided what goes into the docs: the explorer and the lab as demos; the exact
+demo as a figure on the explorer's page ("Exact, and still feasible"), since it explains the
+algorithm rather than what interactions show; and no orders demo, which overlapped with the guide
+"From Shapley values to the full decomposition" (`../orders`), whose first example is a molecule
+and a GNN at every order. The orders demo is in the history of the repository (it was removed
+after commit 47bf168): FSII of every order from GraphSHAP-IQ's Möbius interactions, with its R²
+beyond size. Its finding, should the guide want it: the Shapley values scored below 0 for all five
+molecules; 1,3-dinitrobenzene reached 0.95 with pairs, dopamine 0.89 only at order 3.

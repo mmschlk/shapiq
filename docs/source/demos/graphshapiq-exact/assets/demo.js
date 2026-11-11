@@ -1,4 +1,5 @@
-// The GraphSHAP-IQ exact demo (demos/graphshapiq-exact/index.rst): why exact Shapley interactions
+// The figure of receptive fields ("Exact, and still feasible" on the explorer's page,
+// demos/graphshapiq-explorer/index.rst; it has no page of its own): why exact Shapley interactions
 // of a GNN stay feasible. A GNN with L layers mixes an atom only with the atoms within L bonds, its
 // receptive field; atoms that never share one cannot interact, so GraphSHAP-IQ evaluates the GNN
 // only on the maskings within receptive fields. The reader points at an atom to see its field grow

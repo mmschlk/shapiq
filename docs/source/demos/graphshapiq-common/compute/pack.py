@@ -1,4 +1,4 @@
-"""Write the data of the four GraphSHAP-IQ demos: ``../../graphshapiq-<demo>/assets/data.js``.
+"""Write the data of the GraphSHAP-IQ demos: ``../../graphshapiq-<demo>/assets/data.js``.
 
 Reads the GNNs of train.py and the explanations of explain.py (in ``results/``) and the texts of
 config.toml, draws the molecules (2D coordinates of RDKit), keeps what the demos show, rounded, and
@@ -10,11 +10,9 @@ browser would not fetch a JSON file):
   interactions, the strongest of every order overall and of every atom;
 - ``lab`` (``window.SHAPIQ_GRAPHSHAPIQ_LAB``): the GNNs that run in the reader's browser, where the
   demo computes GraphSHAP-IQ itself, for the molecules the reader builds;
-- ``orders`` (``window.SHAPIQ_GRAPHSHAPIQ_ORDERS``): a few molecules explained at every order with
-  the Faithful Shapley Interactions (FSII), and how faithful every order is (R^2 beyond size, as in
-  the orders demo, ``../../orders/compute/faithfulness.py``);
-- ``exact`` (``window.SHAPIQ_GRAPHSHAPIQ_EXACT``): molecules of growing size, and the number of
-  maskings GraphSHAP-IQ evaluates for GNNs of 1 to 4 layers (no GNN is evaluated).
+- ``exact`` (``window.SHAPIQ_GRAPHSHAPIQ_EXACT``), the figure of receptive fields on the explorer's
+  page: molecules of growing size, and the number of maskings GraphSHAP-IQ evaluates for GNNs of
+  1 to 4 layers (no GNN is evaluated).
 
 The demos run the GNNs themselves, for the maskings a reader picks: every GNN is written as a chain
 of affine maps and ReLUs, its batch normalizations folded into its linear layers, in float32
@@ -23,7 +21,7 @@ bitmask of the atoms' indices (the molecules have at most 31 atoms).
 
 Usage::
 
-    python pack.py                    # all four demos
+    python pack.py                    # all of them
     python pack.py --demos lab exact  # some of them
 """
 
@@ -43,18 +41,14 @@ from molecules import GNN, SYMBOLS, LogOdds, to_graph
 from rdkit import Chem
 from rdkit.Chem import rdDepictor
 from rdkit.Chem.rdMolDescriptors import CalcMolFormula
-from scipy.special import comb
 
-from shapiq import Game, InteractionValues
-from shapiq.game_theory.moebius_converter import MoebiusConverter
+from shapiq import Game
 from shapiq.graph import GraphModel, GraphSHAPIQ
 
 HERE = Path(__file__).resolve().parent
 DEMOS = HERE.parent.parent  # docs/source/demos
 OVERALL = 24  # explorer: the strongest interactions of an order it gets
 PER_ATOM = 8  # and the strongest interactions of an order with every atom
-GROUPS = 60  # orders: the strongest groups of 2+ atoms of every order (and all atoms alone)
-CLOSE = 0.999  # orders: the R^2 from which the next order is the full decomposition
 HOPS = range(1, 5)  # exact: the GNN depths it compares
 
 
@@ -233,83 +227,6 @@ def compact(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def zeta(values: np.ndarray, n: int) -> np.ndarray:
-    """Return the sum of ``values`` over the subsets of every coalition (codes 0 to 2^n - 1)."""
-    out = values.copy()
-    for player in range(n):
-        out = out.reshape(-1, 2, 1 << player)
-        out[:, 1, :] += out[:, 0, :]
-        out = out.reshape(-1)
-    return out
-
-
-def at_every_order(result: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return a molecule's FSII of orders 1, 2, ..., and its full decomposition, with their R^2.
-
-    The R^2 is the orders demo's R^2 beyond size, exactly, over all coalitions of the Shapley
-    distribution: how much of what the number of atoms in a coalition does not predict the
-    explanation reproduces. It does not fall with the order, and reaches 1 with the full
-    decomposition (the Möbius interactions, FSII of the highest order).
-    """
-    n = result["n_atoms"]
-    size = 1 << n
-    moebius = np.zeros(size)
-    moebius[0] = result["empty"]
-    for players, value in result["moebius"]:
-        moebius[mask(players)] = value
-    values = zeta(moebius, n)  # the GNN's log-odds for every coalition
-    sizes = np.array([code.bit_count() for code in range(size)])
-    weights = np.zeros(n + 1)
-    weights[1:n] = 1 / (np.arange(1, n) * (n - np.arange(1, n)))
-    weights = weights / weights.sum() / comb(n, np.arange(n + 1))
-    weight = weights[sizes]  # the empty and the full coalition have no weight
-    means = np.array([values[sizes == s].mean() for s in range(n + 1)])
-    spread = np.sum(weight * (values - means[sizes]) ** 2)
-
-    lookup = {(): 0}
-    lookup |= {tuple(players): k + 1 for k, (players, _) in enumerate(result["moebius"])}
-    coefficients = np.array([result["empty"]] + [value for _, value in result["moebius"]])
-    converter = MoebiusConverter(
-        InteractionValues(
-            values=coefficients,
-            index="Moebius",
-            max_order=n,
-            min_order=0,
-            n_players=n,
-            interaction_lookup=lookup,
-            baseline_value=result["empty"],
-        )
-    )
-
-    def entry(order: int | str, explanation: dict[tuple[int, ...], float]) -> dict[str, Any]:
-        dense = np.zeros(size)
-        dense[0] = result["empty"]
-        for players, value in explanation.items():
-            dense[mask(players)] = value
-        r2 = 1 - np.sum(weight * (values - zeta(dense, n)) ** 2) / spread
-        alone = [[mask(s), round(v, 4)] for s, v in explanation.items() if len(s) == 1]
-        groups = sorted(
-            ([mask(s), round(v, 4)] for s, v in explanation.items() if len(s) > 1),
-            key=lambda group: -abs(group[1]),
-        )
-        return {"k": order, "r2": round(float(r2), 4), "groups": alone + groups[:GROUPS]}
-
-    orders = []
-    for order in range(1, n):
-        fsii = converter.compute("FSII", order=order)
-        explanation = {
-            tuple(players): float(fsii.values[k])
-            for players, k in fsii.interaction_lookup.items()
-            if players and fsii.values[k] != 0
-        }
-        orders.append(entry(order, explanation))
-        if orders[-1]["r2"] >= CLOSE:
-            break
-    full = {tuple(players): value for players, value in result["moebius"]}
-    orders.append(entry("all", full))
-    return orders
-
-
 def write(demo: str, data: dict[str, Any]) -> None:
     """Write a demo's data, ``../../graphshapiq-<demo>/assets/data.js``."""
     text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
@@ -364,33 +281,6 @@ def pack_lab(config: dict[str, Any], results: Path) -> None:
     write("lab", {"symbols": SYMBOLS, "tasks": tasks})
 
 
-def pack_orders(config: dict[str, Any], results: Path) -> None:
-    """Write the orders demo's data: molecules explained at every order, and how faithfully."""
-    by_id = {m["id"]: m for m in config["molecules"]}
-    tasks = {task["id"]: task_entry(task, results, None) for task in config["tasks"]}
-    molecules = []
-    for mid in config["orders_demo"]["molecules"]:
-        molecule = by_id[mid]
-        result = explanation(results, mid, molecule["task"])
-        if result["n_atoms"] > 16:
-            msg = f"{mid} has {result['n_atoms']} atoms, more than the orders demo's 16"
-            raise ValueError(msg)
-        orders = at_every_order(result)
-        keys = ("id", "name", "short", "blurb", "task")
-        molecules.append(
-            {key: molecule[key] for key in keys if key in molecule}
-            | depict(molecule)
-            | {
-                "logOdds": round(result["log_odds"], 4),
-                "empty": round(result["empty"], 4),
-                "truth": result["truth"],
-                "orders": orders,
-            }
-        )
-        print(f"  {mid}: R^2 " + ", ".join(f"{o['k']}: {o['r2']:.3f}" for o in orders))
-    write("orders", {"tasks": tasks, "molecules": molecules})
-
-
 def pack_exact(config: dict[str, Any]) -> None:
     """Write the exact demo's data: molecules and GraphSHAP-IQ's maskings for 1 to 4 layers."""
     molecules = []
@@ -414,9 +304,9 @@ def pack_exact(config: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    """Write the data of the demos named on the command line (all four by default)."""
+    """Write the data of the demos named on the command line (all by default)."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    demos = ["explorer", "lab", "orders", "exact"]
+    demos = ["explorer", "lab", "exact"]
     parser.add_argument("--demos", nargs="+", choices=demos, default=demos)
     parser.add_argument("--results", type=Path, default=HERE / "results")
     args = parser.parse_args()
@@ -425,8 +315,6 @@ def main() -> None:
         pack_explorer(config, args.results)
     if "lab" in args.demos:
         pack_lab(config, args.results)
-    if "orders" in args.demos:
-        pack_orders(config, args.results)
     if "exact" in args.demos:
         pack_exact(config)
 

@@ -1,4 +1,4 @@
-// What the four GraphSHAP-IQ demos share (see ../README.md), as `window.ShapiqGraph`: small DOM
+// What the GraphSHAP-IQ demos share (see ../README.md), as `window.ShapiqGraph`: small DOM
 // helpers, a molecule's drawing, the animated SI-graph scene, the GNN that runs in the page, and
 // `mount`, which fills every container of a demo with its data. The page loads this script before
 // the demos' own (assets/requires.txt of each demo, see _ext/shapiq_demos.py).

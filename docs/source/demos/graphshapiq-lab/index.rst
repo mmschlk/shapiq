@@ -33,9 +33,9 @@ How it works
 Each edit builds the molecule's graph and hands it to a Web Worker, which runs the GNN and
 GraphSHAP-IQ. A GNN with three layers mixes an atom only with the atoms within three bonds, so atoms
 that never share such a neighbourhood cannot interact, and GraphSHAP-IQ needs the GNN only on the
-maskings within neighbourhoods (:doc:`../graphshapiq-exact/index` shows how much that saves for
-large molecules). The lab's molecules are small, their neighbourhoods cover them, and GraphSHAP-IQ
-evaluates the GNN on all :math:`2^n` maskings: up to 32,768, a few seconds at most, shown by the bar
+maskings within neighbourhoods (the explorer's page
+:ref:`shows how much that saves <graphshapiq-exact>` for large molecules). The lab's molecules are
+small, their neighbourhoods cover them, and GraphSHAP-IQ evaluates the GNN on all :math:`2^n` maskings: up to 32,768, a few seconds at most, shown by the bar
 under the molecule. From these values, the worker computes the Möbius interactions, the Shapley
 values, and the 2-SII :cite:p:`Bordt.2023`, exactly as ``shapiq``'s ``MoebiusConverter`` does; the
 browser's numbers agree with the Python package's to :math:`10^{-5}` (``check_lab.py`` checks it).

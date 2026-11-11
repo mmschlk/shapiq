@@ -1,4 +1,4 @@
-/* What the four GraphSHAP-IQ demos share (see ../README.md): their controls and layout, in the
+/* What the GraphSHAP-IQ demos share (see ../README.md): their controls and layout, in the
    language of the FIxLIP demo, and the molecule drawn as an SI-graph. Every demo's container gets
    the class `gsq` from demo.js; its own demo.css adds what only it has. */
 
