@@ -1315,6 +1315,11 @@ body[data-theme="dark"] .orders-demo {
   background: var(--orders-sheet);
 }
 
+/* (a hand over what can be pointed at on the face: a mark and the room around it, demo.js) */
+.orders-demo-plan-view.orders-demo-plan-pointing {
+  cursor: pointer;
+}
+
 /* (swapped at once as the layer pointed at changes: every face draws the input in the same place,
    so only the marks change; a fade on every swap made the card flicker as the pointer ran over the
    stack. A new example's card fades as a whole: demo.js, flap) */

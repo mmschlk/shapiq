@@ -51,8 +51,9 @@
 // interactions and players of every order, picked by hand, wear a numbered mark; the pointer over
 // one (on a touch screen, a tap) brings it out, and a tip says its values (a player's own and its
 // strongest groups'; an interaction's players' own, and what they add together), and, where the
-// data has a note on it, the note. On the molecule and the houses, every player and every group's
-// shape can be pointed at too; on a photo, only what is marked. The
+// data has a note on it, the note. Only what is marked can be pointed at, and generously: the room
+// around a mark answers too, and the marked itself (its atom, feature, patch or word, a group's
+// shape). On the houses' map, which has no marks, every row and every house can. The
 // chip clears as far as the explanation fits: the black box opens, all the way
 // where it is exact. The demo starts with the problem alone (unless data-reveal="open"): a click on
 // the chip explains it, and the explanation is built under it from the top down. The problem stays
@@ -295,10 +296,13 @@
   // puts back what an inspection changed. The picked (picks: their players) wear a numbered mark
   // each, which says that they can be pointed at, where spots finds room for it (the first of its
   // places clear of the other marks and of what the face must not cover, obstacles, each a middle
-  // and a radius). Beside them, every target can be pointed at, and the shapes of the groups too
-  // (groupAt: the strongest under the pointer, as the strongest lie on top); or, where only the
-  // picked can (only: a photo, whose patches cover the face and whose links are thin), nothing else
-  const inspectorOf = (svg, marks, targets, describe, { find = () => null, reset = () => {}, picks = [], spots = () => [], obstacles = [], only = false } = {}) => {
+  // and a radius). Only the picked can be pointed at: by their mark, and the room around it; a
+  // player, by itself too (its atom, its feature, its patch or its word); a group, by its shape
+  // (groupAt: the strongest of the picked under the pointer, as the strongest lie on top). What
+  // is not picked says nothing: small shapes that lie on each other were hard to hit, and what
+  // they said had no story. A face without picks (all: the houses' map, of houses and rows) lets
+  // every target be pointed at
+  const inspectorOf = (svg, marks, targets, describe, { find = () => null, reset = () => {}, picks = [], spots = () => [], obstacles = [], all = false } = {}) => {
     const ring = add(svg, "rect", { class: "orders-demo-inspect-ring", visibility: "hidden" });
     const shapes = new WeakMap(marks.map((mark) => [mark.node, mark]));
     const groups = new Map(); // a group's target, the same one while the pointer stays on its shape
@@ -326,16 +330,16 @@
       add(mark, "text", { x, y: roundTo(y + 0.1, 2) }, String(picked.length + 1));
       picked.push({ ...target, hx: x, hy: y, hr: MARK + 0.4, mark });
     }
+    // (a picked group's shape stands for the group as its mark does: the same target)
+    for (const target of picked) if (target.group) groups.set(target.group.join(","), target);
     return {
-      targets: only ? picked : [...picked, ...targets],
+      targets: all ? targets : picked,
       find,
       groupAt(x, y) {
-        if (only) return null;
         for (const node of document.elementsFromPoint(x, y)) {
           if (node === svg) break;
           const mark = shapes.get(node);
-          if (!mark || mark.plain || mark.ratio < POINTABLE) continue;
-          if (!groups.has(mark.key)) groups.set(mark.key, find(mark.key.split(",").map(Number)));
+          if (!mark || mark.plain || mark.ratio < POINTABLE || !groups.has(mark.key)) continue;
           return groups.get(mark.key);
         }
         return null;
@@ -651,8 +655,7 @@
       const [cx, cy] = [0, 1].map((axis) => ends.reduce((sum, end) => sum + end[axis], 0) / ends.length);
       return [[cx, cy], [cx + 4, cy - 4], [cx - 4, cy + 4], [cx + 4, cy + 4], [cx - 4, cy - 4]];
     };
-    // (only the picked can be pointed at: the patches cover the photo, and the links are thin)
-    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), { find, picks: picksOf(example, sheet), spots, only: true });
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), { find, picks: picksOf(example, sheet), spots });
   }
 
   // one house: its explanation as a tree that grows one level per order. The features are on top,
@@ -973,7 +976,8 @@
       };
     };
     const find = (players) => targets.find((target) => target.row !== undefined && sheet.rows[target.row][0].join(",") === players.join(",")) ?? null;
-    return inspectorOf(svg, [], targets, describe, { find, reset: () => paint(rest) });
+    // (no picks here: every row and every house can be pointed at)
+    return inspectorOf(svg, [], targets, describe, { find, reset: () => paint(rest), all: true });
   }
 
   // -- the sheets' names and fits -----------------------------------------------------------------------
@@ -2028,30 +2032,53 @@
       cardTip.style.left = `${roundTo(Math.max(2, Math.min(box.width - width - 2, x - width / 2)), 1)}px`;
       cardTip.style.top = `${roundTo(above - height - 9 >= 0 ? above - height - 9 : below + 9, 1)}px`;
     }
-    // the target under the pointer: the nearest of those whose box holds it (a small one's box at
-    // least a few pixels wide, more for a finger)
+    // the target under the pointer. A picked one is pointed at by its mark, and generously: the
+    // pointer on the mark; else on the picked itself, where it is a box of its own (a player's
+    // atom, feature, patch or word, a group's circle on a house's tree); else near a mark, within
+    // REACH pixels of its middle, a finger's width whatever the face's size; of several, the
+    // nearest, and under a mouse the one already pointed at a little longer, so that it does not
+    // flicker between two. A target without a mark (a house, a row), by its box, a small one's at
+    // least a few pixels wide, more for a finger. Last, a picked group's shape under the pointer
+    const REACH = { mouse: 26, touch: 30 };
+    const STAYS = 1.2; // how much nearer another target has to be than the one pointed at
     function targetAt(event) {
       const inspector = inspectorNow();
       if (!inspector) return null;
       const face = planView.firstChild.getBoundingClientRect();
       const [x, y] = [((event.clientX - face.left) / face.width) * 100, ((event.clientY - face.top) / face.height) * 100];
-      const least = ((event.pointerType === "mouse" ? 5 : 11) / face.width) * 100;
-      // (a picked one is pointed at by its mark; the nearest of those under the pointer, and a
-      // mark before anything else)
-      let [best, nearest] = [null, Infinity];
+      const mouse = event.pointerType === "mouse";
+      const least = ((mouse ? 5 : 11) / face.width) * 100;
+      const reach = ((mouse ? REACH.mouse : REACH.touch) / face.width) * 100;
+      // (a target's box, at least so wide; a picked one's as it is: the room around its mark is wide)
+      const within = (target, wide) => Math.abs(x - target.x) <= Math.max(target.rx, wide) && Math.abs(y - target.y) <= Math.max(target.ry, wide);
+      // (a rank and a distance: on a mark, 0; on the picked itself, 1; near a mark, 2)
+      let [best, rank, nearest] = [null, Infinity, Infinity];
       for (const target of inspector.targets) {
-        const [tx, ty, rx, ry] = target.hr ? [target.hx, target.hy, target.hr, target.hr] : [target.x, target.y, target.rx, target.ry];
-        if (Math.abs(x - tx) > Math.max(rx, least) || Math.abs(y - ty) > Math.max(ry, least)) continue;
-        const distance = Math.hypot(x - tx, y - ty) - (target.hr ? 100 : 0);
-        if (distance < nearest) [best, nearest] = [target, distance];
+        let [at, distance] = [Infinity, Infinity];
+        if (target.hr) {
+          const away = Math.hypot(x - target.hx, y - target.hy);
+          if (away <= target.hr) [at, distance] = [0, away];
+          else if (target.rx > 0 && within(target, 0)) [at, distance] = [1, Math.hypot(x - target.x, y - target.y)];
+          else if (away <= reach) [at, distance] = [2, away];
+        } else if (within(target, least)) {
+          [at, distance] = [1, Math.hypot(x - target.x, y - target.y)];
+        }
+        if (mouse && target === inspected?.target) distance -= STAYS;
+        if (at < rank || (at === rank && distance < nearest)) [best, rank, nearest] = [target, at, distance];
       }
       return best ?? inspector.groupAt(event.clientX, event.clientY);
     }
     planView.addEventListener("pointermove", (event) => {
-      if (event.pointerType === "mouse") inspect(targetAt(event));
+      if (event.pointerType !== "mouse") return;
+      const target = targetAt(event);
+      // (a hand over what can be pointed at)
+      planView.classList.toggle("orders-demo-plan-pointing", Boolean(target));
+      inspect(target);
     });
     planView.addEventListener("pointerleave", (event) => {
-      if (event.pointerType === "mouse") letGo();
+      if (event.pointerType !== "mouse") return;
+      planView.classList.remove("orders-demo-plan-pointing");
+      letGo();
     });
     // (a tap on a target inspects it; on the face beside one, or anywhere else in the demo, lets go)
     planView.addEventListener("click", (event) => inspect(targetAt(event)));

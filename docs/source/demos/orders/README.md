@@ -215,10 +215,18 @@ layers shrink to fit the window.
   values: for an interaction, its players' own, what they add together on top of them, and for a
   pair the sum. Where the data has a note on it that holds on that order (`notes`), the tip says
   it in a sentence; much of what is picked has none, on purpose, or a note that there is no
-  story. On the photos, only the marks can be pointed at (the patches cover the photo, and the
-  links are thin). On the molecule and the houses' trees, every atom, feature and group's shape
-  can be pointed at too. On the many houses' map, a row of the list shows itself on the map, and
-  a house says its prediction and its strongest values. With a mouse, pointing is hovering; on a
+  story. Only what is marked can be pointed at, in every example: what is not picked says
+  nothing (hovering small shapes that lie on each other was fiddly, and what they said had no
+  story). What is marked is easy to hit (`targetAt`): the mark itself; the marked itself, where
+  it is a box of its own (a player's atom, feature, patch or word, a group's circle on a house's
+  tree); the room around a mark, within `REACH` pixels of its middle (26 for a mouse, 30 for a
+  finger, whatever the face's size, where a mark's own radius is 8 pixels on the widest face and
+  2 on a phone's); and a marked group's shape. Of several marks in reach, the nearest answers,
+  and under a mouse the one already pointed at stays a little longer, so that the tip does not
+  flicker between two. Over what answers, the pointer is a hand. On a phone, where the face is
+  small, nearly all of it is in reach of a mark: a tap on the face shows the nearest one, and a
+  tap beside the card lets go. On the many houses' map, which has no marks, a row of the list
+  shows itself on the map, and a house says its prediction and its strongest values. With a mouse, pointing is hovering; on a
   touch screen, a tap, and a tap elsewhere lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
   brings it out when pointed at. To inspect another layer's face, pin the layer first (click it):
   the pointer can then go to the card. The face is not reachable by keyboard; the "Top" line is

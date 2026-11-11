@@ -65,8 +65,8 @@ and see the fit rise. On the card, the numbers now also mark a few interactions,
 for every order: an interaction pointed at says what its players add alone, and what they add
 together, on top of that. Click a layer to keep it there, then point at its card. Some of what is
 marked has a note, a sentence on what the values show; the rest has none, or says so: not every
-value of a model has a story. On the molecule and the house, every atom, feature and group can be
-pointed at as well; on the photos, only what is marked.
+value of a model has a story. Only what is marked can be pointed at; a mark need not be hit
+exactly, the room around it answers too.
 
 .. shapiq-demo:: orders
    :step: interactions
