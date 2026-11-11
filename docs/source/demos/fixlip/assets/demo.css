@@ -351,30 +351,6 @@ body[data-theme="dark"] .fixlip-demo {
   transition: none;
 }
 
-/* next to the edges, a new caption fades in by its tokens' words and chips: as a whole, it would be
-   a layer of its own while it fades, with its chips over the edges */
-.fixlip-demo-renewed .fixlip-demo-token {
-  animation: fixlip-demo-token-in 450ms ease backwards;
-}
-
-.fixlip-demo-renewed .fixlip-demo-token::before,
-.fixlip-demo-renewed .fixlip-demo-token::after {
-  animation: fixlip-demo-fade-in 450ms ease backwards;
-}
-
-@keyframes fixlip-demo-fade-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes fixlip-demo-token-in {
-  from {
-    border-color: transparent;
-    color: transparent;
-  }
-}
-
 .fixlip-demo-ghost {
   pointer-events: none;
 }
@@ -436,46 +412,67 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   outline: none;
 }
 
-/* the caption, whose tokens the edges end at the tops of */
+/* the caption, whose tokens the edges end at the tops of: an excerpt of a longer text (see
+   placeExcerpt in the script), the same in every view, so that switching views moves no word. Its box
+   keeps the room of the longest caption and dissolves the text around it at its top and bottom; the
+   mask makes it a layer over the edges, which so pass under the words */
 .fixlip-demo-caption {
   position: relative;
-  transition: opacity 450ms ease;
+  height: var(--fixlip-caption-height, auto);
   margin: 0.9rem 0 0;
-  text-align: center;
+  padding-inline: 6px; /* room for the boxes and rings of the tokens at its sides, which it cuts */
+  overflow: hidden;
   font-family: var(--font-stack--monospace);
   font-size: 0.92rem;
-  line-height: 2.2;
+  line-height: 2.1;
+  text-align: start;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
+  transition: opacity 450ms ease;
 }
 
-/* a token's box is the same in every view, with and without an explanation (its border only turns
-   transparent), so that switching views moves no word: only colors, outlines, and shadows change.
-   Its chip (the card's color under its tint) lies under the edges, its word over them: the
-   chip is painted first in the stage (z-index -1), the edges before the caption that holds the word
-   (the stage's order); so the edges to a token on the caption's second line stay in view over the
-   first */
+.fixlip-demo-caption-inner {
+  display: block;
+}
+
+/* the text around the caption, its words fading with their distance to it (the script): in full
+   without an explanation, receded with one, behind the caption's boxed tokens */
+.fixlip-demo-context {
+  color: var(--color-foreground-secondary);
+  opacity: 0.45;
+  transition: opacity 300ms ease;
+}
+
+.fixlip-demo-none .fixlip-demo-context {
+  opacity: 1;
+}
+
+/* a token's box is the same in every view (its border only turns transparent without an
+   explanation, and its line height keeps it within the text's lines), so that switching views moves
+   no word: only colors, outlines, and shadows change. Its tint lies under its word, over the edges */
 .fixlip-demo-token {
   position: relative;
-  padding: 0.12rem 0.32rem;
+  padding: 0.1rem 0.25rem;
   border: 1px solid var(--shapiq-border);
-  border-radius: 6px;
+  border-radius: 3px;
   background: transparent;
   color: var(--color-foreground-primary);
   font: inherit;
+  line-height: 1.5;
   cursor: pointer;
-  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration), color var(--shapiq-duration);
+  transition:
+    opacity var(--shapiq-duration),
+    border-color var(--shapiq-duration),
+    box-shadow var(--shapiq-duration),
+    color var(--shapiq-duration);
 }
 
-.fixlip-demo-token::before,
 .fixlip-demo-token::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: var(--shapiq-surface);
-}
-
-.fixlip-demo-token::after {
   background: var(--fixlip-tint, transparent);
   transition: background-color var(--shapiq-duration);
 }
@@ -485,7 +482,7 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   white-space: nowrap;
 }
 
-/* without an explanation, the photo and the caption are plain: no grid, no chips */
+/* without an explanation, the photo and the caption are plain: no grid, no boxes */
 .fixlip-demo-none .fixlip-demo-token {
   border-color: transparent;
   cursor: default;
@@ -527,10 +524,23 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   text-shadow: 0.04em 0 0 currentColor;
 }
 
-.fixlip-demo-token.fixlip-demo-focus,
+/* the token pointed at (or its node in the clique's graph): a stronger box, drawn by a shadow that
+   takes no room; with the keyboard, also a dashed ring */
+.fixlip-demo-token.fixlip-demo-focus {
+  border-color: var(--color-foreground-primary);
+  box-shadow: 0 0 0 1.5px var(--color-foreground-primary);
+}
+
+@media (hover: hover) {
+  .fixlip-demo:not(.fixlip-demo-none) .fixlip-demo-token:hover {
+    border-color: var(--color-foreground-primary);
+    box-shadow: 0 0 0 1.5px var(--color-foreground-primary);
+  }
+}
+
 .fixlip-demo-token:focus-visible {
   outline: 2px dashed var(--color-foreground-primary);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .fixlip-demo-edges {
@@ -1188,6 +1198,7 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   .fixlip-demo-caption,
   .fixlip-demo-token,
   .fixlip-demo-token::after,
+  .fixlip-demo-context,
   .fixlip-demo-about,
   .fixlip-demo-about.fixlip-demo-about-open,
   .fixlip-demo-panel > :not(.fixlip-demo-live),
@@ -1196,9 +1207,6 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
     transition: none;
   }
 
-  .fixlip-demo-renewed .fixlip-demo-token,
-  .fixlip-demo-renewed .fixlip-demo-token::before,
-  .fixlip-demo-renewed .fixlip-demo-token::after,
   .fixlip-demo-hint {
     animation: none;
   }

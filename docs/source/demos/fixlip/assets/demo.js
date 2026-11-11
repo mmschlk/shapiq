@@ -10,7 +10,8 @@
 // the photo and as a graph of their interactions, as in FIxLIP's figures; or the full explanation,
 // every player tinted by its main effect and the strongest interactions drawn between them; or no
 // explanation at all, only the photo, the caption, and the model's similarity, for contrast. The
-// caption's words keep their places in all three: only their colors and outlines change.
+// caption is an excerpt of a longer (invented) text, laid out the same in all three, so that no word
+// moves: with an explanation, the text around it recedes and the caption's tokens get their boxes.
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
@@ -442,7 +443,6 @@
 
       cells.replaceChildren();
       caption.replaceChildren();
-      caption.classList.remove("fixlip-demo-renewed"); // see crossFade
       players = [];
       for (let k = 0; k < regionCount; k += 1) {
         const cell = el("button", "fixlip-demo-cell");
@@ -450,7 +450,7 @@
         cells.append(cell);
         players.push(cell);
       }
-      const { inner, tokens } = captionContent(ex);
+      const { inner, tokens } = captionContent(image, ex);
       caption.append(inner);
       players.push(...tokens);
       spoken.textContent = `Caption: ${captionString(ex)}`;
@@ -476,6 +476,7 @@
       setScale(model.norms, ex.similarity);
       predictionCredit.replaceChildren(...creditText(image));
       setInteractive();
+      placeExcerpt();
       show(null, true);
     }
 
@@ -559,15 +560,30 @@
     };
     const captionString = (e) => spaced(e).flat().join("");
 
-    // the caption: its tokens, a word with the punctuation after it on one line; the same boxes in
-    // every view, with and without an explanation, so that switching views moves no word
-    function captionContent(e) {
+    // the caption: its tokens within the text around it, whose words fade with their distance to
+    // the caption (the text is not read out); the same layout in every view, with and without an
+    // explanation, so that switching views moves no word
+    function captionContent(image, e) {
       const inner = el("span", "fixlip-demo-caption-inner");
+      const [before, after] = image.excerpt ?? ["", ""];
+      const around = (text, side) => {
+        const span = el("span", "fixlip-demo-context");
+        span.setAttribute("aria-hidden", "true");
+        const words = text ? text.split(" ") : [];
+        words.forEach((word, k) => {
+          const distance = side === "before" ? words.length - k : k + 1;
+          const fading = el("span", "", word);
+          fading.style.opacity = (0.8 * Math.max(0, 1 - (distance - 1) / 18)).toFixed(2);
+          span.append(...(side === "before" ? [fading, " "] : [" ", fading]));
+        });
+        return span;
+      };
       const tokens = e.tokens.map(([text]) => {
         const token = el("button", "fixlip-demo-token", text);
         token.type = "button";
         return token;
       });
+      inner.append(around(before, "before"));
       let word = null; // a word with the punctuation and quotes around it, kept on one line
       spaced(e).forEach(([space], k) => {
         if (word && !space) {
@@ -578,7 +594,21 @@
         word.append(tokens[k]);
         inner.append(...(space ? [space] : []), word);
       });
+      inner.append(around(after, "after"));
       return { inner, tokens };
+    }
+
+    // the caption's box shows the caption's lines in its middle, the text around them cut off
+    function placeExcerpt() {
+      const inner = caption.firstElementChild;
+      if (!inner) return;
+      inner.style.transform = "";
+      // offsets from the caption, the tokens' positioned parent
+      const tokens = players.slice(regionCount);
+      const top = Math.min(...tokens.map((t) => t.offsetTop));
+      const bottom = Math.max(...tokens.map((t) => t.offsetTop + t.offsetHeight));
+      const middle = caption.clientHeight / 2;
+      inner.style.transform = `translateY(${Math.round(middle - (top + bottom) / 2)}px)`;
     }
 
     // the caption, the model's line, and the credit keep the room of the longest of all photos and
@@ -593,21 +623,24 @@
       reserve(predictionCredit, data.images.map(creditText));
     }
 
-    // the caption's room: that of its tallest tokens, so that switching photos and models moves
-    // nothing under it
+    // the caption's room: its tallest lines of tokens, of all photos and models, and half a line of
+    // the text around them above and below, so that switching photos and models moves nothing
     function reserveCaption(all) {
       const width = caption.getBoundingClientRect().width;
       if (!width) return;
       const probe = caption.cloneNode(false);
-      Object.assign(probe.style, { position: "absolute", visibility: "hidden", width: `${width}px`, minHeight: "0", height: "auto" });
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", width: `${width}px`, height: "auto" });
       caption.after(probe);
-      let tallest = 0;
-      for (const [, , e] of all) {
-        probe.replaceChildren(captionContent(e).inner);
-        tallest = Math.max(tallest, probe.getBoundingClientRect().height);
+      let room = 0;
+      for (const [image, , e] of all) {
+        const content = captionContent(image, e);
+        probe.replaceChildren(content.inner);
+        const boxes = content.tokens.map((t) => t.getBoundingClientRect());
+        const lines = Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top));
+        room = Math.max(room, lines + parseFloat(getComputedStyle(probe).lineHeight));
       }
       probe.remove();
-      caption.style.minHeight = `${Math.ceil(tallest)}px`;
+      caption.style.setProperty("--fixlip-caption-height", `${Math.ceil(room)}px`);
     }
 
     // the least height of a node: that of the tallest of the contents, in a hidden copy of it
@@ -647,10 +680,8 @@
         return ghost;
       });
       change();
-      // a new caption fades in: as a whole without an explanation, and else by its tokens' words and
-      // chips (a fading caption would lift its chips over the edges, see the CSS)
-      const fresh = newPhoto && state.view === "none" ? [cells, edges, caption] : [cells, edges];
-      caption.classList.toggle("fixlip-demo-renewed", newPhoto && state.view !== "none");
+      // a new photo's caption fades in with it
+      const fresh = newPhoto ? [cells, edges, caption] : [cells, edges];
       for (const node of fresh) node.classList.add("fixlip-demo-fresh");
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
@@ -1075,6 +1106,7 @@
       requestAnimationFrame(() => {
         setShift();
         reserveRoom();
+        placeExcerpt();
         if (state.focus === null) show(null);
       });
     }).observe(root);
