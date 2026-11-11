@@ -8,12 +8,15 @@ graphs. This folder is not a page: it holds what they share, a library of code a
 
 | Demo | Folder | What a reader does | What they should learn |
 |---|---|---|---|
-| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions. Then switches between *Prediction* (click atoms to mask them, the GNN reruns in the browser), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. Also the reference demo. |
+| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Hide atoms* (click atoms to mask them, the GNN reruns in the browser and answers again), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. Also the reference demo. |
 | Lab | `../graphshapiq-lab` | Puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring. A Web Worker then computes the GNN's answer and the **exact** Shapley values and 2-SII over all 2ⁿ maskings, with a progress bar. | The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
 | Exact (a figure on the explorer's page, under "Exact, and still feasible"; no page or card of its own) | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
 
-Each demo's `index.rst` is its page, with the claims a reader can check in the demo. The cards on
-`../index.rst` use `_static/images/hero_graphshapiq_<demo>_demo.png`.
+Each demo's `index.rst` is its page. For now a page holds its demos only: the write-up (what you
+see, what it shows, how it was computed, with the claims a reader can check in the demo) follows
+once the demos are settled. The last write-up is in the repository's history, the `index.rst` files
+at commit 20c526c. The cards on `../index.rst` use `_static/images/hero_graphshapiq_<demo>_demo.png`,
+which still show the demos before the question card: retake them when the look is settled.
 
 ## How it fits together
 
@@ -47,6 +50,12 @@ graphshapiq-<demo>/
   - `geom`, `skeleton` and `tile` draw molecules and thumbnails. `legend`, `row`, `formula`,
     `groupName` and `atomName` build the panels. `colorOf`, `signed`, `percent` and `bits` format
     values.
+  - `question(tasks, pick)` builds the question in plain words, which the explorer and the lab
+    show over the molecule: a switch of the questions (`label`), and a card of the one asked with
+    the question in full (`question`), what its term means and when the answer is yes (`meaning`),
+    the pattern drawn as a small skeletal formula (`motif(m)`), whether the molecule has the pattern
+    (the ground truth, outlined in the drawing), and the GNN's answer. Its
+    `set({task, subject, has, p, note})` shows a question for a molecule.
   - `switcher(label, options, pick)`, `picker(label, molecules, pick)` and `hinter(frame)` build
     the controls every demo has, in the look of the FIxLIP and orders demos: a switch whose pill
     slides to the option chosen, the molecules as tiles, and the dark hint over the molecule
@@ -65,7 +74,8 @@ graphshapiq-<demo>/
   `#FF0D57` raises the odds of *yes*, blue `#1E88E5` lowers them, and violet is the receptive
   field. The layout breaks at a container width of 42rem, not at the viewport.
 - **Data.** `compute/config.toml` is the single source of the molecules, the questions and their
-  texts (blurbs and takeaways). `explain.py` writes the full GraphSHAP-IQ results to
+  texts (the questions' plain words, blurbs and takeaways). `pack.py --texts` writes changed texts
+  into the `data.js` files as they are, without `compute/results/`. `explain.py` writes the full GraphSHAP-IQ results to
   `compute/results/`, which is gitignored and not committed. `pack.py` turns them into the
   `data.js` files. The GNN weights are in the data as folded affine maps, which `pack_gnn` checks
   against PyTorch (≤ 1e-3).
@@ -123,6 +133,12 @@ Before you push, check every demo you changed:
   `GraphBaselineImputer` with a mean baseline, as in the paper.
 - **The GNN sees elements and links only**, not bond orders. That is why indigo fools the
   *Indole?* GNN, which the explorer turns into a story.
+- **A lay reader must know what is asked.** *Indole?*, *Mutagenic?* and *PAINS?* on a bare switch
+  told a reader neither what they mean nor when a molecule is one. The question card says it in
+  plain words, draws the pattern, says whether this molecule has it, and puts the GNN's answer next
+  to it. The lab finds the pattern in the reader's molecule itself (`patternOf` in its `demo.js`).
+  The card says "one kind of PAINS is a catechol" and "a known warning sign is a nitro group": both
+  patterns are signs, not definitions (2-aminofluorene is a mutagen without a nitro group).
 - **Questions with a ground truth.** B-XAIC's indole and PAINS (catechol) labels follow from
   substructures, and the nitro group is a known Ames alert, so a reader can see whether the
   explanation finds the truth (the thin outline).
@@ -169,6 +185,10 @@ A second pass aligned them with the FIxLIP and orders demos: class names `gsq-*`
 sliding pill, the dark hint, and one molecule picker for all four (the lab's examples are tiles
 too). It also gave the orders demo a real curve (axes, an order per click, the R² itself where it is
 below 0) and the exact demo a fourth layer and the numbers at its bars.
+
+A third pass made the questions understandable (the question card above), moved the GNN's answer
+from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
+atoms*, and took the write-ups off the pages until the demos are settled.
 
 The suggestion from that run was to lead with the explorer (the safe reference) and feature the
 lab (the wow), with the exact and orders demos as explainer pages.

@@ -63,6 +63,24 @@
     g.pos.forEach(([x, y], k) => { if (m.atoms[k][0] !== "C") svg("circle", { cx: x, cy: y, r: 3.2 }, node); });
     return node;
   }
+  // a question's pattern as a small skeletal formula: its bonds, and the letters of the atoms that
+  // are not carbon, with their hydrogens (OH, NH) on the side away from the atom's bonds
+  function motif(m) {
+    const node = svg("svg", { class: "gsq-motif", viewBox: "0 0 100 100", "aria-hidden": "true" });
+    const g = geom(m, 64, 30), nb = neighbors(m), size = 0.54 * g.s;
+    skeleton(node, m, 0.16, "", g);
+    g.pos.forEach(([x, y], k) => {
+      const [element, , , hydrogens] = m.atoms[k];
+      if (element === "C") return;
+      const letter = (text, at) => { svg("text", { x: at[0], y: at[1], "font-size": size, "stroke-width": 0.5 * size }, node).textContent = text; };
+      if (hydrogens) {
+        const dx = x - nb[k].reduce((sum, j) => sum + g.pos[j][0], 0) / nb[k].length, dy = y - nb[k].reduce((sum, j) => sum + g.pos[j][1], 0) / nb[k].length;
+        letter("H", Math.abs(dx) > 0.2 * g.s ? [x + Math.sign(dx) * 0.74 * size, y] : [x, y + Math.sign(dy) * 0.95 * size]);
+      }
+      letter(element, [x, y]);
+    });
+    return node;
+  }
   // a row of a list: the molecule with a group's atoms marked, its name, a meter, and its value
   function row(m, atoms, v, largest, name) {
     const li = h("li", "gsq-row");
@@ -331,6 +349,42 @@
     });
     return { node, buttons, set(k) { buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); } };
   }
+  // The question, in plain words. A switch of the questions, and under it a card of the one asked:
+  // the question in full, what its term means and the pattern that makes a yes (drawn), whether the
+  // molecule has the pattern, and what the GNN answers. `pick(task)` hears a click on a question;
+  // `set({task, subject, has, p, note})` shows a question for a molecule (`subject`, its name),
+  // which has the question's pattern or not, with the GNN's probability of yes `p` (`note`: what
+  // the answer is for, if not for the whole molecule)
+  function question(tasks, pick) {
+    const choice = switcher("Question", tasks.map((t) => t.label), (k) => pick(tasks[k]));
+    const picture = h("div", "gsq-ask-motif"), title = h("p", "gsq-ask-title"), meaning = h("p"), here = h("p", "gsq-ask-here");
+    const number = h("span", "gsq-pred-value"), verdict = h("span", "gsq-verdict"), note = h("p", "gsq-ask-note");
+    const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark"), no = h("span", "gsq-scale-label"), yes = h("span", "gsq-scale-label gsq-r");
+    scale.setAttribute("aria-hidden", "true");
+    scale.append(fill, h("span", "gsq-scale-half"), mark, no, yes);
+    const card = h("div", "gsq-ask-card", picture, h("div", "gsq-ask-text", title, meaning, here), h("div", "gsq-ask-answer", h("p", "gsq-barlab", "The GNN answers"), h("p", "gsq-pred-number", number, verdict), scale, note));
+    const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", "Question"), choice.node), card);
+    let asked = null;
+    return {
+      node,
+      buttons: choice.buttons,
+      set({ task, subject, has, p, note: about }) {
+        choice.set(tasks.indexOf(task));
+        if (task !== asked) {
+          asked = task;
+          picture.replaceChildren(motif(task.motif));
+          title.textContent = task.question; meaning.textContent = task.meaning;
+          no.textContent = task.no; yes.textContent = task.yes;
+        }
+        const name = task.truthLabel;
+        here.replaceChildren(h("strong", "", subject), has ? ` contains ${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}. ` : ` contains no ${name}.`);
+        if (has) here.append(h("span", "gsq-key", h("i", "gsq-outline"), "The grey outline marks it."));
+        number.textContent = percent(p); verdict.textContent = p >= 0.5 ? task.yes : task.no;
+        fill.style.width = mark.style.left = `${p * 100}%`;
+        note.textContent = about || `A graph neural network (GNN), trained on ${task.trained.toLocaleString("en")} molecules.`;
+      },
+    };
+  }
   // the hint over the molecule, until the reader has done what it says: `show(text)` and `hide()`
   function hinter(frame) {
     const node = h("span", "gsq-hint"); node.setAttribute("aria-hidden", "true"); node.hidden = true; frame.append(node);
@@ -361,5 +415,5 @@
     document.head.appendChild(loader);
   }
 
-  window.ShapiqGraph = { RED, BLUE, VIOLET, NAMES, reducedMotion, hovers, switcher, picker, hinter, h, svg, sig, bits, signed, percent, colorOf, value, sameSet, neighbors, geom, skeleton, tile, row, groupName, atomName, legend, formula, predict, createScene, mount };
+  window.ShapiqGraph = { RED, BLUE, VIOLET, NAMES, reducedMotion, hovers, switcher, picker, question, hinter, h, svg, sig, bits, signed, percent, colorOf, value, sameSet, neighbors, geom, skeleton, tile, motif, row, groupName, atomName, legend, formula, predict, createScene, mount };
 })();

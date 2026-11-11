@@ -6,7 +6,7 @@ the figure of receptive fields on the explorer's page (`../../graphshapiq-exact`
 
 | File | What it does |
 |---|---|
-| `config.toml` | The questions (tasks), the explorer's molecules as SMILES with their texts, the lab's tasks, and the molecules of the figure of receptive fields (exact). |
+| `config.toml` | The questions (tasks) with their plain words, the explorer's molecules as SMILES with their texts, the lab's tasks, and the molecules of the figure of receptive fields (exact). |
 | `molecules.py` | What the scripts share: molecules as graphs, the datasets, and the GNN (B-XAIC's GIN). |
 | `train.py` | Trains a GNN per task: `results/models/<task>.pt`, with its scores. |
 | `explain.py` | Explains every molecule for every task with GraphSHAP-IQ: `results/<molecule>_<task>.json` (all Möbius interactions, k-SII of orders 1 to 4). |
@@ -24,6 +24,7 @@ pip install -e "../../../../..[graph]" rdkit scikit-learn networkx
 python train.py      # 3 GNNs: 5 to 10 minutes each for B-XAIC, a minute for Mutagenicity
 python explain.py    # 24 explanations, at most 15 seconds each (4 minutes in all)
 python pack.py       # all of them (a minute); or e.g. `python pack.py --demos lab exact`
+python pack.py --texts  # only config.toml's texts, into the data that is there (needs no results/)
 python check_lab.py  # optional, needs Node: the lab's numbers against shapiq's
 ```
 
@@ -35,6 +36,13 @@ The first run downloads B-XAIC's molecules from [Hugging Face](https://huggingfa
 The data of the docs was computed with Python 3.13, shapiq from the repository, torch 2.15,
 torch_geometric 2.8 and RDKit 2026.09, on four CPU cores. The GNNs score a test F1 of 0.98
 (*Indole?*), 0.79 (*Mutagenic?*) and 0.94 (*PAINS?*).
+
+## Change a text
+
+The questions' plain words (`label`, `question`, `meaning`, and `motif`, the pattern the question
+card draws), the molecules' blurbs and takeaways are in `config.toml`. `python pack.py --texts`
+writes them into the explorer's and the lab's `data.js` as they are: the GNNs and the explanations
+stay, so that it needs neither `results/` nor a GNN (RDKit draws the patterns).
 
 ## Change a demo's molecules
 

@@ -1,16 +1,18 @@
 // The GraphSHAP-IQ explorer (demos/graphshapiq-explorer/index.rst): eight molecules, three GNNs
 // (one per question), and every molecule explained for every question, exactly, with GraphSHAP-IQ.
 //
-// Three views: the prediction (click atoms to hide them; the GNN runs in the page), the atoms alone
-// (their Shapley values, a ring around each atom), and the atoms together (k-SII of orders 2 to 4
-// and the Möbius interactions: bands between two atoms, shapes around more). The explanations are
+// Over the molecule, the question in plain words (the library's `question`): what it asks, the
+// pattern that makes a yes, whether the molecule has it, and what the GNN answers. Under it, three
+// views: hide atoms (click atoms to hide them; the GNN runs in the page and answers again), the
+// atoms alone (their Shapley values, a ring around each atom), and the atoms together (k-SII of
+// orders 2 to 4 and the Möbius interactions: bands between two atoms, shapes around more). The explanations are
 // precomputed in data.js (../../graphshapiq-common/compute); the shared library
 // (../../graphshapiq-common/assets/demo.js, `ShapiqGraph`) draws and animates the molecule.
 (() => {
   const G = window.ShapiqGraph;
   if (!G) return console.error("The GraphSHAP-IQ explorer needs ../graphshapiq-common/demo.js first.");
   const { h, svg, sig, bits, signed, percent, value, legend, formula } = G;
-  const VIEWS = [["predict", "Prediction"], ["alone", "Atoms alone"], ["together", "Atoms together"]];
+  const VIEWS = [["predict", "Hide atoms"], ["alone", "Atoms alone"], ["together", "Atoms together"]];
   const ORDERS = { 2: ["Pairs", "2-SII"], 3: ["Groups of 3", "3-SII"], 4: ["Groups of 4", "4-SII"], M: ["All orders", "Möbius"] };
 
   G.mount("graphshapiq-explorer-demo", "SHAPIQ_GRAPHSHAPIQ_EXPLORER", (root, data) => {
@@ -27,7 +29,7 @@
     const bar = h("div", "gsq-bar"), switches = h("div", "gsq-switches");
     const mols = G.picker("Molecule", data.molecules, (k) => { state.mol = data.molecules[k]; state.task = taskById(state.mol.task); reset(true); });
     const views = G.switcher("Explanation", VIEWS.map((v) => v[1]), (k) => setView(VIEWS[k][0]));
-    const tasks = G.switcher("Question", data.tasks.map((t) => t.label), (k) => { state.task = data.tasks[k]; reset(false); });
+    const ask = G.question(data.tasks, (t) => { state.task = t; reset(false); });
     const info = h("button", "gsq-info", "i");
     info.type = "button"; info.setAttribute("aria-label", "What does the demo show?"); info.setAttribute("aria-expanded", "false");
     const about = h("div", "gsq-about"); about.hidden = true;
@@ -37,8 +39,8 @@
       "<p>A <strong>graph neural network</strong> (GNN) reads a molecule as a graph: atoms, linked by bonds. In each of its three layers, every atom gathers what its neighbours know. At the end, the GNN sums its atoms and answers one yes/no question, each question with a GNN of its own.</p>" +
       "<p>To explain an answer, <code>shapiq</code> hides atoms in many combinations and watches the answer change. The atoms are the <strong>players</strong>: what each adds alone, and what groups add only together, their <strong>interactions</strong>.</p>" +
       "<p>For a GNN these are computed <strong>exactly</strong>: atoms more than three bonds apart cannot interact, so a fraction of all combinations suffices.</p>";
-    switches.append(views.node, tasks.node, info);
-    bar.append(mols.node, switches, about);
+    switches.append(views.node, info);
+    bar.append(mols.node, ask.node, switches, about);
     const setAbout = (open) => { about.hidden = !open; info.setAttribute("aria-expanded", String(open)); };
     info.addEventListener("click", () => setAbout(about.hidden));
     about.querySelector(".gsq-about-close").addEventListener("click", () => { setAbout(false); info.focus(); });
@@ -107,7 +109,7 @@
       scene.update({
         rings: own, ringLargest: Math.max(1e-9, ...Object.values(own).map(Math.abs)), groups, groupLargest,
         masked: explained ? new Set() : state.masked, focus: state.view === "together" ? state.focus : null,
-        truth: e.truth, truthKey: `${m.id}/${state.task.id}`, truthShown: explained, dim: state.row ? new Set(state.row.atoms) : null,
+        truth: e.truth, truthKey: `${m.id}/${state.task.id}`, truthShown: true, dim: state.row ? new Set(state.row.atoms) : null,
       });
     }
 
@@ -115,38 +117,38 @@
     function meta(m, t, e) {
       const p = h("p", "gsq-meta"), a = h("span"), b = h("span");
       a.append("Explained with ", h("strong", "", "GraphSHAP-IQ"), `, exact: ${e.budget.toLocaleString("en")} of ${(2 ** e.nAtoms).toLocaleString("en")} maskings`);
-      b.append(`GIN, 3 layers: ${percent(e.p)} “${t.yes}”, a score of `, value(e.logOdds));
+      b.append(`The GNN’s score for “${t.yes}” (its log-odds): `, value(e.logOdds));
       p.append(a, b);
       return p;
     }
+    // the GNN's answer, on the question's card: for the whole molecule, or without the atoms hidden
+    function answer(m, t, e) {
+      const n = state.view === "predict" ? state.masked.size : 0, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
+      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p, note: n ? `With ${n} ${n === 1 ? "atom" : "atoms"} hidden from the GNN.` : "" });
+      const said = `${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
+      if (live.textContent !== said) live.textContent = said;
+      return p;
+    }
     function renderPanel() {
-      const m = state.mol, t = state.task, e = ex(), content = h("div", "gsq-panel-in");
-      if (state.view === "predict") predictionPanel(content, m, t, e); else explanationPanel(content, m, t, e);
+      const m = state.mol, t = state.task, e = ex(), content = h("div", "gsq-panel-in"), p = answer(m, t, e);
+      if (state.view === "predict") maskingPanel(content, m, t, e, p); else explanationPanel(content, m, t, e);
       panel.replaceChildren(content);
     }
-    function predictionPanel(box, m, t, e) {
-      const n = state.masked.size, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
-      const number = h("p", "gsq-pred-number", h("span", "gsq-pred-value", percent(p)), h("span", "gsq-verdict", p >= 0.5 ? t.yes : t.no));
-      const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark");
-      fill.style.width = `${p * 100}%`; mark.style.left = `${p * 100}%`; scale.setAttribute("aria-hidden", "true");
-      scale.append(fill, h("span", "gsq-scale-half"), mark, h("span", "gsq-scale-label", t.no), h("span", "gsq-scale-label gsq-r", t.yes));
-      const compare = h("p", "gsq-pred-compare");
+    function maskingPanel(box, m, t, e, p) {
+      const n = state.masked.size, title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), compare = h("p", "gsq-pred-compare");
+      title.append(h("strong", "", "Hide atoms"), "and ask the GNN again");
+      detail.append(`${G.hovers() ? "Click" : "Tap"} an atom to hide it from the GNN. A hidden atom keeps its bonds, but the GNN no longer knows its element. The GNN runs in your browser, and its answer above follows.`);
       if (n) {
         const d = Math.round(p * 100) - Math.round(e.p * 100);
-        compare.append(`With ${n} ${n === 1 ? "atom" : "atoms"} hidden: `, h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${d >= 0 ? "+" : "−"}${Math.abs(d)} points`), ` from the whole molecule’s ${percent(e.p)}. A hidden atom keeps its bonds, but the GNN no longer knows its element.`);
-      } else compare.append("Click atoms to hide them from the GNN, and see what it predicts without them: it runs in your browser.");
+        compare.append(`With ${n} ${n === 1 ? "atom" : "atoms"} hidden, the GNN answers `, h("strong", "", percent(p)), ". That is ", h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${Math.abs(d)} points ${d >= 0 ? "more" : "less"}`), ` than for the whole molecule (${percent(e.p)}).`);
+      } else compare.append(`For the whole molecule, the GNN answers ${percent(e.p)}.`);
       const actions = h("div", "gsq-actions");
       const act = (label, fn, hidden) => { const b = h("button", "gsq-act", label); b.type = "button"; b.hidden = !!hidden; b.addEventListener("click", () => { fn(); state.hinted = true; draw(); renderPanel(); }); actions.append(b); };
       if (e.truth.length) act(`Hide the ${t.truthLabel}`, () => { state.masked = new Set(e.truth); });
       act("Hide all", () => { state.masked = new Set(m.atoms.map((_, k) => k)); });
       act("Show all", () => { state.masked = new Set(); }, !n);
       const link = (v, label) => { const b = h("button", "gsq-link", label); b.type = "button"; b.addEventListener("click", () => setView(v)); return b; };
-      box.append(
-        h("p", "gsq-pred-model", `${t.question[0].toUpperCase()}${t.question.slice(1)} The GNN predicts`), number,
-        h("p", "", `the probability of “${t.yes}”`), scale, compare, actions,
-        h("p", "gsq-pred-why", "But why? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), "."),
-      );
-      live.textContent = `The GNN predicts ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}.`;
+      box.append(title, detail, compare, actions, h("p", "gsq-pred-why", "Which atoms does the answer rest on? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), "."));
     }
     function explanationPanel(box, m, t, e) {
       const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), slot = h("div", "gsq-slot"), list = h("ol", "gsq-rows");
@@ -198,7 +200,6 @@
       const m = state.mol, t = state.task;
       mols.set(data.molecules.indexOf(m));
       views.set(VIEWS.findIndex((v) => v[0] === state.view));
-      tasks.set(data.tasks.indexOf(t));
       caption.replaceChildren(h("strong", "", m.name), formula(m.formula), h("span", "gsq-blurb", m.blurb));
       draw();
       renderPanel();

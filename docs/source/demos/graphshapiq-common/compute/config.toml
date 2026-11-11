@@ -10,11 +10,18 @@ orders = 4
 
 # The tasks: a question about a molecule, the dataset its GNN learned to answer it from, and the
 # pattern its labels were made from (a SMARTS; its atoms are the ground truth the demos outline).
+#
+# What a reader gets to know of a question, in plain words (the demos' question card): `label` is
+# its name on the switch, `question` the question in full, `meaning` what its term means and when
+# the answer is yes, and `motif` the smallest molecule with the pattern (a SMILES), which the card
+# draws. `truthLabel` names the pattern ("This molecule contains a nitro group").
 
 [[tasks]]
 id = "indole"
-label = "Indole?"
-question = "does it contain an indole?"
+label = "Has an indole?"
+question = "Does this molecule contain an indole?"
+meaning = "An indole (pictured) is a pair of fused rings. One ring has six carbons. The other has five atoms, and one of them is a nitrogen."
+motif = "c1ccc2[nH]ccc2c1"
 yes = "indole"
 no = "no indole"
 dataset = "B-XAIC"
@@ -25,8 +32,10 @@ pattern = "[#6]1:,=[#6]:,-[#6]:,=[#6]2:,-[#6](:,=[#6]1):,-[#6]:,=[#6]:,-[#7]2"
 
 [[tasks]]
 id = "mutagenic"
-label = "Mutagenic?"
-question = "is it mutagenic?"
+label = "Damages DNA?"
+question = "Is this molecule mutagenic?"
+meaning = "A mutagenic molecule can damage DNA. The Ames test checks this on bacteria. A known warning sign is a nitro group (pictured), a nitrogen with two oxygens."
+motif = "C[N+](=O)[O-]"
 yes = "mutagenic"
 no = "not mutagenic"
 dataset = "Mutagenicity"
@@ -36,8 +45,10 @@ pattern = "[N+](=O)[O-]"
 
 [[tasks]]
 id = "PAINS"
-label = "PAINS?"
-question = "does it interfere with assays (PAINS)?"
+label = "Fools lab tests?"
+question = "Is this molecule a PAINS?"
+meaning = "A PAINS (pan-assay interference compound) gives false hits in the lab tests that screen for new drugs. One kind is a catechol (pictured), a ring with two neighbouring OH groups."
+motif = "Oc1ccccc1O"
 yes = "PAINS"
 no = "no PAINS"
 dataset = "B-XAIC"
