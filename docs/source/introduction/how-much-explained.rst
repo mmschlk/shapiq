@@ -63,8 +63,8 @@ Every order is more detailed than the one above it, and more faithful. The pairs
 of what the Shapley values miss. Point at the other orders, or drag the slider down through them,
 and see the fit rise. On the card, the numbers now also mark a few interactions, picked by hand
 for every order: an interaction pointed at says what its players add alone, and what they add
-together, on top of that. Click a layer to keep it there, then point at its card. Some of what is
-marked has a note, a sentence on what the values show; the rest has none, or says so: not every
+together, on top of that. Click a layer to keep it there, then point at its card. What is marked
+has a note, a sentence on what the values show; a few say that there is nothing to read: not every
 value of a model has a story. Only what is marked can be pointed at; a mark need not be hit
 exactly, the room around it answers too.
 

@@ -275,7 +275,7 @@
   // face, for a reader to point at: those the data picks for the sheet's order (example.picks, by
   // hand: ../compute/pack.py), the interactions first; or, where it picks none, the sheet's
   // strongest groups and players
-  const PICKED = { groups: 5, players: 3 };
+  const PICKED = { groups: 3, players: 2 };
   const picksOf = (example, sheet) => {
     const chosen = example.picks?.[sheet.order];
     if (chosen) return chosen.map((key) => key.split(",").map(Number));
@@ -286,9 +286,9 @@
       .map(([player]) => [player]);
     return [...sheet.groups.slice(0, PICKED.groups).map(([group]) => group), ...players];
   };
-  // a mark's radius, and how far its middle keeps from the next mark's
+  // a mark's radius, and how far its middle keeps from the next mark's, where its places allow
   const MARK = 2.3;
-  const APART = 2 * MARK + 0.7;
+  const APART = 5 * MARK;
 
   // a face's inspector: its targets, the one that stands for a group of players (find), and for a
   // target, a ring around it, its marks brought out, and what the explanation says of it

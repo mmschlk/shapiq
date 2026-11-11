@@ -208,14 +208,16 @@ layers shrink to fit the window.
 
 - **Inspecting** the card's face says what the explanation shown tells of a player or an
   interaction. What can be pointed at wears a numbered mark (`.orders-demo-pick-mark`): a few
-  interactions (4 to 7) and players (up to 4) of every order, picked by hand in
-  `compute/pack.py` (the data's `picks`, by order; where the data picks none, the order's
-  strongest). Its halo comes and goes until the face is first inspected. Pointing at a mark
+  interactions and players of every order, 3 to 5 as a rule and never more than 7, picked by
+  hand in `compute/pack.py` (the data's `picks`, by order; where the data picks none, the
+  order's strongest). More marks than that crowd the face: each one picked has something of its
+  own to say, and they lie apart, as a mark keeps `APART` from the others wherever its places
+  on the face allow. A mark's halo comes and goes until the face is first inspected. Pointing at a mark
   brings out the interaction's shape, or the strongest groups of the player, and a tip lists the
   values: for an interaction, its players' own, what they add together on top of them, and for a
   pair the sum. Where the data has a note on it that holds on that order (`notes`), the tip says
-  it in a sentence; much of what is picked has none, on purpose, or a note that there is no
-  story. Only what is marked can be pointed at, in every example: what is not picked says
+  it in a sentence: all that is picked has one, and a few of them say that there is no story.
+  Only what is marked can be pointed at, in every example: what is not picked says
   nothing (hovering small shapes that lie on each other was fiddly, and what they said had no
   story). What is marked is easy to hit (`targetAt`): the mark itself; the marked itself, where
   it is a box of its own (a player's atom, feature, patch or word, a group's circle on a house's

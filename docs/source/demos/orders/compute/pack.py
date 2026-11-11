@@ -466,6 +466,7 @@ def key(*players: int) -> str:
 
 
 FULL = "full"  # in a pick's orders: the full decomposition, whatever its order is
+MOST_PICKED = 7  # the most that is picked on an order: more marks than that crowd the card's face
 
 
 def picked_between(table: list[tuple[list[int], list[Any], str | None]]) -> set[tuple[int, ...]]:
@@ -488,10 +489,11 @@ def curated(
 
     A row of the table is a player or a group (its players), the orders it is picked on (``FULL``
     for the full decomposition), and its note, or ``None``: what is picked wears a mark on the
-    demo's card, where a reader points at it, and not everything picked has a story. A row picked
-    on order 4 and on the full decomposition is picked on the orders between them too. The picks
-    of an order are the groups first, then the players, each the strongest first, as the marks
-    number them; a note holds on the orders its row is picked on, and says so (``[note, orders]``).
+    demo's card, where a reader points at it. Few are picked on an order (3 to 5, and
+    ``MOST_PICKED`` at the most), as many marks crowd the card. A row picked on order 4 and on the
+    full decomposition is picked on the orders between them too. The picks of an order are the
+    groups first, then the players, each the strongest first, as the marks number them; a note
+    holds on the orders its row is picked on, and says so (``[note, orders]``).
     """
     by_order = {
         sheet["order"]: sheet for sheet in (*example["sheets"], *example.get("between", []))
@@ -531,6 +533,10 @@ def curated(
                 msg = f"{example['id']}: the note on {group} is on orders of both signs"
                 raise ValueError(msg)
             notes[key(*group)] = [note, sorted(orders)]
+    for order, groups in picks.items():
+        if len(groups) > MOST_PICKED:
+            msg = f"{example['id']}: order {order} has {len(groups)} picks, {MOST_PICKED} at most"
+            raise ValueError(msg)
     return {
         "notes": notes,
         "picks": {
@@ -547,21 +553,21 @@ def curated(
 
 # what is picked on the molecule, by hand: a player or a group (its atoms), the orders it is picked
 # on, and its note, where it has one that the atoms' bonds do not already give (notes_molecule).
-# The strong positive groups are whole neighborhoods of an atom, and have a reading; the negative
-# ones, and what flips its sign from order to order, have none
+# A few on every order, each with something of its own to say, and apart on the drawing: of what
+# says the same (the three nitro groups, the carbons with all of their neighbors), one stands for
+# the others. The strong positive groups are whole neighborhoods of an atom, and have a reading;
+# the negative ones, and what flips its sign from order to order, have none
 MOLECULE_PICKS: list[tuple[list[int], list[Any], str | None]] = [
-    ([9], [1, 2, 3, 4, FULL], None),
-    ([16], [1], None),
     ([18], [1], None),
-    ([0], [1], None),
+    ([20], [1], None),
+    (
+        [0],
+        [1],
+        "A carbon that two of the rings share: after the three nitrogens, the atom with the "
+        "largest Shapley value.",
+    ),
     ([13], [2], None),
-    ([17], [2], None),
-    ([8], [2, 4, FULL], None),
-    ([7], [3], None),
-    ([11], [3], None),
-    ([5], [3, 4, FULL], None),
-    ([6], [4, FULL], None),
-    ([9, 14], [2, 3, 4, FULL], None),
+    ([9], [3], None),
     ([18, 21], [2, 3], None),
     ([3, 9], [2], None),
     (
@@ -571,31 +577,14 @@ MOLECULE_PICKS: list[tuple[list[int], list[Any], str | None]] = [
         "to the next.",
     ),
     (
-        [1, 4],
-        [3],
-        "A bond shared by two of the rings. No story: its value even flips sign from one order "
-        "to the next.",
-    ),
-    (
-        [8, 26],
-        [2],
-        "A hydrogen with its only neighbor, its carbon. No story for the negative value.",
-    ),
-    (
-        [0, 1, 4],
-        [3],
-        "Three carbons where the rings meet. No story: its value flips sign as the order grows.",
-    ),
-    (
         [7, 8, 13],
         [3, 4, FULL],
         "A ring carbon with its two ring neighbors, but without its hydrogen. Negative, with no "
         "simple reading.",
     ),
     ([0, 2, 6, 7], [4, FULL], None),
-    ([0, 1, 4, 5], [4, FULL], None),
     ([0, 3, 8, 9], [4, FULL], None),
-    ([3, 9, 14, 15], [4, FULL], None),
+    ([12, 18, 21, 22], [4, FULL], None),
     (
         [0, 1, 2, 3, 4, 5, 6, 7, 8],
         [FULL],
@@ -660,7 +649,7 @@ def notes_molecule(example: dict[str, Any]) -> dict[str, Any]:
 INCOME, AGE, ROOMS, BEDS, POP, OCCUP, LAT, LONG = range(8)
 # what is picked on the house that XGBoost values, by hand: the place carries its story, the
 # income and the rooms raise its value (both are above California's medians: $35k, 5.2 rooms), and
-# the rest has none
+# the rest has none. A few on every order, and what the two models differ in on both of them
 HOUSE_PICKS: list[tuple[list[int], list[Any], str | None]] = [
     (
         [LAT],
@@ -675,12 +664,7 @@ HOUSE_PICKS: list[tuple[list[int], list[Any], str | None]] = [
         "and the longitude alone is near zero.",
     ),
     ([INCOME], [1, 2, 3, 4, FULL], "An income above the California median raises the value."),
-    (
-        [ROOMS],
-        [1, 2, 3, 4, FULL],
-        "More rooms per home than is typical in California raise the value.",
-    ),
-    ([OCCUP], [2, 3, 4, FULL], None),
+    ([ROOMS], [1], "More rooms per home than is typical in California raise the value."),
     (
         [LAT, LONG],
         [2, 3, 4, FULL],
@@ -692,94 +676,64 @@ HOUSE_PICKS: list[tuple[list[int], list[Any], str | None]] = [
         [2],
         "Small for XGBoost: income and rooms add up almost independently, unlike for TabPFN.",
     ),
-    ([ROOMS, POP], [2], None),
-    ([AGE, OCCUP], [2], None),
-    ([INCOME, OCCUP], [2], None),
-    ([INCOME, POP], [2, 3, 4, FULL], None),
-    ([INCOME, LONG], [3, 4, FULL], None),
     (
         [OCCUP, LAT, LONG],
         [3, 4, FULL],
-        "No story: a small correction to the place, next to the pair of latitude and longitude.",
+        "The strongest group of three, about a tenth of the place's pair: a small correction to "
+        "the place, with no story of its own.",
     ),
-    (
-        [AGE, LAT, LONG],
-        [3, 4, FULL],
-        "No story: a small correction to the place, next to the pair of latitude and longitude.",
-    ),
-    (
-        [INCOME, LAT, LONG],
-        [3, 4, FULL],
-        "No story: a small correction to the place, next to the pair of latitude and longitude.",
-    ),
+    ([INCOME, ROOMS, POP, LONG], [4, FULL], None),
 ]
 # and on the same house as TabPFN values it: the place and the income with the rooms carry its
-# stories, read off the values' sums; its groups of many features have none
+# stories, read off the values' sums; its groups of many features have none, and one or two of the
+# largest stand for them
 TABPFN_PICKS: list[tuple[list[int], list[Any], str | None]] = [
     (
         [LAT],
-        [1, 2, 3, 4, 5, 6, 7, FULL],
+        [1, 2],
         "On its own the latitude lowers the value; with the longitude, the place lowers it more "
         "(see their pair).",
     ),
     (
-        [ROOMS],
-        [1, 2, 3, 4, 5, 6, 7, FULL],
-        "Alone, more rooms per home than is typical raise the value.",
-    ),
-    ([LONG], [1], None),
-    (
         [LONG],
-        [2, 3, 4, 5, 6, 7, FULL],
-        "Alone the longitude raises the value; with the latitude, that is taken back and more.",
+        [1],
+        "At order 1 the longitude lowers the value a little. From order 2 on, alone it raises "
+        "the value, and with the latitude that is taken back and more.",
     ),
     (
         [INCOME],
-        [2, 3, 4, 5, 6, 7, FULL],
-        "Alone, the income raises the value; with the rooms, that is taken back (see their pair).",
+        [1, 2],
+        "At order 1 the income hardly counts. From order 2 on, alone it raises the value, and "
+        "with the rooms that is taken back (see their pair).",
     ),
+    ([ROOMS], [1, 2, 3, 4], "Alone, more rooms per home than is typical raise the value."),
     (
         [LAT, LONG],
-        [2, 3, 4, 5, 6, 7, FULL],
+        [2, 3, 4, FULL],
         "Where the house is: for TabPFN, the place as a whole lowers this house's value.",
     ),
     (
         [INCOME, ROOMS],
-        [2, 3, 4, 5, 6, 7, FULL],
+        [2, 3, 4, FULL],
         "Alone, the income and the rooms each raise the value; together, they take most of that "
         "back.",
     ),
-    ([OCCUP, LAT], [2, 3], "With the occupancy, the latitude's lowering is mostly taken back."),
-    ([AGE, LONG], [2, 3], "With the age, the longitude's raise is mostly taken back."),
-    ([AGE, ROOMS], [2, 3, 4], "With the age, the rooms raise the value even more."),
-    ([INCOME, LONG], [2], "No story: its sign changes from order to order."),
-    ([AGE, LAT, LONG], [3], None),
-    (
-        [INCOME, ROOMS, LONG],
-        [3],
-        "No story: it raises at order 3 and lowers from order 5 on.",
-    ),
+    ([AGE, ROOMS], [3], "With the age, the rooms raise the value even more."),
     (
         [ROOMS, LAT, LONG],
-        [4, 5, 6, 7, FULL],
+        [4, FULL],
         "It takes back, and more, what the rooms' pairs with the latitude and the longitude add: "
         "in sum, rooms and place lower the value.",
     ),
     (
         [INCOME, ROOMS, LAT, LONG],
-        [4, 5, 6, 7, FULL],
+        [4, FULL],
         "In sum, once the rooms and the place are known, adding the income hardly moves the value.",
     ),
-    ([INCOME, ROOMS, OCCUP], [4], None),
-    ([AGE, ROOMS, LONG], [4, 5, 6], None),
-    ([INCOME, AGE, ROOMS, LONG], [5], None),
     ([INCOME, BEDS, POP, LAT, LONG], [5], None),
     ([INCOME, ROOMS, OCCUP, LAT, LONG], [6], None),
-    ([INCOME, ROOMS, BEDS, OCCUP, LAT, LONG], [6], None),
     ([INCOME, AGE, ROOMS, BEDS, POP, LAT, LONG], [7, FULL], None),
-    ([AGE, ROOMS, BEDS, POP, LAT, LONG], [7, FULL], None),
-    ([INCOME, ROOMS, BEDS, POP, OCCUP, LAT, LONG], [7], None),
-    ([INCOME, AGE, ROOMS, BEDS, POP, LONG], [FULL], None),
+    ([AGE, ROOMS, BEDS, POP, LAT, LONG], [FULL], None),
 ]
 
 
@@ -807,23 +761,23 @@ def notes_tabpfn(example: dict[str, Any]) -> dict[str, Any]:
 
 # what is picked on the photos, by the photo's id: on a photo, only what is picked can be pointed
 # at. A row names its players as a word of the caption or a patch (its row and column in the
-# photo, from 1), the orders it is picked on, and its note, where it has a story: what the patch
-# shows, and what the values say on those orders, no more. The explanations are estimates, and
-# many strong values have no reading: word with word, a function word, a group of three
+# photo, from 1), the orders it is picked on, and its note: what the patch shows, and what the
+# values say on those orders, no more. A few on every order, each with something of its own to say
+# (of the patches of the elephant that match its word, one), and apart on the card. The
+# explanations are estimates, and many strong values have no reading: word with word, a function
+# word, a group of three; of those, a pair of two words at the most is picked, and says so
 PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
     "elephant": [
         (
             ["elephant"],
-            [1, 2, 3, 4, FULL],
+            [1, 2, 4, FULL],
             "The word for the photo's main subject: it raises the similarity on every order.",
         ),
-        ([(6, 1)], [1, 2], "The egret's patch: the white bird's head and neck."),
-        (["bird"], [1, 2, 3, 4, FULL], None),
-        (["white"], [2, 3, 4, FULL], None),
-        (["small"], [4, FULL], None),
+        ([(6, 1)], [1], "The egret's patch: the white bird's head and neck."),
+        (["bird"], [1, 3], "The word for the egret, the white bird at the photo's left edge."),
         (
             [(6, 1), "bird"],
-            [2, 3],
+            [2],
             "The egret's patch and the word for it: the model matches the two.",
         ),
         (
@@ -837,33 +791,24 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
             "The curled trunk and the word “elephant”: the model matches the two.",
         ),
         (
-            [(3, 5), "elephant"],
-            [2, 3, 4, FULL],
-            "The top of the elephant's head and the word “elephant”: they match.",
-        ),
-        (
-            [(4, 6), "elephant"],
-            [4, FULL],
-            "The elephant's ear and shoulder and the word “elephant”: they match.",
-        ),
-        (
             [(5, 5), "white"],
             [4, FULL],
             "A brown patch of the elephant and the word “white”: they do not match.",
         ),
-        (["elephant", "standing"], [2], None),
-        (["elephant", "bird"], [3, 4, FULL], None),
-        ([(6, 1), "elephant"], [3], None),
-        ([(6, 1), "elephant", "bird"], [4, FULL], None),
+        (
+            ["elephant", "bird"],
+            [3, 4, FULL],
+            "Two words of the caption: together they lower the match. Word with word, there is "
+            "no simple reading.",
+        ),
     ],
     "giraffe-tree": [
         (
             ["giraffe"],
-            [1, 2, 3, 4, FULL],
+            [1, 2, 4, FULL],
             "The animal the caption is about. Its word adds to the match on every order.",
         ),
-        (["water"], [1, 2, 3, 4, FULL], "“water”: the pond fills the lower part of the photo."),
-        (["pond"], [2, 3], "“pond”: the water at the bottom of the photo."),
+        (["water"], [1, 2], "“water”: the pond fills the lower part of the photo."),
         (
             [(3, 5)],
             [1],
@@ -875,8 +820,6 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
             "The dead tree in the background. No giraffe is there, yet its patch gets credit: "
             "from order 2 on, see it with “giraffe”.",
         ),
-        (["legs"], [2, 3, 4, FULL], None),
-        (["at"], [4, FULL], None),
         (
             [(2, 2), "giraffe"],
             [2, 3, 4, FULL],
@@ -885,15 +828,9 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
         ),
         (
             [(6, 5), "giraffe"],
-            [2, 3, 4, FULL],
+            [2, 4, FULL],
             "The giraffe's head, lowered to the water, and the word “giraffe”.",
         ),
-        (
-            [(4, 5), "giraffe"],
-            [2],
-            "The giraffe's chest and a front leg, and the word “giraffe”.",
-        ),
-        ([(3, 5), "giraffe"], [2], "The top of the giraffe's back and the word “giraffe”."),
         (
             [(3, 5), (4, 5), "giraffe"],
             [3],
@@ -902,44 +839,41 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
         ),
         (
             ["water", "pond"],
-            [2, 3, 4, FULL],
+            [2, 3],
             "Two words for the same thing: each adds less once the other is there.",
         ),
         (
             ["drink", "water"],
-            [2, 3, 4, FULL],
+            [3, 4, FULL],
             "“drink” already suggests water: each adds less once the other is there.",
         ),
         ([(7, 2), "water"], [3, 4, FULL], "A patch of the pond and the word “water”."),
-        (["giraffe", "legs"], [2, 3, 4, FULL], None),
-        (["spread", "pond"], [4, FULL], None),
     ],
     "juice-theory": [
         (
             ["traffic"],
-            [1, 2, 3, 4, FULL],
+            [1],
             "The photo shows a traffic light, so the word “traffic” fits it.",
         ),
-        (
-            ["light"],
-            [1, 2, 3, 4, FULL],
-            "The photo shows a traffic light, so the word “light” fits it.",
-        ),
-        ([(1, 7)], [1, 2, 3, 4, FULL], "The red light."),
+        ([(1, 7)], [1], "The red light."),
         ([(5, 4)], [1], "The letters “RY” of “THEORY”, below the tail of “Juice”."),
-        (["juice"], [3, 4, FULL], None),
-        (["sign", "traffic"], [2, 3], None),
         (
-            [(5, 4), "theory"],
-            [2, 4, FULL],
-            "The letters “RY” of “THEORY”, and the word “theory”.",
+            ["juice"],
+            [3, 4, FULL],
+            "On its own, the word “juice” lowers the match here; with the “J” of the sign's "
+            "“Juice”, it raises it.",
         ),
+        ([(5, 4), "theory"], [2], "The letters “RY” of “THEORY”, and the word “theory”."),
         ([(5, 4), "sign"], [2], "The sign's lettering and the word “sign”."),
-        ([(1, 7), "traffic"], [2, 3, 4, FULL], "The red light and the word “traffic”."),
-        ([(1, 7), "light"], [2, 3, 4, FULL], "The red light and the word “light”."),
+        (
+            [(1, 7), "traffic"],
+            [2, 3, 4, FULL],
+            "The red light and the word “traffic”. The word “light” is linked to this patch too, "
+            "about half as strongly.",
+        ),
         (
             [(5, 2), "juice"],
-            [2, 3],
+            [2],
             "The “u” of “Juice” on the sign, and the word “juice”.",
         ),
         (
@@ -947,15 +881,17 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
             [3, 4, FULL],
             "The “J” of “Juice” on the sign, and the word “juice”.",
         ),
-        ([(5, 4), "sign", "theory"], [3], None),
         (
             [(5, 3), "theory"],
             [3],
             "Letters of “THEORY” too, the “E” and the “O”: with the word “theory”, they lower "
             "the match. The model does not spell.",
         ),
-        (["traffic", "light"], [4, FULL], None),
-        (["sign", "traffic", "light"], [4, FULL], None),
+        (
+            ["traffic", "light"],
+            [4, FULL],
+            "“traffic” and “light” name one thing: each adds less once the other is there.",
+        ),
         (
             [(7, 2), "juice"],
             [4, FULL],
