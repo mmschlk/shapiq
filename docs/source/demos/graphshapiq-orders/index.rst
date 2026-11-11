@@ -18,7 +18,8 @@ How to read it
 Every order is the Faithful Shapley Interaction index (FSII) :cite:p:`Tsai.2022` of that order: of
 all explanations with values for groups of up to :math:`k` atoms, the one that fits the GNN best.
 Order 1 is the Shapley values, and the last step is the full decomposition, the Möbius
-interactions. The number above the curve is how faithful the explanation is, as in
+interactions; − and + step through the orders, as does a click on the curve. The number above the
+curve is how faithful the explanation is, as in
 :doc:`../../introduction/how-much-explained`: its :math:`R^2` beyond size, the share of what the
 atoms of a masking decide, beyond how many atoms it keeps, that the explanation reproduces. It
 never falls with the order, and it is 1 for the full decomposition.

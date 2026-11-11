@@ -9,6 +9,7 @@
   const VIOLET = "#6a57cd";
   const NAMES = { C: "Carbon", N: "Nitrogen", O: "Oxygen", P: "Phosphorus", S: "Sulfur", F: "Fluorine", Cl: "Chlorine", Br: "Bromine", I: "Iodine", B: "Boron" };
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hovers = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches; // a mouse, not a finger
 
   // -- small helpers ------------------------------------------------------------------------------
   function h(tag, className, ...children) {
@@ -28,7 +29,7 @@
   const signed = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}`;
   const percent = (p) => (p > 0.995 ? ">99%" : p < 0.005 ? "<1%" : `${Math.round(p * 100)}%`);
   const colorOf = (v) => (v >= 0 ? RED : BLUE);
-  const value = (v) => h("strong", v >= 0 ? "up" : "down", signed(v));
+  const value = (v) => h("strong", v >= 0 ? "gsq-up" : "gsq-down", signed(v));
   const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
   const neighbors = (m) => m._nb || (m._nb = (() => { const nb = m.atoms.map(() => []); for (const [i, j] of m.bonds) { nb[i].push(j); nb[j].push(i); } return nb; })());
 
@@ -57,36 +58,37 @@
   // a molecule as a tile of a picker: its bonds, and a dot for every atom that is not carbon
   function tile(m) {
     const node = svg("svg", { viewBox: "0 0 100 100", "aria-hidden": "true" });
-    skeleton(node, m, 0.16);
-    geom(m).pos.forEach(([x, y], k) => { if (m.atoms[k][0] !== "C") svg("circle", { cx: x, cy: y, r: 3.2 }, node); });
+    const g = geom(m, 78, 21); // a small molecule is drawn larger than on the stage: a tile is small
+    skeleton(node, m, 0.16, "", g);
+    g.pos.forEach(([x, y], k) => { if (m.atoms[k][0] !== "C") svg("circle", { cx: x, cy: y, r: 3.2 }, node); });
     return node;
   }
   // a row of a list: the molecule with a group's atoms marked, its name, a meter, and its value
   function row(m, atoms, v, largest, name) {
-    const li = h("li", "row");
+    const li = h("li", "gsq-row");
     const thumb = svg("svg", { viewBox: "0 0 100 100", "aria-hidden": "true" }, li);
     skeleton(thumb, m, 0.16);
     for (const k of atoms) { const [x, y] = geom(m).pos[k]; svg("circle", { cx: x, cy: y, r: atoms.length > 4 ? 6 : 7.5, fill: colorOf(v) }, thumb); }
-    const meter = h("span", "meter"), fill = h("i");
+    const meter = h("span", "gsq-meter"), fill = h("i");
     fill.style.width = `${Math.max(4, (Math.abs(v) / largest) * 100)}%`;
     fill.style.background = colorOf(v);
     meter.append(fill);
-    li.append(h("span", "who", name), meter, h("span", `num ${v >= 0 ? "up" : "down"}`, signed(v)));
+    li.append(h("span", "gsq-who", name), meter, h("span", `gsq-num ${v >= 0 ? "gsq-up" : "gsq-down"}`, signed(v)));
     return li;
   }
   const groupName = (m, atoms) => { const els = atoms.map((k) => m.atoms[k][0]); return els.length > 4 ? `${els.slice(0, 3).join(" · ")} +${els.length - 3}` : els.join(" · "); };
   const atomName = (m, k) => NAMES[m.atoms[k][0]] || m.atoms[k][0];
   // the legend: red, blue, and the outline of the ground truth (if the molecule has one)
   function legend(task, truth) {
-    const p = h("p", "legend");
+    const p = h("p", "gsq-legend");
     for (const [color, text] of [[RED, `raises the odds of “${task.yes}”`], [BLUE, "lowers them"]]) {
-      const dot = h("i"); dot.style.background = color; p.append(h("span", "key", dot, text));
+      const dot = h("i"); dot.style.background = color; p.append(h("span", "gsq-key", dot, text));
     }
-    if (truth && truth.length) p.append(h("span", "key", h("i", "outline"), `the ${task.truthLabel}`));
+    if (truth && truth.length) p.append(h("span", "gsq-key", h("i", "gsq-outline"), `the ${task.truthLabel}`));
     return p;
   }
   // the molecule's formula with subscripts, e.g. C₆H₄N₂O₄
-  function formula(text) { const node = h("span", "formula"); for (const part of text.split(/(\d+)/)) { if (!part) continue; node.append(/^\d+$/.test(part) ? h("sub", null, part) : part); } return node; }
+  function formula(text) { const node = h("span", "gsq-formula"); for (const part of text.split(/(\d+)/)) { if (!part) continue; node.append(/^\d+$/.test(part) ? h("sub", null, part) : part); } return node; }
 
   // -- the GNN, as a chain of affine maps and ReLUs (see compute/pack.py) -------------------------
   function floats(base64) { const bin = atob(base64), buf = new ArrayBuffer(bin.length), u = new Uint8Array(buf); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Float32Array(buf); }
@@ -159,21 +161,21 @@
       layers.truth.style.opacity = 0;
       bands = new Map(); shapes = new Map(); rings = []; atoms = []; truthKey = null;
       const { s, pos } = g, r = 0.27 * s;
-      skeleton(layers.bond, m, 0.15, "bond", g);
+      skeleton(layers.bond, m, 0.15, "gsq-bond", g);
       m.atoms.forEach((a, k) => {
         const [x, y] = pos[k];
-        rings.push({ el: svg("circle", { class: "ring", cx: x, cy: y, r, fill: RED, opacity: 0 }, layers.ring), r, op: 0 });
-        const disc = svg("circle", { class: "atom", cx: x, cy: y, r }, layers.atom);
+        rings.push({ el: svg("circle", { class: "gsq-ring", cx: x, cy: y, r, fill: RED, opacity: 0 }, layers.ring), r, op: 0 });
+        const disc = svg("circle", { class: "gsq-atom", cx: x, cy: y, r }, layers.atom);
         let label = null;
         if (a[0] !== "C" || options.carbonLabels) {
-          label = svg("text", { class: "el", x, y, "font-size": (a[0].length > 1 ? 0.26 : 0.32) * s }, layers.atom);
+          label = svg("text", { class: "gsq-el", x, y, "font-size": (a[0].length > 1 ? 0.26 : 0.32) * s }, layers.atom);
           label.textContent = a[0];
         }
         atoms.push({ disc, label, k, masked: false });
-        svg("circle", { class: "hit", cx: x, cy: y, r: 0.48 * s, "data-k": k }, layers.hit);
+        svg("circle", { class: "gsq-hit", cx: x, cy: y, r: 0.48 * s, "data-k": k }, layers.hit);
       });
-      focusRing = svg("circle", { class: "focus", cx: pos[0][0], cy: pos[0][1], r: r + 0.16 * s, opacity: 0 }, layers.over);
-      keyRing = svg("circle", { class: "keyfocus", cx: pos[0][0], cy: pos[0][1], r: r + 0.22 * s, opacity: 0 }, layers.over);
+      focusRing = svg("circle", { class: "gsq-focus", cx: pos[0][0], cy: pos[0][1], r: r + 0.16 * s, opacity: 0 }, layers.over);
+      keyRing = svg("circle", { class: "gsq-keyfocus", cx: pos[0][0], cy: pos[0][1], r: r + 0.22 * s, opacity: 0 }, layers.over);
     }
     function setRing(k, target, color) {
       const ring = rings[k];
@@ -232,14 +234,14 @@
       for (const [key, w] of want) {
         if (w.kind === "band") {
           const [x1, y1] = pos[w.a], [x2, y2] = pos[w.b];
-          const band = { el: svg("line", { class: "band", x1, y1, x2, y2, stroke: w.color, "stroke-width": 0, opacity: 0 }, layers.band), w: 0, op: 0 };
+          const band = { el: svg("line", { class: "gsq-band", x1, y1, x2, y2, stroke: w.color, "stroke-width": 0, opacity: 0 }, layers.band), w: 0, op: 0 };
           bands.set(key, band);
           animate(key, [
             { from: 0, to: w.w, set: (v) => { band.w = v; band.el.setAttribute("stroke-width", Math.max(0, v)); } },
             { from: 0, to: w.op, set: (v) => { band.op = v; band.el.setAttribute("opacity", Math.max(0, v)); } },
           ]);
         } else {
-          const shape = { el: svg(w.poly ? "polygon" : "polyline", { class: "shape", points: w.points, fill: w.poly ? w.color : "none", stroke: w.color, "fill-opacity": 0, "stroke-opacity": 0 }, layers.shape), fop: 0, sop: 0 };
+          const shape = { el: svg(w.poly ? "polygon" : "polyline", { class: "gsq-shape", points: w.points, fill: w.poly ? w.color : "none", stroke: w.color, "fill-opacity": 0, "stroke-opacity": 0 }, layers.shape), fop: 0, sop: 0 };
           shapes.set(key, shape);
           animate(key, [
             { from: 0, to: w.fop, set: (v) => { shape.fop = v; shape.el.setAttribute("fill-opacity", Math.max(0, v)); } },
@@ -250,7 +252,7 @@
       const masked = state.masked || new Set(), keep = state.dim;
       for (const atom of atoms) {
         const m = masked.has(atom.k), faded = keep && !keep.has(atom.k);
-        if (m !== atom.masked) { atom.masked = m; atom.disc.classList.toggle("masked", m); }
+        if (m !== atom.masked) { atom.masked = m; atom.disc.classList.toggle("gsq-masked", m); }
         atom.disc.style.opacity = faded ? 0.3 : 1;
         if (atom.label) atom.label.style.opacity = m ? 0 : faded ? 0.3 : 1;
         rings[atom.k].el.style.opacity = faded ? 0.25 : 1;
@@ -262,7 +264,7 @@
         truthKey = key;
         layers.truth.replaceChildren();
         const R = 0.6 * s, w = 0.42 * s;
-        for (const [cls, rad] of [["lasso-out", R], ["lasso-in", R - w]]) {
+        for (const [cls, rad] of [["gsq-lasso-out", R], ["gsq-lasso-in", R - w]]) {
           for (const comp of components(mol, truth)) {
             const inComp = new Set(comp);
             for (const k of comp) svg("circle", { class: cls, cx: pos[k][0], cy: pos[k][1], r: rad, "stroke-width": 0 }, layers.truth);
@@ -296,6 +298,45 @@
     return { setMolecule, update, atomAt, keyFocus: (k) => moveRing(keyRing, "key", k), hits: () => [...layers.hit.children], get geom() { return g; } };
   }
 
+  // -- the controls, as the FIxLIP and orders demos' --------------------------------------------
+  // a switch: a few options, the one chosen under a pill that slides to the next one chosen (a copy
+  // of the options over them, in the colors of the one chosen, cut to the pill, so that every label
+  // turns as the pill passes over it). `set(k)` chooses an option; `pick(k)` hears a click on one
+  function switcher(label, options, pick) {
+    const node = h("div", "gsq-switch");
+    node.setAttribute("role", "group"); node.setAttribute("aria-label", label);
+    const buttons = options.map((text, k) => { const b = h("button", "gsq-opt", text); b.type = "button"; b.addEventListener("click", () => pick(k)); node.append(b); return b; });
+    const pill = h("div", "gsq-pill", ...options.map((text) => h("span", "gsq-opt", text)));
+    pill.setAttribute("aria-hidden", "true"); node.append(pill);
+    let at = -1;
+    const move = (instant) => {
+      const b = buttons[at];
+      if (!b || !pill.clientWidth) return;
+      if (instant) pill.style.transition = "none";
+      pill.style.clipPath = `inset(${b.offsetTop}px ${pill.clientWidth - b.offsetLeft - b.offsetWidth}px ${pill.clientHeight - b.offsetTop - b.offsetHeight}px ${b.offsetLeft}px round 999px)`;
+      if (instant) { pill.getBoundingClientRect(); pill.style.transition = ""; }
+    };
+    let placed = false;
+    new ResizeObserver(() => { move(true); placed = pill.clientWidth > 0; }).observe(node);
+    return { node, buttons, set(k) { at = k; buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); move(!placed || reducedMotion()); } };
+  }
+  // the molecules to choose from: a tile each, with the molecule's name (`short`, if it has one)
+  function picker(label, molecules, pick) {
+    const node = h("div", "gsq-mols");
+    node.setAttribute("role", "group"); node.setAttribute("aria-label", label);
+    const buttons = molecules.map((m, k) => {
+      const b = h("button", "gsq-mol", tile(m), h("span", "", m.short || m.name)); b.type = "button"; b.title = m.name;
+      b.addEventListener("click", () => pick(k)); node.append(b);
+      return b;
+    });
+    return { node, buttons, set(k) { buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); } };
+  }
+  // the hint over the molecule, until the reader has done what it says: `show(text)` and `hide()`
+  function hinter(frame) {
+    const node = h("span", "gsq-hint"); node.setAttribute("aria-hidden", "true"); node.hidden = true; frame.append(node);
+    return { show(text) { node.textContent = text; node.hidden = false; }, hide() { node.hidden = true; } };
+  }
+
   // -- mount: fill every container of a demo -----------------------------------------------------
   // The page loads the demo's data.js before its demo.js; where it has not (a page written by
   // hand), the data is loaded from the container's data-root, past caches. Without data, or when
@@ -320,5 +361,5 @@
     document.head.appendChild(loader);
   }
 
-  window.ShapiqGraph = { RED, BLUE, VIOLET, NAMES, reducedMotion, h, svg, sig, bits, signed, percent, colorOf, value, sameSet, neighbors, geom, skeleton, tile, row, groupName, atomName, legend, formula, predict, createScene, mount };
+  window.ShapiqGraph = { RED, BLUE, VIOLET, NAMES, reducedMotion, hovers, switcher, picker, hinter, h, svg, sig, bits, signed, percent, colorOf, value, sameSet, neighbors, geom, skeleton, tile, row, groupName, atomName, legend, formula, predict, createScene, mount };
 })();

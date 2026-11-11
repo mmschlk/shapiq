@@ -7,19 +7,19 @@
   }
 }
 
-.graphshapiq-orders-demo .stepper {
+.graphshapiq-orders-demo .gsq-stepper {
   margin-bottom: 1rem;
 }
 
-.graphshapiq-orders-demo .step-label {
+.graphshapiq-orders-demo .gsq-step-label {
   min-width: 11rem;
 }
 
-.graphshapiq-orders-demo .faith {
+.graphshapiq-orders-demo .gsq-faith {
   margin-bottom: 0.9rem;
 }
 
-.graphshapiq-orders-demo .faith-head {
+.graphshapiq-orders-demo .gsq-faith-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -27,7 +27,7 @@
   margin-bottom: 0.3rem;
 }
 
-.graphshapiq-orders-demo .faith-value {
+.graphshapiq-orders-demo .gsq-faith-value {
   color: var(--gsq-violet-text);
   font-size: 2.2rem;
   font-variant-numeric: tabular-nums;
@@ -35,58 +35,75 @@
   line-height: 1.1;
 }
 
-.graphshapiq-orders-demo .faith-label {
+.graphshapiq-orders-demo .gsq-faith-label {
   font-size: 0.86rem;
 }
 
-.graphshapiq-orders-demo .curve {
+/* the curve: every order's faithfulness, between 0 and 1 (lower values at its bottom) */
+.graphshapiq-orders-demo .gsq-curve {
   display: block;
   width: 100%;
-  height: 3.4rem;
+  max-width: 24rem;
+  height: auto;
   overflow: visible;
 }
 
-.graphshapiq-orders-demo .curve line {
+.graphshapiq-orders-demo .gsq-curve line {
   stroke: var(--gsq-border);
   stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
 }
 
-.graphshapiq-orders-demo .curve .exact {
+.graphshapiq-orders-demo .gsq-curve .gsq-exact {
   stroke: var(--gsq-muted);
   stroke-dasharray: 3 3;
   opacity: 0.6;
 }
 
-.graphshapiq-orders-demo .curve .line {
+.graphshapiq-orders-demo .gsq-curve .gsq-tick {
+  fill: var(--gsq-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.graphshapiq-orders-demo .gsq-curve .gsq-line {
   fill: none;
   stroke: var(--gsq-violet);
-  stroke-width: 1.6px;
+  stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
 }
 
-.graphshapiq-orders-demo .curve .dot {
+.graphshapiq-orders-demo .gsq-curve .gsq-dot {
   fill: var(--gsq-sheet);
   stroke: var(--gsq-violet);
-  stroke-width: 1.4px;
-  vector-effect: non-scaling-stroke;
+  stroke-width: 1.8px;
+  transition: fill 200ms;
 }
 
-.graphshapiq-orders-demo .curve .dot.on {
+.graphshapiq-orders-demo .gsq-curve .gsq-dot.gsq-below {
+  stroke-dasharray: 2 1.5;
+}
+
+.graphshapiq-orders-demo .gsq-curve .gsq-on .gsq-dot,
+.graphshapiq-orders-demo .gsq-curve .gsq-order:hover .gsq-dot {
   fill: var(--gsq-violet);
 }
 
-.graphshapiq-orders-demo .curve .dot.below {
-  stroke-dasharray: 1.5 1.5;
+.graphshapiq-orders-demo .gsq-curve .gsq-on .gsq-tick {
+  fill: var(--gsq-ink);
+  font-weight: 700;
 }
 
-.graphshapiq-orders-demo .detail {
+.graphshapiq-orders-demo .gsq-curve .gsq-col {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.graphshapiq-orders-demo .gsq-detail {
   min-height: calc(3 * 1.55em);
 }
 
-.graphshapiq-orders-demo .rows {
+.graphshapiq-orders-demo .gsq-rows {
   min-height: calc(4 * 2.5rem + 3 * 0.3rem);
   margin-bottom: 0.85rem;
 }

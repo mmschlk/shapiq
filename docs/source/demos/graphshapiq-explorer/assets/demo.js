@@ -24,47 +24,37 @@
     const orderSeq = () => { const s = []; for (let k = 2; k <= Math.min(4, Object.keys(ex().kSII).length); k++) s.push(k); s.push("M"); return s; };
 
     // -- the frame --------------------------------------------------------------------------------
-    const bar = h("div", "bar"), mols = h("div", "mols"), switches = h("div", "switches");
-    mols.setAttribute("role", "group"); mols.setAttribute("aria-label", "Molecule");
-    const viewSwitch = h("div", "switch"), taskSwitch = h("div", "switch");
-    viewSwitch.setAttribute("role", "group"); viewSwitch.setAttribute("aria-label", "Explanation");
-    taskSwitch.setAttribute("role", "group"); taskSwitch.setAttribute("aria-label", "Question");
-    const info = h("button", "info", "i");
+    const bar = h("div", "gsq-bar"), switches = h("div", "gsq-switches");
+    const mols = G.picker("Molecule", data.molecules, (k) => { state.mol = data.molecules[k]; state.task = taskById(state.mol.task); reset(true); });
+    const views = G.switcher("Explanation", VIEWS.map((v) => v[1]), (k) => setView(VIEWS[k][0]));
+    const tasks = G.switcher("Question", data.tasks.map((t) => t.label), (k) => { state.task = data.tasks[k]; reset(false); });
+    const info = h("button", "gsq-info", "i");
     info.type = "button"; info.setAttribute("aria-label", "What does the demo show?"); info.setAttribute("aria-expanded", "false");
-    const about = h("div", "about"); about.hidden = true;
+    const about = h("div", "gsq-about"); about.hidden = true;
     about.innerHTML =
-      '<button class="about-close" type="button" aria-label="Close">×</button>' +
+      '<button class="gsq-about-close" type="button" aria-label="Close">×</button>' +
       "<p><strong>What does the demo show?</strong></p>" +
       "<p>A <strong>graph neural network</strong> (GNN) reads a molecule as a graph: atoms, linked by bonds. In each of its three layers, every atom gathers what its neighbours know. At the end, the GNN sums its atoms and answers one yes/no question, each question with a GNN of its own.</p>" +
       "<p>To explain an answer, <code>shapiq</code> hides atoms in many combinations and watches the answer change. The atoms are the <strong>players</strong>: what each adds alone, and what groups add only together, their <strong>interactions</strong>.</p>" +
       "<p>For a GNN these are computed <strong>exactly</strong>: atoms more than three bonds apart cannot interact, so a fraction of all combinations suffices.</p>";
-    switches.append(viewSwitch, taskSwitch, info);
-    bar.append(mols, switches, about);
+    switches.append(views.node, tasks.node, info);
+    bar.append(mols.node, switches, about);
     const setAbout = (open) => { about.hidden = !open; info.setAttribute("aria-expanded", String(open)); };
     info.addEventListener("click", () => setAbout(about.hidden));
-    about.querySelector(".about-close").addEventListener("click", () => { setAbout(false); info.focus(); });
+    about.querySelector(".gsq-about-close").addEventListener("click", () => { setAbout(false); info.focus(); });
     about.addEventListener("focusout", (e) => { if (!about.contains(e.relatedTarget) && e.relatedTarget !== info) setAbout(false); });
 
-    const body = h("div", "body"), stage = h("div", "stage"), frame = h("div", "frame"), panel = h("div", "panel");
-    const plot = svg("svg", { class: "plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule; its atoms are the players" }, frame);
-    const hint = h("span", "hint"); hint.setAttribute("aria-hidden", "true"); frame.append(hint);
-    const caption = h("p", "caption");
+    const body = h("div", "gsq-body"), stage = h("div", "gsq-stage"), frame = h("div", "gsq-frame"), panel = h("div", "gsq-panel");
+    const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule; its atoms are the players" }, frame);
+    const hint = G.hinter(frame);
+    const caption = h("p", "gsq-caption");
     stage.append(frame, caption);
-    const live = h("p", "sr"); live.setAttribute("aria-live", "polite");
+    const live = h("p", "gsq-sr"); live.setAttribute("aria-live", "polite");
     body.append(stage, panel);
     root.append(bar, body, live);
     const scene = G.createScene(plot);
 
-    const molButtons = data.molecules.map((m) => {
-      const b = h("button", "mol"); b.type = "button"; b.title = m.name;
-      b.append(G.tile(m), h("span", "", m.short || m.name));
-      b.addEventListener("click", () => { state.mol = m; state.task = taskById(m.task); reset(true); });
-      mols.append(b);
-      return b;
-    });
-    const viewButtons = VIEWS.map(([id, label]) => { const b = h("button", "opt", label); b.type = "button"; b.addEventListener("click", () => setView(id)); viewSwitch.append(b); return b; });
-    const taskButtons = data.tasks.map((t) => { const b = h("button", "opt", t.label); b.type = "button"; b.addEventListener("click", () => { state.task = t; reset(false); }); taskSwitch.append(b); return b; });
-    function setView(id) { state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); viewButtons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }
+    function setView(id) { state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); views.buttons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }
     function reset(newMolecule) {
       state.masked = new Set(); state.focus = null; state.pinned = false; state.row = null;
       if (!orderSeq().includes(state.order)) state.order = 2;
@@ -96,6 +86,8 @@
     // -- the molecule: the state as the scene's rings, bands and shapes ---------------------------
     function draw() {
       const m = state.mol, e = ex();
+      if (state.view === "alone" || state.hinted || state.focus != null) hint.hide();
+      else hint.show(state.view === "predict" ? `${G.hovers() ? "Click" : "Tap"} an atom to hide it` : `${G.hovers() ? "Hover" : "Tap"} an atom`);
       for (const hit of scene.hits()) {
         const k = Number(hit.dataset.k), name = G.atomName(m, k);
         if (state.view === "alone") { hit.removeAttribute("tabindex"); hit.removeAttribute("role"); hit.removeAttribute("aria-label"); hit.removeAttribute("aria-pressed"); continue; }
@@ -121,43 +113,43 @@
 
     // -- the panel --------------------------------------------------------------------------------
     function meta(m, t, e) {
-      const p = h("p", "meta"), a = h("span"), b = h("span");
+      const p = h("p", "gsq-meta"), a = h("span"), b = h("span");
       a.append("Explained with ", h("strong", "", "GraphSHAP-IQ"), `, exact: ${e.budget.toLocaleString("en")} of ${(2 ** e.nAtoms).toLocaleString("en")} maskings`);
       b.append(`GIN, 3 layers: ${percent(e.p)} “${t.yes}”, a score of `, value(e.logOdds));
       p.append(a, b);
       return p;
     }
     function renderPanel() {
-      const m = state.mol, t = state.task, e = ex(), content = h("div", "panel-in");
+      const m = state.mol, t = state.task, e = ex(), content = h("div", "gsq-panel-in");
       if (state.view === "predict") predictionPanel(content, m, t, e); else explanationPanel(content, m, t, e);
       panel.replaceChildren(content);
     }
     function predictionPanel(box, m, t, e) {
       const n = state.masked.size, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
-      const number = h("p", "pred-number", h("span", "pred-value", percent(p)), h("span", "verdict", p >= 0.5 ? t.yes : t.no));
-      const scale = h("div", "scale"), fill = h("span", "scale-fill"), mark = h("span", "scale-mark");
+      const number = h("p", "gsq-pred-number", h("span", "gsq-pred-value", percent(p)), h("span", "gsq-verdict", p >= 0.5 ? t.yes : t.no));
+      const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark");
       fill.style.width = `${p * 100}%`; mark.style.left = `${p * 100}%`; scale.setAttribute("aria-hidden", "true");
-      scale.append(fill, h("span", "scale-half"), mark, h("span", "scale-label", t.no), h("span", "scale-label r", t.yes));
-      const compare = h("p", "pred-compare");
+      scale.append(fill, h("span", "gsq-scale-half"), mark, h("span", "gsq-scale-label", t.no), h("span", "gsq-scale-label gsq-r", t.yes));
+      const compare = h("p", "gsq-pred-compare");
       if (n) {
         const d = Math.round(p * 100) - Math.round(e.p * 100);
-        compare.append(`With ${n} ${n === 1 ? "atom" : "atoms"} hidden: `, h("strong", d >= 0 ? "up" : "down", `${d >= 0 ? "+" : "−"}${Math.abs(d)} points`), ` from the whole molecule’s ${percent(e.p)}. A hidden atom keeps its bonds, but the GNN no longer knows its element.`);
+        compare.append(`With ${n} ${n === 1 ? "atom" : "atoms"} hidden: `, h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${d >= 0 ? "+" : "−"}${Math.abs(d)} points`), ` from the whole molecule’s ${percent(e.p)}. A hidden atom keeps its bonds, but the GNN no longer knows its element.`);
       } else compare.append("Click atoms to hide them from the GNN, and see what it predicts without them: it runs in your browser.");
-      const actions = h("div", "actions");
-      const act = (label, fn, hidden) => { const b = h("button", "act", label); b.type = "button"; b.hidden = !!hidden; b.addEventListener("click", () => { fn(); state.hinted = true; draw(); renderPanel(); }); actions.append(b); };
+      const actions = h("div", "gsq-actions");
+      const act = (label, fn, hidden) => { const b = h("button", "gsq-act", label); b.type = "button"; b.hidden = !!hidden; b.addEventListener("click", () => { fn(); state.hinted = true; draw(); renderPanel(); }); actions.append(b); };
       if (e.truth.length) act(`Hide the ${t.truthLabel}`, () => { state.masked = new Set(e.truth); });
       act("Hide all", () => { state.masked = new Set(m.atoms.map((_, k) => k)); });
       act("Show all", () => { state.masked = new Set(); }, !n);
-      const link = (v, label) => { const b = h("button", "link", label); b.type = "button"; b.addEventListener("click", () => setView(v)); return b; };
+      const link = (v, label) => { const b = h("button", "gsq-link", label); b.type = "button"; b.addEventListener("click", () => setView(v)); return b; };
       box.append(
-        h("p", "pred-model", `${t.question[0].toUpperCase()}${t.question.slice(1)} The GNN predicts`), number,
+        h("p", "gsq-pred-model", `${t.question[0].toUpperCase()}${t.question.slice(1)} The GNN predicts`), number,
         h("p", "", `the probability of “${t.yes}”`), scale, compare, actions,
-        h("p", "pred-why", "But why? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), "."),
+        h("p", "gsq-pred-why", "But why? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), "."),
       );
       live.textContent = `The GNN predicts ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}.`;
     }
     function explanationPanel(box, m, t, e) {
-      const title = h("p", "title"), detail = h("p", "detail"), slot = h("div", "slot"), list = h("ol", "rows");
+      const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), slot = h("div", "gsq-slot"), list = h("ol", "gsq-rows");
       if (state.view === "alone") {
         title.append(h("strong", "", "Atoms alone"), "the Shapley value of every atom");
         detail.append("What each atom adds to the GNN’s score, on average over all maskings. With the masked molecule’s ", value(e.empty), ", the atoms add up to the GNN’s ", value(e.logOdds), ".");
@@ -174,42 +166,40 @@
           if (state.order === "M") detail.append(`The Möbius interactions: the share of every group of atoms that no smaller group explains, ${e.moebiusCount.toLocaleString("en")} of them here. Exact, but not simple: large groups add and subtract a lot.`);
           else detail.append(`The ${index}: what an atom adds alone (the ring around it) and what ${state.order === 2 ? "two atoms" : "groups of atoms"} add only together (${state.order === 2 ? "a band" : "a band or a shape"}). They still add up to the GNN’s `, value(e.logOdds), ".");
         }
-        const stepper = h("div", "stepper"), less = h("button", "step", "−"), more = h("button", "step", "+");
+        const stepper = h("div", "gsq-stepper"), less = h("button", "gsq-step", "−"), more = h("button", "gsq-step", "+");
         less.type = more.type = "button";
         less.setAttribute("aria-label", "Smaller groups"); more.setAttribute("aria-label", "Larger groups");
         less.setAttribute("aria-disabled", String(at <= 0)); more.setAttribute("aria-disabled", String(at >= seq.length - 1));
-        const go = (by) => { const to = seq[at + by]; if (to === undefined) return; state.order = to; state.row = null; update(); panel.querySelectorAll(".step")[by < 0 ? 0 : 1]?.focus({ preventScroll: true }); };
+        const go = (by) => { const to = seq[at + by]; if (to === undefined) return; state.order = to; state.row = null; update(); panel.querySelectorAll(".gsq-step")[by < 0 ? 0 : 1]?.focus({ preventScroll: true }); };
         less.addEventListener("click", () => go(-1)); more.addEventListener("click", () => go(1));
-        stepper.append(less, h("span", "step-label", label, h("small", "", index)), more);
+        stepper.append(less, h("span", "gsq-step-label", label, h("small", "", index)), more);
         slot.append(stepper);
         const rows = state.focus != null ? groups.filter((g) => g.atoms.includes(state.focus)) : groups;
         const largest = Math.max(1e-9, Math.abs(groups[0]?.v || 0));
         for (const g of rows.slice(0, 5)) {
           const li = G.row(m, g.atoms, g.v, largest, G.groupName(m, g.atoms));
           li.tabIndex = 0; li.setAttribute("aria-label", `${G.groupName(m, g.atoms)}: ${signed(g.v)}`);
-          const on = () => { state.row = g; draw(); for (const o of list.children) o.classList.toggle("dim", o !== li); };
-          const off = () => { state.row = null; draw(); for (const o of list.children) o.classList.remove("dim"); };
+          const on = () => { state.row = g; draw(); for (const o of list.children) o.classList.toggle("gsq-dim", o !== li); };
+          const off = () => { state.row = null; draw(); for (const o of list.children) o.classList.remove("gsq-dim"); };
           li.addEventListener("pointerenter", (ev) => { if (ev.pointerType !== "touch") on(); });
           li.addEventListener("pointerleave", (ev) => { if (ev.pointerType !== "touch") off(); });
           li.addEventListener("focus", on); li.addEventListener("blur", off);
           list.append(li);
         }
-        if (!rows.length) list.append(h("li", "none", "No interactions of this atom at this order."));
+        if (!rows.length) list.append(h("li", "gsq-none", "No interactions of this atom at this order."));
       }
       slot.append(list);
       box.append(title, detail, slot, legend(t, e.truth));
-      if (t.id === m.task && m.takeaway && state.focus == null) box.append(h("p", "takeaway", m.takeaway));
+      if (t.id === m.task && m.takeaway && state.focus == null) box.append(h("p", "gsq-takeaway", m.takeaway));
       box.append(meta(m, t, e));
     }
 
     function update() {
       const m = state.mol, t = state.task;
-      molButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(data.molecules[k] === m)));
-      viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === state.view)));
-      taskButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(data.tasks[k] === t)));
-      caption.replaceChildren(h("strong", "", m.name), formula(m.formula), h("span", "blurb", m.blurb));
-      hint.textContent = state.view === "predict" ? "Click an atom to hide it" : "Point at an atom";
-      hint.hidden = state.view === "alone" || state.hinted || state.focus != null;
+      mols.set(data.molecules.indexOf(m));
+      views.set(VIEWS.findIndex((v) => v[0] === state.view));
+      tasks.set(data.tasks.indexOf(t));
+      caption.replaceChildren(h("strong", "", m.name), formula(m.formula), h("span", "gsq-blurb", m.blurb));
       draw();
       renderPanel();
     }

@@ -34,7 +34,7 @@
     { name: "Resorcinol", slots: ["OH", "none", "OH", ...none.slice(2)], task: "PAINS" },
     { name: "Hydroquinone", slots: ["OH", "none", "none", "OH", "none", "none"], task: "PAINS" },
     { name: "Nitrobenzene", slots: ["NO2", ...none], task: "mutagenic" },
-    { name: "1,3-Dinitrobenzene", slots: ["NO2", "none", "NO2", ...none.slice(2)], task: "mutagenic" },
+    { name: "1,3-Dinitrobenzene", short: "Dinitrobenzene", slots: ["NO2", "none", "NO2", ...none.slice(2)], task: "mutagenic" },
     { name: "Benzene", slots: ["none", ...none], task: "PAINS" },
   ];
   const KNOWN = Object.fromEntries([
@@ -129,36 +129,31 @@
     };
 
     // -- the frame --------------------------------------------------------------------------------
-    const bar = h("div", "bar"), presets = h("div", "presets"), taskSwitch = h("div", "switch"), viewSwitch = h("div", "switch");
-    presets.setAttribute("role", "group"); presets.setAttribute("aria-label", "Example molecules");
-    taskSwitch.setAttribute("role", "group"); taskSwitch.setAttribute("aria-label", "Question");
-    viewSwitch.setAttribute("role", "group"); viewSwitch.setAttribute("aria-label", "Explanation");
-    const switches = h("div", "switches", viewSwitch, taskSwitch);
-    bar.append(presets, switches);
-    const body = h("div", "body"), stage = h("div", "stage"), frame = h("div", "frame"), panel = h("div", "panel");
-    const plot = svg("svg", { class: "plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule you build" }, frame);
-    const slotLayer = svg("g", { class: "slots" });
-    const progress = h("div", "progress"), progressFill = h("i");
+    const VIEWS = [["alone", "Atoms alone"], ["together", "Atoms together"]];
+    const bar = h("div", "gsq-bar");
+    // the examples, as the other demos' molecules: a tile each
+    const presets = G.picker("Example molecules", PRESETS.map((p) => ({ ...assemble(p.slots), name: p.name, short: p.short })), (k) => {
+      const p = PRESETS[k];
+      state.slots = p.slots.slice(); state.task = tasks.find((t) => t.id === p.task) || state.task; state.sel = null; rebuild();
+    });
+    const views = G.switcher("Explanation", VIEWS.map((v) => v[1]), (k) => { state.view = VIEWS[k][0]; state.focus = null; state.row = null; chrome(); draw(); renderPanel(); });
+    const questions = G.switcher("Question", tasks.map((t) => t.label), (k) => { state.task = tasks[k]; compute(); chrome(); });
+    bar.append(presets.node, h("div", "gsq-switches", views.node, questions.node));
+    const body = h("div", "gsq-body"), stage = h("div", "gsq-stage"), frame = h("div", "gsq-frame"), panel = h("div", "gsq-panel");
+    const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule you build" }, frame);
+    const slotLayer = svg("g", { class: "gsq-slots" });
+    const progress = h("div", "gsq-progress"), progressFill = h("i");
     progress.append(progressFill); progress.hidden = true; frame.append(progress);
-    const caption = h("p", "caption"), palette = h("div", "palette");
+    const caption = h("p", "gsq-caption"), palette = h("div", "gsq-palette");
     palette.setAttribute("role", "group"); palette.setAttribute("aria-label", "Groups to place");
     stage.append(frame, caption, palette);
-    const live = h("p", "sr"); live.setAttribute("aria-live", "polite");
+    const live = h("p", "gsq-sr"); live.setAttribute("aria-live", "polite");
     body.append(stage, panel);
     root.append(bar, body, live);
     const scene = G.createScene(plot);
 
-    const presetButtons = PRESETS.map((p) => {
-      const b = h("button", "preset", p.name); b.type = "button";
-      b.addEventListener("click", () => { state.slots = p.slots.slice(); state.task = tasks.find((t) => t.id === p.task) || state.task; state.sel = null; rebuild(); });
-      presets.append(b);
-      return b;
-    });
-    const taskButtons = tasks.map((t) => { const b = h("button", "opt", t.label); b.type = "button"; b.addEventListener("click", () => { state.task = t; compute(); chrome(); }); taskSwitch.append(b); return b; });
-    const VIEWS = [["alone", "Atoms alone"], ["together", "Atoms together"]];
-    const viewButtons = VIEWS.map(([id, label]) => { const b = h("button", "opt", label); b.type = "button"; b.addEventListener("click", () => { state.view = id; state.focus = null; state.row = null; chrome(); draw(); renderPanel(); }); viewSwitch.append(b); return b; });
     for (const id of [...PALETTE, "none"]) {
-      const b = h("button", id === "none" ? "chip clear" : "chip", id === "none" ? "Remove" : GROUPS[id].label); b.type = "button";
+      const b = h("button", id === "none" ? "gsq-chip gsq-clear" : "gsq-chip", id === "none" ? "Remove" : GROUPS[id].label); b.type = "button";
       b.title = id === "none" ? "Remove the group" : `Place ${GROUPS[id].label}`;
       b.addEventListener("click", () => place(id));
       palette.append(b);
@@ -179,12 +174,12 @@
       for (let i = 0; i < 6; i++) {
         const a = Math.PI / 2 - (i * Math.PI) / 3, [x, y] = pos[i], empty = state.slots[i] === "none";
         const cx = empty ? x + Math.cos(a) * 0.62 * s : x, cy = empty ? y + Math.sin(a) * 0.62 * s : y;
-        const g = svg("g", { class: `slot${empty ? "" : " filled"}${state.sel === i ? " sel" : ""}`, tabindex: "0", role: "button", "aria-pressed": String(state.sel === i), "aria-label": empty ? `Position ${i + 1}: add a group` : `Position ${i + 1}: ${GROUPS[state.slots[i]].name}` }, slotLayer);
+        const g = svg("g", { class: `gsq-slot${empty ? "" : " gsq-filled"}${state.sel === i ? " gsq-sel" : ""}`, tabindex: "0", role: "button", "aria-pressed": String(state.sel === i), "aria-label": empty ? `Position ${i + 1}: add a group` : `Position ${i + 1}: ${GROUPS[state.slots[i]].name}` }, slotLayer);
         if (empty) {
           svg("circle", { cx, cy, r: 0.26 * s }, g);
-          svg("line", { class: "plus", x1: cx - 0.12 * s, y1: cy, x2: cx + 0.12 * s, y2: cy }, g);
-          svg("line", { class: "plus", x1: cx, y1: cy - 0.12 * s, x2: cx, y2: cy + 0.12 * s }, g);
-        } else svg("circle", { class: "ringpick", cx, cy, r: 0.42 * s }, g);
+          svg("line", { class: "gsq-plus", x1: cx - 0.12 * s, y1: cy, x2: cx + 0.12 * s, y2: cy }, g);
+          svg("line", { class: "gsq-plus", x1: cx, y1: cy - 0.12 * s, x2: cx, y2: cy + 0.12 * s }, g);
+        } else svg("circle", { class: "gsq-ringpick", cx, cy, r: 0.42 * s }, g);
         const pick = () => { state.sel = state.sel === i ? null : i; note = ""; slots(); caption_(); };
         g.addEventListener("click", (e) => { e.stopPropagation(); pick(); });
         g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
@@ -193,13 +188,13 @@
     function caption_() {
       const name = KNOWN[state.slots.join()] || "A substituted benzene";
       const help = note || (state.sel != null ? `Position ${state.sel + 1}: pick a group below, or remove it.` : "Pick a + on the ring, then a group below; or start from an example.");
-      const line = h("span", `blurb${note ? " note" : ""}`, help);
+      const line = h("span", `gsq-blurb${note ? " gsq-note" : ""}`, help);
       caption.replaceChildren(h("strong", "", name), formula(mol.formula), line);
     }
     function chrome() {
-      taskButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(tasks[k] === state.task)));
-      viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === state.view)));
-      presetButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(PRESETS[k].slots.join() === state.slots.join())));
+      questions.set(tasks.indexOf(state.task));
+      views.set(VIEWS.findIndex((v) => v[0] === state.view));
+      presets.set(PRESETS.findIndex((p) => p.slots.join() === state.slots.join())); // none, for the reader's own molecule
       caption_();
     }
 
@@ -235,19 +230,19 @@
 
     // -- the panel ---------------------------------------------------------------------------------
     function renderPanel() {
-      const t = state.task, d = state.result, box = h("div", "panel-in");
+      const t = state.task, d = state.result, box = h("div", "gsq-panel-in");
       const question = `${t.question[0].toUpperCase()}${t.question.slice(1)}`;
       if (!d) {
-        box.append(h("p", "pred-model", question), h("p", "computing", h("span", "spin"), "Computing the exact interactions…"));
+        box.append(h("p", "gsq-pred-model", question), h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…"));
         panel.replaceChildren(box);
         return;
       }
       const p = sig(d.logOdds);
-      const scale = h("div", "scale"), fill = h("span", "scale-fill"), mark = h("span", "scale-mark");
+      const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark");
       fill.style.width = `${p * 100}%`; mark.style.left = `${p * 100}%`; scale.setAttribute("aria-hidden", "true");
-      scale.append(fill, h("span", "scale-half"), mark, h("span", "scale-label", t.no), h("span", "scale-label r", t.yes));
-      box.append(h("p", "pred-model", `${question} The GNN predicts`), h("p", "pred-number", h("span", "pred-value", percent(p)), h("span", "verdict", p >= 0.5 ? t.yes : t.no)), scale);
-      const title = h("p", "title"), list = h("ol", "rows");
+      scale.append(fill, h("span", "gsq-scale-half"), mark, h("span", "gsq-scale-label", t.no), h("span", "gsq-scale-label gsq-r", t.yes));
+      box.append(h("p", "gsq-pred-model", `${question} The GNN predicts`), h("p", "gsq-pred-number", h("span", "gsq-pred-value", percent(p)), h("span", "gsq-verdict", p >= 0.5 ? t.yes : t.no)), scale);
+      const title = h("p", "gsq-title"), list = h("ol", "gsq-rows");
       if (state.view === "alone") {
         title.append(h("strong", "", "Atoms alone"), "their Shapley values");
         const rows = d.shapley.map((v, k) => ({ atoms: [k], v })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
@@ -260,16 +255,16 @@
         for (const g of rows.slice(0, 5)) {
           const li = G.row(mol, g.atoms, g.v, largest, G.groupName(mol, g.atoms));
           li.tabIndex = 0; li.setAttribute("aria-label", `${G.groupName(mol, g.atoms)}: ${signed(g.v)}`);
-          const on = () => { state.row = g; draw(); for (const o of list.children) o.classList.toggle("dim", o !== li); };
-          const off = () => { state.row = null; draw(); for (const o of list.children) o.classList.remove("dim"); };
+          const on = () => { state.row = g; draw(); for (const o of list.children) o.classList.toggle("gsq-dim", o !== li); };
+          const off = () => { state.row = null; draw(); for (const o of list.children) o.classList.remove("gsq-dim"); };
           li.addEventListener("pointerenter", (ev) => { if (ev.pointerType !== "touch") on(); });
           li.addEventListener("pointerleave", (ev) => { if (ev.pointerType !== "touch") off(); });
           li.addEventListener("focus", on); li.addEventListener("blur", off);
           list.append(li);
         }
-        if (!rows.length) list.append(h("li", "none", "No pairs of this atom."));
+        if (!rows.length) list.append(h("li", "gsq-none", "No pairs of this atom."));
       }
-      const meta = h("p", "meta");
+      const meta = h("p", "gsq-meta");
       meta.append(
         h("span", null, "Computed ", h("strong", "", "exactly"), ", in your browser, just now: GraphSHAP-IQ evaluated the GNN on ", h("strong", "", d.budget.toLocaleString("en")), ` maskings (all 2${sup(d.n)}).`),
         h("span", null, `GIN, 3 layers: a score of `, value(d.logOdds), ", the masked molecule’s ", value(d.empty), "."),
