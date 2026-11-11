@@ -46,8 +46,8 @@ The simplest explanation gives every player one number, its Shapley value: red r
 prediction, blue lowers it. It floats above the input. But how much of the mechanism does it
 explain? Its faithfulness, :math:`R^2`, says how well it predicts what the model does when only
 some of the players are there, beside the layer: 1 is all of it. Point at the mechanism to compare.
-The card above names the strongest player; point at any player on it, an atom, a feature, a house,
-a patch or a word, to read its value.
+The card above names the strongest player, and marks a few players with a number: point at one
+(on a touch screen, tap it) to read its value.
 
 .. shapiq-demo:: orders
    :step: shapley
@@ -61,11 +61,12 @@ a value for every pair of players, those of order 3 for every three, and so on: 
 Shapley Interactions :cite:p:`Tsai.2022`, the explanation of each order that fits the model best.
 Every order is more detailed than the one above it, and more faithful. The pairs alone recover most
 of what the Shapley values miss. Point at the other orders, or drag the slider down through them,
-and see the fit rise. On the card, a player now also says the strongest groups it is in, and an
-interaction can be pointed at itself, where it is drawn between its players: it says what its
-players add alone, and what they add together, on top of that. Click a layer to keep it there, then
-point at its card. Some players and groups have a note; most have none: not every value of a model
-has a story.
+and see the fit rise. On the card, the numbers now also mark a few interactions, picked by hand
+for every order: an interaction pointed at says what its players add alone, and what they add
+together, on top of that. Click a layer to keep it there, then point at its card. Some of what is
+marked has a note, a sentence on what the values show; the rest has none, or says so: not every
+value of a model has a story. On the molecule and the house, every atom, feature and group can be
+pointed at as well; on the photos, only what is marked.
 
 .. shapiq-demo:: orders
    :step: interactions
@@ -82,7 +83,7 @@ short of is the estimation gap.
 .. shapiq-demo:: orders
    :step: full
    :fallback: images/hero_orders.png
-   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 10, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
+   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 9, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
 
 
 ----
@@ -123,7 +124,8 @@ many players, the full decomposition, too, is fit to a sample of the coalitions,
 falls short of 1, hatched in gray in the plot, is the **estimation gap**. Many models have no
 interactions above some order: the trees of a given depth, the receptive fields of a graph neural
 network. From that order on, FSII equals the full decomposition: the houses' layers end there, at
-order 5, where the fit is exact, and the molecule's plot runs dashed from order 10 to :math:`n = 30`.
+order 5, where the fit is exact, and the molecule's plot runs dashed from order 9 to
+:math:`n = 30`: the orders it skips, from 10 on, equal the full decomposition, and have no layer.
 
 The Examples
 ~~~~~~~~~~~~
@@ -188,12 +190,14 @@ SigLIP 2, which only all of them would spare.
 
 Two more photos of the FIxLIP demo are behind the same tab, explained in the same way: the small
 pictures under the input choose among them. A giraffe drinking at a pond: the pairs link the word
-"giraffe" to the giraffe's patches, and to a dead tree in the background, in which SigLIP 2 sees
-some giraffe too (:math:`R^2 = 0.22` for the Shapley values, 0.69 with pairs, 0.78 for the full
-decomposition). And a sign reading "juice theory" next to a traffic light: the model reads, its
-pairs link "juice" and "theory" to the patches of the sign's lettering, and "traffic" and "light"
-to the red light (0.28, 0.61, and 0.76). Their captions are longer and their proxies, the
-elephant's, miss more of SigLIP 2: the estimation gaps are 0.22 and 0.24.
+"giraffe" to the giraffe's head, and to a dead tree in the background, where no giraffe is:
+together, the tree's patch and the word raise the match, on every order (:math:`R^2 = 0.22` for the
+Shapley values, 0.69 with pairs, 0.78 for the full decomposition). And a sign reading "juice
+theory" next to a traffic light: "traffic" and "light" attach to the red light, and the sign's
+words to its lettering, "juice" to the J and the u, "theory" to the letters RY, but not letter by
+letter: with the patch of the E and the O, "theory" lowers the match (0.28, 0.61, and 0.76). Their
+captions are longer and their proxies, the elephant's, miss more of SigLIP 2: the estimation gaps
+are 0.22 and 0.24.
 
 How They Were Computed
 ~~~~~~~~~~~~~~~~~~~~~~

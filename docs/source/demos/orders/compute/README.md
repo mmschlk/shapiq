@@ -65,9 +65,16 @@ The data of the docs was computed with Python 3.12, shapiq from the repository (
 woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly; GraphSHAP-IQ needs
 7,693 evaluations of it. The XGBoost model reaches R^2 = 0.848 on the test houses.
 
-The giraffe and the sign (`fixlip.py --photo`) were computed later, with torch 2.9 and transformers
-5.3, with the elephant's proxy: its depth was not chosen anew for them. Their full decompositions
-fit SigLIP 2 with R^2 = 0.78 and 0.76.
+The three photos (`fixlip.py`, and `--photo` for the giraffe and the sign) were computed later,
+with torch 2.9 and transformers 5.3. The giraffe and the sign have the elephant's proxy: its depth
+was not chosen anew for them. Their full decompositions fit SigLIP 2 with R^2 = 0.78 and 0.76.
+
+What the demo marks on its card, and its notes, are picked by hand in `pack.py` (`*_PICKS`, and
+the notes the molecule's bonds give): a player or a group, the orders it is picked on, and a note
+or none. They were chosen from the strongest values of every order, each reading checked against
+the values on those orders and, for the photos, against what the patch shows; many strong values
+have no reading, and are picked without a note. `pack.py` refuses a pick that an order's data
+does not have, and a note on an interaction whose sign differs between its orders.
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the

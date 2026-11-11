@@ -206,16 +206,20 @@ layers shrink to fit the window.
 
 ## Input and states
 
-- **Inspecting** the card's face says what the explanation shown tells of one player. With a
-  mouse, hovering an atom, a feature (or a group's circle on a house's tree), a patch or a word
-  brings out the strongest groups it is in, and a tip over the face lists its own value and
-  theirs. An interaction can be pointed at itself: the shape of a group between its players (the
-  strongest under the pointer; a group's circle or links on a house's tree) says its players' own
-  values, what they add together on top of them, and for a pair the sum. Where the data has a note
-  on the player or the group (`notes`, written in `compute/pack.py`), the tip says it in a
-  sentence; most have none, on purpose. On the many houses' map, a row of the list shows itself on
-  the map, and a house says its prediction and its strongest values. On a touch screen, a tap does the same, and a tap elsewhere
-  lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
+- **Inspecting** the card's face says what the explanation shown tells of a player or an
+  interaction. What can be pointed at wears a numbered mark (`.orders-demo-pick-mark`): a few
+  interactions (4 to 7) and players (up to 4) of every order, picked by hand in
+  `compute/pack.py` (the data's `picks`, by order; where the data picks none, the order's
+  strongest). Its halo comes and goes until the face is first inspected. Pointing at a mark
+  brings out the interaction's shape, or the strongest groups of the player, and a tip lists the
+  values: for an interaction, its players' own, what they add together on top of them, and for a
+  pair the sum. Where the data has a note on it that holds on that order (`notes`), the tip says
+  it in a sentence; much of what is picked has none, on purpose, or a note that there is no
+  story. On the photos, only the marks can be pointed at (the patches cover the photo, and the
+  links are thin). On the molecule and the houses' trees, every atom, feature and group's shape
+  can be pointed at too. On the many houses' map, a row of the list shows itself on the map, and
+  a house says its prediction and its strongest values. With a mouse, pointing is hovering; on a
+  touch screen, a tap, and a tap elsewhere lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
   brings it out when pointed at. To inspect another layer's face, pin the layer first (click it):
   the pointer can then go to the card. The face is not reachable by keyboard; the "Top" line is
   the part of it that is text.
@@ -267,8 +271,11 @@ Written by `compute/pack.py`. Shape, in short:
                                        // example of that tab (which the picker under the input shows)
     photo,                             // optional: { title }, the picker's name of it
     notes,                             // optional: what the tip says of a player or a group, by its
-                                       // players' key ("9", "9,14"); "many": [size, note], of every
-                                       // group of that size or more
+                                       // players' key ("9", "9,14"): a note, or [note, orders],
+                                       // a note that holds on those orders only; "many": [size,
+                                       // note], of every group of that size or more
+    picks,                             // optional: by order, the keys of what wears a mark on
+                                       // the card's face, the interactions first
     kind,                              // "graph" | "tree" | "map" | "image-text": how faces are drawn
     model: { icon, title, detail, method, how, short },  // the chip and the card's "Explained with"
     problem: { input, output, value }, // the problem's parts: x, f(x)
@@ -281,7 +288,9 @@ Written by `compute/pack.py`. Shape, in short:
                                        // text, a character each (a whole number from -45 to 45
                                        // of the scale: `read()` in demo.js), and the mean of its
                                        // absolute values)
-    between,                           // optional: the blank orders' explanations, by order
+    between,                           // optional: the blank orders' explanations, by order:
+                                       // a blank layer for every order between the last sheet
+                                       // of interactions and `largest`, each with its own
     fits,                              // the plot: every order's R^2
     largest,                           // the highest order with an interaction (the trees' depth,
                                        // the network's receptive field, the proxy's depth): every

@@ -75,12 +75,13 @@ interaction explains more of the model, up to the full decomposition, which is t
 
 .. shapiq-demo:: orders
    :fallback: images/hero_orders.png
-   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 10, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
+   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 9, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
 
 .. container:: orders-demo-caption-text
 
    One prediction, explained at every order of interaction, and how much of the model each order
-   explains. Point at a layer, then at a player or an interaction on its card, to read its values.
+   explains. Point at a layer, then at a number on its card: a player or an interaction picked
+   by hand, with its values and, where there is one, what they show.
    :doc:`Step by step, and how it was computed <introduction/how-much-explained>`.
 
 

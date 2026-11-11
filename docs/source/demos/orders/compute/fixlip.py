@@ -74,7 +74,9 @@ PHOTO, MODEL = "elephant", "siglip2"
 BUDGET = 10_000  # the coalitions the proxy is fit to
 N_TEST = 512  # the coalitions every order is scored on, drawn independently of the proxy's
 DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
-SHEETS = (1, 2, 3, 4, DEPTH)  # the orders the demo draws, whose values the results keep
+# the orders whose values the results keep: all of them, each with an explanation of its own (the
+# demo draws 1 to 4 and the last one on its layers, and 5 on the blank layer between them)
+SHEETS = tuple(range(1, DEPTH + 1))
 PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
 
 

@@ -1818,6 +1818,53 @@ body[data-theme="dark"] .orders-demo {
   opacity: 0.45;
 }
 
+/* the picked (demo.js): the interactions and the players a reader can point at wear a numbered
+   mark, a dot of ink; until the face is first inspected, a halo around every mark comes and goes,
+   to say so. Pointed at, a mark keeps its halo, and the others step back */
+.orders-demo-pick-marks {
+  pointer-events: none;
+}
+
+.orders-demo-pick-mark circle:not(.orders-demo-pick-halo) {
+  fill: var(--orders-ink);
+  stroke: var(--orders-sheet);
+  stroke-width: 0.45;
+}
+
+.orders-demo-pick-mark text {
+  fill: var(--orders-sheet);
+  font-size: 2.7px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.orders-demo-pick-halo {
+  fill: var(--orders-ink);
+  opacity: 0;
+  animation: orders-demo-pick-call 2.4s ease-in-out infinite;
+}
+
+@keyframes orders-demo-pick-call {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.orders-demo-inspected .orders-demo-pick-halo,
+.orders-demo-away .orders-demo-pick-halo {
+  animation: none;
+}
+
+.orders-demo-pick-mark.orders-demo-pick-on .orders-demo-pick-halo {
+  opacity: 0.28;
+}
+
+.orders-demo-picking .orders-demo-pick-mark:not(.orders-demo-pick-on) {
+  opacity: 0.35;
+}
+
 /* the card's tip: what the explanation says of what is pointed at on the face, a small card of
    paper over it (demo.js places it), which takes no pointer */
 .orders-demo-tip {
@@ -2072,7 +2119,7 @@ body[data-theme="dark"] .orders-demo {
    input's card, and the plan's face of it (demo.js marks them, and defines the blur: an SVG
    filter, which Safari draws on SVG's shapes, as it does not a CSS blur()) */
 .orders-demo-estimated .orders-demo-face > :not(.orders-demo-tag),
-.orders-demo-plan-view.orders-demo-estimated .orders-demo-plan-face > * {
+.orders-demo-plan-view.orders-demo-estimated .orders-demo-plan-face > :not(.orders-demo-pick-marks, .orders-demo-inspect-ring) {
   filter: var(--orders-blur, blur(1.6px));
 }
 

@@ -47,11 +47,12 @@
 // the example seen from above, flat, its input with the explanation pointed at on it (at rest, the
 // Shapley values), and in a few words what that explanation is, with a bar by its R^2, how well it
 // fits, and what it was explained with (the input alone, the card pointed at; the mechanism's, in
-// its orange), and its strongest player or group. The card's face can be inspected: the pointer
-// over a player on it (an atom, a feature, a house, a patch or a word; on a touch screen, a tap)
-// brings out the strongest groups the player is in, and a tip says its own value and theirs; over
-// an interaction, the shape of a group between its players, the tip says what its players add
-// alone and what they add together, and, where the data has a note on it, the note. The
+// its orange), and its strongest player or group. The card's face can be inspected: a few
+// interactions and players of every order, picked by hand, wear a numbered mark; the pointer over
+// one (on a touch screen, a tap) brings it out, and a tip says its values (a player's own and its
+// strongest groups'; an interaction's players' own, and what they add together), and, where the
+// data has a note on it, the note. On the molecule and the houses, every player and every group's
+// shape can be pointed at too; on a photo, only what is marked. The
 // chip clears as far as the explanation fits: the black box opens, all the way
 // where it is exact. The demo starts with the problem alone (unless data-reveal="open"): a click on
 // the chip explains it, and the explanation is built under it from the top down. The problem stays
@@ -97,9 +98,6 @@
   // how far the blank sheet of the order pointed at slides out of the stack, towards the reader:
   // less than its strip, so that the blank sheet below it still shows
   const PEEK = 0.03;
-  // the blank sheets of an example: as many for every example (where it skips as many orders), so
-  // that every stack looks as deep
-  const BLANKS = 6;
   // the air beside the layers, in units of their width: the stage's room holds them, and that much
   // more
   const ROOMY = 0.22;
@@ -272,21 +270,67 @@
     }
   };
 
+  // the picked of a sheet: the interactions and the players that wear a numbered mark on the card's
+  // face, for a reader to point at: those the data picks for the sheet's order (example.picks, by
+  // hand: ../compute/pack.py), the interactions first; or, where it picks none, the sheet's
+  // strongest groups and players
+  const PICKED = { groups: 5, players: 3 };
+  const picksOf = (example, sheet) => {
+    const chosen = example.picks?.[sheet.order];
+    if (chosen) return chosen.map((key) => key.split(",").map(Number));
+    const players = sheet.first
+      .map((value, player) => [player, Math.abs(value)])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, sheet.groups.length ? PICKED.players : PICKED.groups)
+      .map(([player]) => [player]);
+    return [...sheet.groups.slice(0, PICKED.groups).map(([group]) => group), ...players];
+  };
+  // a mark's radius, and how far its middle keeps from the next mark's
+  const MARK = 2.3;
+  const APART = 2 * MARK + 0.7;
+
   // a face's inspector: its targets, the one that stands for a group of players (find), and for a
   // target, a ring around it, its marks brought out, and what the explanation says of it
   // (describe: the keys of the marks to bring out, a title, and rows of a name and a value); reset
-  // puts back what an inspection changed. The shapes of its groups can be pointed at too
-  // (groupAt): the strongest under the pointer, as the strongest lie on top; where the players
-  // cover the face (a photo's patches), a group's shape under the pointer comes first (over)
-  const inspectorOf = (svg, marks, targets, describe, find = () => null, reset = () => {}, over = false) => {
+  // puts back what an inspection changed. The picked (picks: their players) wear a numbered mark
+  // each, which says that they can be pointed at, where spots finds room for it (the first of its
+  // places clear of the other marks and of what the face must not cover, obstacles, each a middle
+  // and a radius). Beside them, every target can be pointed at, and the shapes of the groups too
+  // (groupAt: the strongest under the pointer, as the strongest lie on top); or, where only the
+  // picked can (only: a photo, whose patches cover the face and whose links are thin), nothing else
+  const inspectorOf = (svg, marks, targets, describe, { find = () => null, reset = () => {}, picks = [], spots = () => [], obstacles = [], only = false } = {}) => {
     const ring = add(svg, "rect", { class: "orders-demo-inspect-ring", visibility: "hidden" });
     const shapes = new WeakMap(marks.map((mark) => [mark.node, mark]));
     const groups = new Map(); // a group's target, the same one while the pointer stays on its shape
+    const keyOf = (target) => (target.group ? target.group.join(",") : target.player !== undefined ? String(target.player) : null);
+    // the picked: a target each, pointed at by its mark (hx, hy, hr), numbered in their order
+    const layer = add(svg, "g", { class: "orders-demo-pick-marks" });
+    const picked = [];
+    for (const players of picks) {
+      const target = players.length === 1 ? targets.find((other) => other.player === players[0]) : find(players);
+      if (!target) continue; // (a group the face does not draw)
+      const room = ([x, y]) =>
+        Math.min(
+          ...picked.map((other) => Math.hypot(x - other.hx, y - other.hy) - APART),
+          ...obstacles.map(([ox, oy, r]) => Math.hypot(x - ox, y - oy) - r - MARK - 0.2),
+          x - MARK,
+          100 - MARK - x,
+          y - MARK,
+          100 - MARK - y,
+        );
+      const places = spots(target, players);
+      const [x, y] = (places.find((place) => room(place) >= 0) ?? places.reduce((best, place) => (room(place) > room(best) ? place : best))).map((value) => roundTo(value, 2));
+      const mark = add(layer, "g", { class: "orders-demo-pick-mark" });
+      add(mark, "circle", { class: "orders-demo-pick-halo", cx: x, cy: y, r: roundTo(MARK + 1.5, 2) });
+      add(mark, "circle", { cx: x, cy: y, r: MARK });
+      add(mark, "text", { x, y: roundTo(y + 0.1, 2) }, String(picked.length + 1));
+      picked.push({ ...target, hx: x, hy: y, hr: MARK + 0.4, mark });
+    }
     return {
-      targets,
+      targets: only ? picked : [...picked, ...targets],
       find,
-      over,
       groupAt(x, y) {
+        if (only) return null;
         for (const node of document.elementsFromPoint(x, y)) {
           if (node === svg) break;
           const mark = shapes.get(node);
@@ -299,6 +343,10 @@
       show(target) {
         const said = describe(target);
         bringOut(svg, marks, said?.keys ?? null);
+        // (the mark of what is pointed at, however it is pointed at, stands out among the marks)
+        const key = keyOf(target);
+        svg.classList.toggle("orders-demo-picking", key !== null);
+        for (const other of picked) other.mark.classList.toggle("orders-demo-pick-on", key !== null && keyOf(other) === key);
         const ringed = target.rx > 0 && !target.bare;
         ring.setAttribute("visibility", ringed ? "visible" : "hidden");
         if (ringed) {
@@ -310,10 +358,21 @@
       },
       clear() {
         bringOut(svg, marks, null);
+        svg.classList.remove("orders-demo-picking");
+        for (const other of picked) other.mark.classList.remove("orders-demo-pick-on");
         ring.setAttribute("visibility", "hidden");
         reset();
       },
     };
+  };
+
+  // the data's note on a player or a group (its key), on a sheet: a sentence, where the data has
+  // one that holds on the sheet's order (a note may name its orders: [note, orders]); for a
+  // group, else the note of every group as large ("many": [size, note])
+  const noteOf = (example, sheet, key, size = 1) => {
+    const note = example.notes?.[key];
+    const said = Array.isArray(note) ? (note[1].includes(sheet.order) ? note[0] : undefined) : note;
+    return said ?? (size > 1 && size >= (example.notes?.many?.[0] ?? Infinity) ? example.notes.many[1] : undefined);
   };
 
   // what an explanation says of a player: its own value (of order 1, its Shapley value), and the
@@ -331,8 +390,7 @@
       return {
         keys: new Set([key]),
         title: [groupName(example, players, nameOf, 34), players.length === 2 ? "a pair" : `a group of ${players.length}`],
-        // (its own note, or the note of every group as large: "many")
-        story: example.notes?.[key] ?? (players.length >= (example.notes?.many?.[0] ?? Infinity) ? example.notes.many[1] : undefined),
+        story: noteOf(example, sheet, key, players.length),
         rows: [
           ...(players.length <= 4 ? players.map((player, k) => [`${nameOf(player)} alone`, own[k]]) : []),
           ["together, on top", value],
@@ -346,7 +404,7 @@
     return {
       keys: new Set(groups.map(([players]) => players.join(","))),
       title: title(target.player),
-      story: example.notes?.[String(target.player)],
+      story: noteOf(example, sheet, String(target.player)),
       rows: [
         [sheet.order === 1 ? "Shapley value" : "alone", sheet.first[target.player]],
         ...groups.map(([players, value]) => [
@@ -436,7 +494,27 @@
       players.length === 1
         ? targets[players[0]]
         : { x: players.reduce((sum, atom) => sum + position[atom][0], 0) / players.length, y: Math.min(...players.map((atom) => position[atom][1])), rx: 0, ry: radius, group: players };
-    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, (atom) => example.atoms[atom]), find);
+    // a mark's places: beside an atom; beside the middle of a pair's two atoms, or on it; on a
+    // larger group's center, where its shape meets
+    const spots = (target, players) => {
+      if (players.length === 1) return [[1, -1], [-1, -1], [1, 1], [-1, 1]].map(([dx, dy]) => [target.x + dx * (radius + MARK) * 0.75, target.y + dy * (radius + MARK) * 0.75]);
+      if (players.length === 2) {
+        const [[ax, ay], [bx, by]] = players.map((atom) => position[atom]);
+        const length = Math.hypot(bx - ax, by - ay) || 1;
+        const [nx, ny] = [(-(by - ay) / length) * (MARK + 1.1), ((bx - ax) / length) * (MARK + 1.1)];
+        const [mx, my] = [(ax + bx) / 2, (ay + by) / 2];
+        return [[mx + nx, my + ny], [mx - nx, my - ny], [mx, my]];
+      }
+      const center = sheet.groups.find(([others]) => others.join(",") === players.join(","))?.[2];
+      const [cx, cy] = center ? place(center) : [0, 1].map((axis) => players.reduce((sum, atom) => sum + position[atom][axis], 0) / players.length);
+      return [[cx, cy], [cx + 3.4, cy - 3.4], [cx - 3.4, cy + 3.4], [cx + 3.4, cy + 3.4], [cx - 3.4, cy - 3.4]];
+    };
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, (atom) => example.atoms[atom]), {
+      find,
+      picks: picksOf(example, sheet),
+      spots,
+      obstacles: position.map(([x, y]) => [x, y, radius]),
+    });
   }
 
   // the photo and its caption: the photo's patches on the left, the caption's tokens on the right
@@ -554,7 +632,27 @@
       group.length === 1
         ? targets[group[0]]
         : { x: group.reduce((sum, player) => sum + targets[player].x, 0) / group.length, y: Math.min(...group.map((player) => targets[player].y)), rx: 0, ry: cell / 2, group };
-    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), find, undefined, true);
+    // a mark's places: in a corner of a patch, at the end of a word; along the link of a pair
+    // (beside the words' column, for two words); in the middle of a larger group's players
+    const spots = (target, group) => {
+      if (group.length === 1) {
+        if (group[0] >= patches) return [[tokens.x + tokens.width + 1.3, target.y], [tokens.x - MARK - 0.4, target.y]];
+        return [[1, -1], [-1, -1], [1, 1], [-1, 1]].map(([dx, dy]) => [target.x + dx * cell * 0.26, target.y + dy * cell * 0.26]);
+      }
+      const ends = group.map(anchor);
+      if (group.every((player) => player >= patches)) {
+        const y = ends.reduce((sum, end) => sum + end[1], 0) / ends.length;
+        return [1, 2, 3, 4].map((k) => [tokens.x - k * (MARK + 0.9), y]);
+      }
+      if (group.length === 2) {
+        const [[ax, ay], [bx, by]] = ends;
+        return [0.5, 0.36, 0.64, 0.24, 0.76, 0.14].map((t) => [ax + t * (bx - ax), ay + t * (by - ay)]);
+      }
+      const [cx, cy] = [0, 1].map((axis) => ends.reduce((sum, end) => sum + end[axis], 0) / ends.length);
+      return [[cx, cy], [cx + 4, cy - 4], [cx - 4, cy + 4], [cx + 4, cy + 4], [cx - 4, cy - 4]];
+    };
+    // (only the picked can be pointed at: the patches cover the photo, and the links are thin)
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), { find, picks: picksOf(example, sheet), spots, only: true });
   }
 
   // one house: its explanation as a tree that grows one level per order. The features are on top,
@@ -690,7 +788,17 @@
     // (a group the tree does not draw has no place on it: nothing to point at)
     const find = (players) => targets.find((target) => (target.group ?? [target.player]).join(",") === players.join(",")) ?? null;
     const title = (feature) => [example.features[feature], example.values[feature]];
-    return inspectorOf(svg, noted, targets, (target) => sayOf(example, sheet, target, title, (feature) => example.features[feature]), find);
+    // a mark's places: at a corner of a feature's or a group's circle
+    const spots = (target) => {
+      const reach = (target.player !== undefined ? 2 : target.rx) + MARK + 0.3;
+      return [[1, -1], [-1, -1], [1, 1], [-1, 1]].map(([dx, dy]) => [target.x + dx * reach * 0.74, target.y + dy * reach * 0.74]);
+    };
+    return inspectorOf(svg, noted, targets, (target) => sayOf(example, sheet, target, title, (feature) => example.features[feature]), {
+      find,
+      picks: picksOf(example, sheet),
+      spots,
+      obstacles: [...example.layout.map((feature) => [slot.get(feature), top, 2]), ...nodes.map((node) => [node.x, node.y, node.r])],
+    });
   }
 
   // many houses: the map of California, a dot where every house is, in the color of what one
@@ -865,7 +973,7 @@
       };
     };
     const find = (players) => targets.find((target) => target.row !== undefined && sheet.rows[target.row][0].join(",") === players.join(",")) ?? null;
-    return inspectorOf(svg, [], targets, describe, find, () => paint(rest));
+    return inspectorOf(svg, [], targets, describe, { find, reset: () => paint(rest) });
   }
 
   // -- the sheets' names and fits -----------------------------------------------------------------------
@@ -899,10 +1007,10 @@
   };
   // the players of an example, in words
   const PLAYERS = {
-    graph: { one: "atom", players: "atoms", point: "an atom", group: "a link" },
-    tree: { one: "feature", players: "features", point: "a feature", group: "a group" },
+    graph: { one: "atom", players: "atoms", point: "a number" },
+    tree: { one: "feature", players: "features", point: "a number" },
     map: { one: "feature", players: "features", point: "a house or a row" },
-    "image-text": { one: "patch or word", players: "patches and words", point: "a patch or word", group: "a link" },
+    "image-text": { one: "patch or word", players: "patches and words", point: "a number" },
   };
   // a group's name, its players' joined, or, where that is long, how many they are (long: more
   // than the card's line holds; the tip holds more)
@@ -955,12 +1063,11 @@
   };
 
   // the orders between an example's last sheet of interactions and the full decomposition with a
-  // blank sheet each: those of its plot, and more up to BLANKS, which equal the full decomposition
+  // blank sheet each: those with an explanation of their own, below the highest order with an
+  // interaction (from that order on, every order equals the full decomposition, the last sheet)
   const between = (example) => {
-    const [first, last] = [example.sheets.at(-2).order + 1, example.sheets.at(-1).order - 1];
-    const plotted = example.fits.filter(([order]) => order >= first && order <= last).length;
-    const count = Math.max(0, Math.min(last - first + 1, Math.max(BLANKS, plotted)));
-    return Array.from({ length: count }, (_, k) => fitOf(example, first + k));
+    const [first, last] = [example.sheets.at(-2).order + 1, Math.min(example.sheets.at(-1).order, example.largest) - 1];
+    return Array.from({ length: Math.max(0, last - first + 1) }, (_, k) => fitOf(example, first + k));
   };
 
   // -- the demo -------------------------------------------------------------------------------------
@@ -1141,12 +1248,11 @@
     planTagHint.setAttribute("class", "orders-demo-tag-hint");
     planTagHint.setAttribute("dx", "2.4");
     const planTagWords = [["orders-demo-hint-touch", "tap"], ["orders-demo-hint-hover", "hover"]].map(([className, word]) => [add(planTagHint, "tspan", { class: className }), word]);
-    // (what can be pointed at: a player, and where the face shows groups, their shapes; where the
-    // name leaves no room for it, no invitation)
-    const tagFace = (name, grouped) => {
+    // (what to point at: the numbers on the face, the marks of the picked; on the houses' map, a
+    // house or a row; where the name leaves no room for it, no invitation)
+    const tagFace = (name) => {
       planTagText.textContent = name;
-      const words = PLAYERS[current().kind];
-      const what = grouped && words.group ? `${words.point} or ${words.group}` : words.point;
+      const what = PLAYERS[current().kind].point;
       for (const [node, word] of planTagWords) node.textContent = `· ${word} ${what}`;
       if (name.length * 2.55 + (what.length + 8) * 1.5 <= 88) planTagText.append(planTagHint);
     };
@@ -1915,7 +2021,9 @@
       // over its target, in the middle, or under it where there is no room above; kept in the demo
       const [face, box] = [planView.firstChild.getBoundingClientRect(), root.getBoundingClientRect()];
       const unit = face.width / 100;
-      const [x, above, below] = [face.left - box.left + target.x * unit, face.top - box.top + (target.y - target.ry) * unit, face.top - box.top + (target.y + target.ry) * unit];
+      // (over what is pointed at: a picked one's mark, or the target itself)
+      const [tx, ty, reach] = target.hr ? [target.hx, target.hy, target.hr] : [target.x, target.y, target.ry];
+      const [x, above, below] = [face.left - box.left + tx * unit, face.top - box.top + (ty - reach) * unit, face.top - box.top + (ty + reach) * unit];
       const [width, height] = [cardTip.offsetWidth, cardTip.offsetHeight];
       cardTip.style.left = `${roundTo(Math.max(2, Math.min(box.width - width - 2, x - width / 2)), 1)}px`;
       cardTip.style.top = `${roundTo(above - height - 9 >= 0 ? above - height - 9 : below + 9, 1)}px`;
@@ -1928,15 +2036,16 @@
       const face = planView.firstChild.getBoundingClientRect();
       const [x, y] = [((event.clientX - face.left) / face.width) * 100, ((event.clientY - face.top) / face.height) * 100];
       const least = ((event.pointerType === "mouse" ? 5 : 11) / face.width) * 100;
-      const group = inspector.groupAt(event.clientX, event.clientY);
-      if (group && inspector.over) return group;
+      // (a picked one is pointed at by its mark; the nearest of those under the pointer, and a
+      // mark before anything else)
       let [best, nearest] = [null, Infinity];
       for (const target of inspector.targets) {
-        if (Math.abs(x - target.x) > Math.max(target.rx, least) || Math.abs(y - target.y) > Math.max(target.ry, least)) continue;
-        const distance = Math.hypot(x - target.x, y - target.y);
+        const [tx, ty, rx, ry] = target.hr ? [target.hx, target.hy, target.hr, target.hr] : [target.x, target.y, target.rx, target.ry];
+        if (Math.abs(x - tx) > Math.max(rx, least) || Math.abs(y - ty) > Math.max(ry, least)) continue;
+        const distance = Math.hypot(x - tx, y - ty) - (target.hr ? 100 : 0);
         if (distance < nearest) [best, nearest] = [target, distance];
       }
-      return best ?? group;
+      return best ?? inspector.groupAt(event.clientX, event.clientY);
     }
     planView.addEventListener("pointermove", (event) => {
       if (event.pointerType === "mouse") inspect(targetAt(event));
@@ -2137,11 +2246,7 @@
         planView.replaceChildren(face, planTag);
       }
       // named as the layer it shows: a sheet, the mechanism, or an order between
-      const faced = state.blank !== null ? betweenOf(example, state.blank) : mechanism ? example.sheets[last] : example.sheets[index];
-      tagFace(
-        state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face,
-        Boolean(faced?.groups?.length),
-      );
+      tagFace(state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face);
       // the mechanism, where only an estimate shows it, blurred
       planView.classList.toggle("orders-demo-estimated", Boolean(mechanism) && state.blank === null && estimated(example));
 
