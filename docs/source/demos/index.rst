@@ -35,7 +35,49 @@ takes too long or needs too large a model to run with the docs, and it shows wha
       interaction, from the Shapley values to the full decomposition, which adds up to the model:
       a molecule, houses, TabPFN and SigLIP 2, the figure built up step by step.
 
+   .. grid-item-card:: GraphSHAP-IQ: which atoms act together?
+      :link: graphshapiq-explorer/index
+      :link-type: doc
+      :img-top: /_static/images/hero_graphshapiq_explorer_demo.png
+      :img-alt: The GraphSHAP-IQ explorer: 1,3-dinitrobenzene, each nitrogen joined to its oxygens by red bands, beside the strongest pairs of atoms.
+
+      Three graph neural networks, eight molecules, every molecule explained for every question:
+      Shapley values, interactions of up to four atoms, and the Möbius interactions of all orders,
+      exactly, with GraphSHAP-IQ.
+
+   .. grid-item-card:: GraphSHAP-IQ Lab: build a molecule, explain it exactly
+      :link: graphshapiq-lab/index
+      :link-type: doc
+      :img-top: /_static/images/hero_graphshapiq_lab_demo.png
+      :img-alt: The GraphSHAP-IQ lab: catechol, a benzene ring with two neighbouring OH groups, judged a PAINS by a GNN, its atoms joined by red bands.
+
+      Put groups on a benzene ring, and your browser computes the exact Shapley interactions of the
+      molecule's atoms with GraphSHAP-IQ while you watch: two neighbouring OH groups make a PAINS,
+      two apart do not.
+
+   .. grid-item-card:: GraphSHAP-IQ: exact interactions, and still feasible
+      :link: graphshapiq-exact/index
+      :link-type: doc
+      :img-top: /_static/images/hero_graphshapiq_exact_demo.png
+      :img-alt: Cholesterol with the receptive field of one atom highlighted in violet, beside 2^28 = 268,435,456 maskings against the 129,664 that GraphSHAP-IQ evaluates.
+
+      Why exact Shapley interactions of a graph neural network do not take 2ⁿ evaluations: point
+      at an atom to see its receptive field, and how many maskings GraphSHAP-IQ needs instead.
+
+   .. grid-item-card:: GraphSHAP-IQ: one prediction at every order
+      :link: graphshapiq-orders/index
+      :link-type: doc
+      :img-top: /_static/images/hero_graphshapiq_orders_demo.png
+      :img-alt: 1,3-dinitrobenzene explained by pairs of atoms, with the curve of faithfulness climbing from below zero for the Shapley values to one for the full decomposition.
+
+      A molecule explained at every order, from the Shapley values to the full decomposition, and
+      how faithful each order is: pairs suffice for a nitro group, a catechol needs groups of three.
+
 .. toctree::
    :hidden:
 
    fixlip/index
+   graphshapiq-explorer/index
+   graphshapiq-lab/index
+   graphshapiq-exact/index
+   graphshapiq-orders/index
