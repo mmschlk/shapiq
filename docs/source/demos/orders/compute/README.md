@@ -67,7 +67,7 @@ woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly
 
 The three photos (`fixlip.py`, and `--photo` for the giraffe and the sign) were computed later,
 with torch 2.9 and transformers 5.3. The giraffe and the sign have the elephant's proxy: its depth
-was not chosen anew for them. Their full decompositions fit SigLIP 2 with R^2 = 0.78 and 0.76.
+was not chosen anew for them. Their full decompositions fit SigLIP 2 with R^2 = 0.78 and 0.77.
 
 What the demo marks on its card, and its notes, are picked by hand in `pack.py` (`*_PICKS`, and
 the notes the molecule's bonds give): a player or a group, the orders it is picked on, and a note

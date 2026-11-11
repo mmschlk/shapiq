@@ -196,9 +196,9 @@ together, the tree's patch and the word raise the match, on every order (:math:`
 Shapley values, 0.69 with pairs, 0.78 for the full decomposition). And a sign reading "juice
 theory" next to a traffic light: "traffic" and "light" attach to the red light, and the sign's
 words to its lettering, "juice" to the J and the u, "theory" to the letters RY, but not letter by
-letter: with the patch of the E and the O, "theory" lowers the match (0.28, 0.61, and 0.76). Their
+letter: with the patch of the E and the O, "theory" lowers the match (0.28, 0.60, and 0.77). Their
 captions are longer and their proxies, the elephant's, miss more of SigLIP 2: the estimation gaps
-are 0.22 and 0.24.
+are 0.22 and 0.23.
 
 How They Were Computed
 ~~~~~~~~~~~~~~~~~~~~~~

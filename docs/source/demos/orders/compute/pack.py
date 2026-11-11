@@ -924,8 +924,8 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
         (
             [(7, 3), "juice"],
             [4, FULL],
-            "Lettering of “The Pantry”, and the word “juice”: linked nearly as strongly as the "
-            "word's own letters.",
+            "Lettering of “The Pantry”, and the word “juice”: linked too, though it spells "
+            "another word.",
         ),
     ],
 }
