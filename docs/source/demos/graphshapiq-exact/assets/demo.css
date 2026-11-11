@@ -7,40 +7,40 @@
   }
 }
 
-.graphshapiq-exact-demo .bar {
+.graphshapiq-exact-demo .gsq-bar {
   justify-content: space-between;
 }
 
-.graphshapiq-exact-demo .switches .barlab {
+.graphshapiq-exact-demo .gsq-switches .gsq-barlab {
   margin-right: 0.15rem;
 }
 
-.graphshapiq-exact-demo .plot .bond {
+.graphshapiq-exact-demo .gsq-plot .gsq-bond {
   opacity: 0.55;
 }
 
-.graphshapiq-exact-demo .plot .atom {
+.graphshapiq-exact-demo .gsq-plot .gsq-atom {
   stroke: var(--gsq-muted);
   stroke-width: 1.3px;
 }
 
-.graphshapiq-exact-demo .plot .atom.in {
+.graphshapiq-exact-demo .gsq-plot .gsq-atom.gsq-in {
   fill: color-mix(in srgb, var(--gsq-violet) 16%, var(--gsq-sheet));
   stroke: var(--gsq-violet);
 }
 
-.graphshapiq-exact-demo .plot .atom.src {
+.graphshapiq-exact-demo .gsq-plot .gsq-atom.gsq-src {
   fill: var(--gsq-violet);
   stroke: var(--gsq-violet);
   stroke-width: 2.4px;
 }
 
-.graphshapiq-exact-demo .plot .aura circle {
+.graphshapiq-exact-demo .gsq-plot .gsq-aura circle {
   fill: var(--gsq-violet);
   opacity: 0.14;
 }
 
-.graphshapiq-exact-demo .plot .aura circle.pop {
+.graphshapiq-exact-demo .gsq-plot .gsq-aura circle.gsq-pop {
   animation: graphshapiq-exact-pop 500ms ease backwards;
   transform-box: fill-box;
   transform-origin: center;
@@ -53,24 +53,24 @@
   }
 }
 
-.graphshapiq-exact-demo .ctitle {
+.graphshapiq-exact-demo .gsq-ctitle {
   margin: 0 0 1rem;
   font-size: 1.02rem;
   line-height: 1.5;
 }
 
-.graphshapiq-exact-demo .ctitle strong {
+.graphshapiq-exact-demo .gsq-ctitle strong {
   color: var(--gsq-ink);
 }
 
-.graphshapiq-exact-demo .stat {
+.graphshapiq-exact-demo .gsq-stat {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
-.graphshapiq-exact-demo .statrow {
+.graphshapiq-exact-demo .gsq-statrow {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -79,47 +79,53 @@
   border-bottom: 1px solid var(--gsq-border);
 }
 
-.graphshapiq-exact-demo .statlab {
+.graphshapiq-exact-demo .gsq-statlab {
   font-size: 0.9rem;
 }
 
-.graphshapiq-exact-demo .bignum {
+.graphshapiq-exact-demo .gsq-bignum {
   font-size: clamp(1.4rem, 6cqi, 1.9rem);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-.graphshapiq-exact-demo .bignum.muted {
+.graphshapiq-exact-demo .gsq-bignum.gsq-muted {
   color: var(--gsq-muted);
 }
 
-.graphshapiq-exact-demo .bignum.accent,
-.graphshapiq-exact-demo .punch .accent {
+.graphshapiq-exact-demo .gsq-bignum.gsq-accent,
+.graphshapiq-exact-demo .gsq-punch .gsq-accent {
   color: var(--gsq-violet-text);
 }
 
-.graphshapiq-exact-demo .logbars {
+.graphshapiq-exact-demo .gsq-logbars {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
   margin-bottom: 0.35rem;
 }
 
-.graphshapiq-exact-demo .logrow {
+.graphshapiq-exact-demo .gsq-logrow {
   display: grid;
-  grid-template-columns: 4.2rem 1fr;
+  grid-template-columns: 5.6rem minmax(2rem, 1fr) 5.9rem;
   align-items: center;
   gap: 0.6rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
 }
 
-.graphshapiq-exact-demo .loglab {
-  font-family: var(--gsq-mono);
-  font-size: 0.78rem;
+.graphshapiq-exact-demo .gsq-logrow.gsq-on {
+  color: var(--gsq-ink);
+  font-weight: 600;
+}
+
+.graphshapiq-exact-demo .gsq-logn {
+  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-.graphshapiq-exact-demo .logbar {
+.graphshapiq-exact-demo .gsq-logbar {
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
@@ -127,44 +133,44 @@
   box-shadow: inset 0 0 0 1px var(--gsq-border);
 }
 
-.graphshapiq-exact-demo .logbar i {
+.graphshapiq-exact-demo .gsq-logbar i {
   display: block;
   height: 100%;
   border-radius: 999px;
   transition: width 600ms var(--gsq-ease);
 }
 
-.graphshapiq-exact-demo .logbar i.all {
+.graphshapiq-exact-demo .gsq-logbar i.gsq-all {
   background: var(--gsq-muted);
 }
 
-.graphshapiq-exact-demo .logbar i.accent {
+.graphshapiq-exact-demo .gsq-logbar i.gsq-accent {
   background: var(--gsq-violet);
 }
 
-.graphshapiq-exact-demo .logbar i.soft {
+.graphshapiq-exact-demo .gsq-logbar i.gsq-soft {
   background: color-mix(in srgb, var(--gsq-violet) 40%, var(--gsq-stage));
 }
 
-.graphshapiq-exact-demo .barnote {
+.graphshapiq-exact-demo .gsq-barnote {
   margin-bottom: 1rem;
   font-size: 0.78rem;
 }
 
-.graphshapiq-exact-demo .punch {
+.graphshapiq-exact-demo .gsq-punch {
   margin-bottom: 1rem;
   color: var(--gsq-ink);
   font-size: 1rem;
   line-height: 1.5;
 }
 
-.graphshapiq-exact-demo .fieldline {
+.graphshapiq-exact-demo .gsq-fieldline {
   padding: 0.1rem 0 0.1rem 0.7rem;
   border-left: 3px solid var(--gsq-violet);
   font-size: 0.92rem;
   line-height: 1.45;
 }
 
-.graphshapiq-exact-demo .fieldline strong {
+.graphshapiq-exact-demo .gsq-fieldline strong {
   color: var(--gsq-ink);
 }

@@ -18,6 +18,7 @@
   --gsq-lavender: var(--shapiq-lavender, #b3c2e5);
   --gsq-mono: var(--font-stack--monospace, ui-monospace, "SFMono-Regular", Menlo, monospace);
   --gsq-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --gsq-glide: cubic-bezier(0.45, 0, 0.15, 1); /* for what moves a distance: the pill */
   --gsq-control: 2.35rem; /* the height of a switch, as in the FIxLIP and orders demos */
   --gsq-lasso: color-mix(in srgb, var(--gsq-muted) 62%, var(--gsq-stage));
   /* red and blue for values in text, darker than the marks so that they read well as text */
@@ -58,15 +59,15 @@ body[data-theme="dark"] .gsq {
   font: inherit;
 }
 
-.gsq .up {
+.gsq .gsq-up {
   color: var(--gsq-red-text);
 }
 
-.gsq .down {
+.gsq .gsq-down {
   color: var(--gsq-blue-text);
 }
 
-.gsq .sr {
+.gsq .gsq-sr {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -74,7 +75,7 @@ body[data-theme="dark"] .gsq {
   clip-path: inset(50%);
 }
 
-.gsq :is(.mol, .opt, .step, .act, .info, .link, .row[tabindex], .chip, .preset):focus-visible {
+.gsq :is(.gsq-mol, .gsq-opt, .gsq-step, .gsq-act, .gsq-info, .gsq-link, .gsq-row[tabindex], .gsq-chip):focus-visible {
   outline: 2px solid var(--gsq-ink);
   outline-offset: 2px;
 }
@@ -90,7 +91,7 @@ body[data-theme="dark"] .gsq {
 
 /* -- the bar: molecules, switches, the "i" ------------------------------------------------------ */
 
-.gsq .bar {
+.gsq .gsq-bar {
   position: relative;
   display: flex;
   flex-wrap: wrap;
@@ -100,7 +101,7 @@ body[data-theme="dark"] .gsq {
   margin-bottom: 1rem;
 }
 
-.gsq .barlab {
+.gsq .gsq-barlab {
   align-self: center;
   color: var(--gsq-muted);
   font-size: 0.7rem;
@@ -109,7 +110,7 @@ body[data-theme="dark"] .gsq {
   text-transform: uppercase;
 }
 
-.gsq .mols {
+.gsq .gsq-mols {
   display: flex;
   gap: 0.1rem;
   max-width: 100%;
@@ -118,11 +119,11 @@ body[data-theme="dark"] .gsq {
   scrollbar-width: none;
 }
 
-.gsq .mols::-webkit-scrollbar {
+.gsq .gsq-mols::-webkit-scrollbar {
   display: none;
 }
 
-.gsq .mol {
+.gsq .gsq-mol {
   flex: none;
   width: 5.3rem;
   padding: 0.3rem 0.2rem 0.25rem;
@@ -138,13 +139,13 @@ body[data-theme="dark"] .gsq {
     transform 120ms var(--gsq-ease);
 }
 
-.gsq .mol svg {
+.gsq .gsq-mol svg {
   display: block;
   width: 100%;
   height: 2.5rem;
 }
 
-.gsq .mol span {
+.gsq .gsq-mol span {
   display: block;
   margin-top: 0.2rem;
   overflow: hidden;
@@ -156,38 +157,39 @@ body[data-theme="dark"] .gsq {
   white-space: nowrap;
 }
 
-.gsq .mol:hover,
-.gsq .mol[aria-pressed="true"] {
+.gsq .gsq-mol:hover,
+.gsq .gsq-mol[aria-pressed="true"] {
   opacity: 1;
 }
 
-.gsq .mol[aria-pressed="true"] {
+.gsq .gsq-mol[aria-pressed="true"] {
   border-color: var(--gsq-ink);
 }
 
-.gsq .mol:active {
+.gsq .gsq-mol:active {
   transform: scale(0.96);
 }
 
-.gsq .mol line {
+.gsq .gsq-mol line {
   stroke: var(--gsq-ink);
   stroke-width: 1.1px;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
 
-.gsq .mol circle {
+.gsq .gsq-mol circle {
   fill: var(--gsq-ink);
 }
 
-.gsq .switches {
+.gsq .gsq-switches {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
 
-.gsq .switch {
+.gsq .gsq-switch {
+  position: relative;
   display: inline-flex;
   padding: 3px;
   border: 1px solid var(--gsq-border);
@@ -195,7 +197,7 @@ body[data-theme="dark"] .gsq {
   background: var(--gsq-stage);
 }
 
-.gsq .opt {
+.gsq .gsq-opt {
   display: inline-flex;
   align-items: center;
   height: calc(var(--gsq-control) - 8px);
@@ -215,20 +217,32 @@ body[data-theme="dark"] .gsq {
     transform 120ms var(--gsq-ease);
 }
 
-.gsq .opt:hover {
+.gsq .gsq-opt:hover {
   color: var(--gsq-ink);
 }
 
-.gsq .opt:active {
+.gsq .gsq-opt:active {
   transform: scale(0.96);
 }
 
-.gsq .opt[aria-pressed="true"] {
+/* the pill around the option chosen: a copy of the options in its colors, cut to the one chosen */
+.gsq .gsq-pill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  padding: 3px;
+  border-radius: inherit;
   background: var(--gsq-ink);
+  clip-path: inset(0 100% 0 0);
+  pointer-events: none;
+  transition: clip-path 380ms var(--gsq-glide);
+}
+
+.gsq .gsq-pill .gsq-opt {
   color: var(--gsq-sheet);
 }
 
-.gsq .info {
+.gsq .gsq-info {
   width: 1.75rem;
   height: 1.75rem;
   padding: 0;
@@ -244,13 +258,13 @@ body[data-theme="dark"] .gsq {
   cursor: pointer;
 }
 
-.gsq .info:hover,
-.gsq .info[aria-expanded="true"] {
+.gsq .gsq-info:hover,
+.gsq .gsq-info[aria-expanded="true"] {
   border-color: var(--gsq-ink);
   color: var(--gsq-ink);
 }
 
-.gsq .about {
+.gsq .gsq-about {
   position: absolute;
   top: calc(100% + 0.4rem);
   right: 0;
@@ -267,15 +281,15 @@ body[data-theme="dark"] .gsq {
   line-height: 1.5;
 }
 
-.gsq .about p {
+.gsq .gsq-about p {
   margin: 0 0 0.6rem;
 }
 
-.gsq .about strong {
+.gsq .gsq-about strong {
   color: var(--gsq-ink);
 }
 
-.gsq .about-close {
+.gsq .gsq-about-close {
   float: right;
   margin: -0.35rem -0.5rem 0 0;
   padding: 0 0.3rem;
@@ -289,7 +303,7 @@ body[data-theme="dark"] .gsq {
 
 /* -- the body: the molecule and the panel ------------------------------------------------------- */
 
-.gsq .body {
+.gsq .gsq-body {
   display: grid;
   grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
   gap: 1.75rem;
@@ -297,18 +311,18 @@ body[data-theme="dark"] .gsq {
 }
 
 @container (max-width: 42rem) {
-  .gsq .body {
+  .gsq .gsq-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .gsq .stage {
+  .gsq .gsq-stage {
     width: 100%;
     max-width: 26rem;
     margin-inline: auto;
   }
 }
 
-.gsq .frame {
+.gsq .gsq-frame {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
@@ -316,25 +330,25 @@ body[data-theme="dark"] .gsq {
   background: var(--gsq-stage);
 }
 
-.gsq .plot {
+.gsq .gsq-plot {
   display: block;
   width: 100%;
   height: 100%;
   touch-action: manipulation;
 }
 
-.gsq .plot :focus {
+.gsq .gsq-plot :focus {
   outline: none;
 }
 
-.gsq .plot .bond {
+.gsq .gsq-plot .gsq-bond {
   stroke: var(--gsq-ink);
   stroke-width: 1.5px;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
 
-.gsq .plot .atom {
+.gsq .gsq-plot .gsq-atom {
   fill: var(--gsq-sheet);
   stroke: var(--gsq-ink);
   stroke-width: 1.4px;
@@ -345,13 +359,13 @@ body[data-theme="dark"] .gsq {
     fill 300ms ease;
 }
 
-.gsq .plot .atom.masked {
+.gsq .gsq-plot .gsq-atom.gsq-masked {
   fill: var(--gsq-stage);
   stroke: var(--gsq-muted);
   stroke-dasharray: 3 3;
 }
 
-.gsq .plot .el {
+.gsq .gsq-plot .gsq-el {
   fill: var(--gsq-ink);
   font-family: var(--color-font-stack, inherit);
   font-weight: 700;
@@ -361,35 +375,35 @@ body[data-theme="dark"] .gsq {
   transition: opacity 300ms ease;
 }
 
-.gsq .plot .ring {
+.gsq .gsq-plot .gsq-ring {
   stroke: none;
   transition: opacity 300ms ease;
 }
 
-.gsq .plot .band {
+.gsq .gsq-plot .gsq-band {
   stroke-linecap: round;
 }
 
-.gsq .plot .shape {
+.gsq .gsq-plot .gsq-shape {
   stroke-width: 1.6px;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
-.gsq .plot .lasso-out {
+.gsq .gsq-plot .gsq-lasso-out {
   fill: var(--gsq-lasso);
   stroke: var(--gsq-lasso);
   stroke-linecap: round;
 }
 
-.gsq .plot .lasso-in {
+.gsq .gsq-plot .gsq-lasso-in {
   fill: var(--gsq-stage);
   stroke: var(--gsq-stage);
   stroke-linecap: round;
 }
 
-.gsq .plot .focus {
+.gsq .gsq-plot .gsq-focus {
   fill: none;
   stroke: var(--gsq-ink);
   stroke-width: 1.6px;
@@ -397,12 +411,12 @@ body[data-theme="dark"] .gsq {
   vector-effect: non-scaling-stroke;
 }
 
-.gsq .plot .hit {
+.gsq .gsq-plot .gsq-hit {
   fill: transparent;
   outline: none;
 }
 
-.gsq .plot .keyfocus {
+.gsq .gsq-plot .gsq-keyfocus {
   fill: none;
   stroke: var(--gsq-link);
   stroke-width: 2px;
@@ -410,27 +424,40 @@ body[data-theme="dark"] .gsq {
   pointer-events: none;
 }
 
-.gsq .hint {
+/* the hint, as the FIxLIP demo's: a dark pill over the molecule, until the reader has pointed */
+.gsq .gsq-hint {
   position: absolute;
-  bottom: 0.55rem;
+  z-index: 3;
+  top: 0.6rem;
   left: 50%;
-  padding: 0.15rem 0.6rem;
+  padding: 0.34rem 0.9rem 0.38rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--gsq-sheet) 80%, transparent);
-  color: var(--gsq-muted);
-  font-size: 0.75rem;
+  background: var(--gsq-ink);
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.45);
+  color: var(--gsq-sheet);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
   white-space: nowrap;
   pointer-events: none;
   transform: translateX(-50%);
-  transition: opacity 300ms;
+  animation: gsq-hint-bob 2.2s ease-in-out infinite;
+  transition: opacity 360ms var(--gsq-ease);
 }
 
-.gsq .hint[hidden] {
+@keyframes gsq-hint-bob {
+  50% {
+    translate: 0 3px;
+  }
+}
+
+.gsq .gsq-hint[hidden] {
   display: block !important;
   opacity: 0;
 }
 
-.gsq .caption {
+.gsq .gsq-caption {
   min-height: 3em;
   margin: 0.8rem 0 0;
   color: var(--gsq-muted);
@@ -439,30 +466,30 @@ body[data-theme="dark"] .gsq {
   text-align: center;
 }
 
-.gsq .caption strong {
+.gsq .gsq-caption strong {
   color: var(--gsq-ink);
   font-size: 1rem;
 }
 
-.gsq .caption .formula {
+.gsq .gsq-caption .gsq-formula {
   margin-left: 0.45rem;
   white-space: nowrap;
 }
 
-.gsq .caption .blurb {
+.gsq .gsq-caption .gsq-blurb {
   display: block;
   margin-top: 0.15rem;
 }
 
 /* -- the panel ---------------------------------------------------------------------------------- */
 
-.gsq .panel {
+.gsq .gsq-panel {
   min-width: 0;
   color: var(--gsq-muted);
   font-size: 0.92rem;
 }
 
-.gsq .panel-in {
+.gsq .gsq-panel-in {
   animation: gsq-fade 280ms ease;
 }
 
@@ -472,36 +499,36 @@ body[data-theme="dark"] .gsq {
   }
 }
 
-.gsq .title {
+.gsq .gsq-title {
   min-height: 1.35em;
   margin: 0 0 0.4rem;
   font-size: 1.05rem;
   line-height: 1.35;
 }
 
-.gsq .title strong {
+.gsq .gsq-title strong {
   margin-right: 0.3em;
   color: var(--gsq-ink);
 }
 
-.gsq .detail {
+.gsq .gsq-detail {
   min-height: calc(3 * 1.55em);
   margin: 0 0 0.8rem;
   line-height: 1.55;
 }
 
-.gsq .panel strong {
+.gsq .gsq-panel strong {
   font-weight: 700;
 }
 
-.gsq .slot {
+.gsq .gsq-slot {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 0.85rem;
 }
 
-.gsq .stepper {
+.gsq .gsq-stepper {
   display: inline-flex;
   align-self: center;
   align-items: center;
@@ -512,7 +539,7 @@ body[data-theme="dark"] .gsq {
   background: var(--gsq-stage);
 }
 
-.gsq .step {
+.gsq .gsq-step {
   width: calc(var(--gsq-control) - 8px);
   height: calc(var(--gsq-control) - 8px);
   padding: 0;
@@ -529,16 +556,16 @@ body[data-theme="dark"] .gsq {
     transform 120ms var(--gsq-ease);
 }
 
-.gsq .step:active:not([aria-disabled="true"]) {
+.gsq .gsq-step:active:not([aria-disabled="true"]) {
   transform: scale(0.96);
 }
 
-.gsq .step[aria-disabled="true"] {
+.gsq .gsq-step[aria-disabled="true"] {
   opacity: 0.25;
   cursor: default;
 }
 
-.gsq .step-label {
+.gsq .gsq-step-label {
   min-width: 9.5rem;
   color: var(--gsq-ink);
   font-weight: 600;
@@ -546,21 +573,21 @@ body[data-theme="dark"] .gsq {
   text-align: center;
 }
 
-.gsq .step-label small {
+.gsq .gsq-step-label small {
   margin-left: 0.35em;
   color: var(--gsq-muted);
   font-size: 0.85em;
   font-weight: 500;
 }
 
-.gsq .rows {
+.gsq .gsq-rows {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   min-height: calc(5 * 2.5rem + 4 * 0.3rem);
 }
 
-.gsq .row {
+.gsq .gsq-row {
   display: grid;
   grid-template-columns: 2.9rem 5.2rem minmax(1.5rem, 1fr) 3.3rem;
   align-items: center;
@@ -571,11 +598,11 @@ body[data-theme="dark"] .gsq {
   transition: opacity 200ms;
 }
 
-.gsq .row.dim {
+.gsq .gsq-row.gsq-dim {
   opacity: 0.3;
 }
 
-.gsq .row svg {
+.gsq .gsq-row svg {
   display: block;
   width: 2.9rem;
   height: 2.5rem;
@@ -583,7 +610,7 @@ body[data-theme="dark"] .gsq {
   background: var(--gsq-stage);
 }
 
-.gsq .row svg line {
+.gsq .gsq-row svg line {
   stroke: var(--gsq-muted);
   stroke-width: 1px;
   stroke-linecap: round;
@@ -591,7 +618,7 @@ body[data-theme="dark"] .gsq {
   opacity: 0.7;
 }
 
-.gsq .row .who {
+.gsq .gsq-row .gsq-who {
   overflow: hidden;
   color: var(--gsq-ink);
   font-size: 0.84rem;
@@ -600,7 +627,7 @@ body[data-theme="dark"] .gsq {
   white-space: nowrap;
 }
 
-.gsq .meter {
+.gsq .gsq-meter {
   position: relative;
   height: 6px;
   border-radius: 999px;
@@ -608,13 +635,13 @@ body[data-theme="dark"] .gsq {
   box-shadow: inset 0 0 0 1px var(--gsq-border);
 }
 
-.gsq .meter i {
+.gsq .gsq-meter i {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 999px;
 }
 
-.gsq .row .num {
+.gsq .gsq-row .gsq-num {
   font-family: var(--gsq-mono);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
@@ -622,12 +649,12 @@ body[data-theme="dark"] .gsq {
   text-align: right;
 }
 
-.gsq .rows .none {
+.gsq .gsq-rows .gsq-none {
   padding: 0.6rem 0;
   font-size: 0.86rem;
 }
 
-.gsq .legend {
+.gsq .gsq-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
@@ -635,57 +662,57 @@ body[data-theme="dark"] .gsq {
   font-size: 0.82rem;
 }
 
-.gsq .key {
+.gsq .gsq-key {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
 }
 
-.gsq .key i {
+.gsq .gsq-key i {
   width: 0.62rem;
   height: 0.62rem;
   border-radius: 999px;
 }
 
-.gsq .key i.outline {
+.gsq .gsq-key i.gsq-outline {
   width: 0.95rem;
   border: 1.5px solid var(--gsq-lasso);
   background: none;
 }
 
-.gsq .takeaway {
+.gsq .gsq-takeaway {
   margin: 0.9rem 0 0.75rem;
   color: var(--gsq-ink);
   line-height: 1.5;
 }
 
-.gsq .meta {
+.gsq .gsq-meta {
   font-size: 0.82rem;
   line-height: 1.7;
 }
 
-.gsq .meta span {
+.gsq .gsq-meta span {
   display: block;
 }
 
-.gsq .meta strong {
+.gsq .gsq-meta strong {
   color: var(--gsq-ink);
 }
 
 /* -- a prediction: the number, its verdict, and where it lies between no and yes ----------------- */
 
-.gsq .pred-model {
+.gsq .gsq-pred-model {
   color: var(--gsq-ink);
   font-weight: 600;
 }
 
-.gsq .pred-number {
+.gsq .gsq-pred-number {
   display: flex;
   align-items: center;
   gap: 0.7rem;
 }
 
-.gsq .pred-value {
+.gsq .gsq-pred-value {
   color: var(--gsq-ink);
   font-size: 3.5rem;
   font-variant-numeric: tabular-nums;
@@ -693,7 +720,7 @@ body[data-theme="dark"] .gsq {
   line-height: 1.15;
 }
 
-.gsq .verdict {
+.gsq .gsq-verdict {
   padding: 0.2rem 0.65rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--gsq-lavender) 40%, transparent);
@@ -703,14 +730,14 @@ body[data-theme="dark"] .gsq {
   white-space: nowrap;
 }
 
-.gsq .scale {
+.gsq .gsq-scale {
   position: relative;
   max-width: 17rem;
   height: 2.5rem;
   margin: 0.65rem 0 0.1rem;
 }
 
-.gsq .scale::before {
+.gsq .gsq-scale::before {
   content: "";
   position: absolute;
   inset-inline: 0;
@@ -721,7 +748,7 @@ body[data-theme="dark"] .gsq {
   box-shadow: inset 0 0 0 1px var(--gsq-border);
 }
 
-.gsq .scale-fill {
+.gsq .gsq-scale-fill {
   position: absolute;
   top: 0.5rem;
   left: 0;
@@ -731,7 +758,7 @@ body[data-theme="dark"] .gsq {
   transition: width 400ms var(--gsq-ease);
 }
 
-.gsq .scale-half {
+.gsq .gsq-scale-half {
   position: absolute;
   top: calc(0.5rem - 3px);
   left: 50%;
@@ -741,7 +768,7 @@ body[data-theme="dark"] .gsq {
   opacity: 0.5;
 }
 
-.gsq .scale-mark {
+.gsq .gsq-scale-mark {
   position: absolute;
   top: calc(0.5rem - 4px);
   box-sizing: border-box;
@@ -754,18 +781,18 @@ body[data-theme="dark"] .gsq {
   transition: left 400ms var(--gsq-ease);
 }
 
-.gsq .scale-label {
+.gsq .gsq-scale-label {
   position: absolute;
   top: 1.15rem;
   font-size: 0.72rem;
   white-space: nowrap;
 }
 
-.gsq .scale-label.r {
+.gsq .gsq-scale-label.gsq-r {
   right: 0;
 }
 
-.gsq .link {
+.gsq .gsq-link {
   padding: 0;
   border: 0;
   background: none;
@@ -775,7 +802,7 @@ body[data-theme="dark"] .gsq {
   cursor: pointer;
 }
 
-.gsq .act {
+.gsq .gsq-act {
   height: calc(var(--gsq-control) - 6px);
   padding: 0 0.9rem;
   border: 1px solid var(--gsq-border);
@@ -790,19 +817,23 @@ body[data-theme="dark"] .gsq {
     transform 120ms;
 }
 
-.gsq .act:hover {
+.gsq .gsq-act:hover {
   border-color: var(--gsq-ink);
 }
 
-.gsq .act:active {
+.gsq .gsq-act:active {
   transform: scale(0.96);
 }
 
-.gsq .act[hidden] {
+.gsq .gsq-act[hidden] {
   display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .gsq .gsq-hint {
+    animation: none;
+  }
+
   .gsq *,
   .gsq *::before,
   .gsq *::after {

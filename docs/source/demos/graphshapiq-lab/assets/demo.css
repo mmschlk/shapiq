@@ -7,57 +7,12 @@
   }
 }
 
-.graphshapiq-lab-demo .presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.graphshapiq-lab-demo .preset {
-  height: calc(var(--gsq-control) - 8px);
-  padding: 0 0.8rem;
-  border: 1px solid var(--gsq-border);
-  border-radius: 999px;
-  background: var(--gsq-stage);
-  color: var(--gsq-ink);
-  font-size: 0.82rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    border-color 220ms,
-    transform 120ms;
-}
-
-.graphshapiq-lab-demo .preset:hover,
-.graphshapiq-lab-demo .preset[aria-pressed="true"] {
-  border-color: var(--gsq-ink);
-}
-
-.graphshapiq-lab-demo .preset:active {
-  transform: scale(0.96);
-}
-
-@container (max-width: 42rem) {
-  .graphshapiq-lab-demo .presets {
-    flex-wrap: nowrap;
-    max-width: 100%;
-    padding-bottom: 2px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .graphshapiq-lab-demo .presets::-webkit-scrollbar {
-    display: none;
-  }
-}
-
 /* the positions of the ring: a + where a group can go, the ring's carbon where one is */
-.graphshapiq-lab-demo .plot .slot {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot {
   cursor: pointer;
 }
 
-.graphshapiq-lab-demo .plot .slot circle {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot circle {
   fill: var(--gsq-stage);
   stroke: var(--gsq-muted);
   stroke-dasharray: 2.5 2;
@@ -68,7 +23,7 @@
     fill 200ms;
 }
 
-.graphshapiq-lab-demo .plot .slot .plus {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot .gsq-plus {
   stroke: var(--gsq-muted);
   stroke-linecap: round;
   stroke-width: 1.3px;
@@ -76,33 +31,33 @@
   pointer-events: none;
 }
 
-.graphshapiq-lab-demo .plot .slot.filled circle {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot.gsq-filled circle {
   fill: transparent;
   stroke: transparent;
 }
 
-.graphshapiq-lab-demo .plot .slot:hover circle,
-.graphshapiq-lab-demo .plot .slot.sel circle {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot:hover circle,
+.graphshapiq-lab-demo .gsq-plot .gsq-slot.gsq-sel circle {
   fill: color-mix(in srgb, var(--gsq-ink) 8%, var(--gsq-stage));
   stroke: var(--gsq-ink);
 }
 
-.graphshapiq-lab-demo .plot .slot.filled.sel circle {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot.gsq-filled.gsq-sel circle {
   fill: color-mix(in srgb, var(--gsq-link) 14%, transparent);
   stroke: var(--gsq-link);
   stroke-dasharray: none;
 }
 
-.graphshapiq-lab-demo .plot .slot:focus {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot:focus {
   outline: none;
 }
 
-.graphshapiq-lab-demo .plot .slot:focus-visible circle {
+.graphshapiq-lab-demo .gsq-plot .gsq-slot:focus-visible circle {
   stroke: var(--gsq-link);
   stroke-width: 2px;
 }
 
-.graphshapiq-lab-demo .progress {
+.graphshapiq-lab-demo .gsq-progress {
   position: absolute;
   inset: auto 0.8rem 0.7rem;
   height: 4px;
@@ -111,7 +66,7 @@
   background: color-mix(in srgb, var(--gsq-border) 70%, transparent);
 }
 
-.graphshapiq-lab-demo .progress i {
+.graphshapiq-lab-demo .gsq-progress i {
   display: block;
   width: 0;
   height: 100%;
@@ -120,15 +75,15 @@
   transition: width 120ms linear;
 }
 
-.graphshapiq-lab-demo .progress[hidden] {
+.graphshapiq-lab-demo .gsq-progress[hidden] {
   display: none;
 }
 
-.graphshapiq-lab-demo .caption .note {
+.graphshapiq-lab-demo .gsq-caption .gsq-note {
   color: var(--gsq-link);
 }
 
-.graphshapiq-lab-demo .palette {
+.graphshapiq-lab-demo .gsq-palette {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -136,7 +91,7 @@
   margin-top: 0.7rem;
 }
 
-.graphshapiq-lab-demo .chip {
+.graphshapiq-lab-demo .gsq-chip {
   min-width: 2.6rem;
   height: 2rem;
   padding: 0 0.6rem;
@@ -144,7 +99,6 @@
   border-radius: var(--shapiq-radius-small, 8px);
   background: var(--gsq-sheet);
   color: var(--gsq-ink);
-  font-family: var(--gsq-mono);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -153,20 +107,19 @@
     transform 120ms;
 }
 
-.graphshapiq-lab-demo .chip:hover {
+.graphshapiq-lab-demo .gsq-chip:hover {
   border-color: var(--gsq-ink);
 }
 
-.graphshapiq-lab-demo .chip:active {
+.graphshapiq-lab-demo .gsq-chip:active {
   transform: scale(0.95);
 }
 
-.graphshapiq-lab-demo .chip.clear {
+.graphshapiq-lab-demo .gsq-chip.gsq-clear {
   color: var(--gsq-muted);
-  font-family: inherit;
 }
 
-.graphshapiq-lab-demo .computing {
+.graphshapiq-lab-demo .gsq-computing {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -174,7 +127,7 @@
   font-size: 0.95rem;
 }
 
-.graphshapiq-lab-demo .spin {
+.graphshapiq-lab-demo .gsq-spin {
   flex: none;
   width: 1.1rem;
   height: 1.1rem;
@@ -190,6 +143,6 @@
   }
 }
 
-.graphshapiq-lab-demo .rows {
+.graphshapiq-lab-demo .gsq-rows {
   margin: 0.4rem 0 0.85rem;
 }

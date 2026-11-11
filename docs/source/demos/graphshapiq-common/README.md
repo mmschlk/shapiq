@@ -10,8 +10,8 @@ graphs. This folder is not a page: it holds what the four share, a library of co
 |---|---|---|---|
 | Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions. Then switches between *Prediction* (click atoms to mask them, the GNN reruns in the browser), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. Also the reference demo. |
 | Lab | `../graphshapiq-lab` | Puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring. A Web Worker then computes the GNN's answer and the **exact** Shapley values and 2-SII over all 2ⁿ maskings, with a progress bar. | The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
-| Exact | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1, 2 and 3 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
-| Orders | `../graphshapiq-orders` | Picks one of 5 molecules and steps the order from 1 (Shapley values) to the full Möbius decomposition. The SI-graph builds up and a faithfulness curve (R² beyond size) climbs. | The Shapley values are not enough: they score below 0 for every molecule. 1,3-dinitrobenzene needs pairs (0.95), dopamine order 3 (0.89), serotonin's indole many orders. |
+| Exact | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
+| Orders | `../graphshapiq-orders` | Picks one of 5 molecules and steps the order from 1 (Shapley values) to the full Möbius decomposition, with − and + or by a click on the curve. The SI-graph builds up and a faithfulness curve (R² beyond size) climbs. | The Shapley values are not enough: they score below 0 for every molecule. 1,3-dinitrobenzene needs pairs (0.95), dopamine order 3 (0.89), serotonin's indole many orders. |
 
 Each demo's `index.rst` is its page, with the claims a reader can check in the demo. The cards on
 `../index.rst` use `_static/images/hero_graphshapiq_<demo>_demo.png`.
@@ -20,7 +20,7 @@ Each demo's `index.rst` is its page, with the claims a reader can check in the d
 
 ```
 graphshapiq-common/
-├── assets/demo.css        shared styles, all under .gsq: tokens, controls, the molecule scene, panels
+├── assets/demo.css        shared styles, all classes gsq-*: tokens, controls, the molecule scene, panels
 ├── assets/demo.js         window.ShapiqGraph: the molecule scene, helpers and mount()
 └── compute/               config.toml, train.py, explain.py, pack.py, check_lab.py (see its README)
 graphshapiq-<demo>/
@@ -48,11 +48,18 @@ graphshapiq-<demo>/
   - `geom`, `skeleton` and `tile` draw molecules and thumbnails. `legend`, `row`, `formula`,
     `groupName` and `atomName` build the panels. `colorOf`, `signed`, `percent` and `bits` format
     values.
+  - `switcher(label, options, pick)`, `picker(label, molecules, pick)` and `hinter(frame)` build
+    the controls every demo has, in the look of the FIxLIP and orders demos: a switch whose pill
+    slides to the option chosen, the molecules as tiles, and the dark hint over the molecule
+    ("Hover an atom", or "Tap an atom" without a mouse: `hovers()`). Each returns its `node` and a
+    `set(k)` (the hint: `show(text)` and `hide()`).
   - `mount(className, global, start)` finds every container of a demo and adds the class `gsq`.
     It uses the data the page loaded, or loads `data.js` from `data-root`. Then it calls
     `start(root, data)`. If the demo fails, it falls back to the `<noscript>` image and adds the
     class `gsq-failed`.
-- **Styles.** Everything is scoped under `.gsq` and built on the docs' tokens
+- **Styles.** Every class is named `gsq-*` (as the FIxLIP demo's are `fixlip-demo-*`), so that no
+  rule of the theme or of another demo applies to them by accident; a demo's own rules start with
+  its container's class (`.graphshapiq-lab-demo .gsq-chip`). Everything is built on the docs' tokens
   (`--color-foreground-primary`, `--shapiq-surface`, `--shapiq-surface-raised`, `--shapiq-border`,
   `--color-brand-content`). Dark mode follows Furo: `body[data-theme="dark"]` and
   `prefers-color-scheme` unless `body[data-theme="light"]`. The colors are shapiq's: red
@@ -166,6 +173,11 @@ these four demos:
 3. Exact: receptive fields and maskings.
 4. Orders: every order and its faithfulness. It was first cut for the Möbius-truncation R² above,
    and brought back with FSII.
+
+A second pass aligned them with the FIxLIP and orders demos: class names `gsq-*`, the switches'
+sliding pill, the dark hint, and one molecule picker for all four (the lab's examples are tiles
+too). It also gave the orders demo a real curve (axes, an order per click, the R² itself where it is
+below 0) and the exact demo a fourth layer and the numbers at its bars.
 
 The suggestion from that run was to lead with the explorer (the safe reference) and feature the
 lab (the wow), with the exact and orders demos as explainer pages.

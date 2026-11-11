@@ -29,7 +29,7 @@ What it saves
 The numbers are those of :class:`~shapiq.graph.GraphSHAPIQ`, which plans its maskings before it
 evaluates any. For cholesterol, 28 atoms, all maskings number :math:`2^{28}`, more than a quarter of
 a billion. A GNN with three layers needs 129,664 of them, 2,070 times fewer; a GNN with two layers,
-5,509. The fewer the layers and the larger the molecule, the larger the share of interactions that
+5,509; one with four, 1,384,448. The fewer the layers and the larger the molecule, the larger the share of interactions that
 are exactly zero. For benzene, a three-layer GNN's receptive fields cover the whole ring, and
 GraphSHAP-IQ evaluates all 64 maskings: exact, but no cheaper.
 
