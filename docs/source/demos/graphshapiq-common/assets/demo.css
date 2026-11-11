@@ -1,0 +1,812 @@
+/* What the four GraphSHAP-IQ demos share (see ../README.md): their controls and layout, in the
+   language of the FIxLIP demo, and the molecule drawn as an SI-graph. Every demo's container gets
+   the class `gsq` from demo.js; its own demo.css adds what only it has. */
+
+.gsq {
+  clear: both;
+  margin: 2rem 0 0.75rem;
+  container-type: inline-size; /* the layout follows the demo's width, not the window's */
+  -webkit-tap-highlight-color: transparent;
+  font-size: 1rem;
+  line-height: 1.5;
+  --gsq-ink: var(--color-foreground-primary, #1b1e27);
+  --gsq-muted: var(--color-foreground-secondary, #5b6275);
+  --gsq-sheet: var(--shapiq-surface, #ffffff);
+  --gsq-stage: var(--shapiq-surface-raised, #f7f8fc);
+  --gsq-border: var(--shapiq-border, #e2e6f3);
+  --gsq-link: var(--color-brand-content, #285bff);
+  --gsq-lavender: var(--shapiq-lavender, #b3c2e5);
+  --gsq-mono: var(--font-stack--monospace, ui-monospace, "SFMono-Regular", Menlo, monospace);
+  --gsq-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --gsq-control: 2.35rem; /* the height of a switch, as in the FIxLIP and orders demos */
+  --gsq-lasso: color-mix(in srgb, var(--gsq-muted) 62%, var(--gsq-stage));
+  /* red and blue for values in text, darker than the marks so that they read well as text */
+  --gsq-red-text: #d6003f;
+  --gsq-blue-text: #1565c0;
+  --gsq-violet: #6a57cd; /* shapiq's violet: receptive fields and faithfulness */
+  --gsq-violet-text: #5b47c4;
+}
+
+body[data-theme="dark"] .gsq {
+  --gsq-red-text: #ff3d74;
+  --gsq-blue-text: #4ba3f0;
+  --gsq-violet-text: #a597ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .gsq {
+    --gsq-red-text: #ff3d74;
+    --gsq-blue-text: #4ba3f0;
+    --gsq-violet-text: #a597ff;
+  }
+}
+
+.gsq p,
+.gsq ol,
+.gsq ul,
+.gsq li {
+  margin: 0;
+}
+
+.gsq ol,
+.gsq ul {
+  padding: 0;
+  list-style: none;
+}
+
+.gsq button {
+  font: inherit;
+}
+
+.gsq .up {
+  color: var(--gsq-red-text);
+}
+
+.gsq .down {
+  color: var(--gsq-blue-text);
+}
+
+.gsq .sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.gsq :is(.mol, .opt, .step, .act, .info, .link, .row[tabindex], .chip, .preset):focus-visible {
+  outline: 2px solid var(--gsq-ink);
+  outline-offset: 2px;
+}
+
+/* the static figure, while the demo loads and without JavaScript */
+.gsq-fallback,
+.gsq noscript img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--shapiq-radius-small, 8px);
+}
+
+/* -- the bar: molecules, switches, the "i" ------------------------------------------------------ */
+
+.gsq .bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.gsq .barlab {
+  align-self: center;
+  color: var(--gsq-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gsq .mols {
+  display: flex;
+  gap: 0.1rem;
+  max-width: 100%;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gsq .mols::-webkit-scrollbar {
+  display: none;
+}
+
+.gsq .mol {
+  flex: none;
+  width: 5.3rem;
+  padding: 0.3rem 0.2rem 0.25rem;
+  border: 2px solid transparent;
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: none;
+  color: var(--gsq-ink);
+  opacity: 0.55;
+  cursor: pointer;
+  transition:
+    opacity 220ms var(--gsq-ease),
+    border-color 220ms var(--gsq-ease),
+    transform 120ms var(--gsq-ease);
+}
+
+.gsq .mol svg {
+  display: block;
+  width: 100%;
+  height: 2.5rem;
+}
+
+.gsq .mol span {
+  display: block;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gsq .mol:hover,
+.gsq .mol[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.gsq .mol[aria-pressed="true"] {
+  border-color: var(--gsq-ink);
+}
+
+.gsq .mol:active {
+  transform: scale(0.96);
+}
+
+.gsq .mol line {
+  stroke: var(--gsq-ink);
+  stroke-width: 1.1px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.gsq .mol circle {
+  fill: var(--gsq-ink);
+}
+
+.gsq .switches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gsq .switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--gsq-border);
+  border-radius: 999px;
+  background: var(--gsq-stage);
+}
+
+.gsq .opt {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--gsq-control) - 8px);
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gsq-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 220ms var(--gsq-ease),
+    background-color 220ms var(--gsq-ease),
+    transform 120ms var(--gsq-ease);
+}
+
+.gsq .opt:hover {
+  color: var(--gsq-ink);
+}
+
+.gsq .opt:active {
+  transform: scale(0.96);
+}
+
+.gsq .opt[aria-pressed="true"] {
+  background: var(--gsq-ink);
+  color: var(--gsq-sheet);
+}
+
+.gsq .info {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--gsq-border);
+  border-radius: 999px;
+  background: var(--gsq-stage);
+  color: var(--gsq-muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gsq .info:hover,
+.gsq .info[aria-expanded="true"] {
+  border-color: var(--gsq-ink);
+  color: var(--gsq-ink);
+}
+
+.gsq .about {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 5;
+  box-sizing: border-box;
+  width: min(26rem, 100%);
+  padding: 0.9rem 1.1rem 0.4rem;
+  border: 1px solid var(--gsq-border);
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: var(--gsq-sheet);
+  box-shadow: var(--shapiq-shadow), 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: var(--gsq-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.gsq .about p {
+  margin: 0 0 0.6rem;
+}
+
+.gsq .about strong {
+  color: var(--gsq-ink);
+}
+
+.gsq .about-close {
+  float: right;
+  margin: -0.35rem -0.5rem 0 0;
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  color: var(--gsq-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* -- the body: the molecule and the panel ------------------------------------------------------- */
+
+.gsq .body {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+
+@container (max-width: 42rem) {
+  .gsq .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gsq .stage {
+    width: 100%;
+    max-width: 26rem;
+    margin-inline: auto;
+  }
+}
+
+.gsq .frame {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: var(--gsq-stage);
+}
+
+.gsq .plot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+
+.gsq .plot :focus {
+  outline: none;
+}
+
+.gsq .plot .bond {
+  stroke: var(--gsq-ink);
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.gsq .plot .atom {
+  fill: var(--gsq-sheet);
+  stroke: var(--gsq-ink);
+  stroke-width: 1.4px;
+  vector-effect: non-scaling-stroke;
+  transition:
+    opacity 300ms ease,
+    stroke 300ms ease,
+    fill 300ms ease;
+}
+
+.gsq .plot .atom.masked {
+  fill: var(--gsq-stage);
+  stroke: var(--gsq-muted);
+  stroke-dasharray: 3 3;
+}
+
+.gsq .plot .el {
+  fill: var(--gsq-ink);
+  font-family: var(--color-font-stack, inherit);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.gsq .plot .ring {
+  stroke: none;
+  transition: opacity 300ms ease;
+}
+
+.gsq .plot .band {
+  stroke-linecap: round;
+}
+
+.gsq .plot .shape {
+  stroke-width: 1.6px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.gsq .plot .lasso-out {
+  fill: var(--gsq-lasso);
+  stroke: var(--gsq-lasso);
+  stroke-linecap: round;
+}
+
+.gsq .plot .lasso-in {
+  fill: var(--gsq-stage);
+  stroke: var(--gsq-stage);
+  stroke-linecap: round;
+}
+
+.gsq .plot .focus {
+  fill: none;
+  stroke: var(--gsq-ink);
+  stroke-width: 1.6px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.gsq .plot .hit {
+  fill: transparent;
+  outline: none;
+}
+
+.gsq .plot .keyfocus {
+  fill: none;
+  stroke: var(--gsq-link);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.gsq .hint {
+  position: absolute;
+  bottom: 0.55rem;
+  left: 50%;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gsq-sheet) 80%, transparent);
+  color: var(--gsq-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 300ms;
+}
+
+.gsq .hint[hidden] {
+  display: block !important;
+  opacity: 0;
+}
+
+.gsq .caption {
+  min-height: 3em;
+  margin: 0.8rem 0 0;
+  color: var(--gsq-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.gsq .caption strong {
+  color: var(--gsq-ink);
+  font-size: 1rem;
+}
+
+.gsq .caption .formula {
+  margin-left: 0.45rem;
+  white-space: nowrap;
+}
+
+.gsq .caption .blurb {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+/* -- the panel ---------------------------------------------------------------------------------- */
+
+.gsq .panel {
+  min-width: 0;
+  color: var(--gsq-muted);
+  font-size: 0.92rem;
+}
+
+.gsq .panel-in {
+  animation: gsq-fade 280ms ease;
+}
+
+@keyframes gsq-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.gsq .title {
+  min-height: 1.35em;
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.gsq .title strong {
+  margin-right: 0.3em;
+  color: var(--gsq-ink);
+}
+
+.gsq .detail {
+  min-height: calc(3 * 1.55em);
+  margin: 0 0 0.8rem;
+  line-height: 1.55;
+}
+
+.gsq .panel strong {
+  font-weight: 700;
+}
+
+.gsq .slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.gsq .stepper {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 3px;
+  border: 1px solid var(--gsq-border);
+  border-radius: 999px;
+  background: var(--gsq-stage);
+}
+
+.gsq .step {
+  width: calc(var(--gsq-control) - 8px);
+  height: calc(var(--gsq-control) - 8px);
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gsq-ink);
+  color: var(--gsq-sheet);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    opacity 220ms var(--gsq-ease),
+    transform 120ms var(--gsq-ease);
+}
+
+.gsq .step:active:not([aria-disabled="true"]) {
+  transform: scale(0.96);
+}
+
+.gsq .step[aria-disabled="true"] {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.gsq .step-label {
+  min-width: 9.5rem;
+  color: var(--gsq-ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.gsq .step-label small {
+  margin-left: 0.35em;
+  color: var(--gsq-muted);
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.gsq .rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: calc(5 * 2.5rem + 4 * 0.3rem);
+}
+
+.gsq .row {
+  display: grid;
+  grid-template-columns: 2.9rem 5.2rem minmax(1.5rem, 1fr) 3.3rem;
+  align-items: center;
+  gap: 0.6rem;
+  height: 2.5rem;
+  border-radius: var(--shapiq-radius-small, 8px);
+  line-height: 1.2;
+  transition: opacity 200ms;
+}
+
+.gsq .row.dim {
+  opacity: 0.3;
+}
+
+.gsq .row svg {
+  display: block;
+  width: 2.9rem;
+  height: 2.5rem;
+  border-radius: 6px;
+  background: var(--gsq-stage);
+}
+
+.gsq .row svg line {
+  stroke: var(--gsq-muted);
+  stroke-width: 1px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.7;
+}
+
+.gsq .row .who {
+  overflow: hidden;
+  color: var(--gsq-ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gsq .meter {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gsq-stage);
+  box-shadow: inset 0 0 0 1px var(--gsq-border);
+}
+
+.gsq .meter i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+}
+
+.gsq .row .num {
+  font-family: var(--gsq-mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.gsq .rows .none {
+  padding: 0.6rem 0;
+  font-size: 0.86rem;
+}
+
+.gsq .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+}
+
+.gsq .key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gsq .key i {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 999px;
+}
+
+.gsq .key i.outline {
+  width: 0.95rem;
+  border: 1.5px solid var(--gsq-lasso);
+  background: none;
+}
+
+.gsq .takeaway {
+  margin: 0.9rem 0 0.75rem;
+  color: var(--gsq-ink);
+  line-height: 1.5;
+}
+
+.gsq .meta {
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.gsq .meta span {
+  display: block;
+}
+
+.gsq .meta strong {
+  color: var(--gsq-ink);
+}
+
+/* -- a prediction: the number, its verdict, and where it lies between no and yes ----------------- */
+
+.gsq .pred-model {
+  color: var(--gsq-ink);
+  font-weight: 600;
+}
+
+.gsq .pred-number {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.gsq .pred-value {
+  color: var(--gsq-ink);
+  font-size: 3.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.gsq .verdict {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gsq-lavender) 40%, transparent);
+  color: var(--gsq-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gsq .scale {
+  position: relative;
+  max-width: 17rem;
+  height: 2.5rem;
+  margin: 0.65rem 0 0.1rem;
+}
+
+.gsq .scale::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0.5rem;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gsq-stage);
+  box-shadow: inset 0 0 0 1px var(--gsq-border);
+}
+
+.gsq .scale-fill {
+  position: absolute;
+  top: 0.5rem;
+  left: 0;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gsq-lavender);
+  transition: width 400ms var(--gsq-ease);
+}
+
+.gsq .scale-half {
+  position: absolute;
+  top: calc(0.5rem - 3px);
+  left: 50%;
+  width: 1px;
+  height: 12px;
+  background: var(--gsq-muted);
+  opacity: 0.5;
+}
+
+.gsq .scale-mark {
+  position: absolute;
+  top: calc(0.5rem - 4px);
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 3px solid var(--gsq-sheet);
+  border-radius: 999px;
+  background: var(--gsq-ink);
+  transform: translateX(-50%);
+  transition: left 400ms var(--gsq-ease);
+}
+
+.gsq .scale-label {
+  position: absolute;
+  top: 1.15rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.gsq .scale-label.r {
+  right: 0;
+}
+
+.gsq .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gsq-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.gsq .act {
+  height: calc(var(--gsq-control) - 6px);
+  padding: 0 0.9rem;
+  border: 1px solid var(--gsq-border);
+  border-radius: 999px;
+  background: var(--gsq-stage);
+  color: var(--gsq-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 220ms,
+    transform 120ms;
+}
+
+.gsq .act:hover {
+  border-color: var(--gsq-ink);
+}
+
+.gsq .act:active {
+  transform: scale(0.96);
+}
+
+.gsq .act[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gsq *,
+  .gsq *::before,
+  .gsq *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

@@ -35,6 +35,11 @@ the page, the data deferred just before the script, so that both load at once. W
 the container shows the fallback image, a file of the built ``_static`` folder. Outside HTML, a demo
 is left out.
 
+A demo can build on a library of code that several demos share: a folder of ``demos/`` without a
+page, whose ``assets/`` hold a ``demo.css`` and a ``demo.js`` too. The demo names the libraries it
+needs in its ``assets/requires.txt``, one per line (``#`` starts a comment), and the page gets their
+stylesheets and scripts before the demo's own (the GraphSHAP-IQ demos share ``graphshapiq-common``).
+
 The assets are copied before the pages are written, so that Sphinx adds its checksums to the links
 of ``demo.css`` and ``demo.js``, and they are dependencies of the pages that embed the demo, so that a
 change to them writes these pages again.
@@ -60,6 +65,16 @@ if TYPE_CHECKING:
 
 _ASSETS = ("demo.js", "demo.css")  # the files that every demo's assets folder has
 _DATA = "data.js"  # the demo's data, which its script loads, if it has any
+_REQUIRES = "requires.txt"  # the libraries (folders of demos/) a demo needs before its own assets
+
+
+def _requires(srcdir: str | Path, name: str) -> list[str]:
+    """Return the libraries a demo needs, by its ``assets/requires.txt`` (none without one)."""
+    path = Path(srcdir) / "demos" / name / "assets" / _REQUIRES
+    if not path.is_file():
+        return []
+    lines = (line.split("#", 1)[0].strip() for line in path.read_text().splitlines())
+    return [line for line in lines if line]
 
 
 class DemoNode(nodes.General, nodes.Element):
@@ -86,9 +101,16 @@ class DemoDirective(SphinxDirective):
         if missing := [file for file in _ASSETS if not (assets / file).is_file()]:
             msg = f"the demo {name!r} has no {', '.join(missing)} in demos/{name}/assets"
             raise self.error(msg)
-        for file in (*_ASSETS, _DATA):
+        for file in (*_ASSETS, _DATA, _REQUIRES):
             if (assets / file).is_file():
                 self.env.note_dependency(str(assets / file))
+        for library in _requires(self.env.srcdir, name):
+            shared = Path(self.env.srcdir) / "demos" / library / "assets"
+            if missing := [file for file in _ASSETS if not (shared / file).is_file()]:
+                msg = f"the demo {name!r} requires {library!r}, which has no {', '.join(missing)}"
+                raise self.error(msg)
+            for file in _ASSETS:
+                self.env.note_dependency(str(shared / file))
         data = assets / _DATA
         version = f"{zlib.crc32(data.read_bytes()):08x}" if data.is_file() else ""
         node = DemoNode(demo=name, fallback=self.options.get("fallback"), version=version)
@@ -133,10 +155,17 @@ def _add_assets(
     context: dict[str, Any],  # noqa: ARG001
     doctree: nodes.document | None,
 ) -> None:
-    """Add the stylesheet and the script of every demo of a page to it."""
+    """Add the stylesheets and scripts of every demo of a page and of the libraries it requires."""
     if doctree is None:
         return
-    for name in sorted({node["demo"] for node in doctree.findall(DemoNode)}):
+    names = sorted({node["demo"] for node in doctree.findall(DemoNode)})
+    # the libraries the demos require, once each, before the demos' own assets (their scripts run
+    # first: deferred scripts run in the order of the page, which is by priority)
+    libraries = list(dict.fromkeys(lib for name in names for lib in _requires(app.srcdir, name)))
+    for library in libraries:
+        app.add_css_file(f"demos/{library}/demo.css", priority=899)
+        app.add_js_file(f"demos/{library}/demo.js", loading_method="defer", priority=498)
+    for name in names:
         # the stylesheet after html_css_files, whose tokens.css it uses
         app.add_css_file(f"demos/{name}/demo.css", priority=900)
         # the data, if any, just before the script and loaded alongside it (not by it, once it has

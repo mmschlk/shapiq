@@ -45,6 +45,13 @@ Three more options are passed on to the demo's script, as `data-step`, `data-sel
 and `:examples:` only the examples it names, in that order (`:examples: tabpfn`, or
 `house, houses`). `orders/README.md` lists their values.
 
+Demos can share code. A folder of `demos/` without an `index.rst`, whose `assets/` hold a
+`demo.css` and a `demo.js` too, is a library: a demo names the libraries it needs in its
+`assets/requires.txt`, one per line (`#` starts a comment), and every page that embeds the demo gets
+their stylesheets and scripts before its own, with checksums, and is written again when they change.
+The four GraphSHAP-IQ demos share `graphshapiq-common`, whose `compute/` computes all their data
+(its README has notes for working on them).
+
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).
 
