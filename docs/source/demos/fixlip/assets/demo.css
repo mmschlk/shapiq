@@ -71,7 +71,6 @@ body[data-theme="dark"] .fixlip-demo {
 /* -- the photos, the views, and the models ------------------------------------------------------ */
 
 .fixlip-demo-bar {
-  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -162,18 +161,39 @@ body[data-theme="dark"] .fixlip-demo {
   color: var(--color-foreground-primary);
 }
 
+/* the note opens under the bar, in the page's flow, and pushes the photo and the panel down: its
+   rows grow from none to its content's height (demo.js makes it inert while closed) */
 .fixlip-demo-about {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  right: 0;
-  z-index: 5;
-  box-sizing: border-box;
-  width: min(26rem, 100%);
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 260ms var(--fixlip-ease),
+    margin-bottom 260ms var(--fixlip-ease),
+    visibility 0s 260ms;
+}
+
+.fixlip-demo-about.fixlip-demo-about-open {
+  grid-template-rows: 1fr;
+  margin-bottom: 1rem;
+  visibility: visible;
+  transition:
+    grid-template-rows 260ms var(--fixlip-ease),
+    margin-bottom 260ms var(--fixlip-ease),
+    visibility 0s;
+}
+
+/* the content, cut to the rows while they grow, on a card */
+.fixlip-demo-about-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fixlip-demo-about-card {
   padding: 0.9rem 1.1rem 0.4rem;
   border: 1px solid var(--shapiq-border);
   border-radius: var(--shapiq-radius-small);
-  background: var(--shapiq-surface);
-  box-shadow: var(--shapiq-shadow), 0 8px 24px rgba(0, 0, 0, 0.12);
+  background: var(--shapiq-surface-raised);
   font-size: 0.88rem;
   line-height: 1.5;
   color: var(--color-foreground-secondary);
@@ -342,6 +362,12 @@ body[data-theme="dark"] .fixlip-demo {
   animation: fixlip-demo-fade-in 450ms ease backwards;
 }
 
+@keyframes fixlip-demo-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 @keyframes fixlip-demo-token-in {
   from {
     border-color: transparent;
@@ -421,7 +447,9 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   line-height: 2.2;
 }
 
-/* a token's chip (the card's color under its tint) lies under the edges, its word over them: the
+/* a token's box is the same in every view, with and without an explanation (its border only turns
+   transparent), so that switching views moves no word: only colors, outlines, and shadows change.
+   Its chip (the card's color under its tint) lies under the edges, its word over them: the
    chip is painted first in the stage (z-index -1), the edges before the caption that holds the word
    (the stage's order); so the edges to a token on the caption's second line stay in view over the
    first */
@@ -434,8 +462,7 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   color: var(--color-foreground-primary);
   font: inherit;
   cursor: pointer;
-  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration),
-    transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity var(--shapiq-duration), border-color var(--shapiq-duration), color var(--shapiq-duration);
 }
 
 .fixlip-demo-token::before,
@@ -456,72 +483,6 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
 /* a word and the punctuation after it */
 .fixlip-demo-word {
   white-space: nowrap;
-}
-
-/* without an explanation, the caption is an excerpt of a longer text (see placeExcerpt in the
-   script): the text around it, fading with the distance, in a box that keeps the caption's room
-   and dissolves at its top and bottom */
-.fixlip-demo-caption-inner {
-  display: block;
-}
-
-.fixlip-demo-caption:not(.fixlip-demo-excerpt) .fixlip-demo-context {
-  display: none;
-}
-
-.fixlip-demo-caption.fixlip-demo-excerpt {
-  height: var(--fixlip-caption-height, auto);
-  overflow: hidden;
-  line-height: 1.75;
-  text-align: start;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
-}
-
-.fixlip-demo-excerpt .fixlip-demo-token {
-  padding-inline: 0;
-  border-color: transparent;
-}
-
-.fixlip-demo-context {
-  color: var(--color-foreground-secondary);
-}
-
-/* into the excerpt, its text fades in after the tokens have glided into it (on a new photo, the
-   whole caption fades in with the photo instead) */
-.fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context {
-  animation: fixlip-demo-fade-in 600ms ease 300ms both;
-}
-
-@keyframes fixlip-demo-fade-in {
-  from {
-    opacity: 0;
-  }
-}
-
-/* into an explanation, the tokens glide to their line and then get their outlines */
-.fixlip-demo-gliding .fixlip-demo-token {
-  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1), border-color 400ms ease 350ms,
-    opacity 400ms ease 350ms;
-}
-
-.fixlip-demo-gliding .fixlip-demo-token::after {
-  transition: background-color 400ms ease 350ms;
-}
-
-/* out of the excerpt, its text fades in a copy (whose tokens are hidden: they glide away) */
-.fixlip-demo-caption.fixlip-demo-ghost {
-  position: absolute;
-  margin: 0;
-  transition: opacity 400ms ease;
-}
-
-.fixlip-demo-caption.fixlip-demo-ghost .fixlip-demo-token {
-  visibility: hidden;
-}
-
-.fixlip-demo-ghost .fixlip-demo-context {
-  animation: none;
 }
 
 /* without an explanation, the photo and the caption are plain: no grid, no chips */
@@ -561,7 +522,9 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 
 .fixlip-demo-token.fixlip-demo-in {
   border-color: var(--color-foreground-primary);
-  font-weight: 700;
+  /* bold without bold type, whose other widths or metrics could move the words: a sliver of
+     shadow, which takes no room */
+  text-shadow: 0.04em 0 0 currentColor;
 }
 
 .fixlip-demo-token.fixlip-demo-focus,
@@ -1225,13 +1188,14 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   .fixlip-demo-caption,
   .fixlip-demo-token,
   .fixlip-demo-token::after,
+  .fixlip-demo-about,
+  .fixlip-demo-about.fixlip-demo-about-open,
   .fixlip-demo-panel > :not(.fixlip-demo-live),
   .fixlip-demo-panel > .fixlip-demo-prediction,
   .fixlip-demo-none .fixlip-demo-panel > .fixlip-demo-prediction {
     transition: none;
   }
 
-  .fixlip-demo-excerpt.fixlip-demo-arriving .fixlip-demo-context,
   .fixlip-demo-renewed .fixlip-demo-token,
   .fixlip-demo-renewed .fixlip-demo-token::before,
   .fixlip-demo-renewed .fixlip-demo-token::after,
