@@ -178,14 +178,15 @@ its own values. The trees have depth 5, so no group of more than 5 features has 
 its caption, and the players are the photo's
 64 patches and the caption's 10 tokens, as in FIxLIP :cite:p:`Baniecki.2025`. SigLIP 2 is a black
 box: nothing in it gives its interactions exactly. :class:`~shapiq.approximator.ProxySHAP`
-:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 10,000 coalitions of the game, drawn from
-the distribution of the Shapley values; without its residual adjustment, the explanation is the
+:cite:p:`Thies.2026` fits an XGBoost proxy to 10,000 coalitions of the game, drawn from the
+distribution of the Shapley values; without its residual adjustment, the explanation is the
 proxy's full decomposition, read off its trees exactly, and every order of FSII follows from it.
-The Shapley values fit SigLIP 2 with :math:`R^2 = 0.68`; pairs, which link "bird" and "white" to the
-egret's patch, lift the fit to 0.85, groups of three to 0.89, and of four to 0.91. From there, the
-fit stays at 0.91, up to the full decomposition, the proxy itself; a higher order fits the proxy
-better, but SigLIP 2 only as far as the proxy does. The full decomposition falls short of 1 by 0.09,
-the estimation gap: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
+The proxy's trees may grow 10 deep, so the orders up to 10 each have an explanation of their own:
+the blank layers of the orders 5 to 9. The Shapley values fit SigLIP 2 with :math:`R^2 = 0.68`;
+pairs, which link "bird" and "white" to the egret's patch, lift the fit to 0.85, groups of three to
+0.89, and of four to 0.91. From order 5 on, the fit stays at 0.92, up to the full decomposition,
+the proxy itself; a higher order fits the proxy better, but SigLIP 2 only as far as the proxy does.
+The full decomposition falls short of 1 by 0.08, the estimation gap: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
 SigLIP 2, which only all of them would spare.
 
 Two more photos of the FIxLIP demo are behind the same tab, explained in the same way: the small
@@ -304,13 +305,21 @@ exactly, as ProxySHAP does, and every order of FSII follows from it:
        n=n,
        index="FSII",
        sampling_weights=weights,
-       proxy_model=XGBRegressor(n_estimators=1000, max_depth=6, learning_rate=0.05, reg_lambda=5.0),
+       # trees of up to 64 leaves, which may grow 10 deep
+       proxy_model=XGBRegressor(
+           n_estimators=1000,
+           max_depth=10,
+           grow_policy="lossguide",
+           max_leaves=64,
+           learning_rate=0.05,
+           reg_lambda=5.0,
+       ),
        adjustment=False,
    )
    approximator.approximate(budget=10_000, game=game)  # draws the coalitions, fits the proxy
-   # the proxy's full decomposition: its trees split on at most 6 players
+   # the proxy's full decomposition: a path of its trees splits on at most 10 players
    explainer = InterventionalTreeSHAPIQ(
-       approximator.proxy_model, data=np.zeros((1, n)), index="Moebius", max_order=6
+       approximator.proxy_model, data=np.zeros((1, n)), index="Moebius", max_order=10
    )
    full = explainer.explain_function(np.ones((1, n)))
 

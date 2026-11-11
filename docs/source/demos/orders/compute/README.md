@@ -14,8 +14,8 @@ the explanation's errors against the spread of the game's values among coalition
 not against the spread of all of them: how much of what the number of players alone does not
 predict the explanation reproduces (`faithfulness.py`). FSII of a higher order fits the game at
 least as well under it: for the examples explained exactly, the R^2 does not fall with the order. SigLIP 2 is explained through a proxy, to which FSII is faithful, and scored against the
-model itself: its R^2 rises to 0.91 at order 4 and stays there, up to the full decomposition,
-which falls short of 1 by the estimation gap the demo shades.
+model itself: for the elephant, its R^2 rises to 0.91 at order 4 and stays at 0.92 from order 5 up
+to the full decomposition, which falls short of 1 by the estimation gap the demo shades.
 
 | File | What it does |
 |---|---|
@@ -23,7 +23,7 @@ which falls short of 1 by the estimation gap the demo shades.
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2 on 10,000 coalitions drawn from the Shapley distribution (their values from the exact Möbius transform): `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles (test house 837) and 2,000 random test houses exactly (interventional), at every order, with each order's R^2 exactly over all 254 coalitions but the empty and the full one, weighted by the Shapley distribution: `results/house.json`, `results/houses.json` (with the 2,000 houses' features, of which the demo's map uses the latitude and the longitude). |
 | `house_tabpfn.py` | Explains the same house with TabPFN, a black box, exactly over all 256 subsets of its features with shapiq's `TabPFNImputer` (remove and contextualize), at every order, with the R^2 of `housing.py`: `results/house_tabpfn.json`. TabPFN makes one pass without randomness, so that the game is the same on every run. |
-| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy of depth 6, no adjustment, read off its trees as a Möbius transform) from 10,000 coalitions drawn from the Shapley distribution, at every order, scored on 512 more drawn from it: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. With `--photo`, another photo of the FIxLIP demo, in the same way (the demo's giraffe and sign): `results/fixlip_<photo>.json`. |
+| `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy whose trees may grow 10 deep, no adjustment, read off its trees as a Möbius transform) from 10,000 coalitions drawn from the Shapley distribution, at every order, scored on 512 more drawn from it: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. With `--photo`, another photo of the FIxLIP demo, in the same way (the demo's giraffe and sign): `results/fixlip_<photo>.json`. |
 | `pack.py` | Writes the demo's data, `../assets/data.js`: the index (FSII), the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 2,000 houses, where each is on the map of California, and the 12 strongest features and groups of features of every order, each with its value for every house, as text, and the mean of its absolute values), and the R^2 of every order. It also writes the examples' words and their notes: what the demo's tip says, in a sentence, of some players and groups. With `--examples`, it packs only the examples named, and keeps the others as the data has them. |
 | `california.json` | The outline of California on the houses' map: the state's mainland from Natural Earth's 1:50m states and provinces (public domain), simplified to 114 points. |
 
@@ -78,7 +78,12 @@ does not have, and a note on an interaction whose sign differs between its order
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the
-proxy. The proxy's depth, 6, is the best of 4 to 12 in a 5-fold cross-validation on the 10,000
-coalitions by R^2 beyond size (0.917), which is not part of the script; the explanation keeps the
-proxy's own value of the empty coalition, -0.008, where ProxySHAP gives the game's, 0. With the game's value, every order
-would be off the proxy by this constant, and the R^2 would peak at order 3 and fall after it.
+proxy and converts it, in a few minutes. The proxy's trees have up to 64 leaves, as many as a tree
+of depth 6 (the best depth of full trees, 4 to 12, in a 5-fold cross-validation on the elephant's
+10,000 coalitions by R^2 beyond size, which is not part of the script), and may grow 10 deep, so
+that every order up to 10 has an explanation of its own: the demo's layers of the orders 5 to 9.
+On the held-out coalitions it fits as well as full trees of depth 6 (0.916 against 0.911 for the
+elephant, 0.779 against 0.785 for the giraffe, 0.769 against 0.762 for the sign). The explanation
+keeps the proxy's own value of the empty coalition, -0.008 for the elephant, where ProxySHAP gives
+the game's, 0: with the game's value, every order would be off the proxy by this constant. Of
+every order, the results keep each player's value and the 2,000 strongest groups'.

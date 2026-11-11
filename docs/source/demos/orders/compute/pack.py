@@ -161,7 +161,8 @@ def sheets(
                 "r2": round(explanation(result, order)["r2"], R2_DIGITS),
                 "first": first,
                 "groups": groups,
-                "count": len(values),
+                # (as the result counts them, where it keeps only the strongest: fixlip.py)
+                "count": explanation(result, order).get("count", len(values)),
             }
         )
     return out
@@ -190,7 +191,7 @@ def between(result: dict[str, Any], strongest: int | None) -> list[dict[str, Any
                 "r2": round(entry["r2"], R2_DIGITS),
                 "first": first,
                 "groups": groups,
-                "count": len(entry["values"]),
+                "count": entry.get("count", len(entry["values"])),
             }
         )
     return out
