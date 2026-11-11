@@ -10,9 +10,10 @@ The demo explains one prediction at every order of interaction, from the Shapley
 to the full decomposition (order n). The explanations are drawn as layers floating above the
 example's input, with a plot of each order's fit (R^2) beside them. Above the layers, the
 "problem" is drawn as the input `x`, wired through the model `f` (a chip) to the prediction `f(x)`.
-A card shows the explanation that is pointed at. The demo has five examples: a molecule (GCN), one
-house (XGBoost), the same house (TabPFN), 150 houses as a heatmap, and an image and caption
-(SigLIP 2).
+A card shows the explanation that is pointed at, and can be inspected: pointing at a player on it
+(an atom, a feature, a house, a patch or a word) says its values. The demo has five examples: a
+molecule (GCN), one house (XGBoost), the same house (TabPFN), 150 houses on the map of California,
+and an image and caption (SigLIP 2).
 
 The demo is plain JavaScript and CSS, with no build step and no dependencies. A single
 self-contained script fills every container on a page.
@@ -195,6 +196,15 @@ layers shrink to fit the window.
 
 ## Input and states
 
+- **Inspecting** the card's face says what the explanation shown tells of one player. With a
+  mouse, hovering an atom, a feature (or a group's circle on a house's tree), a patch or a word
+  brings out the strongest groups it is in, and a tip over the face lists its own value and
+  theirs. On the 150 houses' map, a row of the list shows itself on the map, and a house says its
+  prediction and its strongest values. On a touch screen, a tap does the same, and a tap elsewhere
+  lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
+  brings it out when pointed at. To inspect another layer's face, pin the layer first (click it):
+  the pointer can then go to the card. The face is not reachable by keyboard; the "Top" line is
+  the part of it that is text.
 - **Pointing** at an explanation is how the reader explores. It can be done by hovering a layer
   or the plot, by keyboard focus on a row of the plot, by clicking or tapping a layer or the plot
   (a tap pins the explanation, and another tap lets go), or with the slider.
@@ -239,29 +249,35 @@ Written by `compute/pack.py`. Shape, in short:
   index: "FSII",                       // the interaction index of every order
   examples: [{
     id, label, detail,                 // the tab: "molecule", "Molecule", "GCN"
-    kind,                              // "graph" | "tree" | "heatmap" | "image-text": how faces are drawn
+    kind,                              // "graph" | "tree" | "map" | "image-text": how faces are drawn
     model: { icon, title, detail, method, how, short },  // the chip and the card's "Explained with"
     problem: { input, output, value }, // the problem's parts: x, f(x)
     sheets: [{                         // the layers, top to bottom: orders 1..4, then the full one
       order, full,                     // full: true for the full decomposition (order n)
       r2,                              // the fit, R^2 beyond size
       first, groups, count,            // the main effects, the strongest groups, how many there are
-    }],                                // (heatmap: count, scale, rows instead)
+    }],                                // (map: count, scale, and rows instead, each a feature or
+                                       // a group: its players, its value for every house as an
+                                       // integer from -99 to 99 of the scale, and the mean of
+                                       // its absolute values)
     between,                           // optional: the blank orders' explanations, by order
     fits,                              // the plot: every order's R^2
     largest,                           // the highest order with an interaction (the trees' depth,
                                        // the network's receptive field, the proxy's depth): every
                                        // order above it equals the full decomposition
     // and, by kind: atoms, bonds, coords (graph); features, values, layout (tree); image, grid,
-    // tokens (image-text); features, predictions, quartiles (heatmap)
+    // tokens (image-text); features, predictions, coords (every house's longitude and
+    // latitude), outline, places, quartiles (map)
   }],
 }
 ```
 
 To change the examples, change and run the scripts in `compute/`, then `pack.py`. Adding an example
 of a new `kind` also needs a face for it in `demo.js` (next to `moleculeFace`, `treeFace`,
-`heatmapFace` and `imageTextFace`), its players' words (`PLAYERS`), and its input on the
-problem's card.
+`mapFace` and `imageTextFace`), its players' words (`PLAYERS`), how its values are written and what
+they are of (`VALUE`, `OF`), and its input on the problem's card. A face that can be inspected
+returns an inspector for the card's face (`inspectorOf`): its targets, and for a target, the marks
+to bring out and the tip's title and rows.
 
 ## Working on it
 
@@ -287,9 +303,10 @@ problem's card.
    | 390 x 844, 360 x 740 | both pages | Phones: the stepper, no horizontal overflow. |
    | any | `introduction/how-much-explained.html` | The five steps. |
 
-   For each, explain the demo (click the chip), step through the examples, point at layers, and
-   check for console errors, horizontal overflow (`document.documentElement.scrollWidth >
-   innerWidth`), and text that collides along the slider.
+   For each, explain the demo (click the chip), step through the examples, point at layers,
+   inspect the card's face (hover a player; on a phone, tap one), and check for console errors,
+   horizontal overflow (`document.documentElement.scrollWidth > innerWidth`), and text that
+   collides along the slider.
 
 4. **Keep the static figure current**: if the look changes a lot, take new screenshots for
    `hero_orders.png` (the fallback) and `hero_orders_demo.png` (the card). The card's image is
@@ -306,6 +323,13 @@ problem's card.
 - **`place()`** runs on every pointer move over the layers and every step of a slider drag. Do not
   read layout in it (`offsetHeight`, `getBoundingClientRect`); cache measurements, as
   `labelLength()` does.
+- **The card's lines are as wide as the widest**: beside the layers, the card's words grow until
+  their widest line fills the column, so one long line makes all of them smaller, in every
+  example. The "Top" line is kept short for this (`groupName()` gives a long group's size instead
+  of its players). Check the words' size after changing what a line can say.
+- **An inspection changes a cached face**: the card's faces are drawn once and kept (`plans`), so
+  what an inspection brings out, rings or recolors must be put back when it ends
+  (`inspector.clear()`, which `letGo()` calls, also before the card shows another face).
 - **Stable sizes**: the card keeps its size whatever it shows, in every example. `settleCard()`
   measures the most it can say, out of view, and fixes its width and height. When you add words to
   the card, add them to `wordsOf()`, so that they are measured too.

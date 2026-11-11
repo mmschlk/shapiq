@@ -7,8 +7,9 @@ demo's elephant and its caption (fixlip.py). Every order is FSII, which the data
 to 4 and the full decomposition (FSII of order n, the number of players, which equals the Möbius
 transform; for the houses, of order 5, the trees' depth, which equals it already and is exact),
 every main effect, and the 300 strongest interactions of each order (of the molecule, with the
-centers of its groups where shapiq's SI graph plot places them); for the houses, the strongest rows
-of their heatmap. For every example, also its problem in words: its input, and its model's
+centers of its groups where shapiq's SI graph plot places them); for the many houses, where each
+is on the map of California, and the strongest features and groups of features with their value for
+every house. For every example, also its problem in words: its input, and its model's
 prediction. And the R^2 (beyond size, under the Shapley distribution) and the number of values of
 every order up to the highest with an interaction, and of order n, for the plot of the fit by
 order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from disk too,
@@ -17,12 +18,18 @@ where the browser would not fetch a JSON file).
 Usage::
 
     python pack.py
+    python pack.py --examples house houses
+
+With ``--examples``, only those examples are packed anew, from their results; the others are kept
+as the data file has them (but for their words, which are written anew), so that one example can
+change without computing all of them again.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -40,8 +47,15 @@ BETWEEN_STRONGEST = 120
 # only nearly is (the house's order 4 misses by 3e-7)
 R2_DIGITS = 9
 COMPACTNESS = 1e10  # how hard a group's center is pulled to its atoms: si_graph_plot's default
-ROWS = 14  # the rows of a sheet of the heatmap
-SHORT = ["Income", "Age", "Rooms", "Bedrooms", "Population", "Occupancy", "Lat", "Long"]
+ROWS = 14  # of the many houses, the features and groups of features a sheet keeps: its strongest
+# the many houses' map: the state's outline (california.json, which names its source), and the
+# cities its houses cluster around, each with its longitude and latitude
+OUTLINE = HERE / "california.json"
+PLACES = [
+    ["San Francisco", -122.42, 37.77],
+    ["Los Angeles", -118.24, 34.05],
+    ["San Diego", -117.16, 32.72],
+]
 # the house's features as its tree shows them, left to right: the location in the middle, next to
 # the income and the occupancy, with which it interacts the most
 TREE_NAMES = ["Income", "Age", "Rooms", "Beds", "Pop.", "Occup.", "Lat", "Long"]
@@ -215,12 +229,15 @@ def fits(result: dict[str, Any], full: int | None = None) -> list[list[float]]:
     ]
 
 
-def heatmap(result: dict[str, Any], full: int) -> dict[str, Any]:
-    """Return the heatmap of the houses: their predictions and, per sheet, the strongest rows.
+def houses_map(result: dict[str, Any], full: int) -> dict[str, Any]:
+    """Return the map of the houses: where they are, their predictions and, per sheet, their rows.
 
-    The houses are sorted by their prediction. A row is a feature or a group of features, with its
-    value for every house, as an integer from -99 to 99 of the sheet's scale (the 98th percentile
-    of its absolute values). The last sheet is the full decomposition, of order ``full``.
+    The houses are sorted by their prediction, each with its longitude and latitude. A row is a
+    feature or a group of features, of a sheet's strongest by the mean of its absolute values: its
+    players, its value for every house, as an integer from -99 to 99 of the sheet's scale (the 98th
+    percentile of its absolute values), and the mean of its absolute values, how much it moves a
+    house's value on average. The last sheet is the full decomposition, of order ``full``. With
+    them, the state's outline and the cities the map names.
     """
     columns = np.argsort(result["predictions"])
 
@@ -231,8 +248,12 @@ def heatmap(result: dict[str, Any], full: int) -> dict[str, Any]:
         scale = float(np.quantile(np.abs(matrix), 0.98))
         quantized = np.round(np.clip(matrix / scale, -1, 1) * 99).astype(int)
         return scale, [
-            [[int(player) for player in key.split(",")], row.tolist()]
-            for (key, _), row in zip(strongest, quantized, strict=True)
+            [
+                [int(player) for player in key.split(",")],
+                row.tolist(),
+                round(float(np.mean(np.abs(values))), 4),
+            ]
+            for (key, values), row in zip(strongest, quantized, strict=True)
         ]
 
     out = []
@@ -251,6 +272,10 @@ def heatmap(result: dict[str, Any], full: int) -> dict[str, Any]:
         )
     return {
         "predictions": [round(result["predictions"][i], 3) for i in columns],
+        # (longitude, latitude: the last two features, the other way around)
+        "coords": [[round(result["x"][i][7], 2), round(result["x"][i][6], 2)] for i in columns],
+        "outline": json.loads(OUTLINE.read_text(encoding="utf-8"))["outline"],
+        "places": PLACES,
         "sheets": out,
         "fits": fits(result, full),
         "quartiles": [round(q, 3) for q in result["shapley_r2_quartiles"]],
@@ -272,147 +297,180 @@ def house_values(x: list[float]) -> list[str]:
     ]
 
 
-def main() -> None:
-    """Write ``../assets/data.js`` from the results."""
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--results", type=Path, default=HERE / "results")
-    parser.add_argument("--assets", type=Path, default=HERE.parent / "assets")
-    args = parser.parse_args()
+# the examples, in the order of the demo's tabs: the file of each one's results, and its words, which
+# no result gives: its tab's name, its model's, and the model as the demo shows it
+EXAMPLES = {
+    "molecule": ("molecule", {"label": "Molecule", "detail": "GCN", "model": model("graph")}),
+    "house": ("house", {"label": "One house", "detail": "XGBoost", "model": model("tree")}),
+    "tabpfn": (
+        "house_tabpfn",
+        {"label": "One house, TabPFN", "detail": "TabPFN", "model": model("tabpfn")},
+    ),
+    # (the same model as the house's, with the same average)
+    "houses": ("houses", {"label": "All houses", "detail": "XGBoost", "model": model("tree")}),
+    "fixlip": (
+        "fixlip",
+        {"label": "Describing images", "detail": "SigLIP 2", "model": model("black box")},
+    ),
+}
 
-    def load(name: str) -> dict[str, Any]:
-        return json.loads((args.results / f"{name}.json").read_text(encoding="utf-8"))
 
-    molecule, house, tabpfn, houses, fixlip = (
-        load("molecule"),
-        load("house"),
-        load("house_tabpfn"),
-        load("houses"),
-        load("fixlip"),
-    )
+def pack_molecule(molecule: dict[str, Any]) -> dict[str, Any]:
+    """Return the molecule's example: its atoms and bonds, and its sheets with their groups' centers."""
     molecule["n_players"] = len(molecule["atoms"])
     molecule_sheets = sheets(molecule)
     molecule_between = between(molecule, strongest=BETWEEN_STRONGEST)
     for sheet in (*molecule_sheets, *molecule_between):
         place_groups(sheet, molecule["coords"])
-    fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
+    return {
+        "kind": "graph",
+        "problem": problem(
+            input="A molecule",
+            output="Mutagenic",
+            value=f"p = {molecule['probability']:.3f}, logit {molecule['logit']:.2f}",
+        ),
+        "atoms": molecule["atoms"],
+        "bonds": molecule["bonds"],
+        "coords": molecule["coords"],
+        "probability": round(molecule["probability"], 3),
+        "accuracy": round(molecule["test_accuracy"], 3),
+        "budget": molecule["budget"],
+        "largest": molecule["largest_order"],
+        "sheets": molecule_sheets,
+        "between": molecule_between,
+        "fits": fits(molecule),
+    }
+
+
+def pack_house(house: dict[str, Any]) -> dict[str, Any]:
+    """Return the house's example, valued by XGBoost: its features, and its sheets up to the depth."""
+    return {
+        "kind": "tree",
+        "problem": problem(
+            input="A house", output=dollars(house["prediction"]), value="its value, predicted"
+        ),
+        "features": TREE_NAMES,
+        "values": house_values(house["x"]),
+        "layout": TREE_LAYOUT,
+        "prediction": round(house["prediction"], 4),
+        "baseline": round(house["baseline"], 4),
+        "accuracy": round(house["test_r2"], 3),
+        "largest": house["largest_order"],
+        # the trees' depth: FSII of that order is already the full decomposition, exact
+        "sheets": sheets(house, strongest=None, full=house["largest_order"]),
+        "fits": fits(house, full=house["largest_order"]),
+    }
+
+
+def pack_tabpfn(tabpfn: dict[str, Any]) -> dict[str, Any]:
+    """Return the house's example, valued by TabPFN: its features, and its sheets of every order."""
+    return {
+        "kind": "tree",
+        "problem": problem(
+            input="A house", output=dollars(tabpfn["prediction"]), value="its value, predicted"
+        ),
+        "features": TREE_NAMES,
+        "values": house_values(tabpfn["x"]),
+        "layout": TREE_LAYOUT,
+        "prediction": round(tabpfn["prediction"], 4),
+        "baseline": round(tabpfn["baseline"], 4),
+        "accuracy": round(tabpfn["test_r2"], 3),
+        "context": tabpfn["context"],
+        "largest": tabpfn["largest_order"],
+        # no depth: FSII of order n, all 8 features, is the first that is exact
+        "sheets": sheets(tabpfn, strongest=None),
+        "between": between(tabpfn, strongest=None),
+        "fits": fits(tabpfn),
+    }
+
+
+def pack_houses(houses: dict[str, Any]) -> dict[str, Any]:
+    """Return the many houses' example: their map, and the rows of their sheets."""
     # the houses' predictions, from the lowest to the highest
     spread = f"{dollars(min(houses['predictions']))} to {dollars(max(houses['predictions']))}"
-    (index,) = {result["index"] for result in (molecule, house, tabpfn, houses, fixlip)}
-
-    data = {
-        "index": index,  # of every order of every example, for the demo's labels
-        "examples": [
-            {
-                "id": "molecule",
-                "kind": "graph",
-                "label": "Molecule",
-                "detail": "GCN",
-                "model": model("graph"),
-                "problem": problem(
-                    input="A molecule",
-                    output="Mutagenic",
-                    value=f"p = {molecule['probability']:.3f}, logit {molecule['logit']:.2f}",
-                ),
-                "atoms": molecule["atoms"],
-                "bonds": molecule["bonds"],
-                "coords": molecule["coords"],
-                "probability": round(molecule["probability"], 3),
-                "accuracy": round(molecule["test_accuracy"], 3),
-                "budget": molecule["budget"],
-                "largest": molecule["largest_order"],
-                "sheets": molecule_sheets,
-                "between": molecule_between,
-                "fits": fits(molecule),
-            },
-            {
-                "id": "house",
-                "kind": "tree",
-                "label": "One house",
-                "detail": "XGBoost",
-                "model": model("tree"),
-                "problem": problem(
-                    input="A house",
-                    output=dollars(house["prediction"]),
-                    value="its value, predicted",
-                ),
-                "features": TREE_NAMES,
-                "values": house_values(house["x"]),
-                "layout": TREE_LAYOUT,
-                "prediction": round(house["prediction"], 4),
-                "baseline": round(house["baseline"], 4),
-                "accuracy": round(house["test_r2"], 3),
-                "largest": house["largest_order"],
-                # the trees' depth: FSII of that order is already the full decomposition, exact
-                "sheets": sheets(house, strongest=None, full=house["largest_order"]),
-                "fits": fits(house, full=house["largest_order"]),
-            },
-            {
-                "id": "tabpfn",
-                "kind": "tree",
-                "label": "One house, TabPFN",
-                "detail": "TabPFN",
-                "model": model("tabpfn"),
-                "problem": problem(
-                    input="A house",
-                    output=dollars(tabpfn["prediction"]),
-                    value="its value, predicted",
-                ),
-                "features": TREE_NAMES,
-                "values": house_values(tabpfn["x"]),
-                "layout": TREE_LAYOUT,
-                "prediction": round(tabpfn["prediction"], 4),
-                "baseline": round(tabpfn["baseline"], 4),
-                "accuracy": round(tabpfn["test_r2"], 3),
-                "context": tabpfn["context"],
-                "largest": tabpfn["largest_order"],
-                # no depth: FSII of order n, all 8 features, is the first that is exact
-                "sheets": sheets(tabpfn, strongest=None),
-                "between": between(tabpfn, strongest=None),
-                "fits": fits(tabpfn),
-            },
-            {
-                "id": "houses",
-                "kind": "heatmap",
-                "label": "All houses",
-                "detail": "XGBoost",
-                "model": model("tree"),
-                # the same model as the house's, with the same average
-                "problem": problem(
-                    input=f"{len(houses['predictions'])} houses",
-                    output=spread,
-                    value="their values, predicted",
-                ),
-                "features": SHORT,
-                "largest": houses["largest_order"],
-                **heatmap(houses, full=houses["largest_order"]),
-            },
-            {
-                "id": "fixlip",
-                "kind": "image-text",
-                "label": "Describing Images",
-                "detail": "SigLIP 2",
-                "model": model("black box"),
-                "problem": problem(
-                    input="A photo and its caption",
-                    output=f"Similarity {fixlip['similarity']:.2f}",
-                    value="cosine, of the photo and the caption",
-                ),
-                "similarity": round(fixlip["similarity"], 4),
-                "image": "../fixlip/elephant.jpg",  # the FIxLIP demo's photo, next to its assets
-                "grid": fixlip["grid"],
-                "tokens": fixlip["tokens"],
-                "largest": fixlip["largest_order"],
-                "sheets": sheets(fixlip),
-                "fits": fits(fixlip),
-            },
-        ],
+    return {
+        "kind": "map",
+        "problem": problem(
+            input=f"{len(houses['predictions'])} houses",
+            output=spread,
+            value="their values, predicted",
+        ),
+        "features": TREE_NAMES,  # as the one house names them
+        "largest": houses["largest_order"],
+        **houses_map(houses, full=houses["largest_order"]),
     }
-    text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    (args.assets / "data.js").write_text(
-        "// The orders demo's explanations (see demo.js), written by ../compute/pack.py.\n"
-        f"window.SHAPIQ_ORDERS = {text};\n",
-        encoding="utf-8",
+
+
+def pack_fixlip(fixlip: dict[str, Any]) -> dict[str, Any]:
+    """Return the example of the photo and its caption: its patches and tokens, and its sheets."""
+    fixlip["n_players"] = fixlip["grid"] ** 2 + len(fixlip["tokens"])
+    return {
+        "kind": "image-text",
+        "problem": problem(
+            input="A photo and its caption",
+            output=f"Similarity {fixlip['similarity']:.2f}",
+            value="cosine, of the photo and the caption",
+        ),
+        "similarity": round(fixlip["similarity"], 4),
+        "image": "../fixlip/elephant.jpg",  # the FIxLIP demo's photo, next to its assets
+        "grid": fixlip["grid"],
+        "tokens": fixlip["tokens"],
+        "largest": fixlip["largest_order"],
+        "sheets": sheets(fixlip),
+        "fits": fits(fixlip),
+    }
+
+
+PACKERS = {
+    "molecule": pack_molecule,
+    "house": pack_house,
+    "tabpfn": pack_tabpfn,
+    "houses": pack_houses,
+    "fixlip": pack_fixlip,
+}
+HEADER = "// The orders demo's explanations (see demo.js), written by ../compute/pack.py.\n"
+
+
+def main() -> None:
+    """Write ``../assets/data.js`` from the results."""
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--results", type=Path, default=HERE / "results")
+    parser.add_argument("--assets", type=Path, default=HERE.parent / "assets")
+    parser.add_argument(
+        "--examples",
+        nargs="+",
+        choices=list(EXAMPLES),
+        default=list(EXAMPLES),
+        metavar="EXAMPLE",
+        help=f"the examples to pack anew, of {', '.join(EXAMPLES)} (all of them); the others are "
+        "kept as the data file has them",
     )
+    args = parser.parse_args()
+    target = args.assets / "data.js"
+
+    # the examples that are not packed anew, as the data file has them
+    kept: dict[str, dict[str, Any]] = {}
+    indices = set()
+    if set(args.examples) != set(EXAMPLES):
+        text = target.read_text(encoding="utf-8")
+        old = json.loads(re.search(r"window\.SHAPIQ_ORDERS = (.*);\s*$", text, re.DOTALL).group(1))
+        kept = {example["id"]: example for example in old["examples"]}
+        indices.add(old["index"])
+
+    examples = []
+    for name, (file, words) in EXAMPLES.items():
+        if name in args.examples:
+            result = json.loads((args.results / f"{file}.json").read_text(encoding="utf-8"))
+            indices.add(result["index"])
+            packed = PACKERS[name](result)
+        else:
+            packed = {key: value for key, value in kept[name].items() if key not in ("id", *words)}
+        examples.append({"id": name, **words, **packed})
+    (index,) = indices  # of every order of every example, for the demo's labels
+
+    data = {"index": index, "examples": examples}
+    text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    target.write_text(f"{HEADER}window.SHAPIQ_ORDERS = {text};\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

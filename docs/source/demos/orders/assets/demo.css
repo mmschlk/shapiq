@@ -56,6 +56,10 @@
   --orders-cast-glow: rgba(27, 30, 39, 0.12);
   --orders-xai-glow: rgba(22, 163, 74, 0.26);
   --orders-mech-glow: rgba(240, 118, 0, 0.28);
+  /* a value in words, in the red of what raises f(x) or the blue of what lowers it: the marks'
+     colors, a little darker, to read as small text on the paper (4.5:1) */
+  --orders-raises: #d6094a;
+  --orders-lowers: #1669c9;
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -78,6 +82,8 @@ body[data-theme="dark"] .orders-demo {
   --orders-cast-glow: rgba(220, 226, 240, 0.1);
   --orders-xai-glow: rgba(74, 222, 128, 0.22);
   --orders-mech-glow: rgba(255, 150, 40, 0.28);
+  --orders-raises: #ff6b93;
+  --orders-lowers: #62b0f5;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -101,6 +107,8 @@ body[data-theme="dark"] .orders-demo {
     --orders-cast-glow: rgba(220, 226, 240, 0.1);
     --orders-xai-glow: rgba(74, 222, 128, 0.22);
     --orders-mech-glow: rgba(255, 150, 40, 0.28);
+    --orders-raises: #ff6b93;
+    --orders-lowers: #62b0f5;
   }
 }
 
@@ -1191,6 +1199,18 @@ body[data-theme="dark"] .orders-demo {
   transition: fill 360ms var(--orders-ease);
 }
 
+/* after a short name, an invitation to inspect the face (demo.js), until it has been, once */
+.orders-demo-tag-hint {
+  fill: var(--orders-muted);
+  font-size: 3px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.orders-demo-inspected .orders-demo-tag-hint {
+  display: none;
+}
+
 .orders-demo-plan-xai .orders-demo-plan-tag .orders-demo-tag {
   fill: var(--orders-ink);
 }
@@ -1320,6 +1340,32 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-plan-method {
   font-size: 0.94em;
+}
+
+/* the explanation's strongest, in a line: its name, and its value in the color of its sign; pointed
+   at, the face brings it out (demo.js) */
+.orders-demo-plan-top {
+  font-size: 0.94em;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.orders-demo-plan-top strong {
+  color: var(--orders-ink);
+  font-weight: 600;
+}
+
+.orders-demo-plan-top > span,
+.orders-demo-tip-row b {
+  font-weight: 700;
+}
+
+.orders-demo-plan-raises {
+  color: var(--orders-raises);
+}
+
+.orders-demo-plan-lowers {
+  color: var(--orders-lowers);
 }
 
 .orders-demo-plan-method strong {
@@ -1595,6 +1641,12 @@ body[data-theme="dark"] .orders-demo {
   dominant-baseline: central;
 }
 
+/* (the levels' name, over the first: they are the orders) */
+.orders-demo-tree-levels .orders-demo-tree-order {
+  font-size: 2.1px;
+  letter-spacing: 0.02em;
+}
+
 .orders-demo-tree-links path {
   fill: none;
   stroke-linecap: round;
@@ -1606,35 +1658,160 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   dominant-baseline: central;
+  /* (an edge of paper around a value: it reads over the links it lies on) */
+  paint-order: stroke;
+  stroke: var(--orders-sheet);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
 }
 
-/* many houses: the heatmap, its rows, and the prediction of every house */
-.orders-demo-heat-cells {
-  image-rendering: pixelated;
+/* many houses: the map of California (the state, its cities, a dot where every house is), the
+   houses in the colors of what the map shows, what it shows named over it, and beside it the
+   explanation's rows: a name, a bar, and the mean it stands for; the row the map shows, in ink */
+.orders-demo-map-land {
+  fill: var(--orders-raised);
+  stroke: var(--orders-edge);
+  stroke-width: 0.4;
+  stroke-linejoin: round;
 }
 
-.orders-demo-heat-rows line {
-  stroke: var(--orders-line);
-  stroke-width: 0.15;
+.orders-demo-map-places path {
+  fill: none;
+  stroke: var(--orders-muted);
+  stroke-width: 0.3;
 }
 
-.orders-demo-heat-label {
+.orders-demo-map-places text {
   fill: var(--orders-muted);
-  font-size: 2.5px;
+  font-size: 2.3px;
+  text-anchor: end;
+}
+
+.orders-demo-map-houses circle {
+  fill: var(--orders-sheet);
+  stroke: var(--orders-muted);
+  stroke-width: 0.16;
+}
+
+.orders-demo-map-caption text,
+.orders-demo-map-scale text,
+.orders-demo-map-head {
+  fill: var(--orders-muted);
+  font-size: 2.3px;
+}
+
+.orders-demo-map-scale rect {
+  stroke: var(--orders-edge);
+  stroke-width: 0.12;
+}
+
+.orders-demo-map-caption .orders-demo-map-shown {
+  fill: var(--orders-ink);
+  font-size: 3.6px;
+  font-weight: 700;
+}
+
+.orders-demo-map-head {
+  font-size: 2.1px;
+  text-anchor: end;
+}
+
+.orders-demo-map-row text {
+  fill: var(--orders-muted);
+  font-size: 2.6px;
+  font-variant-numeric: tabular-nums;
   text-anchor: end;
   dominant-baseline: central;
 }
 
-.orders-demo-heat-area {
-  fill: var(--orders-ink);
-  opacity: 0.07;
+.orders-demo-map-row rect {
+  fill: var(--orders-edge);
 }
 
-.orders-demo-heat-line {
+.orders-demo-map-row-on text {
+  fill: var(--orders-ink);
+  font-weight: 700;
+}
+
+.orders-demo-map-row-on rect {
+  fill: var(--orders-ink);
+}
+
+/* a face inspected (the card's, demo.js): a ring around what is pointed at, the marks of the groups
+   it is in brought out, and the other groups' stepping back */
+.orders-demo-inspect-ring {
   fill: none;
   stroke: var(--orders-ink);
-  stroke-width: 0.45;
-  stroke-linejoin: round;
+  stroke-width: 0.55;
+  pointer-events: none;
+}
+
+.orders-demo-inspecting :is(.orders-demo-groups path, .orders-demo-tree-links path, .orders-demo-tree-groups > *):not(.orders-demo-on) {
+  opacity: 0.1;
+}
+
+/* (and the players' own values, a little: the groups brought out read over them) */
+.orders-demo-inspecting .orders-demo-halos {
+  opacity: 0.45;
+}
+
+/* the card's tip: what the explanation says of what is pointed at on the face, a small card of
+   paper over it (demo.js places it), which takes no pointer */
+.orders-demo-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 120; /* over the slider's column, which is over the stack */
+  display: grid;
+  gap: 0.12rem;
+  box-sizing: border-box;
+  min-width: 9.5rem;
+  max-width: min(17rem, 100% - 4px);
+  padding: 0.5rem 0.7rem 0.45rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 9px;
+  background: var(--orders-sheet);
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.35), 0 1px 3px var(--orders-shade);
+  color: var(--orders-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms var(--orders-ease);
+}
+
+.orders-demo-tip.orders-demo-tip-on {
+  visibility: visible;
+  opacity: 1;
+}
+
+.orders-demo-tip-title {
+  margin-bottom: 0.15rem;
+}
+
+.orders-demo-tip-title strong {
+  color: var(--orders-ink);
+  font-size: 1.06em;
+}
+
+.orders-demo-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orders-demo-tip-row b:not([class]) {
+  color: var(--orders-ink);
+}
+
+.orders-demo-tip-note {
+  margin-top: 0.2rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--orders-line);
+  font-size: 0.92em;
 }
 
 .orders-demo-wash {

@@ -17,8 +17,8 @@
 //
 // The examples: the molecule of GraphSHAP-IQ's Figure 1, explained exactly by GraphSHAP-IQ for a
 // graph convolutional network; one house and 150 houses of California housing, explained exactly by
-// shapiq's TreeExplainer for an XGBoost model of depth 5 (the 150 houses as a heatmap, a column
-// each); the same house valued by TabPFN, a black box, explained exactly over all subsets of its
+// shapiq's TreeExplainer for an XGBoost model of depth 5 (the 150 houses on the map of California,
+// a dot each); the same house valued by TabPFN, a black box, explained exactly over all subsets of its
 // features with shapiq's TabPFNImputer; and how SigLIP 2, a black box, matches the photo and
 // caption of the FIxLIP demo, explained by ProxySHAP through an XGBoost proxy, without adjustment.
 // The full decomposition is the interactions of order n, the number of players (or of the trees'
@@ -46,7 +46,10 @@
 // the example seen from above, flat, its input with the explanation pointed at on it (at rest, the
 // Shapley values), and in a few words what that explanation is, with a bar by its R^2, how well it
 // fits, and what it was explained with (the input alone, the card pointed at; the mechanism's, in
-// its orange). The chip clears as far as the explanation fits: the black box opens, all the way
+// its orange), and its strongest player or group. The card's face can be inspected: the pointer
+// over a player on it (an atom, a feature, a house, a patch or a word; on a touch screen, a tap)
+// brings out the strongest groups the player is in, and a tip says its own value and theirs. The
+// chip clears as far as the explanation fits: the black box opens, all the way
 // where it is exact. The demo starts with the problem alone (unless data-reveal="open"): a click on
 // the chip explains it, and the explanation is built under it from the top down. The problem stays
 // as the examples change: what its parts show flips, as on a board of departures.
@@ -214,7 +217,7 @@
   // opaque where they overlap as elsewhere, without a group's opacity (a layer of its own to paint)
   const drawGroup = (parent, points, value, largest, widest, at) => {
     const ratio = Math.abs(value) / largest;
-    if (ratio < FAINTEST) return;
+    if (ratio < FAINTEST) return null;
     const width = widest * ratio;
     const center =
       points.length === 2
@@ -225,17 +228,99 @@
     for (const [x, y] of points.length === 2 ? points : [...points, center]) {
       d += discPath(roundTo(x, 2), roundTo(y, 2), roundTo(width / 2, 2));
     }
-    add(parent, "path", { d, fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
+    return add(parent, "path", { d, fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
   };
 
-  // the groups of a sheet; a group's center, where the data gives one, is placed by place
-  const drawGroups = (parent, sheet, anchor, largest, widest, place) => {
+  // the groups of a sheet; a group's center, where the data gives one, is placed by place (and
+  // every group's shape noted as its mark, where a face is inspected: marks)
+  const drawGroups = (parent, sheet, anchor, largest, widest, place, marks) => {
     const layer = add(parent, "g", { class: "orders-demo-groups" });
     // the weakest first, so that the strongest lie on top
     const groups = [...sheet.groups].sort((a, b) => Math.abs(a[1]) - Math.abs(b[1]));
     for (const [players, value, center] of groups) {
-      drawGroup(layer, players.map(anchor), value, largest, widest, center && place(center));
+      const node = drawGroup(layer, players.map(anchor), value, largest, widest, center && place(center));
+      if (node) marks?.push({ node, key: players.join(","), ratio: Math.abs(value) / largest });
     }
+  };
+
+  // -- inspecting a face: on the card, a reader points at a player (an atom, a feature, a patch or
+  // a word), at a group, or at a house, and the face brings out what the explanation says of it,
+  // which the card's tip says in numbers. A face that can be inspected gives its targets, each a
+  // box around its middle in the face's square (x, y, rx, ry; round for a circle), and, for a
+  // target, what to bring out and what to say (inspectorOf) -----------------------------------------
+
+  // the strongest groups of a sheet that hold a player, the strongest first (as the data has them)
+  const groupsWith = (sheet, player, most = 4) => sheet.groups.filter(([players]) => players.includes(player)).slice(0, most);
+
+  // the marks of a face's groups, each with its group's key ("3,7") and how strong it is drawn: an
+  // inspection brings out those of its keys, as strong as reads at the least, and the others
+  // step back (demo.css)
+  const bringOut = (svg, marks, keys) => {
+    svg.classList.toggle("orders-demo-inspecting", Boolean(keys));
+    for (const { node, key, ratio, stroke, plain } of marks) {
+      const on = Boolean(keys) && keys.has(key);
+      node.classList.toggle("orders-demo-on", on);
+      if (!plain) node.style[stroke ? "strokeOpacity" : "fillOpacity"] = on ? roundTo(Math.max(0.62, ratio), 3) : "";
+    }
+  };
+
+  // a face's inspector: its targets, the one that stands for a group of players (find), and for a
+  // target, a ring around it, its marks brought out, and what the explanation says of it
+  // (describe: the keys of the marks to bring out, a title, and rows of a name and a value); reset
+  // puts back what an inspection changed
+  const inspectorOf = (svg, marks, targets, describe, find = () => null, reset = () => {}) => {
+    const ring = add(svg, "rect", { class: "orders-demo-inspect-ring", visibility: "hidden" });
+    return {
+      targets,
+      find,
+      show(target) {
+        const said = describe(target);
+        bringOut(svg, marks, said?.keys ?? null);
+        const ringed = target.rx > 0 && !target.bare;
+        ring.setAttribute("visibility", ringed ? "visible" : "hidden");
+        if (ringed) {
+          const [w, h] = [target.rx + 0.8, target.ry + 0.8];
+          const box = { x: target.x - w, y: target.y - h, width: 2 * w, height: 2 * h, rx: target.round ? w : 1.3 };
+          for (const [name, value] of Object.entries(box)) ring.setAttribute(name, roundTo(value, 2));
+        }
+        return said;
+      },
+      clear() {
+        bringOut(svg, marks, null);
+        ring.setAttribute("visibility", "hidden");
+        reset();
+      },
+    };
+  };
+
+  // what an explanation says of a player: its own value (of order 1, its Shapley value), and the
+  // strongest groups it is in; or of a group: its value, and its players' own. title names a
+  // player, in two parts; nameOf, in a word
+  const sayOf = (example, sheet, target, title, nameOf) => {
+    const words = PLAYERS[example.kind];
+    if (target.group) {
+      const players = target.group;
+      const key = players.join(",");
+      const value = sheet.groups.find(([others]) => others.join(",") === key)?.[1] ?? 0;
+      return {
+        keys: new Set([key]),
+        title: [groupName(example, players, nameOf), `${players.length} ${words.players} together`],
+        rows: [["together", value], ...(players.length <= 4 ? players.map((player) => [`${nameOf(player)} alone`, sheet.first[player]]) : [])],
+      };
+    }
+    const groups = groupsWith(sheet, target.player);
+    const others = (players) => players.filter((player) => player !== target.player);
+    return {
+      keys: new Set(groups.map(([players]) => players.join(","))),
+      title: title(target.player),
+      rows: [
+        [sheet.order === 1 ? "Shapley value" : "alone", sheet.first[target.player]],
+        ...groups.map(([players, value]) => [
+          others(players).length <= 3 ? `with ${others(players).map(nameOf).join(", ")}` : `with ${others(players).length} others`,
+          value,
+        ]),
+      ],
+    };
   };
 
   // the map of points into a box that scales them, keeping their aspect, to fit it, centered
@@ -261,16 +346,21 @@
   // explained, on the card) or the "marks" (the explanation, on a layer above it)
   const shows = (layer, part) => layer === "all" || layer === part;
 
-  // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures
+  // the elements of a molecule's atoms, in words
+  const ELEMENTS = { C: "carbon", N: "nitrogen", O: "oxygen", H: "hydrogen", S: "sulfur", P: "phosphorus", F: "fluorine", Cl: "chlorine", Br: "bromine", I: "iodine" };
+
+  // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures (the
+  // card's face can be inspected, atom by atom: it returns its inspector)
   function moleculeFace(svg, example, sheet, layer = "all") {
     const place = fit(example.coords, [9, 5, 93, 87]);
     const position = example.coords.map(place);
     const extent = extentOf(position);
     const [radius, widest] = [(ATOM / 2) * extent, WIDEST * extent];
     const largest = largestValue(sheet);
+    const marks = [];
     if (shows(layer, "marks")) {
       // the groups' centers where shapiq's SI graph plot puts them (../compute/pack.py)
-      drawGroups(svg, sheet, (atom) => position[atom], largest, widest, place);
+      drawGroups(svg, sheet, (atom) => position[atom], largest, widest, place, marks);
       // a main effect: a disc around its atom, as much wider as a group of its value, over a disc
       // of the sheet's color that hides the groups below it (on a sheet; a layer has no color)
       const halos = add(svg, "g", { class: "orders-demo-halos" });
@@ -286,7 +376,7 @@
         add(halos, "circle", { ...disc, fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
       });
     }
-    if (!shows(layer, "input")) return;
+    if (!shows(layer, "input")) return null;
     const bonds = add(svg, "g", { class: "orders-demo-bonds" });
     for (const [i, j] of example.bonds) {
       const [[x1, y1], [x2, y2]] = [position[i], position[j]];
@@ -298,6 +388,20 @@
       add(atoms, "circle", { cx: x, cy: y, r: roundTo(radius, 2) });
       add(atoms, "text", { x, y: roundTo(y + 0.05, 2) }, atom);
     });
+    if (layer !== "all") return null;
+    // an atom, named by its element and the atoms it is bonded to (so a nitro group's N reads as
+    // one: bonded to C, O, O)
+    const bonded = example.atoms.map((_, atom) =>
+      example.bonds.filter((bond) => bond.includes(atom)).map(([a, b]) => example.atoms[a === atom ? b : a]),
+    );
+    const title = (atom) => [example.atoms[atom], `${ELEMENTS[example.atoms[atom]] ?? "atom"}, bonded to ${bonded[atom].join(", ")}`];
+    const targets = position.map(([x, y], atom) => ({ x, y, rx: radius * 1.5, ry: radius * 1.5, round: true, player: atom }));
+    // (a group: where its atoms' middle is, with no ring: its shape is brought out)
+    const find = (players) =>
+      players.length === 1
+        ? targets[players[0]]
+        : { x: players.reduce((sum, atom) => sum + position[atom][0], 0) / players.length, y: Math.min(...players.map((atom) => position[atom][1])), rx: 0, ry: radius, group: players };
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, (atom) => example.atoms[atom]), find);
   }
 
   // the photo and its caption: the photo's patches on the left, the caption's tokens on the right
@@ -367,7 +471,8 @@
     }
 
     const players = Array.from({ length: patches + example.tokens.length }, (_, player) => anchor(player));
-    if (shows(layer, "marks")) drawGroups(svg, sheet, anchor, largest, WIDEST * extentOf(players));
+    const marks = [];
+    if (shows(layer, "marks")) drawGroups(svg, sheet, anchor, largest, WIDEST * extentOf(players), undefined, marks);
 
     const words = add(svg, "g", { class: "orders-demo-tokens" });
     example.tokens.forEach((token, k) => {
@@ -394,12 +499,32 @@
         add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
       }
     });
+    if (layer !== "all") return null;
+    // (the card's face can be inspected, patch by patch and word by word: its inspector) a patch,
+    // named by its row and column in the photo; a word, as the caption has it
+    const where = (patch) => [Math.floor(patch / grid) + 1, (patch % grid) + 1];
+    const nameOf = (player) => (player < patches ? `patch ${where(player).join("·")}` : `“${example.tokens[player - patches]}”`);
+    const title = (player) =>
+      player < patches
+        ? [`Patch ${where(player).join("·")}`, `row ${where(player)[0]}, column ${where(player)[1]} of the photo`]
+        : [`“${example.tokens[player - patches]}”`, `word ${player - patches + 1} of the caption`];
+    const targets = players.map(([x, y], player) =>
+      player < patches
+        ? { x, y, rx: cell / 2, ry: cell / 2, player }
+        : { x: tokens.x + tokens.width / 2, y: tokens.top + (player - patches + 0.5) * row, rx: tokens.width / 2, ry: row * 0.38, player },
+    );
+    const find = (group) =>
+      group.length === 1
+        ? targets[group[0]]
+        : { x: group.reduce((sum, player) => sum + targets[player].x, 0) / group.length, y: Math.min(...group.map((player) => targets[player].y)), rx: 0, ry: cell / 2, group };
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), find);
   }
 
   // one house: its explanation as a tree that grows one level per order. The features are on top,
   // every group of k features hangs at level k, below the middle of its features, and joined to
   // each of them; red raises the value of the house, blue lowers it. The full decomposition of a
-  // tree ensemble is as deep as its trees.
+  // tree ensemble is as deep as its trees. (The card's face can be inspected, feature by feature
+  // and group by group: it returns its inspector)
   const TREE_GROUPS = [0, 0, 6, 5, 4, 3, 3, 2]; // the strongest groups shown, by level
   function treeFace(svg, example, sheet, layer = "all") {
     const levels = example.largest;
@@ -411,6 +536,8 @@
 
     const marks = shows(layer, "marks");
     const guides = add(svg, "g", { class: "orders-demo-tree-levels" });
+    // (the levels are the orders: so the first one says)
+    if (marks) add(guides, "text", { class: "orders-demo-tree-order", x: 2.5, y: roundTo(top - 3.6, 2) }, "order");
     for (let level = 1; level <= (marks ? levels : 0); level++) {
       const y = roundTo(top + (level - 1) * step, 2);
       add(guides, "line", { x1: 6, x2: 94, y1: y, y2: y });
@@ -429,6 +556,7 @@
           value,
           x: players.reduce((sum, p) => sum + slot.get(p), 0) / players.length,
           y: top + (level - 1) * step,
+          r: 1 + 4.6 * ratioOf(value) ** 0.8,
         }))
         .sort((a, b) => a.x - b.x);
       // apart, then shifted back to their middle, and kept on the sheet
@@ -440,33 +568,57 @@
       nodes.push(...groups);
     }
 
+    // (the groups' marks, for an inspection to bring out: their links, their circles, their values)
+    const noted = [];
     const links = add(svg, "g", { class: "orders-demo-tree-links" });
     for (const node of marks ? [...nodes].sort((a, b) => Math.abs(a.value) - Math.abs(b.value)) : []) {
       const ratio = ratioOf(node.value);
       for (const player of node.players) {
         const [x1, y1, x2] = [node.x, node.y, slot.get(player)];
         const bend = (y1 - top) * 0.55;
-        add(links, "path", {
+        const link = add(links, "path", {
           d: `M${roundTo(x1, 2)} ${roundTo(y1, 2)}C${roundTo(x1, 2)} ${roundTo(y1 - bend, 2)} ${roundTo(x2, 2)} ${roundTo(top + bend, 2)} ${roundTo(x2, 2)} ${top}`,
           stroke: solid(node.value),
           "stroke-width": roundTo(0.2 + 1.3 * ratio, 2),
           "stroke-opacity": roundTo(0.18 + 0.6 * ratio, 3),
         });
+        noted.push({ node: link, key: node.players.join(","), ratio: 0.18 + 0.6 * ratio, stroke: true });
       }
     }
     const groups = add(svg, "g", { class: "orders-demo-tree-groups" });
+    // a group's value beside its circle, the strongest groups' first: right of it, or left of it,
+    // where it touches no other circle and no other value; else none (the card's tip says it)
+    const taken = nodes.map((node) => [node.x - node.r, node.x + node.r, node.y]);
+    const free = (from, to, y) => from > 1 && to < 99 && !taken.some(([a, b, level]) => level === y && from < b + 0.6 && to > a - 0.6);
+    const labels = new Map();
+    for (const node of marks ? [...nodes].sort((a, b) => Math.abs(b.value) - Math.abs(a.value)) : []) {
+      if (ratioOf(node.value) < 0.25) continue;
+      const text = dollars(node.value);
+      const width = text.length * 1.5; // (of its font, demo.css)
+      const sides = [
+        [node.x + node.r + 1, node.x + node.r + 1 + width, "start"],
+        [node.x - node.r - 1 - width, node.x - node.r - 1, "end"],
+      ];
+      const side = sides.find(([from, to]) => free(from, to, node.y));
+      if (!side) continue;
+      taken.push([side[0], side[1], node.y]);
+      labels.set(node, { x: roundTo(side[2] === "start" ? side[0] : side[1], 2), anchor: side[2], text });
+    }
     for (const node of marks ? nodes : []) {
       const ratio = ratioOf(node.value);
-      const r = 1 + 4.6 * ratio ** 0.8;
-      add(groups, "circle", {
+      const key = node.players.join(",");
+      const circle = add(groups, "circle", {
         cx: roundTo(node.x, 2),
         cy: roundTo(node.y, 2),
-        r: roundTo(r, 2),
+        r: roundTo(node.r, 2),
         fill: solid(node.value),
         "fill-opacity": roundTo(0.4 + 0.6 * ratio, 3),
       });
-      if (ratio >= 0.25) {
-        add(groups, "text", { x: roundTo(node.x + r + 1, 2), y: roundTo(node.y, 2) }, dollars(node.value));
+      noted.push({ node: circle, key, ratio: 0.4 + 0.6 * ratio });
+      const label = labels.get(node);
+      if (label) {
+        const text = add(groups, "text", { x: label.x, y: roundTo(node.y, 2), "text-anchor": label.anchor }, label.text);
+        noted.push({ node: text, key, plain: true });
       }
     }
 
@@ -474,7 +626,7 @@
     // one higher, so that they do not touch
     const halos = add(svg, "g", { class: "orders-demo-halos" });
     const features = add(svg, "g", { class: "orders-demo-atoms" });
-    const labels = add(svg, "g", { class: "orders-demo-features" });
+    const names = add(svg, "g", { class: "orders-demo-features" });
     example.layout.forEach((feature, k) => {
       const x = roundTo(slot.get(feature), 2);
       const ratio = ratioOf(sheet.first[feature]);
@@ -490,64 +642,146 @@
       if (!shows(layer, "input")) return;
       add(features, "circle", { cx: x, cy: top, r: 2 });
       const y = k % 2 === 0 ? 5.6 : 12;
-      add(labels, "text", { x, y, "text-anchor": "middle", class: "orders-demo-feature-name" }, example.features[feature]);
-      add(labels, "text", { x, y: y + 3.3, "text-anchor": "middle", class: "orders-demo-feature-value" }, example.values[feature]);
+      add(names, "text", { x, y, "text-anchor": "middle", class: "orders-demo-feature-name" }, example.features[feature]);
+      add(names, "text", { x, y: y + 3.3, "text-anchor": "middle", class: "orders-demo-feature-value" }, example.values[feature]);
     });
+    if (layer !== "all") return null;
+    const targets = [
+      ...example.layout.map((feature) => ({ x: slot.get(feature), y: top, rx: 4, ry: 4, round: true, player: feature })),
+      ...nodes.map((node) => ({ x: node.x, y: node.y, rx: Math.max(node.r, 2.2), ry: Math.max(node.r, 2.2), round: true, group: node.players })),
+    ];
+    // (a group the tree does not draw has no place on it: nothing to point at)
+    const find = (players) => targets.find((target) => (target.group ?? [target.player]).join(",") === players.join(",")) ?? null;
+    const title = (feature) => [example.features[feature], example.values[feature]];
+    return inspectorOf(svg, noted, targets, (target) => sayOf(example, sheet, target, title, (feature) => example.features[feature]), find);
   }
 
-  // many houses: a heatmap, a column per house sorted by its prediction (the line on top), a row
-  // per feature or group of features; the cells are drawn on a canvas, one pixel each
-  function heatmapFace(svg, example, sheet, layer = "all") {
-    const box = { left: 30, right: 97, top: 23, row: 4.7, band: [6, 18] };
-    const columns = example.predictions.length;
-    const rows = sheet.rows;
-    const width = (box.right - box.left) / columns;
-
-    const [low, high] = [Math.min(...example.predictions), Math.max(...example.predictions)];
-    const line = example.predictions.map((value, k) => {
-      const x = box.left + (k + 0.5) * width;
-      const y = box.band[1] - ((value - low) / (high - low)) * (box.band[1] - box.band[0]);
-      return `${roundTo(x, 2)},${roundTo(y, 2)}`;
-    });
+  // many houses: the map of California, a dot where every house is, in the color of what one
+  // feature, or one group of features, adds to its value (red) or takes off it (blue); beside it,
+  // the explanation's features and groups, the strongest first, by how much each moves a house's
+  // value on average, the one the dots show marked. The dots show the strongest feature of the
+  // Shapley values, and from order 2 on, the strongest group: what the order has that the
+  // Shapley values lack. (The card's face can be inspected: a row shows itself on the map, and a
+  // house says its own values; it returns its inspector)
+  const MAP = {
+    left: 6, // the state's west, and its north (the face's units)
+    top: 20,
+    scale: 6.9, // of a degree of latitude; of longitude, less by the cosine of the state's middle
+    shrink: Math.cos((37.2 * Math.PI) / 180),
+    dot: 1.05, // a house's radius
+    rows: { top: 8.8, step: 3.9, name: 78.6, bar: 79.8, width: 9.2, value: 97.6 },
+  };
+  // the row the map shows at rest
+  const mapRow = (sheet) => (sheet.order === 1 ? 0 : Math.max(0, sheet.rows.findIndex(([players]) => players.length > 1)));
+  // (dollars without a sign: a size)
+  const sized = (value) => `$${Math.round(Math.abs(value) * 100)}k`;
+  function mapFace(svg, example, sheet, layer = "all") {
+    const west = Math.min(...example.outline.map(([lon]) => lon));
+    const north = Math.max(...example.outline.map(([, lat]) => lat));
+    const at = ([lon, lat]) => [roundTo(MAP.left + (lon - west) * MAP.shrink * MAP.scale, 2), roundTo(MAP.top + (north - lat) * MAP.scale, 2)];
+    const spots = example.coords.map(at);
     if (shows(layer, "input")) {
-      add(svg, "path", {
-        class: "orders-demo-heat-area",
-        d: `M${box.left},${box.band[1]}L${line.join("L")}L${box.right},${box.band[1]}Z`,
-      });
-      add(svg, "path", { class: "orders-demo-heat-line", d: `M${line.join("L")}` });
-      add(svg, "text", { class: "orders-demo-heat-label", x: box.left - 1.5, y: box.band[1] - 2 }, "prediction");
+      add(svg, "path", { class: "orders-demo-map-land", d: `M${example.outline.map((point) => at(point).join(" ")).join("L")}Z` });
+      // the cities, named off the coast
+      const places = add(svg, "g", { class: "orders-demo-map-places" });
+      for (const [name, lon, lat] of example.places) {
+        const [x, y] = at([lon, lat]);
+        add(places, "path", { d: `M${x - 0.9} ${y}H${x + 0.9}M${x} ${y - 0.9}V${y + 0.9}` });
+        add(places, "text", { x: roundTo(x - 2, 2), y: roundTo(y + 1.6, 2) }, name);
+      }
+      const houses = add(svg, "g", { class: "orders-demo-map-houses" });
+      for (const [x, y] of spots) add(houses, "circle", { cx: x, cy: y, r: MAP.dot });
     }
-    if (!shows(layer, "marks")) return;
+    if (!shows(layer, "marks")) return null;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = columns;
-    canvas.height = rows.length;
-    const context = canvas.getContext("2d");
-    const pixels = context.createImageData(columns, rows.length);
-    rows.forEach(([, values], r) => {
-      values.forEach((value, k) => {
-        const [red, green, blue] = value >= 0 ? RED : BLUE;
-        const offset = 4 * (r * columns + k);
-        pixels.data.set([red, green, blue, Math.round(255 * (Math.abs(value) / 99) ** 0.85)], offset);
-      });
+    const nameOf = (players) => players.map((feature) => example.features[feature]).join(" × ");
+    const valueOf = (row, house) => (sheet.rows[row][1][house] / 99) * sheet.scale;
+    const dots = add(svg, "g", { class: "orders-demo-map-dots" });
+    const circles = spots.map(([x, y]) => add(dots, "circle", { cx: x, cy: y, r: MAP.dot }));
+    // what the dots show, named over the map, with how many houses it raises and lowers
+    const caption = add(svg, "g", { class: "orders-demo-map-caption" });
+    const shown = add(caption, "text", { class: "orders-demo-map-shown", x: MAP.left, y: 4.6 });
+    const counts = add(caption, "text", { x: MAP.left, y: 8.3 });
+    // the rows: a name, a bar by the mean of its absolute values, and that mean
+    const list = add(svg, "g", { class: "orders-demo-map-rows" });
+    add(list, "text", { class: "orders-demo-map-head", x: MAP.rows.value, y: 4.6 }, "moves a house's value by, on average");
+    const most = Math.max(...sheet.rows.map((row) => row[2]));
+    const rows = sheet.rows.map(([players, , mean], r) => {
+      const y = roundTo(MAP.rows.top + r * MAP.rows.step, 2);
+      const row = add(list, "g", { class: "orders-demo-map-row" });
+      add(row, "text", { class: "orders-demo-map-name", x: MAP.rows.name, y }, nameOf(players));
+      add(row, "rect", { x: MAP.rows.bar, y: roundTo(y - 1.1, 2), width: roundTo(Math.max(0.5, (mean / most) * MAP.rows.width), 2), height: 2.2, rx: 0.6 });
+      add(row, "text", { class: "orders-demo-map-mean", x: MAP.rows.value, y }, sized(mean));
+      return row;
     });
-    context.putImageData(pixels, 0, 0);
-    add(svg, "image", {
-      href: canvas.toDataURL(),
-      x: box.left,
-      y: box.top,
-      width: box.right - box.left,
-      height: roundTo(rows.length * box.row, 2),
-      preserveAspectRatio: "none",
-      class: "orders-demo-heat-cells",
-    });
-    const lines = add(svg, "g", { class: "orders-demo-heat-rows" });
-    rows.forEach(([players], r) => {
-      const y = box.top + r * box.row;
-      add(lines, "line", { x1: box.left, x2: box.right, y1: roundTo(y + box.row, 2), y2: roundTo(y + box.row, 2) });
-      const name = players.map((feature) => example.features[feature]).join(" × ");
-      add(svg, "text", { class: "orders-demo-heat-label", x: box.left - 1.5, y: roundTo(y + box.row / 2, 2) }, name);
-    });
+    // the colors' scale, in the corner the state leaves free: from what lowers a house's value the
+    // most (the sheet's scale, or more) to what raises it the most
+    const scale = add(svg, "g", { class: "orders-demo-map-scale" });
+    const [steps, cell] = [5, 2.7];
+    for (let k = -steps; k <= steps; k++) {
+      add(scale, "rect", { x: roundTo(81.5 + (k - 0.5) * cell, 2), y: 84.2, width: cell + 0.05, height: 2.2, fill: solid(k), "fill-opacity": roundTo((Math.abs(k) / steps) ** 0.85, 3) });
+    }
+    add(scale, "text", { x: 81.5, y: 81.8, "text-anchor": "middle" }, "added to a house's value");
+    add(scale, "text", { x: roundTo(81.5 - (steps + 0.5) * cell, 2), y: 89, "text-anchor": "start" }, `−${sized(sheet.scale)}`);
+    add(scale, "text", { x: roundTo(81.5 + (steps + 0.5) * cell, 2), y: 89, "text-anchor": "end" }, `+${sized(sheet.scale)}`);
+    // the dots in the colors of a row, the strongest on top
+    let painted = -1;
+    const paint = (r) => {
+      if (r === painted) return;
+      painted = r;
+      const values = sheet.rows[r][1];
+      [...circles.keys()]
+        .sort((a, b) => Math.abs(values[a]) - Math.abs(values[b]))
+        .forEach((house) => {
+          const circle = circles[house];
+          circle.setAttribute("fill", solid(values[house]));
+          circle.setAttribute("fill-opacity", roundTo((Math.abs(values[house]) / 99) ** 0.85, 3));
+          dots.append(circle);
+        });
+      rows.forEach((row, k) => row.classList.toggle("orders-demo-map-row-on", k === r));
+      shown.textContent = nameOf(sheet.rows[r][0]);
+      const [up, down] = [values.filter((value) => value > 0).length, values.filter((value) => value < 0).length];
+      counts.textContent = `raises ${up} houses' values, lowers ${down}`;
+    };
+    const rest = mapRow(sheet);
+    paint(rest);
+    if (layer !== "all") return null;
+
+    const targets = [
+      ...sheet.rows.map((_, r) => {
+        const [from, to] = [MAP.rows.name - 24, MAP.rows.value + 1];
+        return { x: (from + to) / 2, y: MAP.rows.top + r * MAP.rows.step, rx: (to - from) / 2, ry: MAP.rows.step / 2, bare: true, row: r };
+      }),
+      ...spots.map(([x, y], house) => ({ x, y, rx: 1.7, ry: 1.7, round: true, house })),
+    ];
+    const describe = (target) => {
+      // a row shows itself on the map, and the map's caption says the rest
+      if (target.row !== undefined) {
+        paint(target.row);
+        return null;
+      }
+      // a house: where it is, what the model predicts for it, and the strongest of its values
+      paint(rest);
+      const [lon, lat] = example.coords[target.house];
+      const strongest = sheet.rows
+        .map(([players, values], r) => [players, values[target.house], r])
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+        .slice(0, 4);
+      return {
+        title: ["A house", `at ${lat.toFixed(2)}°N, ${(-lon).toFixed(2)}°W`],
+        rows: [
+          ["predicted value", null, sized(example.predictions[target.house])],
+          // (a value at the end of the scale is that large at the least)
+          ...strongest.map(([players, value, r]) => [
+            nameOf(players),
+            valueOf(r, target.house),
+            Math.abs(value) === 99 ? `${dollars(valueOf(r, target.house))} or more` : undefined,
+          ]),
+        ],
+      };
+    };
+    const find = (players) => targets.find((target) => target.row !== undefined && sheet.rows[target.row][0].join(",") === players.join(",")) ?? null;
+    return inspectorOf(svg, [], targets, describe, find, () => paint(rest));
   }
 
   // -- the sheets' names and fits -----------------------------------------------------------------------
@@ -581,10 +815,43 @@
   };
   // the players of an example, in words
   const PLAYERS = {
-    graph: { one: "atom", players: "atoms" },
-    tree: { one: "feature", players: "features" },
-    heatmap: { one: "feature", players: "features" },
-    "image-text": { one: "patch or word", players: "patches and words" },
+    graph: { one: "atom", players: "atoms", point: "an atom" },
+    tree: { one: "feature", players: "features", point: "a feature" },
+    map: { one: "feature", players: "features", point: "a house" },
+    "image-text": { one: "patch or word", players: "patches and words", point: "a patch or word" },
+  };
+  // a group's name, its players' joined, or, where that is long, how many they are
+  const groupName = (example, players, nameOf) => {
+    const name = players.map(nameOf).join(" × ");
+    return name.length <= 18 ? name : `${players.length} ${PLAYERS[example.kind].players}`;
+  };
+  // a player's name in a word, by the example's kind: an atom's element, a feature's name, a word
+  // of the caption, or a patch
+  const playerName = (example, player) =>
+    example.kind === "graph"
+      ? example.atoms[player]
+      : example.kind === "image-text"
+        ? player < example.grid ** 2
+          ? "patch"
+          : `“${example.tokens[player - example.grid ** 2]}”`
+        : example.features[player];
+  // a value as its example's kind writes it, with its sign: a logit to two decimals, a house's
+  // value in thousands of dollars, a similarity to three decimals; and what the values are of
+  const signed = (value, digits) => `${value < 0 ? "−" : "+"}${Math.abs(value).toFixed(digits)}`;
+  const VALUE = { graph: (value) => signed(value, 2), tree: (value) => dollars(value), map: (value) => dollars(value), "image-text": (value) => signed(value, 3) };
+  const OF = { graph: "added to the logit of the prediction", tree: "added to the house's predicted value", map: "added to the house's predicted value", "image-text": "added to the similarity" };
+  // the strongest of an explanation, for the card to say and to bring out: of the Shapley values,
+  // a player; of an order with groups, its strongest group; of many houses, the row their map
+  // shows (its players, and the mean of its absolute values)
+  const strongestOf = (example, sheet) => {
+    if (example.kind === "map") {
+      const [players, , mean] = sheet.rows[mapRow(sheet)];
+      return { players, text: `±${sized(mean)}`, sign: 0 };
+    }
+    const [players, value] = sheet.groups.length
+      ? sheet.groups[0]
+      : sheet.first.map((own, player) => [[player], own]).reduce((best, next) => (Math.abs(next[1]) > Math.abs(best[1]) ? next : best));
+    return { players, text: VALUE[example.kind](value), sign: Math.sign(value) };
   };
   // an example whose full decomposition is estimated (from a proxy of the model): it falls short of
   // R^2 = 1, the estimation gap
@@ -774,6 +1041,20 @@
     planTag.setAttribute("viewBox", "0 0 100 100");
     planTag.setAttribute("class", "orders-demo-plan-tag");
     const planTagText = add(planTag, "text", { class: "orders-demo-tag", x: 6, y: 95.5 });
+    // after a short name, until the face is first inspected, an invitation to (as the layers' own:
+    // "tap" on a touch screen, "hover" with a mouse)
+    const planTagHint = document.createElementNS(SVG, "tspan");
+    planTagHint.setAttribute("class", "orders-demo-tag-hint");
+    planTagHint.setAttribute("dx", "2.4");
+    const planTagWords = [["orders-demo-hint-touch", "tap"], ["orders-demo-hint-hover", "hover"]].map(([className, word]) => [add(planTagHint, "tspan", { class: className }), word]);
+    const tagFace = (name) => {
+      planTagText.textContent = name;
+      for (const [node, word] of planTagWords) node.textContent = `· ${word} ${PLAYERS[current().kind].point}`;
+      if (name.length <= 20) planTagText.append(planTagHint);
+    };
+    // the card's tip: what the explanation shown says of what is pointed at on its face
+    const cardTip = el("div", "orders-demo-tip");
+    cardTip.setAttribute("aria-hidden", "true");
     const planText = el("figcaption", "orders-demo-plan-text");
     const why = el("div", "orders-demo-why");
     plan.append(flow, cast, why);
@@ -906,7 +1187,7 @@
     const blur = add(add(blurs, "defs"), "filter", { id: `orders-blur-${plotId}`, x: "-20%", y: "-20%", width: "140%", height: "140%" });
     add(blur, "feGaussianBlur", { stdDeviation: 1.6 });
     root.style.setProperty("--orders-blur", `url(#orders-blur-${plotId})`);
-    root.append(bar, planWindow, stage, dots, blurs, status);
+    root.append(bar, planWindow, stage, dots, blurs, status, cardTip);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
@@ -1186,12 +1467,19 @@
       add(svg, "text", { class: "orders-demo-tag", x: 6, y: 95.5 }, layer === "input" ? "Input" : sheetName(sheet).face);
       return node;
     }
-    // a face of an example's kind, into svg (id names what it defines, as the photo's clip)
+    // a face of an example's kind, into svg (id names what it defines, as the photo's clip); a
+    // face with all of it, the card's, can be inspected: its inspector is kept by it
+    const inspectors = new WeakMap();
     function drawFace(svg, example, sheet, layer, id) {
-      if (example.kind === "graph") moleculeFace(svg, example, sheet, layer);
-      else if (example.kind === "tree") treeFace(svg, example, sheet, layer);
-      else if (example.kind === "heatmap") heatmapFace(svg, example, sheet, layer);
-      else imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer);
+      const inspector =
+        example.kind === "graph"
+          ? moleculeFace(svg, example, sheet, layer)
+          : example.kind === "tree"
+            ? treeFace(svg, example, sheet, layer)
+            : example.kind === "map"
+              ? mapFace(svg, example, sheet, layer)
+              : imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer);
+      if (inspector) inspectors.set(svg, inspector);
     }
     // every example's layers, drawn once: an example chosen again shows them as they were drawn
     const drawn = new Map();
@@ -1418,7 +1706,7 @@
       const svg = document.createElementNS(SVG, "svg");
       svg.setAttribute("viewBox", "0 0 100 100");
       svg.setAttribute("class", "orders-demo-input-face");
-      const tabular = example.kind === "tree" || example.kind === "heatmap";
+      const tabular = example.kind === "tree" || example.kind === "map";
       if (tabular && small) {
         svg.classList.add("orders-demo-input-glyph");
         add(svg, "rect", { x: 14, y: 20, width: 72, height: 60, rx: 7 });
@@ -1431,7 +1719,7 @@
           table.append(cell);
         });
         return table;
-      } else if (example.kind === "heatmap") {
+      } else if (example.kind === "map") {
         // a head of the features, rows of houses, and how many
         svg.classList.add("orders-demo-input-matrix");
         const [left, top, cell] = [10, 10, 10];
@@ -1452,6 +1740,80 @@
       node.append(el("sup", "", String(n)));
       return node;
     };
+    // -- inspecting the card's face: the pointer over a player (or a group, a house, a row) of the
+    // explanation shown brings out on the face what the explanation says of it, and the card's tip
+    // says it in numbers, over the face. With a mouse, by hovering; on a touch screen, by a tap (a
+    // tap elsewhere lets go). The face's inspector (demo.js: inspectorOf) knows its targets ------
+    let inspected = null; // the inspector and its target, while one is inspected
+    const inspectorNow = () => inspectors.get(planView.firstChild) ?? null;
+    function letGo() {
+      if (!inspected) return;
+      inspected.inspector.clear();
+      inspected = null;
+      cardTip.classList.remove("orders-demo-tip-on");
+    }
+    function inspect(target) {
+      const inspector = inspectorNow();
+      if (!inspector || !target) {
+        letGo();
+        return;
+      }
+      if (inspected?.target === target) return;
+      inspected?.inspector.clear();
+      inspected = { inspector, target };
+      const said = inspector.show(target);
+      // the face inspected once, its invitation goes, for good
+      root.classList.add("orders-demo-inspected");
+      cardTip.classList.toggle("orders-demo-tip-on", Boolean(said));
+      if (!said) return;
+      const kind = current().kind;
+      const title = el("div", "orders-demo-tip-title");
+      title.append(el("strong", "", said.title[0]), ` ${said.title[1]}`);
+      // a row: a name, and a value in the red of what raises f(x) or the blue of what lowers it (a
+      // value without a sign, as a house's prediction, in neither)
+      const rows = said.rows.map(([name, value, text]) => {
+        const row = el("div", "orders-demo-tip-row");
+        const tone = value === null ? "" : value >= 0 ? "orders-demo-plan-raises" : "orders-demo-plan-lowers";
+        row.append(el("span", "", name), el("b", tone, text ?? VALUE[kind](value)));
+        return row;
+      });
+      cardTip.replaceChildren(title, ...rows, el("div", "orders-demo-tip-note", OF[kind]));
+      // over its target, in the middle, or under it where there is no room above; kept in the demo
+      const [face, box] = [planView.firstChild.getBoundingClientRect(), root.getBoundingClientRect()];
+      const unit = face.width / 100;
+      const [x, above, below] = [face.left - box.left + target.x * unit, face.top - box.top + (target.y - target.ry) * unit, face.top - box.top + (target.y + target.ry) * unit];
+      const [width, height] = [cardTip.offsetWidth, cardTip.offsetHeight];
+      cardTip.style.left = `${roundTo(Math.max(2, Math.min(box.width - width - 2, x - width / 2)), 1)}px`;
+      cardTip.style.top = `${roundTo(above - height - 9 >= 0 ? above - height - 9 : below + 9, 1)}px`;
+    }
+    // the target under the pointer: the nearest of those whose box holds it (a small one's box at
+    // least a few pixels wide, more for a finger)
+    function targetAt(event) {
+      const inspector = inspectorNow();
+      if (!inspector) return null;
+      const face = planView.firstChild.getBoundingClientRect();
+      const [x, y] = [((event.clientX - face.left) / face.width) * 100, ((event.clientY - face.top) / face.height) * 100];
+      const least = ((event.pointerType === "mouse" ? 5 : 11) / face.width) * 100;
+      let [best, nearest] = [null, Infinity];
+      for (const target of inspector.targets) {
+        if (Math.abs(x - target.x) > Math.max(target.rx, least) || Math.abs(y - target.y) > Math.max(target.ry, least)) continue;
+        const distance = Math.hypot(x - target.x, y - target.y);
+        if (distance < nearest) [best, nearest] = [target, distance];
+      }
+      return best;
+    }
+    planView.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "mouse") inspect(targetAt(event));
+    });
+    planView.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse") letGo();
+    });
+    // (a tap on a target inspects it; on the face beside one, or anywhere else in the demo, lets go)
+    planView.addEventListener("click", (event) => inspect(targetAt(event)));
+    root.addEventListener("click", (event) => {
+      if (!event.target.closest(".orders-demo-plan-view, .orders-demo-plan-top")) letGo();
+    });
+
     // the plan shows the sheet pointed at (all of it, where the sheets show what they add), the
     // mechanism's as the full decomposition, and an order between as the full decomposition where
     // it equals it, else as the input alone; at rest, the top sheet
@@ -1470,6 +1832,9 @@
       const fit = el("span", "orders-demo-plan-fit");
       const full = example.sheets.at(-1);
       let r2 = full.r2;
+      // (the explanation shown: a sheet's, the mechanism's as the full decomposition, an order's
+      // between where the data has one)
+      const sheet = mechanism ? full : blank !== null ? betweenOf(example, blank) : example.sheets[index];
       if (mechanism) {
         const n = playersOf(example);
         named.append(el("strong", "", "Mechanism"), " the model itself");
@@ -1520,7 +1885,27 @@
         key.append(el("i", `orders-demo-plan-${color}`), meaning, math("f(x)"));
         legend.append(key);
       }
-      return { nodes: [title, what, fit, method, legend], r2 };
+      // its strongest, in a line (short: the card's lines are as wide as its widest): a player of
+      // the Shapley values, a group of the orders above (of
+      // many houses, what their map shows); pointed at, the face brings it out. An order between
+      // without an explanation of its own says nothing, on a line as tall
+      const top = el("span", "orders-demo-plan-top");
+      if (sheet) {
+        const { players, text, sign } = strongestOf(example, sheet);
+        const name = el("strong", "", groupName(example, players, (player) => playerName(example, player)));
+        const value = el("span", sign > 0 ? "orders-demo-plan-raises" : sign < 0 ? "orders-demo-plan-lowers" : "", text);
+        // (named by what it is: a group, a pair, or a player, an atom, a feature, a patch or a word)
+        const one = example.kind === "image-text" ? (players[0] < example.grid ** 2 ? "patch" : "word") : PLAYERS[example.kind].one;
+        top.append(`Top ${players.length > 2 ? "group" : players.length > 1 ? "pair" : one}: `, name, " ", value);
+        top.addEventListener("pointerenter", (event) => {
+          if (event.pointerType === "mouse") inspect(inspectorNow()?.find(players) ?? null);
+        });
+        top.addEventListener("pointerleave", (event) => {
+          if (event.pointerType === "mouse") letGo();
+        });
+        top.addEventListener("click", () => inspect(inspectorNow()?.find(players) ?? null));
+      } else top.append("\u00a0");
+      return { nodes: [title, what, fit, top, method, legend], r2 };
     }
 
     // the card keeps its place and its size whatever it shows, in every example: its words take a
@@ -1611,10 +1996,12 @@
         example,
         state.blank !== null ? betweenOf(example, state.blank) : mechanism ? example.sheets[last] : example.sheets[index],
       );
-      if (planView.firstChild !== face) planView.replaceChildren(face, planTag);
+      if (planView.firstChild !== face) {
+        letGo(); // (of what was inspected on the face before)
+        planView.replaceChildren(face, planTag);
+      }
       // named as the layer it shows: a sheet, the mechanism, or an order between
-      planTagText.textContent =
-        state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face;
+      tagFace(state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face);
       // the mechanism, where only an estimate shows it, blurred
       planView.classList.toggle("orders-demo-estimated", Boolean(mechanism) && state.blank === null && estimated(example));
 

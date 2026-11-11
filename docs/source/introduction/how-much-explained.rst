@@ -17,8 +17,9 @@ A Model and Its Prediction
 
 A model :math:`f` takes an input :math:`x` and returns a prediction :math:`f(x)`: whether a
 molecule is mutagenic, for a graph neural network; a house's price, for XGBoost or TabPFN; the
-prices of 150 houses; how well a photo matches its caption, for SigLIP 2. The input is made of
-players: atoms, features, or the photo's patches and the caption's words. Why this prediction?
+prices of 150 houses across California; how well a photo matches its caption, for SigLIP 2. The
+input is made of players: atoms, features, or the photo's patches and the caption's words. Why this
+prediction?
 
 .. shapiq-demo:: orders
    :step: problem
@@ -45,6 +46,8 @@ The simplest explanation gives every player one number, its Shapley value: red r
 prediction, blue lowers it. It floats above the input. But how much of the mechanism does it
 explain? Its faithfulness, :math:`R^2`, says how well it predicts what the model does when only
 some of the players are there, beside the layer: 1 is all of it. Point at the mechanism to compare.
+The card above names the strongest player; point at any player on it, an atom, a feature, a house,
+a patch or a word, to read its value.
 
 .. shapiq-demo:: orders
    :step: shapley
@@ -58,7 +61,8 @@ a value for every pair of players, those of order 3 for every three, and so on: 
 Shapley Interactions :cite:p:`Tsai.2022`, the explanation of each order that fits the model best.
 Every order is more detailed than the one above it, and more faithful. The pairs alone recover most
 of what the Shapley values miss. Point at the other orders, or drag the slider down through them,
-and see the fit rise.
+and see the fit rise. On the card, a player now also says the strongest groups it is in: click a
+layer to keep it there, then point at its players.
 
 .. shapiq-demo:: orders
    :step: interactions
@@ -75,7 +79,7 @@ short of is the estimation gap.
 .. shapiq-demo:: orders
    :step: full
    :fallback: images/hero_orders.png
-   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 29, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
+   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 10, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
 
 
 ----
@@ -153,11 +157,16 @@ TabPFN weighs this house's features together. Pairs, latitude with longitude and
 the rooms, lift the fit to 0.84, and every order more a little further, 0.95, 0.98, up to the full
 decomposition, which fits exactly.
 
-**All houses**: 150 test houses, explained in the same way, as a heatmap: a column per house, sorted
-by the model's prediction, and a row per feature or group of features. On average, the Shapley
-values fit with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73; with pairs
-of features, led by the interaction of latitude and longitude, the fit rises to 0.996. The trees
-have depth 5, so no group of more than 5 features has a value, and 5-FSII is exact.
+**All houses**: 150 test houses, explained in the same way, on the map of California: a dot where
+every house is, in the color of what one feature, or one group of features, adds to its value or
+takes off it, and beside the map the explanation's features and groups, by how much each moves a
+house's value on average. The Shapley values credit the latitude most, by $91,000 on average: it
+raises the houses of the south and lowers those of the north, and the longitude does the opposite.
+On average, they fit with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73;
+with pairs of features, led by the interaction of latitude and longitude, which the map shows from
+order 2 on, the fit rises to 0.996. Point at another row to see it on the map, and at a house for
+its own values. The trees have depth 5, so no group of more than 5 features has a value, and
+5-FSII is exact.
 
 **Describing images**: the photo and caption are those of the
 :doc:`FIxLIP demo <../demos/fixlip/index>`: SigLIP 2 :cite:p:`Tschannen.2025` matches a photo and

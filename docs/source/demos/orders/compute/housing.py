@@ -19,8 +19,9 @@ houses, part of the game and of the explanation alike. Two files:
 - ``results/house.json``: one house in Los Angeles, test house 837, where latitude and longitude
   interact strongly: its Shapley values fit worse than those of 94 % of the test houses within
   0.15 degrees of downtown Los Angeles (R^2 = 0.36);
-- ``results/houses.json``: 150 random test houses, for a heatmap of their explanations, with the
-  mean R^2 of every order, and the R^2 of the Shapley values of all test houses.
+- ``results/houses.json``: 150 random test houses, with their features (the demo's map places
+  them by their latitude and longitude) and their explanations, with the mean R^2 of every order,
+  and the R^2 of the Shapley values of all test houses.
 
 Usage::
 
@@ -49,7 +50,7 @@ from shapiq.game_theory.moebius_converter import MoebiusConverter
 HERE = Path(__file__).resolve().parent
 DEPTH = 5  # the highest order of interaction: FSII of order 5 is exact
 N_BACKGROUND = 100  # the training houses whose values absent features take
-N_HOUSES = 150  # the houses of the heatmap
+N_HOUSES = 150  # the houses of the map
 LOS_ANGELES = (34.05, -118.25)  # downtown, as latitude and longitude
 HOUSE = 837  # the test house of house.json, in Los Angeles, whose Shapley values fit poorly
 NAMES = ["Income", "House age", "Rooms", "Bedrooms", "Population", "Occupancy", "Latitude"]
@@ -141,7 +142,7 @@ def main() -> None:
     (args.results / "house.json").write_text(json.dumps(result))
     print(f"house {house}: R^2 by order", [round(o["r2"], 3) for o in orders.values()])
 
-    # many houses: their explanations of every order, for the heatmap
+    # many houses: their explanations of every order, for the map
     houses = np.random.default_rng(1).choice(len(X_test), N_HOUSES, replace=False)
     explained = [explain(moebius[int(i)], coalitions, weights) for i in houses]
     largest = max(max(orders) for orders in explained)
@@ -160,6 +161,7 @@ def main() -> None:
     result = {
         "index": "FSII",
         "features": NAMES,
+        "x": X_test[houses].tolist(),  # their features: the demo's map places them by the last two
         "predictions": model.predict(X_test[houses]).tolist(),
         "largest_order": largest,
         "n_players": n,
