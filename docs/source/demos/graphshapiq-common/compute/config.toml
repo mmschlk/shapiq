@@ -1,8 +1,8 @@
-# The four GraphSHAP-IQ demos (explorer, lab, exact, orders): their tasks (one GNN each), their
-# molecules, and the texts they show.
+# The GraphSHAP-IQ demos (the explorer, the lab, and the figure of receptive fields on the
+# explorer's page, exact): their tasks (one GNN each), their molecules, and the texts they show.
 #
 # train.py trains a GNN per task, explain.py explains every molecule for every task, and pack.py
-# writes the data of the four demos, ../../graphshapiq-<demo>/assets/data.js.
+# writes their data, ../../graphshapiq-<demo>/assets/data.js.
 
 # the highest order of the k-SII the explorer shows (order 1: the Shapley values); beyond it, it
 # shows the Möbius interactions of all orders
@@ -132,16 +132,11 @@ smiles = "CC(=O)Oc1ccccc1C(=O)O"
 # check them after explain.py ran again
 takeaway = "The four oxygens speak against, each on its own; the pairs are weak (at most 0.31). Here, the Shapley values tell the story already."
 
-# The orders demo: the explorer's molecules it explains at every order (FSII), for their own
-# question. Each must have at most 16 heavy atoms: its R^2 is computed over all coalitions.
-[orders_demo]
-molecules = ["dinitrobenzene", "dopamine", "serotonin", "aminofluorene", "caffeine"]
-
 # The lab: the tasks whose GNNs run in the reader's browser, in the order of its switch.
 [lab_demo]
 tasks = ["PAINS", "mutagenic"]
 
-# The exact demo: molecules of growing size, whose numbers of maskings GraphSHAP-IQ needs for GNNs
+# The figure of receptive fields (exact), on the explorer's page: molecules of growing size, whose numbers of maskings GraphSHAP-IQ needs for GNNs
 # of 1 to 4 layers it compares with all 2^n maskings (no GNN is evaluated).
 [[exact_demo]]
 id = "benzene"
