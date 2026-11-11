@@ -1013,8 +1013,8 @@
     "image-text": { one: "patch or word", players: "patches and words", point: "a number" },
   };
   // a group's name, its players' joined, or, where that is long, how many they are (long: more
-  // than the card's line holds; the tip holds more)
-  const groupName = (example, players, nameOf, most = 18) => {
+  // than the card's line holds, which holds "2 patches and words"; the tip holds more)
+  const groupName = (example, players, nameOf, most = 19) => {
     const name = players.map(nameOf).join(" × ");
     return name.length <= most ? name : `${players.length} ${PLAYERS[example.kind].players}`;
   };

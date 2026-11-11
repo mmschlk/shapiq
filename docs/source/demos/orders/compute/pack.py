@@ -33,10 +33,13 @@ import json
 import re
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
 
 HERE = Path(__file__).resolve().parent
 ORDERS = (1, 2, 3, 4)  # the sheets, above the one of order n (the full decomposition)
@@ -124,9 +127,15 @@ def model(kind: str) -> dict[str, str]:
 
 
 def split(
-    values: dict[tuple[int, ...], float], n: int, strongest: int | None
+    values: dict[tuple[int, ...], float],
+    n: int,
+    strongest: int | None,
+    keep: Collection[tuple[int, ...]] = (),
 ) -> tuple[list[float], list[list[Any]]]:
-    """Return the main effects of values (one per player) and the ``strongest`` of their groups."""
+    """Return the main effects of values (one per player) and the ``strongest`` of their groups.
+
+    The groups to ``keep`` are returned whatever their strength, where the values have them.
+    """
     first = [0.0] * n
     groups = []
     for players, value in values.items():
@@ -135,8 +144,14 @@ def split(
         elif abs(value) > 1e-12:
             groups.append([list(players), value])
     groups.sort(key=lambda group: -abs(group[1]))
+    if strongest is not None:
+        groups = [
+            group
+            for rank, group in enumerate(groups)
+            if rank < strongest or tuple(group[0]) in keep
+        ]
     return [round(value, 5) for value in first], [
-        [players, round(value, 5)] for players, value in groups[:strongest]
+        [players, round(value, 5)] for players, value in groups
     ]
 
 
@@ -168,12 +183,15 @@ def sheets(
     return out
 
 
-def between(result: dict[str, Any], strongest: int | None) -> list[dict[str, Any]]:
+def between(
+    result: dict[str, Any], strongest: int | None, keep: Collection[tuple[int, ...]] = ()
+) -> list[dict[str, Any]]:
     """Return the explanations of the orders between the last sheet and the highest with interactions.
 
     The orders the demo's blank sheets stand for, up to the highest order with an interaction (the
     orders above it equal the full decomposition), where the result keeps their values. Of the
-    interactions, each keeps the ``strongest``.
+    interactions, each keeps the ``strongest``, and the groups to ``keep``: what is picked by hand
+    on the orders around them, so that its mark does not come and go from order to order.
     """
     n = result["n_players"]
     out = []
@@ -182,7 +200,7 @@ def between(result: dict[str, Any], strongest: int | None) -> list[dict[str, Any
         if not entry.get("values"):
             continue
         first, groups = split(
-            {tuple(players): value for players, value in entry["values"]}, n, strongest
+            {tuple(players): value for players, value in entry["values"]}, n, strongest, keep
         )
         out.append(
             {
@@ -427,7 +445,11 @@ def pack_photo(fixlip: dict[str, Any]) -> dict[str, Any]:
         "tokens": fixlip["tokens"],
         "largest": fixlip["largest_order"],
         "sheets": sheets(fixlip),
-        "between": between(fixlip, strongest=BETWEEN_STRONGEST),
+        "between": between(
+            fixlip,
+            strongest=BETWEEN_STRONGEST,
+            keep=picked_between(photo_picks(photo, fixlip["grid"], fixlip["tokens"])),
+        ),
         "fits": fits(fixlip),
     }
 
@@ -444,6 +466,19 @@ def key(*players: int) -> str:
 
 
 FULL = "full"  # in a pick's orders: the full decomposition, whatever its order is
+
+
+def picked_between(table: list[tuple[list[int], list[Any], str | None]]) -> set[tuple[int, ...]]:
+    """Return the groups of a table of picks that are picked on the orders between, too.
+
+    A row picked on the last order with a sheet of its own and on the full decomposition (see
+    ``curated``): the sheets of the orders between keep these groups, however strong they are.
+    """
+    return {
+        tuple(sorted(players))
+        for players, marked, _ in table
+        if len(players) > 1 and ORDERS[-1] in marked and FULL in marked
+    }
 
 
 def curated(
@@ -922,18 +957,19 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
         (["traffic", "light"], [4, FULL], None),
         (["sign", "traffic", "light"], [4, FULL], None),
         (
-            [(7, 3), "juice"],
+            [(7, 2), "juice"],
             [4, FULL],
-            "Lettering of “The Pantry”, and the word “juice”: linked nearly as strongly as the "
-            "word's own letters.",
+            "Lettering of “The Pantry”, and the word “juice”: linked about as strongly as the "
+            "“u” of “Juice” is.",
         ),
     ],
 }
 
 
-def notes_photo(example: dict[str, Any]) -> dict[str, Any]:
-    """Return the picks and the notes of a photo and its caption, by the photo's file name."""
-    grid, tokens = example["grid"], example["tokens"]
+def photo_picks(
+    photo: str, grid: int, tokens: list[str]
+) -> list[tuple[list[int], list[Any], str | None]]:
+    """Return what is picked on a photo (``PHOTO_PICKS``), its patches and words as players."""
 
     def player(named: tuple[int, int] | str) -> int:
         if isinstance(named, str):
@@ -941,10 +977,16 @@ def notes_photo(example: dict[str, Any]) -> dict[str, Any]:
         row, column = named
         return (row - 1) * grid + column - 1
 
-    table = PHOTO_PICKS.get(Path(example["image"]).stem, [])
-    return curated(
-        example, [([player(named) for named in players], on, note) for players, on, note in table]
-    )
+    return [
+        ([player(named) for named in players], on, note)
+        for players, on, note in PHOTO_PICKS.get(photo, [])
+    ]
+
+
+def notes_photo(example: dict[str, Any]) -> dict[str, Any]:
+    """Return the picks and the notes of a photo and its caption, by the photo's file name."""
+    photo = Path(example["image"]).stem
+    return curated(example, photo_picks(photo, example["grid"], example["tokens"]))
 
 
 def photo_words(photo: str) -> dict[str, Any]:

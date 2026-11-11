@@ -67,14 +67,16 @@ woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly
 
 The three photos (`fixlip.py`, and `--photo` for the giraffe and the sign) were computed later,
 with torch 2.9 and transformers 5.3. The giraffe and the sign have the elephant's proxy: its depth
-was not chosen anew for them. Their full decompositions fit SigLIP 2 with R^2 = 0.78 and 0.76.
+was not chosen anew for them. Their full decompositions fit SigLIP 2 with R^2 = 0.78 and 0.77.
 
 What the demo marks on its card, and its notes, are picked by hand in `pack.py` (`*_PICKS`, and
 the notes the molecule's bonds give): a player or a group, the orders it is picked on, and a note
 or none. They were chosen from the strongest values of every order, each reading checked against
 the values on those orders and, for the photos, against what the patch shows; many strong values
 have no reading, and are picked without a note. `pack.py` refuses a pick that an order's data
-does not have, and a note on an interaction whose sign differs between its orders.
+does not have, and a note on an interaction whose sign differs between its orders. A group picked
+on order 4 and on the full decomposition is picked on the orders between them too: their data
+keeps it, however strong it is there, so that its mark does not come and go from order to order.
 
 The photo of the FIxLIP example is the FIxLIP demo's (`../../fixlip/assets/elephant.jpg`): the
 demo loads it from there. `fixlip.py` keeps the game's evaluations, so a run again only fits the
