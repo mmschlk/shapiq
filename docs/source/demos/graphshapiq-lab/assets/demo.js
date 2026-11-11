@@ -8,6 +8,10 @@
 // 2), exactly as shapiq's MoebiusConverter does (checked against it to 1e-5 by
 // ../../graphshapiq-common/compute/check_lab.py). The lab caps a
 // molecule at MAX_ATOMS heavy atoms, so that the computation takes at most a few seconds.
+//
+// Over the molecule, the question in plain words (the library's `question`): what it asks, the
+// pattern that makes a yes, whether the reader's molecule has it (`patternOf`), and what the GNN
+// answers, which the page computes at once, before the worker has explained it.
 (() => {
   const G = window.ShapiqGraph;
   if (!G) return console.error("The GraphSHAP-IQ lab needs ../graphshapiq-common/demo.js first.");
@@ -60,6 +64,20 @@
     for (const a of atoms) { counts[a[0]] = (counts[a[0]] || 0) + 1; counts.H = (counts.H || 0) + a[3]; }
     const formulaText = ["C", "H", "N", "O", "Cl"].filter((e) => counts[e]).map((e) => e + (counts[e] > 1 ? counts[e] : "")).join("");
     return { atoms, bonds, rings: [[0, 1, 2, 3, 4, 5]], formula: formulaText };
+  }
+  // the atoms of a question's pattern in the molecule of `slots` (the ground truth the demos
+  // outline, as the patterns of ../../graphshapiq-common/compute/config.toml find them): a catechol
+  // is the ring with two neighbouring OH groups, a nitro group a nitrogen with its two oxygens
+  function patternOf(task, slots) {
+    const first = [], atoms = new Set();
+    let next = 6;
+    for (const slot of slots) { first.push(next); next += GROUPS[slot].atoms.length; }
+    if (task.id === "PAINS") {
+      for (let i = 0; i < 6; i++) if (slots[i] === "OH" && slots[(i + 1) % 6] === "OH") [0, 1, 2, 3, 4, 5, first[i], first[(i + 1) % 6]].forEach((k) => atoms.add(k));
+    } else if (task.id === "mutagenic") {
+      slots.forEach((slot, i) => { if (slot === "NO2") [0, 1, 2].forEach((k) => atoms.add(first[i] + k)); });
+    }
+    return [...atoms].sort((a, b) => a - b);
   }
 
   // the worker: GraphSHAP-IQ for the molecule it is sent (see the header)
@@ -119,7 +137,7 @@
   G.mount("graphshapiq-lab-demo", "SHAPIQ_GRAPHSHAPIQ_LAB", (root, data) => {
     const tasks = data.tasks;
     const state = { slots: PRESETS[0].slots.slice(), task: tasks.find((t) => t.id === PRESETS[0].task) || tasks[0], sel: null, view: "together", result: null, focus: null, row: null };
-    let mol = null, runId = 0, timer = 0;
+    let mol = null, truth = [], runId = 0, timer = 0;
     const worker = new Worker(URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" })));
     worker.onmessage = (event) => {
       const d = event.data;
@@ -137,8 +155,8 @@
       state.slots = p.slots.slice(); state.task = tasks.find((t) => t.id === p.task) || state.task; state.sel = null; rebuild();
     });
     const views = G.switcher("Explanation", VIEWS.map((v) => v[1]), (k) => { state.view = VIEWS[k][0]; state.focus = null; state.row = null; chrome(); draw(); renderPanel(); });
-    const questions = G.switcher("Question", tasks.map((t) => t.label), (k) => { state.task = tasks[k]; compute(); chrome(); });
-    bar.append(presets.node, h("div", "gsq-switches", views.node, questions.node));
+    const ask = G.question(tasks, (t) => { state.task = t; compute(); chrome(); });
+    bar.append(presets.node, ask.node, h("div", "gsq-switches", views.node));
     const body = h("div", "gsq-body"), stage = h("div", "gsq-stage"), frame = h("div", "gsq-frame"), panel = h("div", "gsq-panel");
     const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule you build" }, frame);
     const slotLayer = svg("g", { class: "gsq-slots" });
@@ -192,7 +210,6 @@
       caption.replaceChildren(h("strong", "", name), formula(mol.formula), line);
     }
     function chrome() {
-      questions.set(tasks.indexOf(state.task));
       views.set(VIEWS.findIndex((v) => v[0] === state.view));
       presets.set(PRESETS.findIndex((p) => p.slots.join() === state.slots.join())); // none, for the reader's own molecule
       caption_();
@@ -201,6 +218,11 @@
     // -- computing: debounced, and only the latest molecule counts ---------------------------------
     function compute() {
       state.result = null; state.focus = null; state.row = null;
+      truth = patternOf(state.task, state.slots);
+      // the GNN's answer for the whole molecule is one evaluation: at once, on the question's card
+      const p = sig(G.predict(data.symbols, mol, state.task, new Set()));
+      ask.set({ task: state.task, subject: "This molecule", has: truth.length > 0, p });
+      live.textContent = `${state.task.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? state.task.yes : state.task.no}.`;
       draw(); renderPanel();
       clearTimeout(timer);
       const id = ++runId, m = { atoms: mol.atoms, bonds: mol.bonds }, t = { gnn: state.task.gnn, baseline: state.task.baseline };
@@ -211,14 +233,15 @@
     // -- the molecule ------------------------------------------------------------------------------
     function draw() {
       const d = state.result;
-      if (!d) { scene.update({ rings: {}, groups: [], masked: new Set(), focus: null }); return; }
+      const outline = { truth, truthKey: `${state.task.id}/${state.slots.join()}`, truthShown: true };
+      if (!d) { scene.update({ rings: {}, groups: [], masked: new Set(), focus: null, ...outline }); return; }
       const ownValues = state.view === "alone" ? d.shapley : d.own, own = Object.fromEntries(ownValues.map((v, k) => [k, v]));
       const pairs = d.pairs.map(([c, v]) => ({ atoms: bits(c), v }));
       let groups = [];
       if (state.view === "together") groups = state.row ? [state.row] : state.focus != null ? pairs.filter((g) => g.atoms.includes(state.focus)).slice(0, 8) : pairs.slice(0, 10);
       scene.update({
         rings: own, ringLargest: Math.max(1e-9, ...ownValues.map(Math.abs)), groups, groupLargest: Math.max(1e-9, Math.abs(pairs[0]?.v || 0)),
-        masked: new Set(), focus: state.view === "together" ? state.focus : null, dim: state.row ? new Set(state.row.atoms) : null,
+        masked: new Set(), focus: state.view === "together" ? state.focus : null, dim: state.row ? new Set(state.row.atoms) : null, ...outline,
       });
     }
     plot.addEventListener("pointermove", (e) => {
@@ -231,17 +254,11 @@
     // -- the panel ---------------------------------------------------------------------------------
     function renderPanel() {
       const t = state.task, d = state.result, box = h("div", "gsq-panel-in");
-      const question = `${t.question[0].toUpperCase()}${t.question.slice(1)}`;
       if (!d) {
-        box.append(h("p", "gsq-pred-model", question), h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…"));
+        box.append(h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…"));
         panel.replaceChildren(box);
         return;
       }
-      const p = sig(d.logOdds);
-      const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark");
-      fill.style.width = `${p * 100}%`; mark.style.left = `${p * 100}%`; scale.setAttribute("aria-hidden", "true");
-      scale.append(fill, h("span", "gsq-scale-half"), mark, h("span", "gsq-scale-label", t.no), h("span", "gsq-scale-label gsq-r", t.yes));
-      box.append(h("p", "gsq-pred-model", `${question} The GNN predicts`), h("p", "gsq-pred-number", h("span", "gsq-pred-value", percent(p)), h("span", "gsq-verdict", p >= 0.5 ? t.yes : t.no)), scale);
       const title = h("p", "gsq-title"), list = h("ol", "gsq-rows");
       if (state.view === "alone") {
         title.append(h("strong", "", "Atoms alone"), "their Shapley values");
@@ -269,9 +286,8 @@
         h("span", null, "Computed ", h("strong", "", "exactly"), ", in your browser, just now: GraphSHAP-IQ evaluated the GNN on ", h("strong", "", d.budget.toLocaleString("en")), ` maskings (all 2${sup(d.n)}).`),
         h("span", null, `GIN, 3 layers: a score of `, value(d.logOdds), ", the masked molecule’s ", value(d.empty), "."),
       );
-      box.append(title, list, legend(t), meta);
+      box.append(title, list, legend(t, truth), meta);
       panel.replaceChildren(box);
-      live.textContent = `The GNN predicts ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}.`;
     }
 
     rebuild();

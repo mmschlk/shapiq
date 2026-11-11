@@ -301,6 +301,143 @@ body[data-theme="dark"] .gsq {
   cursor: pointer;
 }
 
+/* -- the question: its switch, and the card of the question asked ------------------------------- */
+
+.gsq .gsq-ask {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.gsq .gsq-ask-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.gsq .gsq-ask .gsq-switch {
+  flex-wrap: wrap;
+  border-radius: calc(var(--gsq-control) / 2);
+}
+
+.gsq .gsq-ask-card {
+  display: grid;
+  grid-template-columns: 6.25rem minmax(0, 1fr) 15rem;
+  gap: 0.9rem 1.25rem;
+  align-items: start;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid var(--gsq-border);
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: var(--gsq-sheet);
+  color: var(--gsq-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.gsq .gsq-ask-motif {
+  border-radius: 6px;
+  background: var(--gsq-stage);
+}
+
+.gsq .gsq-motif {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.gsq .gsq-motif line {
+  stroke: var(--gsq-ink);
+  stroke-width: 1.4px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* a letter covers the ends of its atom's bonds: an edge in the color of the ground behind it */
+.gsq .gsq-motif text {
+  fill: var(--gsq-ink);
+  stroke: var(--gsq-stage);
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-family: var(--color-font-stack, inherit);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.gsq .gsq-ask-title {
+  margin-bottom: 0.2rem;
+  color: var(--gsq-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.gsq .gsq-ask-here {
+  margin-top: 0.45rem;
+}
+
+.gsq .gsq-ask-here strong {
+  color: var(--gsq-ink);
+  font-weight: 600;
+}
+
+.gsq .gsq-ask-answer {
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--gsq-border);
+}
+
+.gsq .gsq-ask-answer .gsq-pred-number {
+  flex-wrap: wrap;
+  gap: 0 0.7rem;
+}
+
+.gsq .gsq-ask-answer .gsq-pred-value {
+  font-size: 2.4rem;
+}
+
+.gsq .gsq-ask-answer .gsq-scale {
+  max-width: none;
+  margin-top: 0.3rem;
+}
+
+.gsq .gsq-ask-note {
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* beside the answer, the card keeps its height from question to question: the texts' most lines */
+@container (min-width: 42.01rem) {
+  .gsq .gsq-ask-text {
+    min-height: 10rem;
+  }
+}
+
+@container (max-width: 42rem) {
+  .gsq .gsq-ask-card {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+
+  .gsq .gsq-ask-answer {
+    grid-column: 1 / -1;
+    padding: 0.8rem 0 0;
+    border-top: 1px solid var(--gsq-border);
+    border-left: 0;
+  }
+
+  .gsq .gsq-ask-answer .gsq-scale {
+    max-width: 17rem;
+  }
+}
+
+/* on a phone, the three questions still fit in a row */
+@container (max-width: 26rem) {
+  .gsq .gsq-ask .gsq-opt {
+    padding: 0 0.6rem;
+    font-size: 0.8rem;
+  }
+}
+
 /* -- the body: the molecule and the panel ------------------------------------------------------- */
 
 .gsq .gsq-body {
@@ -675,6 +812,7 @@ body[data-theme="dark"] .gsq {
 }
 
 .gsq .gsq-key i.gsq-outline {
+  flex: none;
   width: 0.95rem;
   border: 1.5px solid var(--gsq-lasso);
   background: none;
@@ -700,11 +838,6 @@ body[data-theme="dark"] .gsq {
 }
 
 /* -- a prediction: the number, its verdict, and where it lies between no and yes ----------------- */
-
-.gsq .gsq-pred-model {
-  color: var(--gsq-ink);
-  font-weight: 600;
-}
 
 .gsq .gsq-pred-number {
   display: flex;

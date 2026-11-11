@@ -23,6 +23,11 @@ Usage::
 
     python pack.py                    # all of them
     python pack.py --demos lab exact  # some of them
+    python pack.py --texts            # only the texts of config.toml, into the data that is there
+
+``--texts`` needs no ``results/``: it reads the explorer's and the lab's ``data.js``, and writes them
+again with the tasks' and the molecules' texts as config.toml has them now (and the drawings of the
+tasks' patterns). The GNNs, the molecules' drawings and the explanations stay as they are.
 """
 
 from __future__ import annotations
@@ -177,11 +182,24 @@ def pack_gnn(task: dict[str, Any], smiles: list[str], results: Path) -> dict[str
     }
 
 
+def task_texts(task: dict[str, Any]) -> dict[str, Any]:
+    """Return what the demos say of a task: its texts, and its pattern's drawing (``motif``)."""
+    keys = ("id", "label", "question", "meaning", "yes", "no", "dataset", "truthLabel")
+    drawing = depict({"smiles": task["motif"]})
+    motif = {"atoms": drawing["atoms"], "bonds": drawing["bonds"]}
+    return {key: task[key] for key in keys} | {"motif": motif}
+
+
+def molecule_texts(molecule: dict[str, Any]) -> dict[str, Any]:
+    """Return what the explorer says of a molecule: its names and texts, and its first question."""
+    keys = ("id", "name", "short", "blurb", "task", "takeaway")
+    return {key: molecule[key] for key in keys if key in molecule}
+
+
 def task_entry(task: dict[str, Any], results: Path, gnn: dict[str, Any] | None) -> dict[str, Any]:
     """Return what the demos show of a task: its texts, its GNN's score, its GNN and baseline."""
     scores = json.loads((results / "models" / f"{task['id']}.json").read_text())
-    keys = ("id", "label", "question", "yes", "no", "dataset", "truthLabel")
-    entry = {key: task[key] for key in keys} | {
+    entry = task_texts(task) | {
         "f1": round(scores["test"]["f1"], 3),
         "trained": scores["sizes"]["train"],
     }
@@ -240,6 +258,39 @@ def write(demo: str, data: dict[str, Any]) -> None:
     print(f"{demo}: {len(text) / 1024:.0f} KiB")
 
 
+def read(demo: str) -> dict[str, Any]:
+    """Return a demo's data as :func:`write` wrote it."""
+    path = DEMOS / f"graphshapiq-{demo}" / "assets" / "data.js"
+    text = path.read_text(encoding="utf-8")
+    return json.loads(text[text.index(" = ") + 3 :].rstrip().removesuffix(";"))
+
+
+def refresh_texts(config: dict[str, Any], demos: list[str]) -> None:
+    """Write the texts of config.toml into the data of the explorer and the lab as it is.
+
+    A task's and a molecule's entry keeps the order of its keys: the texts, then what was computed.
+    """
+    tasks = {task["id"]: task for task in config["tasks"]}
+    molecules = {molecule["id"]: molecule for molecule in config["molecules"]}
+
+    def refreshed(entry: dict[str, Any], texts: dict[str, Any], old: set[str]) -> dict[str, Any]:
+        return texts | {key: value for key, value in entry.items() if key not in old | set(texts)}
+
+    task_keys = {"label", "question", "meaning", "yes", "no", "dataset", "truthLabel", "motif"}
+    molecule_keys = {"name", "short", "blurb", "task", "takeaway"}
+    for demo in [demo for demo in demos if demo != "exact"]:
+        data = read(demo)
+        data["tasks"] = [
+            refreshed(entry, task_texts(tasks[entry["id"]]), task_keys) for entry in data["tasks"]
+        ]
+        if "molecules" in data:
+            data["molecules"] = [
+                refreshed(entry, molecule_texts(molecules[entry["id"]]), molecule_keys)
+                for entry in data["molecules"]
+            ]
+        write(demo, data)
+
+
 def explanation(results: Path, molecule: str, task: str) -> dict[str, Any]:
     """Return a molecule's explanation for a task, by explain.py."""
     path = results / f"{molecule}_{task}.json"
@@ -256,8 +307,7 @@ def pack_explorer(config: dict[str, Any], results: Path) -> None:
     molecules = []
     explanations = {}
     for molecule in config["molecules"]:
-        keys = ("id", "name", "short", "blurb", "task", "takeaway")
-        molecules.append({key: molecule[key] for key in keys if key in molecule} | depict(molecule))
+        molecules.append(molecule_texts(molecule) | depict(molecule))
         for task in config["tasks"]:
             key = f"{molecule['id']}/{task['id']}"
             explanations[key] = compact(explanation(results, molecule["id"], task["id"]))
@@ -309,8 +359,16 @@ def main() -> None:
     demos = ["explorer", "lab", "exact"]
     parser.add_argument("--demos", nargs="+", choices=demos, default=demos)
     parser.add_argument("--results", type=Path, default=HERE / "results")
+    parser.add_argument(
+        "--texts",
+        action="store_true",
+        help="only write config.toml's texts into the explorer's and the lab's data as it is",
+    )
     args = parser.parse_args()
     config = tomllib.loads((HERE / "config.toml").read_text(encoding="utf-8"))
+    if args.texts:
+        refresh_texts(config, args.demos)
+        return
     if "explorer" in args.demos:
         pack_explorer(config, args.results)
     if "lab" in args.demos:
