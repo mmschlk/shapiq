@@ -691,8 +691,8 @@ TABPFN_PICKS: list[tuple[list[int], list[Any], str | None]] = [
     (
         [LAT],
         [1, 2],
-        "On its own the latitude lowers the value; with the longitude, the place lowers it more "
-        "(see their pair).",
+        "On its own the latitude lowers the value; with the longitude, the place as a whole "
+        "lowers it more.",
     ),
     (
         [LONG],
@@ -704,7 +704,7 @@ TABPFN_PICKS: list[tuple[list[int], list[Any], str | None]] = [
         [INCOME],
         [1, 2],
         "At order 1 the income hardly counts. From order 2 on, alone it raises the value, and "
-        "with the rooms that is taken back (see their pair).",
+        "its pair with the rooms takes that back.",
     ),
     ([ROOMS], [1, 2, 3, 4], "Alone, more rooms per home than is typical raise the value."),
     (
@@ -742,8 +742,9 @@ def notes_house(example: dict[str, Any]) -> dict[str, Any]:
     picked = curated(example, HOUSE_PICKS)
     picked["notes"]["many"] = [
         4,
-        "Small print. The trees are 5 deep, so groups of 4 and 5 features have values too, but "
-        "hardly any: this model's interactions are pairs and a few triples.",
+        "Small print. The trees are 5 deep, so groups of 4 features have values too (and of 5, "
+        "in the full decomposition), but hardly any: this model's interactions are pairs and a "
+        "few triples.",
     ]
     return picked
 
@@ -860,8 +861,8 @@ PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
         (
             ["juice"],
             [3, 4, FULL],
-            "On its own, the word “juice” lowers the match here; with the “J” of the sign's "
-            "“Juice”, it raises it.",
+            "On its own, the word “juice” lowers the match here; its pair with the “J” of the "
+            "sign's “Juice” is positive, and takes some of that back.",
         ),
         ([(5, 4), "theory"], [2], "The letters “RY” of “THEORY”, and the word “theory”."),
         ([(5, 4), "sign"], [2], "The sign's lettering and the word “sign”."),

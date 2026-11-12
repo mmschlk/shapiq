@@ -121,7 +121,10 @@ A tab can hold more than one example: "Describing images" holds three photos wit
 In the data, such an example names its tab's first one (`of: "fixlip"`); it has no tab of its own,
 and `:examples:` cannot name it. Under the input's card, a picker shows a small picture of each
 (`.orders-demo-picks`, buttons with the photo's title as their name); the tab remembers the one it
-showed last. Everything else treats it as any example: the event below carries its id (`giraffe`,
+showed last. While a picker shows, the demo has the class `orders-demo-has-picks`: where the card
+or the layers come under the input, the gap between them is wider, so that nothing covers the
+picker. Under a finger its buttons are larger (`pointer: coarse`), and a little room around each
+answers too. Everything else treats it as any example: the event below carries its id (`giraffe`,
 `sign`), and every demo of the page that has its tab follows.
 
 ### Several demos on one page
@@ -152,7 +155,10 @@ and vertical margins of its own.
 | below 45rem | The examples are behind a stepper (arrows, dots below the layers, and a swipe across them) instead of tabs. |
 | 640px and up | `orders-demo-wide`. If the demo shows everything (no step, or `full`), has been explained, and has no `data-plan="above"`, it also gets `orders-demo-beside`: the card stands left of the layers (below). Otherwise the card is above the layers. |
 
-With the docs' 16px root font, 40rem is 640px, so the phone layout and the wide one meet there.
+With the docs' 16px root font, 40rem is 640px, so the phone layout and the wide one meet there:
+at 640px, which is the width of the docs' column, the layout is the wide one. The style sheet's
+container queries therefore end just below their widths (`max-width: 39.99rem`, `44.99rem`), as
+`max-width: 40rem` would also hold at 640px, where the script already says wide.
 
 The stage (the layers, the slider left of them and the plot right of them) has a narrow variant
 below 560px of its own width (`orders-demo-narrow`): smaller gaps, and a narrower plot.
@@ -230,7 +236,13 @@ layers shrink to fit the window.
   and under a mouse the one already pointed at stays a little longer, so that the tip does not
   flicker between two. Over what answers, the pointer is a hand. On a phone, where the face is
   small, nearly all of it is in reach of a mark: a tap on the face shows the nearest one, and a
-  tap beside the card lets go. On the many houses' map, which has no marks, a row of the list
+  tap beside the card lets go, in the demo or on the page around it. The tip lies over its
+  target, or under it where there is no room above: in the demo, and in the window, as far as a
+  header that sticks to its top leaves it free (`placeTip`, `freeTop`). Where the face is much
+  smaller than the tip (a phone's), the tip lies under the card instead, or over it, so that it
+  does not cover the face it speaks of. A group that is too long to name is named by its size,
+  and the tip lists its players under that, or the one or two that are not in it ("all features
+  but Occup."). On the many houses' map, which has no marks, a row of the list
   shows itself on the map, and a house says its prediction and its strongest values. With a mouse, pointing is hovering; on a
   touch screen, a tap, and a tap elsewhere lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
   brings it out when pointed at. To inspect another layer's face, pin the layer first (click it):
@@ -249,8 +261,10 @@ layers shrink to fit the window.
   `pinch-zoom`). A horizontal swipe across the layers steps through the examples, unless the page
   is zoomed in. Tap highlights are off.
 - **Keyboard**: the chip explains with Enter or Space. The plot's rows are buttons: ArrowUp and
-  ArrowDown move between them, and Escape lets go. The slider's handle moves with the arrow keys,
-  Home and End.
+  ArrowDown move between them, and Escape lets go. A row has no height, so its focus ring is a
+  box of its own on the row's line (`.orders-demo-row:focus-visible::after`): it shows where the
+  focus is also while another explanation is pinned. The slider's handle moves with the arrow
+  keys, Home and End, and Escape lets go there too.
 
 - **Screen readers**: a visually hidden status line (`.orders-demo-status`, `aria-live`) says the
   example chosen, once, in the demo where it was chosen. The problem's parts are not a live region,

@@ -311,7 +311,7 @@ body[data-theme="dark"] .orders-demo {
   display: none;
 }
 
-@container (max-width: 45rem) {
+@container (max-width: 44.99rem) {
   .orders-demo-switch {
     display: none;
   }
@@ -802,6 +802,29 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-pick:focus-visible {
   outline: 2px solid var(--orders-ink);
   outline-offset: 2px;
+}
+
+/* (a finger's: larger, and a little room around each that answers too) */
+.orders-demo-pick {
+  position: relative;
+}
+
+.orders-demo-pick::after {
+  position: absolute;
+  inset: -0.4rem -0.125rem;
+  content: "";
+}
+
+@media (pointer: coarse) {
+  .orders-demo-pick {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
+/* (where the card or the layers come under the input, room for the picker between them) */
+.orders-demo-has-picks:not(.orders-demo-beside) .orders-demo-plan {
+  gap: 2.9rem;
 }
 
 .orders-demo-wire-tag {
@@ -1472,7 +1495,7 @@ body[data-theme="dark"] .orders-demo {
   background: rgb(30, 136, 229);
 }
 
-@container (max-width: 40rem) {
+@container (max-width: 39.99rem) {
   .orders-demo-plan {
     gap: 1.5rem;
   }
@@ -1930,6 +1953,11 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* the data's note on what is pointed at, where it has one: a sentence or two, in ink */
+/* (the players of a group that is too long to name) */
+.orders-demo-tip-members {
+  margin: -0.1rem 0 0.15rem;
+}
+
 .orders-demo-tip-story {
   margin-bottom: 0.25rem;
   color: var(--orders-ink);
@@ -2496,7 +2524,7 @@ body[data-theme="dark"] .orders-demo {
   animation-play-state: paused;
 }
 
-@container (max-width: 40rem) {
+@container (max-width: 39.99rem) {
   .orders-demo-hint {
     padding: 0.3rem 0.75rem 0.34rem;
     font-size: 0.78rem;
@@ -2651,6 +2679,16 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-active::before {
   border-top-style: solid;
   border-color: var(--orders-ink);
+}
+
+/* (a row focused by the keyboard: a ring on its line, as the row itself has no height; the
+   mechanism's row has a name, and the ring is around that) */
+.orders-demo-row:not(.orders-demo-mechanism-row):focus-visible::after {
+  position: absolute;
+  inset: -8px 0;
+  border-radius: 5px;
+  outline: 2px solid var(--orders-ink);
+  content: "";
 }
 
 .orders-demo-row-label {

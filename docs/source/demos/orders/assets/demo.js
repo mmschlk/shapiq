@@ -393,9 +393,22 @@
       const key = players.join(",");
       const value = sheet.groups.find(([others]) => others.join(",") === key)?.[1] ?? 0;
       const own = players.map((player) => sheet.first[player]);
+      const name = groupName(example, players, nameOf, 34);
+      // (a group too long to name is named by its size: under it, its players, where their names
+      // tell them apart, or the few that are not in it)
+      const counted = name !== players.map(nameOf).join(" × ");
+      const names = players.map(nameOf);
+      const rest = sheet.first.map((_, player) => player).filter((player) => !players.includes(player));
+      const members =
+        !counted || new Set(names).size < names.length
+          ? undefined
+          : rest.length && rest.length <= 2
+            ? `all ${words.players} but ${rest.map(nameOf).join(" and ")}`
+            : names.join(", ");
       return {
         keys: new Set([key]),
-        title: [groupName(example, players, nameOf, 34), players.length === 2 ? "a pair" : `a group of ${players.length}`],
+        title: [name, players.length === 2 ? "a pair" : counted ? "" : `a group of ${players.length}`],
+        members,
         story: noteOf(example, sheet, key, players.length),
         rows: [
           ...(players.length <= 4 ? players.map((player, k) => [`${nameOf(player)} alone`, own[k]]) : []),
@@ -1295,6 +1308,7 @@
       const tab = tabOf(example);
       const examples = family(tab);
       picker.hidden = examples.length < 2;
+      root.classList.toggle("orders-demo-has-picks", !picker.hidden); // (room for it: demo.css)
       if (pickerOf !== tab.id) {
         pickerOf = tab.id;
         picks = examples.map((other, k) => {
@@ -2025,16 +2039,45 @@
       // the data's note on it, where it has one, under its name; and under the rows, what the
       // values are of (a group's: when it counts)
       const story = said.story ? [el("div", "orders-demo-tip-story", said.story)] : [];
+      if (said.members) story.unshift(el("div", "orders-demo-tip-members", said.members));
       cardTip.replaceChildren(title, ...story, ...rows, el("div", "orders-demo-tip-note", `added to ${OF[kind]}${said.when ? ` ${said.when}` : ""}`));
-      // over its target, in the middle, or under it where there is no room above; kept in the demo
+      placeTip(target);
+    }
+    // the tip's place: over its target, in the middle, or under it where there is no room above,
+    // in the demo and in the window (a page scrolled has less room above than the demo has, and a
+    // header that sticks to the window's top takes some more). Where the face is much smaller than
+    // the tip (a phone's), the tip would cover the face it speaks of: there it lies under the card,
+    // or over it. Of two places that both run out of the window, the one that does so less
+    function placeTip(target) {
       const [face, box] = [planView.firstChild.getBoundingClientRect(), root.getBoundingClientRect()];
       const unit = face.width / 100;
+      // (measured at the demo's left, where nothing narrows it)
+      cardTip.style.left = "0";
+      const [width, height] = [cardTip.offsetWidth, cardTip.offsetHeight];
       // (over what is pointed at: a picked one's mark, or the target itself)
       const [tx, ty, reach] = target.hr ? [target.hx, target.hy, target.hr] : [target.x, target.y, target.ry];
-      const [x, above, below] = [face.left - box.left + tx * unit, face.top - box.top + (ty - reach) * unit, face.top - box.top + (ty + reach) * unit];
-      const [width, height] = [cardTip.offsetWidth, cardTip.offsetHeight];
-      cardTip.style.left = `${roundTo(Math.max(2, Math.min(box.width - width - 2, x - width / 2)), 1)}px`;
-      cardTip.style.top = `${roundTo(above - height - 9 >= 0 ? above - height - 9 : below + 9, 1)}px`;
+      const small = face.width < width / 2;
+      const card = small ? why.getBoundingClientRect() : null;
+      const [upper, lower] = card ? [card.top, card.bottom] : [face.top + (ty - reach) * unit, face.top + (ty + reach) * unit];
+      const left = Math.max(box.left + 2, Math.min(box.right - width - 2, face.left + tx * unit - width / 2));
+      const [above, below] = [upper - height - 9, lower + 9];
+      // (how far each place runs out: above, of the demo or the window; below, of the window)
+      const [over, under] = [Math.max(box.top, freeTop(left + width / 2)) - above, below + height - window.innerHeight];
+      // (under a small face's card first, over a target first)
+      const down = small ? under <= 0 || (over > 0 && under <= over) : over > 0 && (under <= 0 || under < over);
+      const top = down ? below : above;
+      cardTip.style.left = `${roundTo(left - box.left, 1)}px`;
+      cardTip.style.top = `${roundTo(top - box.top, 1)}px`;
+    }
+    // the top of the window that is free at x: under what sticks to it there (a page's header)
+    function freeTop(x) {
+      for (let node = document.elementFromPoint(Math.max(0, Math.min(window.innerWidth - 1, x)), 1); node && node !== document.body; node = node.parentElement) {
+        if (!["sticky", "fixed"].includes(getComputedStyle(node).position)) continue;
+        const bottom = node.getBoundingClientRect().bottom;
+        // (a header, not a column that sticks beside the page)
+        return bottom < window.innerHeight / 3 ? Math.max(0, bottom) : 0;
+      }
+      return 0;
     }
     // the target under the pointer. A picked one is pointed at by its mark, and generously: the
     // pointer on the mark; else on the picked itself, where it is a box of its own (a player's
@@ -2089,6 +2132,14 @@
     root.addEventListener("click", (event) => {
       if (!event.target.closest(".orders-demo-plan-view, .orders-demo-plan-top")) letGo();
     });
+    // (and a tap on the page beside the demo)
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (inspected && event.pointerType !== "mouse" && !root.contains(event.target)) letGo();
+      },
+      { signal: life },
+    );
 
     // the plan shows the sheet pointed at (all of it, where the sheets show what they add), the
     // mechanism's as the full decomposition, and an order between as the full decomposition where
@@ -2792,6 +2843,9 @@
       sideMarks = null;
       const example = current();
       const g = geometry;
+      // (a stage without a width, as a demo's that is not shown yet, has no plot: it is drawn
+      // when the stage gets one)
+      if (!(g.width > 0)) return;
       side.setAttribute("viewBox", `0 0 ${g.width} ${g.height}`);
       side.setAttribute("width", g.width);
       side.setAttribute("height", g.height);
@@ -2878,7 +2932,7 @@
         const hatch = add(add(sideData, "defs"), "pattern", { id, width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
         add(hatch, "line", { class: "orders-demo-plot-gap-hatch", x1: 0, y1: 0, x2: 0, y2: 5 });
         const gap = add(sideData, "g", { class: "orders-demo-plot-gap" });
-        const band = { x: f(x(full.r2)), y: top, width: f(x(1) - x(full.r2)), height: f(bottom - top) };
+        const band = { x: f(x(full.r2)), y: top, width: f(Math.max(0, x(1) - x(full.r2))), height: f(Math.max(0, bottom - top)) };
         add(gap, "rect", { ...band, class: "orders-demo-plot-gap-fill" });
         add(gap, "rect", { ...band, fill: `url(#${id})` });
         // (under the gap, ending at the plot's right where it would run off it; on a narrow screen,
@@ -3052,6 +3106,11 @@
       const at = Number(thumb.getAttribute("aria-valuenow"));
       const last = stops.length - 1;
       const next = { ArrowDown: at + 1, ArrowRight: at + 1, ArrowUp: at - 1, ArrowLeft: at - 1, Home: 0, End: last }[event.key];
+      // (Escape lets go of the explanation it holds, as on a row of the plot)
+      if (event.key === "Escape") {
+        state.pinned = false;
+        point(null, null);
+      }
       if (next === undefined) return;
       event.preventDefault();
       slideTo(stops[Math.max(firstStop(), Math.min(last, next))]);
