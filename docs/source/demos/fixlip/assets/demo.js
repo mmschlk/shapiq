@@ -221,7 +221,7 @@
       el("span", "fixlip-demo-hint-touch", "Tap a region or a word"),
       el("span", "fixlip-demo-hint-hover", "Hover a region or a word"),
     );
-    // the edges before the caption: over its tokens' chips (see the CSS), under their words
+    // the edges before the caption, which (a layer of its own, see the CSS) lies over them
     stage.append(frame, spoken, edges, caption, hint);
 
     const panel = el("div", "fixlip-demo-panel");
@@ -629,7 +629,8 @@
       const width = caption.getBoundingClientRect().width;
       if (!width) return;
       const probe = caption.cloneNode(false);
-      Object.assign(probe.style, { position: "absolute", visibility: "hidden", width: `${width}px`, height: "auto" });
+      // border-box: the width measured includes the caption's side padding, which the copy keeps
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", boxSizing: "border-box", width: `${width}px`, height: "auto" });
       caption.after(probe);
       let room = 0;
       for (const [image, , e] of all) {
