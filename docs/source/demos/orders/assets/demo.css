@@ -1965,6 +1965,11 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
 }
 
+/* (a word on a strong tint of red or blue: white, as the ink is hard to read there) */
+.orders-demo-tokens text.orders-demo-on-tint {
+  fill: #ffffff;
+}
+
 /* -- the floating layers: the input on a card, every explanation on a layer of paper above it
    (they lie on the card at rest, and float off it, unfold, while open), and below the card the
    mechanism under it all ------------------------------------------------------------------- */

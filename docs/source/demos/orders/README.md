@@ -195,6 +195,9 @@ layers shrink to fit the window.
 - **Colors** come from the docs' tokens (`--color-foreground-primary`, `--shapiq-surface`, ... from
   Furo and `_static/css/tokens.css`), with fallbacks, so the demo also works on a page without
   them.
+- **Words on a tint**: on a photo's card, a word of the caption lies on its value's tint. From
+  `ON_TINT` (0.7) of the order's largest value on, the tint is strong and the word is white
+  (`.orders-demo-on-tint`); below, it keeps the ink.
 - **Dark mode** follows `body[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
   `body[data-theme="light"]` (Furo's three modes). The script re-inks the chip when `data-theme`
   changes.

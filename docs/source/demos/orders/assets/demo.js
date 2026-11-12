@@ -211,6 +211,8 @@
 
   // the smallest share of the largest value on a sheet that is drawn at all
   const FAINTEST = 0.01;
+  // and the share from which a word's tint is strong enough for its text to be white on it
+  const ON_TINT = 0.7;
 
   // an interaction of two or more players: every player joined to the group's center (for a pair,
   // to the other player; else, where given, or the players' centroid), in red or blue; as shapiq's
@@ -613,9 +615,11 @@
         });
       }
       if (shows(layer, "input")) {
-        // (a long caption's words smaller, as their rows are)
+        // (a long caption's words smaller, as their rows are; and white on a strong tint, where
+        // the ink is hard to read)
         const word = add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
         if (row < 6) word.setAttribute("font-size", roundTo(row * 0.58, 2));
+        if (shows(layer, "marks") && ratio >= ON_TINT) word.classList.add("orders-demo-on-tint");
       }
     });
     if (layer !== "all") return null;
