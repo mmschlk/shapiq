@@ -1,9 +1,12 @@
-"""Explain how SigLIP 2 matches the FIxLIP demo's elephant at every order: ``results/fixlip.json``.
+"""Explain how SigLIP 2 matches a photo of the FIxLIP demo at every order: ``results/fixlip.json``.
 
-The players are SigLIP 2's 8 x 8 patches of the photo and the 10 tokens of its caption ("a small
-elephant standing next to a white bird."), and the value of a coalition is the cosine similarity of
-the photo with only the coalition's patches and the caption with only its tokens: the game of the
-FIxLIP demo, imported from its scripts (``../../fixlip/compute/explain.py``).
+The players are SigLIP 2's 8 x 8 patches of the photo and the tokens of its caption (for the
+elephant, the 10 of "a small elephant standing next to a white bird."), and the value of a
+coalition is the cosine similarity of the photo with only the coalition's patches and the caption
+with only its tokens: the game of the FIxLIP demo, imported from its scripts
+(``../../fixlip/compute/explain.py``). The photo is the elephant, or another one of the FIxLIP
+demo's (``--photo``, an id of its ``config.toml``): the demo shows the elephant, and with it the
+giraffe and the sign, explained in the same way, with the same proxy.
 
 SigLIP 2 is a black box: unlike trees or graph neural networks, it has no structure that would give
 its interactions exactly. ProxySHAP draws coalitions of the game from the Shapley distribution
@@ -14,32 +17,38 @@ coalitions (here the 74 of one player and the 74 of 73 players), and draws the o
 weights of their sizes, each with its complement. Without the residual adjustment, the explanation
 is the proxy's: its full decomposition, the Möbius transform, read off its trees exactly with
 shapiq's interventional tree explainer, as ProxySHAP reads them (ProxySHAP reads FSII of the
-proxy's depth, the same values, but with the game's value of the empty coalition). The trees split
-on at most 6 players, so no larger group has a value, and every lower order of FSII follows from
-it. The depth, 6, is the best of 4 to 12 in a 5-fold cross-validation on the proxy's coalitions,
-by R^2 beyond size (0.917; 0.917 at depth 7, 0.914 at 8, 0.908 at 4 and at 10). The explanation
-keeps the proxy's own value of the empty coalition, -0.008, where
-ProxySHAP gives the game's, 0 (the empty coalition shares its leaves with coalitions of one or two
-players, whose values are about -0.007): so every order is FSII of the proxy, and the full
-decomposition is the proxy itself. With the game's value, every order would be off the proxy by
-this constant, which R^2 beyond size counts: the fit would peak at order 3 and fall after it.
+proxy's depth, the same values, but with the game's value of the empty coalition). Every lower
+order of FSII follows from it.
+
+The proxy's trees have up to 64 leaves, as many as a tree of depth 6 (the depth that fit best
+among full trees of depth 4 to 12, in a 5-fold cross-validation on the elephant's coalitions), and
+may grow 10 deep: the leaf that gains the most is split next. A path of a tree then splits on up to
+10 players, so no larger group has a value, and every order up to 10 has an explanation of its own,
+which the demo shows. On the held-out coalitions, this proxy fits SigLIP 2 as well as full trees
+of depth 6 do (R^2 beyond size: 0.916 against 0.911 for the elephant, 0.779 against 0.785 for the
+giraffe, 0.769 against 0.762 for the sign). The explanation keeps the proxy's own value of the
+empty coalition, -0.008 for the elephant, where ProxySHAP gives the game's, 0: so every order is
+FSII of the proxy, and the full decomposition is the proxy itself. With the game's value, every
+order would be off the proxy by this constant, which R^2 beyond size counts.
 
 Every order is scored by its R^2 beyond size under the Shapley distribution (as for the molecule
 and the houses), on 512 coalitions drawn from it independently of the proxy's (a coalition of 1 or
 73 players is one the proxy has seen: it saw all of them), against the model itself. The mean value
 of every size, which R^2 beyond size measures against, comes from all coalitions of the run, the
 proxy's and the held-out ones: the held-out ones alone are too few for 73 sizes. FSII of a higher
-order fits the proxy at least as well, but SigLIP 2 not necessarily: from order 4 on, the fit stays
-at 0.91 within 0.001, as close as 512 coalitions can tell, and falls short of 1 by what the proxy
-misses of SigLIP 2, the estimation gap of the demo.
+order fits the proxy at least as well, but SigLIP 2 not necessarily: for the elephant, the fit
+stays at 0.916 within 0.001 from order 5 on, as close as 512 coalitions can tell, and falls short
+of 1 by what the proxy misses of SigLIP 2, the estimation gap of the demo.
 
 Usage::
 
     python fixlip.py
+    python fixlip.py --photo giraffe-tree
 
 The game's evaluations are kept in ``results/fixlip_coalitions.npz``: the model is evaluated once
-per coalition (10,000 for the proxy and 512 to score it, a run of about nine minutes on four CPU
-cores), and a run again only fits the proxy.
+per coalition (10,000 for the proxy and 512 to score it, about nine minutes on four CPU cores),
+and a run again only fits the proxy and converts it into every order, in about four minutes. Another photo's results and evaluations carry its id:
+``results/fixlip_giraffe-tree.json``, ``results/fixlip_giraffe-tree_coalitions.npz``.
 """
 
 from __future__ import annotations
@@ -68,9 +77,20 @@ import explain as fixlip  # noqa: E402  (the FIxLIP demo's game)
 PHOTO, MODEL = "elephant", "siglip2"
 BUDGET = 10_000  # the coalitions the proxy is fit to
 N_TEST = 512  # the coalitions every order is scored on, drawn independently of the proxy's
-DEPTH = 6  # the proxy's depth, its highest order of interaction (the best in cross-validation)
-SHEETS = (1, 2, 3, 4, DEPTH)  # the orders the demo draws, whose values the results keep
-PROXY = {"n_estimators": 1000, "max_depth": DEPTH, "learning_rate": 0.05, "reg_lambda": 5.0}
+DEPTH = 10  # how deep the proxy's trees may grow: its highest order of interaction
+LEAVES = 64  # the most leaves of a tree: as many as a tree of depth 6 has
+# the orders whose values the results keep: all of them, each with an explanation of its own (the
+# demo draws 1 to 4 and the last one on its layers, and 5 to 9 on the blank layers between them)
+SHEETS = tuple(range(1, DEPTH + 1))
+KEPT = 2000  # of an order's groups, the strongest, which the results keep (the demo draws 300)
+PROXY = {
+    "n_estimators": 1000,
+    "max_depth": DEPTH,
+    "grow_policy": "lossguide",  # the leaf that gains the most is split next, up to LEAVES
+    "max_leaves": LEAVES,
+    "learning_rate": 0.05,
+    "reg_lambda": 5.0,
+}
 
 
 class CachedGame:
@@ -108,10 +128,10 @@ class CachedGame:
         return np.array([self.values[row.tobytes()] for row in coalitions])
 
 
-def build_game(results: Path) -> tuple[shapiq.Game, list[str]]:
-    """Return the FIxLIP demo's game of SigLIP 2, the elephant and its caption, and the tokens."""
+def build_game(results: Path, photo_id: str = PHOTO) -> tuple[shapiq.Game, list[str]]:
+    """Return the FIxLIP demo's game of SigLIP 2, a photo and its caption, and the tokens."""
     config = tomllib.loads((FIXLIP / "config.toml").read_text(encoding="utf-8"))
-    photo = next(p for p in config["photos"] if p["id"] == PHOTO)
+    photo = next(p for p in config["photos"] if p["id"] == photo_id)
     model = next(m for m in config["models"] if m["id"] == MODEL)
     name = f"{model['id']}_demo"  # a name starting with "siglip" runs as SigLIP (explain.py)
     fixlip.image_text.IMAGE_TEXT_MODEL_IDS[name] = model["checkpoint"]
@@ -131,13 +151,16 @@ def main() -> None:
     """Evaluate the game, fit the proxy, and write FSII of every order: ``results/fixlip.json``."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--results", type=Path, default=HERE / "results")
+    parser.add_argument("--photo", default=PHOTO, help="a photo of the FIxLIP demo's config.toml")
     args = parser.parse_args()
     args.results.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(4)
+    # (the elephant's files have no id, the other photos' carry theirs)
+    name = "fixlip" if args.photo == PHOTO else f"fixlip_{args.photo}"
 
-    game, tokens = build_game(args.results)
+    game, tokens = build_game(args.results, args.photo)
     n = game.n_players
-    cached = CachedGame(game, args.results / "fixlip_coalitions.npz")
+    cached = CachedGame(game, args.results / f"{name}_coalitions.npz")
 
     # the proxy: ProxySHAP draws the coalitions, evaluates the game on them, and fits it (its own
     # readout, of order 1 here, is not used)
@@ -183,11 +206,13 @@ def main() -> None:
         fit = r2(y, predictions(values, test), test.sum(axis=1), means=means)
         orders[order] = {"r2": fit, "count": sum(1 for key in values if key)}
         if order in SHEETS:
-            strongest = sorted(
-                ((key, value) for key, value in values.items() if key),
-                key=lambda item: (len(item[0]), -abs(item[1])),
-            )
-            orders[order]["values"] = [[list(key), value] for key, value in strongest]
+            # every player's value, and the strongest groups'
+            players = [(key, value) for key, value in values.items() if len(key) == 1]
+            groups = sorted(
+                ((key, value) for key, value in values.items() if len(key) > 1),
+                key=lambda item: -abs(item[1]),
+            )[:KEPT]
+            orders[order]["values"] = [[list(key), value] for key, value in (*players, *groups)]
         print(f"order {order}: {orders[order]['count']} values, R^2 {fit:.9f}", flush=True)
 
     # the lower orders from the full decomposition are ProxySHAP's own at that order (but for the
@@ -208,6 +233,7 @@ def main() -> None:
 
     result = {
         "index": "FSII",
+        "photo": args.photo,
         "grid": 8,
         "tokens": tokens,
         "largest_order": DEPTH,
@@ -215,7 +241,7 @@ def main() -> None:
         "similarity": float(game.empty_value + cached(np.ones((1, n), dtype=bool))[0]),
         "orders": orders,
     }
-    (args.results / "fixlip.json").write_text(json.dumps(result))
+    (args.results / f"{name}.json").write_text(json.dumps(result))
 
 
 if __name__ == "__main__":

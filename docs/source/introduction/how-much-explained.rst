@@ -17,8 +17,9 @@ A Model and Its Prediction
 
 A model :math:`f` takes an input :math:`x` and returns a prediction :math:`f(x)`: whether a
 molecule is mutagenic, for a graph neural network; a house's price, for XGBoost or TabPFN; the
-prices of 150 houses; how well a photo matches its caption, for SigLIP 2. The input is made of
-players: atoms, features, or the photo's patches and the caption's words. Why this prediction?
+prices of 2,000 houses across California; how well a photo matches its caption, for SigLIP 2. The
+input is made of players: atoms, features, or the photo's patches and the caption's words. Why this
+prediction?
 
 .. shapiq-demo:: orders
    :step: problem
@@ -45,6 +46,8 @@ The simplest explanation gives every player one number, its Shapley value: red r
 prediction, blue lowers it. It floats above the input. But how much of the mechanism does it
 explain? Its faithfulness, :math:`R^2`, says how well it predicts what the model does when only
 some of the players are there, beside the layer: 1 is all of it. Point at the mechanism to compare.
+The card above names the strongest player, and marks a few players with a number: point at one
+(on a touch screen, tap it) to read what it adds.
 
 .. shapiq-demo:: orders
    :step: shapley
@@ -58,7 +61,11 @@ a value for every pair of players, those of order 3 for every three, and so on: 
 Shapley Interactions :cite:p:`Tsai.2022`, the explanation of each order that fits the model best.
 Every order is more detailed than the one above it, and more faithful. The pairs alone recover most
 of what the Shapley values miss. Point at the other orders, or drag the slider down through them,
-and see the fit rise.
+and see the fit rise. On the card, the numbers now also mark a few interactions, picked by hand
+for every order. Point at one, and the card says it in one sentence with one number. The number
+is the sum of all that its players add at that order, alone and together. Click a layer to keep it
+there, then point at its card. Only what is marked can be pointed at. A mark need not be hit
+exactly, the room around it answers too.
 
 .. shapiq-demo:: orders
    :step: interactions
@@ -75,7 +82,7 @@ short of is the estimation gap.
 .. shapiq-demo:: orders
    :step: full
    :fallback: images/hero_orders.png
-   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 29, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
+   :alt: Layers floating above a molecule, each the molecule's explanation at one order of interaction: the Shapley values on top, then the Shapley interactions of order 2, 3 and 4, blank layers standing for the orders 5 to 9, and the full decomposition of all 30 atoms the last; below the molecule, the mechanism, the model itself. Beside them, a plot of their fit to the model rises from R² = 0.36 to 1, a point at the height of every layer.
 
 
 ----
@@ -116,7 +123,8 @@ many players, the full decomposition, too, is fit to a sample of the coalitions,
 falls short of 1, hatched in gray in the plot, is the **estimation gap**. Many models have no
 interactions above some order: the trees of a given depth, the receptive fields of a graph neural
 network. From that order on, FSII equals the full decomposition: the houses' layers end there, at
-order 5, where the fit is exact, and the molecule's plot runs dashed from order 10 to :math:`n = 30`.
+order 5, where the fit is exact, and the molecule's plot runs dashed from order 9 to
+:math:`n = 30`: the orders it skips, from 10 on, equal the full decomposition, and have no layer.
 
 The Examples
 ~~~~~~~~~~~~
@@ -153,26 +161,43 @@ TabPFN weighs this house's features together. Pairs, latitude with longitude and
 the rooms, lift the fit to 0.84, and every order more a little further, 0.95, 0.98, up to the full
 decomposition, which fits exactly.
 
-**All houses**: 150 test houses, explained in the same way, as a heatmap: a column per house, sorted
-by the model's prediction, and a row per feature or group of features. On average, the Shapley
-values fit with :math:`R^2 = 0.83`, and those of a quarter of all test houses below 0.73; with pairs
-of features, led by the interaction of latitude and longitude, the fit rises to 0.996. The trees
-have depth 5, so no group of more than 5 features has a value, and 5-FSII is exact.
+**All houses**: 2,000 test houses, explained in the same way, on the map of California: a dot where
+every house is, in the color of what one feature, or one group of features, adds to its value or
+takes off it, and beside the map the explanation's features and groups, by how much each moves a
+house's value on average. The Shapley values credit the latitude most, by $87,000 on average: it
+raises the houses of the south and lowers those of the north, and the longitude does the opposite.
+On average, they fit with :math:`R^2 = 0.79`, and those of a quarter of all test houses below 0.73;
+with pairs of features, led by the interaction of latitude and longitude, which the map shows from
+order 2 on, the fit rises to 0.996. Point at another row to see it on the map, and at a house for
+its own values. The trees have depth 5, so no group of more than 5 features has a value, and
+5-FSII is exact.
 
 **Describing images**: the photo and caption are those of the
 :doc:`FIxLIP demo <../demos/fixlip/index>`: SigLIP 2 :cite:p:`Tschannen.2025` matches a photo and
 its caption, and the players are the photo's
 64 patches and the caption's 10 tokens, as in FIxLIP :cite:p:`Baniecki.2025`. SigLIP 2 is a black
 box: nothing in it gives its interactions exactly. :class:`~shapiq.approximator.ProxySHAP`
-:cite:p:`Thies.2026` fits an XGBoost proxy of depth 6 to 10,000 coalitions of the game, drawn from
-the distribution of the Shapley values; without its residual adjustment, the explanation is the
+:cite:p:`Thies.2026` fits an XGBoost proxy to 10,000 coalitions of the game, drawn from the
+distribution of the Shapley values; without its residual adjustment, the explanation is the
 proxy's full decomposition, read off its trees exactly, and every order of FSII follows from it.
-The Shapley values fit SigLIP 2 with :math:`R^2 = 0.68`; pairs, which link "bird" and "white" to the
-egret's patch, lift the fit to 0.85, groups of three to 0.89, and of four to 0.91. From there, the
-fit stays at 0.91, up to the full decomposition, the proxy itself; a higher order fits the proxy
-better, but SigLIP 2 only as far as the proxy does. The full decomposition falls short of 1 by 0.09,
-the estimation gap: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
+The proxy's trees may grow 10 deep, so the orders up to 10 each have an explanation of their own:
+the blank layers of the orders 5 to 9. The Shapley values fit SigLIP 2 with :math:`R^2 = 0.68`;
+pairs, which link "bird" and "white" to the egret's patch, lift the fit to 0.85, groups of three to
+0.89, and of four to 0.91. From order 5 on, the fit stays at 0.92, up to the full decomposition,
+the proxy itself; a higher order fits the proxy better, but SigLIP 2 only as far as the proxy does.
+The full decomposition falls short of 1 by 0.08, the estimation gap: what the proxy, fit to 10,000 of the :math:`2^{74}` coalitions, misses of
 SigLIP 2, which only all of them would spare.
+
+Two more photos of the FIxLIP demo are behind the same tab, explained in the same way: the small
+pictures under the input choose among them. A giraffe drinking at a pond: the pairs link the word
+"giraffe" to the giraffe's head, and to a dead tree in the background, where no giraffe is:
+together, the tree's patch and the word raise the match, on every order (:math:`R^2 = 0.22` for the
+Shapley values, 0.69 with pairs, 0.78 for the full decomposition). And a sign reading "juice
+theory" next to a traffic light: "traffic" and "light" attach to the red light, and the sign's
+words to its lettering, "juice" to the J and the u, "theory" to the letters RY, but not letter by
+letter: with the patch of the E and the O, "theory" lowers the match (0.28, 0.60, and 0.77). Their
+captions are longer and their proxies, the elephant's, miss more of SigLIP 2: the estimation gaps
+are 0.22 and 0.23.
 
 How They Were Computed
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -279,13 +304,21 @@ exactly, as ProxySHAP does, and every order of FSII follows from it:
        n=n,
        index="FSII",
        sampling_weights=weights,
-       proxy_model=XGBRegressor(n_estimators=1000, max_depth=6, learning_rate=0.05, reg_lambda=5.0),
+       # trees of up to 64 leaves, which may grow 10 deep
+       proxy_model=XGBRegressor(
+           n_estimators=1000,
+           max_depth=10,
+           grow_policy="lossguide",
+           max_leaves=64,
+           learning_rate=0.05,
+           reg_lambda=5.0,
+       ),
        adjustment=False,
    )
    approximator.approximate(budget=10_000, game=game)  # draws the coalitions, fits the proxy
-   # the proxy's full decomposition: its trees split on at most 6 players
+   # the proxy's full decomposition: a path of its trees splits on at most 10 players
    explainer = InterventionalTreeSHAPIQ(
-       approximator.proxy_model, data=np.zeros((1, n)), index="Moebius", max_order=6
+       approximator.proxy_model, data=np.zeros((1, n)), index="Moebius", max_order=10
    )
    full = explainer.explain_function(np.ones((1, n)))
 

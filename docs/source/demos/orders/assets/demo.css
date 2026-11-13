@@ -56,6 +56,10 @@
   --orders-cast-glow: rgba(27, 30, 39, 0.12);
   --orders-xai-glow: rgba(22, 163, 74, 0.26);
   --orders-mech-glow: rgba(240, 118, 0, 0.28);
+  /* a value in words, in the red of what raises f(x) or the blue of what lowers it: the marks'
+     colors, a little darker, to read as small text on the paper (4.5:1) */
+  --orders-raises: #d6094a;
+  --orders-lowers: #1669c9;
 }
 
 body[data-theme="dark"] .orders-demo {
@@ -78,6 +82,8 @@ body[data-theme="dark"] .orders-demo {
   --orders-cast-glow: rgba(220, 226, 240, 0.1);
   --orders-xai-glow: rgba(74, 222, 128, 0.22);
   --orders-mech-glow: rgba(255, 150, 40, 0.28);
+  --orders-raises: #ff6b93;
+  --orders-lowers: #62b0f5;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -101,6 +107,8 @@ body[data-theme="dark"] .orders-demo {
     --orders-cast-glow: rgba(220, 226, 240, 0.1);
     --orders-xai-glow: rgba(74, 222, 128, 0.22);
     --orders-mech-glow: rgba(255, 150, 40, 0.28);
+    --orders-raises: #ff6b93;
+    --orders-lowers: #62b0f5;
   }
 }
 
@@ -303,7 +311,7 @@ body[data-theme="dark"] .orders-demo {
   display: none;
 }
 
-@container (max-width: 45rem) {
+@container (max-width: 44.99rem) {
   .orders-demo-switch {
     display: none;
   }
@@ -730,6 +738,93 @@ body[data-theme="dark"] .orders-demo {
   justify-items: unsafe center; /* what is wider than the box, as it shrinks to fit it (demo.js) */
   padding: 1.1rem 0.55rem 0.5rem;
   background: var(--orders-sheet);
+}
+
+/* under the input, where its tab has several (the photos of "Describing images"): a picker, a
+   small picture of each, the one shown in full color and ringed */
+.orders-demo-picks {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 8px;
+  background: var(--orders-sheet);
+  box-shadow: 0 2px 6px -2px var(--orders-shade);
+  translate: -50% 0;
+}
+
+.orders-demo-picks[hidden] {
+  display: none;
+}
+
+.orders-demo-pick {
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: var(--orders-raised) center / cover no-repeat;
+  color: var(--orders-muted);
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity var(--orders-duration) var(--orders-ease),
+    box-shadow var(--orders-duration) var(--orders-ease);
+}
+
+/* (beside the layers, where there is room under the input, larger) */
+.orders-demo-beside .orders-demo-picks {
+  top: calc(100% + 6px);
+  gap: 0.3rem;
+}
+
+.orders-demo-beside .orders-demo-pick {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.orders-demo-pick:hover,
+.orders-demo-pick:focus-visible,
+.orders-demo-pick[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.orders-demo-pick[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--orders-ink);
+}
+
+.orders-demo-pick:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 2px;
+}
+
+/* (a finger's: larger, and a little room around each that answers too) */
+.orders-demo-pick {
+  position: relative;
+}
+
+.orders-demo-pick::after {
+  position: absolute;
+  inset: -0.4rem -0.125rem;
+  content: "";
+}
+
+@media (pointer: coarse) {
+  .orders-demo-pick {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
+/* (where the card or the layers come under the input, room for the picker between them) */
+.orders-demo-has-picks:not(.orders-demo-beside) .orders-demo-plan {
+  gap: 2.9rem;
 }
 
 .orders-demo-wire-tag {
@@ -1191,6 +1286,18 @@ body[data-theme="dark"] .orders-demo {
   transition: fill 360ms var(--orders-ease);
 }
 
+/* after a short name, an invitation to inspect the face (demo.js), until it has been, once */
+.orders-demo-tag-hint {
+  fill: var(--orders-muted);
+  font-size: 3px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.orders-demo-inspected .orders-demo-tag-hint {
+  display: none;
+}
+
 .orders-demo-plan-xai .orders-demo-plan-tag .orders-demo-tag {
   fill: var(--orders-ink);
 }
@@ -1229,6 +1336,11 @@ body[data-theme="dark"] .orders-demo {
   border: 1px solid var(--orders-line);
   border-radius: 8px;
   background: var(--orders-sheet);
+}
+
+/* (a hand over what can be pointed at on the face: a mark and the room around it, demo.js) */
+.orders-demo-plan-view.orders-demo-plan-pointing {
+  cursor: pointer;
 }
 
 /* (swapped at once as the layer pointed at changes: every face draws the input in the same place,
@@ -1322,6 +1434,32 @@ body[data-theme="dark"] .orders-demo {
   font-size: 0.94em;
 }
 
+/* the explanation's strongest, in a line: its name, and its value in the color of its sign; pointed
+   at, the face brings it out (demo.js) */
+.orders-demo-plan-top {
+  font-size: 0.94em;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.orders-demo-plan-top strong {
+  color: var(--orders-ink);
+  font-weight: 600;
+}
+
+.orders-demo-plan-top > span,
+.orders-demo-tip-row b {
+  font-weight: 700;
+}
+
+.orders-demo-plan-raises {
+  color: var(--orders-raises);
+}
+
+.orders-demo-plan-lowers {
+  color: var(--orders-lowers);
+}
+
 .orders-demo-plan-method strong {
   color: var(--orders-ink);
   font-weight: 600;
@@ -1357,7 +1495,7 @@ body[data-theme="dark"] .orders-demo {
   background: rgb(30, 136, 229);
 }
 
-@container (max-width: 40rem) {
+@container (max-width: 39.99rem) {
   .orders-demo-plan {
     gap: 1.5rem;
   }
@@ -1595,6 +1733,12 @@ body[data-theme="dark"] .orders-demo {
   dominant-baseline: central;
 }
 
+/* (the levels' name, over the first: they are the orders) */
+.orders-demo-tree-levels .orders-demo-tree-order {
+  font-size: 2.1px;
+  letter-spacing: 0.02em;
+}
+
 .orders-demo-tree-links path {
   fill: none;
   stroke-linecap: round;
@@ -1606,35 +1750,226 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   dominant-baseline: central;
+  /* (an edge of paper around a value: it reads over the links it lies on) */
+  paint-order: stroke;
+  stroke: var(--orders-sheet);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
 }
 
-/* many houses: the heatmap, its rows, and the prediction of every house */
-.orders-demo-heat-cells {
-  image-rendering: pixelated;
+/* many houses: the map of California (the state, its cities, a dot where every house is), the
+   houses in the colors of what the map shows, what it shows named over it, and beside it the
+   explanation's rows: a name, a bar, and the mean it stands for; the row the map shows, in ink */
+.orders-demo-map-land {
+  fill: var(--orders-raised);
+  stroke: var(--orders-edge);
+  stroke-width: 0.4;
+  stroke-linejoin: round;
 }
 
-.orders-demo-heat-rows line {
-  stroke: var(--orders-line);
-  stroke-width: 0.15;
+.orders-demo-map-places path {
+  fill: none;
+  stroke: var(--orders-muted);
+  stroke-width: 0.3;
 }
 
-.orders-demo-heat-label {
+.orders-demo-map-places text {
   fill: var(--orders-muted);
-  font-size: 2.5px;
+  font-size: 2.2px;
+  text-anchor: end;
+}
+
+/* (the houses' dots, a picture: demo.js) */
+.orders-demo-map-dots {
+  pointer-events: none;
+}
+
+.orders-demo-map-caption text,
+.orders-demo-map-scale text,
+.orders-demo-map-head {
+  fill: var(--orders-muted);
+  font-size: 2.3px;
+}
+
+.orders-demo-map-scale rect {
+  stroke: var(--orders-edge);
+  stroke-width: 0.12;
+}
+
+.orders-demo-map-caption .orders-demo-map-shown {
+  fill: var(--orders-ink);
+  font-size: 3.6px;
+  font-weight: 700;
+}
+
+.orders-demo-map-head {
+  font-size: 2.1px;
+  text-anchor: end;
+}
+
+.orders-demo-map-row text {
+  fill: var(--orders-muted);
+  font-size: 2.6px;
+  font-variant-numeric: tabular-nums;
   text-anchor: end;
   dominant-baseline: central;
 }
 
-.orders-demo-heat-area {
-  fill: var(--orders-ink);
-  opacity: 0.07;
+.orders-demo-map-row rect {
+  fill: var(--orders-edge);
 }
 
-.orders-demo-heat-line {
+.orders-demo-map-row-on text {
+  fill: var(--orders-ink);
+  font-weight: 700;
+}
+
+.orders-demo-map-row-on rect {
+  fill: var(--orders-ink);
+}
+
+/* a face inspected (the card's, demo.js): a ring around what is pointed at, the marks of the groups
+   it is in brought out, and the other groups' stepping back */
+.orders-demo-inspect-ring {
   fill: none;
   stroke: var(--orders-ink);
+  stroke-width: 0.55;
+  pointer-events: none;
+}
+
+.orders-demo-inspecting :is(.orders-demo-groups path, .orders-demo-tree-links path, .orders-demo-tree-groups > *):not(.orders-demo-on) {
+  opacity: 0.1;
+}
+
+/* (and the players' own values, a little: the groups brought out read over them) */
+.orders-demo-inspecting .orders-demo-halos {
+  opacity: 0.45;
+}
+
+/* the picked (demo.js): the interactions and the players a reader can point at wear a numbered
+   mark, a dot of ink; until the face is first inspected, a halo around every mark comes and goes,
+   to say so. Pointed at, a mark keeps its halo, and the others step back */
+.orders-demo-pick-marks {
+  pointer-events: none;
+}
+
+.orders-demo-pick-mark circle:not(.orders-demo-pick-halo) {
+  fill: var(--orders-ink);
+  stroke: var(--orders-sheet);
   stroke-width: 0.45;
-  stroke-linejoin: round;
+}
+
+.orders-demo-pick-mark text {
+  fill: var(--orders-sheet);
+  font-size: 2.7px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.orders-demo-pick-halo {
+  fill: var(--orders-ink);
+  opacity: 0;
+  animation: orders-demo-pick-call 2.4s ease-in-out infinite;
+}
+
+@keyframes orders-demo-pick-call {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.orders-demo-inspected .orders-demo-pick-halo,
+.orders-demo-away .orders-demo-pick-halo {
+  animation: none;
+}
+
+.orders-demo-pick-mark.orders-demo-pick-on .orders-demo-pick-halo {
+  opacity: 0.28;
+}
+
+.orders-demo-picking .orders-demo-pick-mark:not(.orders-demo-pick-on) {
+  opacity: 0.35;
+}
+
+/* the card's tip: what the explanation says of what is pointed at on the face, a small card of
+   paper over it (demo.js places it), which takes no pointer. Of an insight, one sentence with
+   one number; of a house of the map, a title and rows of values */
+.orders-demo-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 120; /* over the slider's column, which is over the stack */
+  display: grid;
+  gap: 0.12rem;
+  box-sizing: border-box;
+  min-width: 9.5rem;
+  max-width: min(17rem, 100% - 4px);
+  padding: 0.5rem 0.7rem 0.45rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 9px;
+  background: var(--orders-sheet);
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.35), 0 1px 3px var(--orders-shade);
+  color: var(--orders-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms var(--orders-ease);
+}
+
+.orders-demo-tip.orders-demo-tip-on {
+  visibility: visible;
+  opacity: 1;
+}
+
+.orders-demo-tip-title {
+  margin-bottom: 0.15rem;
+}
+
+.orders-demo-tip-title strong {
+  color: var(--orders-ink);
+  font-size: 1.06em;
+}
+
+.orders-demo-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orders-demo-tip-row b:not([class]) {
+  color: var(--orders-ink);
+}
+
+/* an insight's sentence, in ink, and its number, in the red of what raises or the blue of what
+   lowers, which does not break from its sign or its unit */
+.orders-demo-tip-says {
+  color: var(--orders-ink);
+  font-size: 1.08em;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.orders-demo-tip-says b {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orders-demo-tip-says b:not([class]) {
+  color: var(--orders-ink);
+}
+
+.orders-demo-tip-note {
+  margin-top: 0.2rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--orders-line);
+  font-size: 0.92em;
 }
 
 .orders-demo-wash {
@@ -1657,6 +1992,11 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-tokens text {
   font-size: 3.4px;
   font-weight: 600;
+}
+
+/* (a word on a strong tint of red or blue: white, as the ink is hard to read there) */
+.orders-demo-tokens text.orders-demo-on-tint {
+  fill: #ffffff;
 }
 
 /* -- the floating layers: the input on a card, every explanation on a layer of paper above it
@@ -1818,7 +2158,7 @@ body[data-theme="dark"] .orders-demo {
    input's card, and the plan's face of it (demo.js marks them, and defines the blur: an SVG
    filter, which Safari draws on SVG's shapes, as it does not a CSS blur()) */
 .orders-demo-estimated .orders-demo-face > :not(.orders-demo-tag),
-.orders-demo-plan-view.orders-demo-estimated .orders-demo-plan-face > * {
+.orders-demo-plan-view.orders-demo-estimated .orders-demo-plan-face > :not(.orders-demo-pick-marks, .orders-demo-inspect-ring) {
   filter: var(--orders-blur, blur(1.6px));
 }
 
@@ -2185,7 +2525,7 @@ body[data-theme="dark"] .orders-demo {
   animation-play-state: paused;
 }
 
-@container (max-width: 40rem) {
+@container (max-width: 39.99rem) {
   .orders-demo-hint {
     padding: 0.3rem 0.75rem 0.34rem;
     font-size: 0.78rem;
@@ -2340,6 +2680,16 @@ body[data-theme="dark"] .orders-demo {
 .orders-demo-active::before {
   border-top-style: solid;
   border-color: var(--orders-ink);
+}
+
+/* (a row focused by the keyboard: a ring on its line, as the row itself has no height; the
+   mechanism's row has a name, and the ring is around that) */
+.orders-demo-row:not(.orders-demo-mechanism-row):focus-visible::after {
+  position: absolute;
+  inset: -8px 0;
+  border-radius: 5px;
+  outline: 2px solid var(--orders-ink);
+  content: "";
 }
 
 .orders-demo-row-label {
