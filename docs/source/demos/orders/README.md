@@ -10,9 +10,12 @@ The demo explains one prediction at every order of interaction, from the Shapley
 to the full decomposition (order n). The explanations are drawn as layers floating above the
 example's input, with a plot of each order's fit (R^2) beside them. Above the layers, the
 "problem" is drawn as the input `x`, wired through the model `f` (a chip) to the prediction `f(x)`.
-A card shows the explanation that is pointed at. The demo has five examples: a molecule (GCN), one
-house (XGBoost), the same house (TabPFN), 150 houses as a heatmap, and an image and caption
-(SigLIP 2).
+A card shows the explanation that is pointed at, and can be inspected: pointing at a mark on it
+says, in one sentence with one number, what a player or an interaction adds. The demo has five
+examples: a
+molecule (GCN), one house (XGBoost), the same house (TabPFN), 2,000 houses on the map of
+California, and an image and caption (SigLIP 2), with two more images and captions behind the same
+tab.
 
 The demo is plain JavaScript and CSS, with no build step and no dependencies. A single
 self-contained script fills every container on a page.
@@ -113,6 +116,18 @@ example, it has no tabs, no stepper, no dots, and no swipe (`orders-demo-single`
 know are left out, with a warning in the console; if it knows none of them, it shows all the
 examples. The fallback image stays the directive's `:fallback:`: give it one that fits.
 
+### Several examples behind one tab
+
+A tab can hold more than one example: "Describing images" holds three photos with their captions.
+In the data, such an example names its tab's first one (`of: "fixlip"`); it has no tab of its own,
+and `:examples:` cannot name it. Under the input's card, a picker shows a small picture of each
+(`.orders-demo-picks`, buttons with the photo's title as their name); the tab remembers the one it
+showed last. While a picker shows, the demo has the class `orders-demo-has-picks`: where the card
+or the layers come under the input, the gap between them is wider, so that nothing covers the
+picker. Under a finger its buttons are larger (`pointer: coarse`), and a little room around each
+answers too. Everything else treats it as any example: the event below carries its id (`giraffe`,
+`sign`), and every demo of the page that has its tab follows.
+
 ### Several demos on one page
 
 All containers on a page share one data load. They also show the same example: choosing an
@@ -127,7 +142,7 @@ document.addEventListener("orders-demo-example", (event) => console.log(event.de
 ```
 
 The example ids, in the order of their tabs, are `molecule`, `house`, `tabpfn`, `houses` and
-`fixlip`.
+`fixlip`; behind the last tab are also `giraffe` and `sign`.
 
 ## Layout
 
@@ -141,7 +156,10 @@ and vertical margins of its own.
 | below 45rem | The examples are behind a stepper (arrows, dots below the layers, and a swipe across them) instead of tabs. |
 | 640px and up | `orders-demo-wide`. If the demo shows everything (no step, or `full`), has been explained, and has no `data-plan="above"`, it also gets `orders-demo-beside`: the card stands left of the layers (below). Otherwise the card is above the layers. |
 
-With the docs' 16px root font, 40rem is 640px, so the phone layout and the wide one meet there.
+With the docs' 16px root font, 40rem is 640px, so the phone layout and the wide one meet there:
+at 640px, which is the width of the docs' column, the layout is the wide one. The style sheet's
+container queries therefore end just below their widths (`max-width: 39.99rem`, `44.99rem`), as
+`max-width: 40rem` would also hold at 640px, where the script already says wide.
 
 The stage (the layers, the slider left of them and the plot right of them) has a narrow variant
 below 560px of its own width (`orders-demo-narrow`): smaller gaps, and a narrower plot.
@@ -184,6 +202,9 @@ layers shrink to fit the window.
 - **Colors** come from the docs' tokens (`--color-foreground-primary`, `--shapiq-surface`, ... from
   Furo and `_static/css/tokens.css`), with fallbacks, so the demo also works on a page without
   them.
+- **Words on a tint**: on a photo's card, a word of the caption lies on its value's tint. From
+  `ON_TINT` (0.7) of the order's largest value on, the tint is strong and the word is white
+  (`.orders-demo-on-tint`); below, it keeps the ink.
 - **Dark mode** follows `body[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
   `body[data-theme="light"]` (Furo's three modes). The script re-inks the chip when `data-theme`
   changes.
@@ -195,6 +216,42 @@ layers shrink to fit the window.
 
 ## Input and states
 
+- **Inspecting** the card's face says what the explanation shown tells of a player or an
+  interaction. What can be pointed at wears a numbered mark (`.orders-demo-pick-mark`): a few
+  interactions and players of every order, 3 to 5 as a rule and never more than 7, picked by
+  hand in `compute/pack.py` (the data's `picks`, by order; where the data picks none, the
+  order's strongest). More marks than that crowd the face: each one picked has something of its
+  own to say, and they lie apart, as a mark keeps `APART` from the others wherever its places
+  on the face allow. A mark's halo comes and goes until the face is first inspected. Pointing at a mark
+  brings out the interaction's shape, or rings the player, and a tip says one plain sentence
+  with one number in it: the sum of all that the marked adds on that order, its players' own
+  values and those of every group of them (`sumOf`), a player's own value for a player. The
+  sentence is the data's, by order (`says`), and marks the number's place: `{up}` or `{down}`
+  for an amount that raises or lowers the output, written without a sign as the sentence says
+  which, or `{sum}` for the sum with its sign. The number is in the red of what raises or the
+  blue of what lowers; one that shows as zero is in ink. What the data did not pick (the
+  strongest of an order without picks) gets a sentence that only says the sum.
+  Only what is marked can be pointed at, in every example: what is not picked says
+  nothing (hovering small shapes that lie on each other was fiddly, and what they said had no
+  story). What is marked is easy to hit (`targetAt`): the mark itself; the marked itself, where
+  it is a box of its own (a player's atom, feature, patch or word, a group's circle on a house's
+  tree); the room around a mark, within `REACH` pixels of its middle (26 for a mouse, 30 for a
+  finger, whatever the face's size, where a mark's own radius is 8 pixels on the widest face and
+  2 on a phone's); and a marked group's shape. Of several marks in reach, the nearest answers,
+  and under a mouse the one already pointed at stays a little longer, so that the tip does not
+  flicker between two. Over what answers, the pointer is a hand. On a phone, where the face is
+  small, nearly all of it is in reach of a mark: a tap on the face shows the nearest one, and a
+  tap beside the card lets go, in the demo or on the page around it. The tip lies over its
+  target, or under it where there is no room above: in the demo, and in the window, as far as a
+  header that sticks to its top leaves it free (`placeTip`, `freeTop`). Where the face is much
+  smaller than the tip (a phone's), the tip lies under the card instead, or over it, so that it
+  does not cover the face it speaks of. On the many houses' map, which has no marks, a row of the list
+  shows itself on the map, and a house's tip has a title and rows: its prediction and its
+  strongest values. With a mouse, pointing is hovering; on a
+  touch screen, a tap, and a tap elsewhere lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
+  brings it out when pointed at. To inspect another layer's face, pin the layer first (click it):
+  the pointer can then go to the card. The face is not reachable by keyboard; the "Top" line is
+  the part of it that is text.
 - **Pointing** at an explanation is how the reader explores. It can be done by hovering a layer
   or the plot, by keyboard focus on a row of the plot, by clicking or tapping a layer or the plot
   (a tap pins the explanation, and another tap lets go), or with the slider.
@@ -208,8 +265,10 @@ layers shrink to fit the window.
   `pinch-zoom`). A horizontal swipe across the layers steps through the examples, unless the page
   is zoomed in. Tap highlights are off.
 - **Keyboard**: the chip explains with Enter or Space. The plot's rows are buttons: ArrowUp and
-  ArrowDown move between them, and Escape lets go. The slider's handle moves with the arrow keys,
-  Home and End.
+  ArrowDown move between them, and Escape lets go. A row has no height, so its focus ring is a
+  box of its own on the row's line (`.orders-demo-row:focus-visible::after`): it shows where the
+  focus is also while another explanation is pinned. The slider's handle moves with the arrow
+  keys, Home and End, and Escape lets go there too.
 
 - **Screen readers**: a visually hidden status line (`.orders-demo-status`, `aria-live`) says the
   example chosen, once, in the demo where it was chosen. The problem's parts are not a live region,
@@ -239,29 +298,48 @@ Written by `compute/pack.py`. Shape, in short:
   index: "FSII",                       // the interaction index of every order
   examples: [{
     id, label, detail,                 // the tab: "molecule", "Molecule", "GCN"
-    kind,                              // "graph" | "tree" | "heatmap" | "image-text": how faces are drawn
+    of,                                // optional: the id of its tab's first example, for another
+                                       // example of that tab (which the picker under the input shows)
+    photo,                             // optional: { title }, the picker's name of it
+    picks,                             // optional: by order, the keys of what wears a mark on
+                                       // the card's face, the interactions first; a key is a
+                                       // player's or a group's players ("9", "9,14")
+    says,                              // optional: by order and key, the tip's sentence on what
+                                       // is picked, with the place of its number, the sum of
+                                       // all that the picked adds: "{up}", "{down}" or "{sum}"
+    kind,                              // "graph" | "tree" | "map" | "image-text": how faces are drawn
     model: { icon, title, detail, method, how, short },  // the chip and the card's "Explained with"
     problem: { input, output, value }, // the problem's parts: x, f(x)
     sheets: [{                         // the layers, top to bottom: orders 1..4, then the full one
       order, full,                     // full: true for the full decomposition (order n)
       r2,                              // the fit, R^2 beyond size
       first, groups, count,            // the main effects, the strongest groups, how many there are
-    }],                                // (heatmap: count, scale, rows instead)
-    between,                           // optional: the blank orders' explanations, by order
+    }],                                // (map: count, scale, and rows instead, each a feature or
+                                       // a group: its players, its value for every house as
+                                       // text, a character each (a whole number from -45 to 45
+                                       // of the scale: `read()` in demo.js), and the mean of its
+                                       // absolute values)
+    between,                           // optional: the blank orders' explanations, by order:
+                                       // a blank layer for every order between the last sheet
+                                       // of interactions and `largest`, each with its own
     fits,                              // the plot: every order's R^2
     largest,                           // the highest order with an interaction (the trees' depth,
                                        // the network's receptive field, the proxy's depth): every
                                        // order above it equals the full decomposition
     // and, by kind: atoms, bonds, coords (graph); features, values, layout (tree); image, grid,
-    // tokens (image-text); features, predictions, quartiles (heatmap)
+    // tokens (image-text); features, predictions, coords (the houses' longitudes and
+    // latitudes as text, two characters each: hundredths of a degree from `west` and `south`),
+    // outline, places, quartiles (map)
   }],
 }
 ```
 
 To change the examples, change and run the scripts in `compute/`, then `pack.py`. Adding an example
 of a new `kind` also needs a face for it in `demo.js` (next to `moleculeFace`, `treeFace`,
-`heatmapFace` and `imageTextFace`), its players' words (`PLAYERS`), and its input on the
-problem's card.
+`mapFace` and `imageTextFace`), its players' words (`PLAYERS`), how its values are written and what
+they are of (`VALUE`, `OF`), and its input on the problem's card. A face that can be inspected
+returns an inspector for the card's face (`inspectorOf`): its targets, and for a target, the marks
+to bring out and the tip's sentence with its sum (`sayOf`), or a title and rows.
 
 ## Working on it
 
@@ -287,9 +365,10 @@ problem's card.
    | 390 x 844, 360 x 740 | both pages | Phones: the stepper, no horizontal overflow. |
    | any | `introduction/how-much-explained.html` | The five steps. |
 
-   For each, explain the demo (click the chip), step through the examples, point at layers, and
-   check for console errors, horizontal overflow (`document.documentElement.scrollWidth >
-   innerWidth`), and text that collides along the slider.
+   For each, explain the demo (click the chip), step through the examples, point at layers,
+   inspect the card's face (hover a player; on a phone, tap one), and check for console errors,
+   horizontal overflow (`document.documentElement.scrollWidth > innerWidth`), and text that
+   collides along the slider.
 
 4. **Keep the static figure current**: if the look changes a lot, take new screenshots for
    `hero_orders.png` (the fallback) and `hero_orders_demo.png` (the card). The card's image is
@@ -306,6 +385,13 @@ problem's card.
 - **`place()`** runs on every pointer move over the layers and every step of a slider drag. Do not
   read layout in it (`offsetHeight`, `getBoundingClientRect`); cache measurements, as
   `labelLength()` does.
+- **The card's lines are as wide as the widest**: beside the layers, the card's words grow until
+  their widest line fills the column, so one long line makes all of them smaller, in every
+  example. The "Top" line is kept short for this (`groupName()` gives a long group's size instead
+  of its players). Check the words' size after changing what a line can say.
+- **An inspection changes a cached face**: the card's faces are drawn once and kept (`plans`), so
+  what an inspection brings out, rings or recolors must be put back when it ends
+  (`inspector.clear()`, which `letGo()` calls, also before the card shows another face).
 - **Stable sizes**: the card keeps its size whatever it shows, in every example. `settleCard()`
   measures the most it can say, out of view, and fixes its width and height. When you add words to
   the card, add them to `wordsOf()`, so that they are measured too.
