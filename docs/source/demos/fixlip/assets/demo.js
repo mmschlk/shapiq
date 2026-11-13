@@ -9,9 +9,9 @@
 // clique of FIxLIP's greedy search, the players that together raise the similarity the most, on
 // the photo and as a graph of their interactions, as in FIxLIP's figures; or the full explanation,
 // every player tinted by its main effect and the strongest interactions drawn between them; or no
-// explanation at all, only the photo, the caption, and the model's similarity, for contrast. There,
-// the caption is an excerpt of a longer (invented) text; with an explanation, the text around it
-// fades and its tokens glide into a line of their own, as the model sees only them.
+// explanation at all, only the photo, the caption, and the model's similarity, for contrast. The
+// caption is an excerpt of a longer (invented) text, laid out the same in all three, so that no word
+// moves: with an explanation, the text around it recedes and the caption's tokens get their boxes.
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
@@ -156,10 +156,15 @@
     info.setAttribute("aria-label", "What are CLIP and SigLIP 2?");
     info.setAttribute("aria-expanded", "false");
     info.setAttribute("aria-controls", "fixlip-demo-about");
+    // the note opens under the bar, in the page's flow: it pushes the photo and the panel down, and
+    // stays open until it is closed again (the "i", its "×", or Escape)
     const about = el("div", "fixlip-demo-about");
     about.id = "fixlip-demo-about";
-    about.hidden = true;
-    about.innerHTML =
+    const aboutClip = el("div", "fixlip-demo-about-clip"); // cut to the note's height while it grows
+    const aboutCard = el("div", "fixlip-demo-about-card");
+    aboutClip.append(aboutCard);
+    about.append(aboutClip);
+    aboutCard.innerHTML =
       '<p class="fixlip-demo-about-title">What are CLIP and SigLIP 2?</p>' +
       "<p>Vision–language models: they turn a photo and a sentence each into a list of numbers. " +
       "When both say the same thing, the two lists point the same way, and their " +
@@ -179,21 +184,22 @@
     const close = el("button", "fixlip-demo-about-close", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Close");
-    about.prepend(close);
+    aboutCard.prepend(close);
+    // closed, it is inert (out of the tab order and of what screen readers read) and of no height
+    const aboutOpen = () => info.getAttribute("aria-expanded") === "true";
     const setAbout = (open) => {
-      about.hidden = !open;
+      about.inert = !open;
+      about.classList.toggle("fixlip-demo-about-open", open);
       info.setAttribute("aria-expanded", String(open));
     };
-    info.addEventListener("click", () => setAbout(about.hidden));
-    about.addEventListener("focusout", (event) => {
-      if (!about.contains(event.relatedTarget) && event.relatedTarget !== info) setAbout(false);
-    });
+    setAbout(false);
+    info.addEventListener("click", () => setAbout(!aboutOpen()));
     close.addEventListener("click", () => {
       setAbout(false);
       info.focus();
     });
     switches.append(views, models, info);
-    bar.append(photos, switches, about);
+    bar.append(photos, switches);
 
     const body = el("div", "fixlip-demo-body");
     const stage = el("div", "fixlip-demo-stage");
@@ -215,7 +221,7 @@
       el("span", "fixlip-demo-hint-touch", "Tap a region or a word"),
       el("span", "fixlip-demo-hint-hover", "Hover a region or a word"),
     );
-    // the edges before the caption: over its tokens' chips (see the CSS), under their words
+    // the edges before the caption, which (a layer of its own, see the CSS) lies over them
     stage.append(frame, spoken, edges, caption, hint);
 
     const panel = el("div", "fixlip-demo-panel");
@@ -287,7 +293,7 @@
     slot.append(sizer, graph, list);
     panel.append(title, detail, slot, legend, meta, prediction, live);
     body.append(stage, panel);
-    root.append(bar, body);
+    root.append(bar, about, body);
 
     const photoButtons = data.images.map((image) => {
       const button = el("button", "fixlip-demo-photo");
@@ -383,8 +389,6 @@
     let sizes = [2, 10]; // the smallest and the largest clique of the explanation
     let roving = 0; // the region in the tab order; the arrow keys move within the grid
     let rovingToken = 0; // the same for the caption's tokens
-    let glideTimer = 0;
-    let arriveTimer = 0;
     let started = false; // nothing is announced while the demo builds itself
 
     const interaction = (i, j) => {
@@ -439,7 +443,6 @@
 
       cells.replaceChildren();
       caption.replaceChildren();
-      caption.classList.remove("fixlip-demo-arriving", "fixlip-demo-renewed"); // see crossFade
       players = [];
       for (let k = 0; k < regionCount; k += 1) {
         const cell = el("button", "fixlip-demo-cell");
@@ -558,7 +561,8 @@
     const captionString = (e) => spaced(e).flat().join("");
 
     // the caption: its tokens within the text around it, whose words fade with their distance to
-    // the caption (the text shows only without an explanation, and is not read out)
+    // the caption (the text is not read out); the same layout in every view, with and without an
+    // explanation, so that switching views moves no word
     function captionContent(image, e) {
       const inner = el("span", "fixlip-demo-caption-inner");
       const [before, after] = image.excerpt ?? ["", ""];
@@ -594,14 +598,12 @@
       return { inner, tokens };
     }
 
-    // without an explanation, the caption's box shows its lines in the middle of the excerpt
+    // the caption's box shows the caption's lines in its middle, the text around them cut off
     function placeExcerpt() {
       const inner = caption.firstElementChild;
       if (!inner) return;
       inner.style.transform = "";
-      if (state.view !== "none") return;
-      // offsets (from the caption, the tokens' positioned parent) ignore the tokens' transforms
-      // while they glide
+      // offsets from the caption, the tokens' positioned parent
       const tokens = players.slice(regionCount);
       const top = Math.min(...tokens.map((t) => t.offsetTop));
       const bottom = Math.max(...tokens.map((t) => t.offsetTop + t.offsetHeight));
@@ -621,35 +623,25 @@
       reserve(predictionCredit, data.images.map(creditText));
     }
 
-    // the caption's room: that of its tallest line of tokens, and of its tallest excerpt (the
-    // caption's lines and half a line of the text around it above and below), which next to the
-    // panel keeps the card's height in all views (under the photo, the views differ anyway)
+    // the caption's room: its tallest lines of tokens, of all photos and models, and half a line of
+    // the text around them above and below, so that switching photos and models moves nothing
     function reserveCaption(all) {
       const width = caption.getBoundingClientRect().width;
       if (!width) return;
       const probe = caption.cloneNode(false);
-      Object.assign(probe.style, { position: "absolute", visibility: "hidden", width: `${width}px`, minHeight: "0", height: "auto" });
+      // border-box: the width measured includes the caption's side padding, which the copy keeps
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", boxSizing: "border-box", width: `${width}px`, height: "auto" });
       caption.after(probe);
-      let tokens = 0;
-      let excerpt = 0;
+      let room = 0;
       for (const [image, , e] of all) {
-        for (const asExcerpt of [false, true]) {
-          probe.classList.toggle("fixlip-demo-excerpt", asExcerpt);
-          const content = captionContent(image, e);
-          probe.replaceChildren(content.inner);
-          if (!asExcerpt) {
-            tokens = Math.max(tokens, probe.getBoundingClientRect().height);
-            continue;
-          }
-          const boxes = content.tokens.map((t) => t.getBoundingClientRect());
-          const lines = Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top));
-          excerpt = Math.max(excerpt, lines + parseFloat(getComputedStyle(probe).lineHeight));
-        }
+        const content = captionContent(image, e);
+        probe.replaceChildren(content.inner);
+        const boxes = content.tokens.map((t) => t.getBoundingClientRect());
+        const lines = Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top));
+        room = Math.max(room, lines + parseFloat(getComputedStyle(probe).lineHeight));
       }
       probe.remove();
-      const room = beside() ? Math.max(tokens, excerpt) : tokens;
-      caption.style.minHeight = `${Math.ceil(room)}px`;
-      caption.style.setProperty("--fixlip-caption-height", `${Math.ceil(Math.max(tokens, excerpt))}px`);
+      caption.style.setProperty("--fixlip-caption-height", `${Math.ceil(room)}px`);
     }
 
     // the least height of a node: that of the tallest of the contents, in a hidden copy of it
@@ -689,10 +681,8 @@
         return ghost;
       });
       change();
-      // a new caption fades in: as a whole as an excerpt, and else by its tokens' words and chips
-      // (a fading caption would lift its chips over the edges, see the CSS)
-      const fresh = newPhoto && state.view === "none" ? [cells, edges, caption] : [cells, edges];
-      caption.classList.toggle("fixlip-demo-renewed", newPhoto && state.view !== "none");
+      // a new photo's caption fades in with it
+      const fresh = newPhoto ? [cells, edges, caption] : [cells, edges];
       for (const node of fresh) node.classList.add("fixlip-demo-fresh");
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
@@ -751,16 +741,7 @@
     }
 
     function setView(view) {
-      // into or out of the excerpt: its text fades, and the tokens glide from where they are to
-      // where they go (first, last, invert, play)
-      const tokens = players.slice(regionCount);
-      const glide = (view === "none") !== (state.view === "none") && !reducedMotion();
-      const first = glide ? tokens.map((t) => t.getBoundingClientRect()) : [];
-      for (const ghost of stage.querySelectorAll(".fixlip-demo-caption.fixlip-demo-ghost")) ghost.remove();
-      clearTimeout(arriveTimer);
-      caption.classList.remove("fixlip-demo-arriving");
-      if (glide && state.view === "none") fadeExcerpt();
-
+      // the caption keeps its layout: only the tokens' outlines and tints change, and the edges fade
       state.view = view;
       state.pinned = false;
       viewButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(VIEWS[k][0] === view)));
@@ -768,61 +749,9 @@
       setShift();
       root.classList.toggle("fixlip-demo-full", view === "full");
       root.classList.toggle("fixlip-demo-none", view === "none");
-      caption.classList.toggle("fixlip-demo-excerpt", view === "none");
       reserve(predictionCredit, data.images.map(creditText)); // laid out only now on small screens
       setInteractive();
-      for (const t of tokens) {
-        t.style.transition = "none";
-        t.style.transform = "";
-      }
-      placeExcerpt();
       show(null, true);
-      if (!glide) {
-        for (const t of tokens) t.style.transition = "";
-        return;
-      }
-      caption.classList.add("fixlip-demo-gliding");
-      // the text around the caption fades in only when the excerpt arrives (not with each photo)
-      if (view === "none") {
-        caption.classList.add("fixlip-demo-arriving");
-        arriveTimer = setTimeout(() => caption.classList.remove("fixlip-demo-arriving"), 1000);
-      }
-      tokens.forEach((t, k) => {
-        const last = t.getBoundingClientRect();
-        t.style.transform = `translate(${first[k].left - last.left}px, ${first[k].top - last.top}px)`;
-      });
-      caption.getBoundingClientRect(); // the tokens start where they were
-      if (view !== "none") edges.classList.add("fixlip-demo-fresh"); // the edges follow the tokens
-      clearTimeout(glideTimer);
-      requestAnimationFrame(() => {
-        for (const t of tokens) {
-          t.style.transition = "";
-          t.style.transform = "";
-        }
-        // the edges once the tokens are in place (their glide takes 650 ms): a gliding token is a
-        // layer of its own, with its chip over the edges
-        clearTimeout(glideTimer);
-        glideTimer = setTimeout(() => {
-          caption.classList.remove("fixlip-demo-gliding");
-          edges.classList.remove("fixlip-demo-fresh");
-        }, 700);
-      });
-    }
-
-    // the excerpt's text fades out in a copy over the caption (its tokens hidden: they glide away)
-    function fadeExcerpt() {
-      const ghost = caption.cloneNode(true);
-      ghost.classList.add("fixlip-demo-ghost");
-      ghost.setAttribute("aria-hidden", "true");
-      ghost.setAttribute("inert", "");
-      Object.assign(ghost.style, {
-        top: `${caption.offsetTop}px`,
-        left: `${caption.offsetLeft}px`,
-        width: `${caption.offsetWidth}px`,
-      });
-      caption.after(ghost);
-      requestAnimationFrame(() => requestAnimationFrame(() => ghost.classList.add("fixlip-demo-gone")));
-      setTimeout(() => ghost.remove(), 700);
     }
 
     // -- the views: the clique or the full explanation at rest, the interactions of a player when
@@ -1154,14 +1083,14 @@
       if (!state.pinned && !stage.contains(event.relatedTarget)) show(null);
     });
     document.addEventListener("pointerdown", (event) => {
-      if (!about.hidden && !about.contains(event.target) && !info.contains(event.target)) setAbout(false);
       if (state.pinned && !stage.contains(event.target)) {
         state.pinned = false;
         show(null);
       }
     });
     root.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !about.hidden) {
+      // Escape closes the note from within it or from its "i"; elsewhere, it lets go of a player
+      if (event.key === "Escape" && aboutOpen() && (about.contains(event.target) || event.target === info)) {
         setAbout(false);
         info.focus();
       } else if (event.key === "Escape" && state.focus !== null) {
