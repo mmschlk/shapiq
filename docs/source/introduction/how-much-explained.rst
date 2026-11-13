@@ -47,7 +47,7 @@ prediction, blue lowers it. It floats above the input. But how much of the mecha
 explain? Its faithfulness, :math:`R^2`, says how well it predicts what the model does when only
 some of the players are there, beside the layer: 1 is all of it. Point at the mechanism to compare.
 The card above names the strongest player, and marks a few players with a number: point at one
-(on a touch screen, tap it) to read its value.
+(on a touch screen, tap it) to read what it adds.
 
 .. shapiq-demo:: orders
    :step: shapley
@@ -62,10 +62,9 @@ Shapley Interactions :cite:p:`Tsai.2022`, the explanation of each order that fit
 Every order is more detailed than the one above it, and more faithful. The pairs alone recover most
 of what the Shapley values miss. Point at the other orders, or drag the slider down through them,
 and see the fit rise. On the card, the numbers now also mark a few interactions, picked by hand
-for every order: an interaction pointed at says what its players add alone, and what they add
-together, on top of that. Click a layer to keep it there, then point at its card. What is marked
-has a note, a sentence on what the values show; a few say that there is nothing to read: not every
-value of a model has a story. Only what is marked can be pointed at; a mark need not be hit
+for every order. Point at one, and the card says it in one sentence with one number. The number
+is the sum of all that its players add at that order, alone and together. Click a layer to keep it
+there, then point at its card. Only what is marked can be pointed at. A mark need not be hit
 exactly, the room around it answers too.
 
 .. shapiq-demo:: orders

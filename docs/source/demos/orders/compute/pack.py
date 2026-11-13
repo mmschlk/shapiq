@@ -21,7 +21,7 @@ Usage::
     python pack.py --examples house houses
 
 With ``--examples``, only those examples are packed anew, from their results; the others are kept
-as the data file has them (but for their words and their notes, which are written anew), so that
+as the data file has them (but for their words and their picks, which are written anew), so that
 one example can change without computing all of them again. The examples are the demo's tabs
 (molecule, house, tabpfn, houses, fixlip) and the other photos of the last one (giraffe, sign).
 """
@@ -32,6 +32,8 @@ import argparse
 import json
 import re
 import tomllib
+from functools import partial
+from itertools import combinations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -448,16 +450,17 @@ def pack_photo(fixlip: dict[str, Any]) -> dict[str, Any]:
         "between": between(
             fixlip,
             strongest=BETWEEN_STRONGEST,
-            keep=picked_between(photo_picks(photo, fixlip["grid"], fixlip["tokens"])),
+            keep=picked_above(photo_picks(photo, fixlip["grid"], fixlip["tokens"])),
         ),
         "fits": fits(fixlip),
     }
 
 
-# -- the notes: what the demo's tip says, in a sentence, of a player or a group pointed at. Most
-# have none: not every value has a story, and a note only says what the example shows. A note's key
-# is its players, in their order, joined by commas; "many" is the note of every group of that many
-# players at the least --------------------------------------------------------------------------------
+# -- the insights: what is picked by hand on an order, a player or a group, and what the demo's tip
+# says of it. One plain sentence, with one number in it: the sum of all that the picked adds on
+# that order, its players' own values and those of every group of them. The sentence marks the
+# number's place (``{up}``, ``{down}`` or ``{sum}``), and the demo writes the number there, from the
+# order's values. A key is a pick's players, in their order, joined by commas ----------------------
 
 
 def key(*players: int) -> str:
@@ -466,79 +469,123 @@ def key(*players: int) -> str:
 
 
 FULL = "full"  # in a pick's orders: the full decomposition, whatever its order is
+# in a pick's orders: every order above the last with a sheet of its own, the full decomposition
+# among them (of the orders between, those whose sheets have the pick's value)
+ABOVE = "above"
 MOST_PICKED = 7  # the most that is picked on an order: more marks than that crowd the card's face
+# the number's place in a sentence: what the picked adds, as an amount that raises the output
+# ({up}: the sum is positive on every order of the row) or lowers it ({down}: negative), or with
+# its sign ({sum}: whatever it is)
+PLACES = ("{up}", "{down}", "{sum}")
+# the digits the demo shows of a value (demo.js: VALUE), by the example's kind: an amount it shows
+# must not round to zero (a house's value is in $100k, and shown in $1k)
+DIGITS = {"graph": 2, "tree": 2, "image-text": 3}
+
+Picks = list[tuple[list[Any], list[Any], str]]
 
 
-def picked_between(table: list[tuple[list[int], list[Any], str | None]]) -> set[tuple[int, ...]]:
+def picked_above(table: Picks) -> set[tuple[int, ...]]:
     """Return the groups of a table of picks that are picked on the orders between, too.
 
-    A row picked on the last order with a sheet of its own and on the full decomposition (see
-    ``curated``): the sheets of the orders between keep these groups, however strong they are.
+    A row picked on ``ABOVE``: the sheets of the orders between the last sheet and the full
+    decomposition keep these groups, however strong they are.
     """
     return {
         tuple(sorted(players))
         for players, marked, _ in table
-        if len(players) > 1 and ORDERS[-1] in marked and FULL in marked
+        if len(players) > 1 and ABOVE in marked
     }
 
 
-def curated(
-    example: dict[str, Any], table: list[tuple[list[int], list[Any], str | None]]
-) -> dict[str, Any]:
-    """Return an example's picks and notes from its table of what was picked by hand.
+def plain(sentence: str) -> str | None:
+    """Return what keeps a tip's sentence from being plain, or ``None``: it is one easy sentence.
+
+    One sentence, with one comma at the most and no colon or semicolon, and one number: the place
+    of the sum (one of ``PLACES``), and no other digit.
+    """
+    places = [place for place in PLACES if place in sentence]
+    if len(places) != 1 or sentence.count(places[0]) != 1:
+        return "does not have one place for its number"
+    words = sentence.replace(places[0], "")
+    if not words.endswith(".") or any(mark in words[:-1] for mark in ".:;!?"):
+        return "is not one sentence without a colon or a semicolon"
+    if words.count(",") > 1:
+        return "has more than one comma"
+    if any(letter.isdecimal() for letter in words):
+        return "has a number besides its sum"
+    return None
+
+
+def curated(example: dict[str, Any], table: Picks) -> dict[str, Any]:
+    """Return an example's picks and what the demo says of them, from its table of picks.
 
     A row of the table is a player or a group (its players), the orders it is picked on (``FULL``
-    for the full decomposition), and its note, or ``None``: what is picked wears a mark on the
-    demo's card, where a reader points at it. Few are picked on an order (3 to 5, and
-    ``MOST_PICKED`` at the most), as many marks crowd the card. A row picked on order 4 and on the
-    full decomposition is picked on the orders between them too. The picks of an order are the
-    groups first, then the players, each the strongest first, as the marks number them; a note
-    holds on the orders its row is picked on, and says so (``[note, orders]``).
+    for the full decomposition, ``ABOVE`` for every order above 4), and its sentence: what is
+    picked wears a mark on the demo's card, where a reader points at it, and the card's tip says
+    the sentence. Few are picked on an order (3 to 5, and ``MOST_PICKED`` at the most), as many
+    marks crowd the card. The picks of an order are the groups first, then the players, each the
+    strongest first, as the marks number them.
+
+    A sentence is plain (``plain``) and holds on every order of its row: its number is the sum of
+    all that the picked adds on the order, and where the sentence says that this raises or lowers
+    the output, it does. The sheets must have every value of that sum, the players' own and those
+    of every group of them: a group that lacks one cannot be picked.
     """
     by_order = {
-        sheet["order"]: sheet for sheet in (*example["sheets"], *example.get("between", []))
+        sheet["order"]: (sheet, {tuple(group[0]): group[1] for group in sheet["groups"]})
+        for sheet in (*example["sheets"], *example.get("between", []))
     }
-    full, last = example["sheets"][-1]["order"], example["sheets"][-2]["order"]
+    full = example["sheets"][-1]["order"]
     between = [sheet["order"] for sheet in example.get("between", [])]
 
     def value(order: int, group: list[int]) -> float | None:
         """Return a player's or a group's value on an order, if the order's sheet has it."""
-        sheet = by_order[order]
-        if len(group) == 1:
-            return sheet["first"][group[0]]
-        return next((entry[1] for entry in sheet["groups"] if entry[0] == group), None)
+        sheet, groups = by_order[order]
+        return sheet["first"][group[0]] if len(group) == 1 else groups.get(tuple(group))
+
+    def total(order: int, group: list[int]) -> float:
+        """Return the sum of all that a group adds on an order: of every value among its players."""
+        sheet, groups = by_order[order]
+        parts = [
+            groups.get(part)
+            for size in range(2, min(len(group), order) + 1)
+            for part in combinations(group, size)
+        ]
+        if None in parts:
+            msg = f"{example['id']}: order {order} lacks {parts.count(None)} values among {group}"
+            raise ValueError(msg)
+        return sum(sheet["first"][player] for player in group) + sum(parts)
 
     picks: dict[int, list[list[int]]] = {}
-    notes: dict[str, Any] = {}
-    for players, marked, note in table:
+    says: dict[int, dict[str, str]] = {}
+    for players, marked, sentence in table:
         group = sorted(players)
-        orders = [full if order == FULL else order for order in marked]
-        if last in orders and full in orders:
-            # (the orders between: as their neighbors, where their sheets have the group)
-            orders += [
-                order
-                for order in between
-                if order not in orders and value(order, group) is not None
-            ]
+        if fault := plain(sentence):
+            msg = f"{example['id']}: the sentence on {group} {fault}"
+            raise ValueError(msg)
+        orders = [full if order == FULL else order for order in marked if order != ABOVE]
+        if ABOVE in marked:
+            # (the orders between: where their sheets have the group)
+            orders += [order for order in between if value(order, group) is not None]
+            orders += [full]
         for order in orders:
             if value(order, group) is None:
                 msg = f"{example['id']}: order {order} has no value of {group} to pick"
                 raise ValueError(msg)
-            picks.setdefault(order, []).append(group)
-        if note:
-            # (a group's note: on orders of one sign, unless the note is that the sign flips; a
-            # player's says what the player is, whatever its own value)
-            signs = {value(order, group) > 0 for order in orders}
-            if len(group) > 1 and len(signs) > 1 and "flips" not in note:
-                msg = f"{example['id']}: the note on {group} is on orders of both signs"
+            if key(*group) in says.setdefault(order, {}):
+                msg = f"{example['id']}: {group} is picked twice on order {order}"
                 raise ValueError(msg)
-            notes[key(*group)] = [note, sorted(orders)]
+            amount = round(total(order, group), DIGITS[example["kind"]])
+            if ("{up}" in sentence and amount <= 0) or ("{down}" in sentence and amount >= 0):
+                msg = f"{example['id']}: on order {order}, {group} adds {amount}, not as its sentence says"
+                raise ValueError(msg)
+            picks.setdefault(order, []).append(group)
+            says[order][key(*group)] = sentence
     for order, groups in picks.items():
         if len(groups) > MOST_PICKED:
             msg = f"{example['id']}: order {order} has {len(groups)} picks, {MOST_PICKED} at most"
             raise ValueError(msg)
     return {
-        "notes": notes,
         "picks": {
             str(order): [
                 key(*group)
@@ -548,364 +595,315 @@ def curated(
             ]
             for order, groups in sorted(picks.items())
         },
+        "says": {str(order): said for order, said in sorted(says.items())},
     }
 
 
 # what is picked on the molecule, by hand: a player or a group (its atoms), the orders it is picked
-# on, and its note, where it has one that the atoms' bonds do not already give (notes_molecule).
-# A few on every order, each with something of its own to say, and apart on the drawing: of what
-# says the same (the three nitro groups, the carbons with all of their neighbors), one stands for
-# the others. The strong positive groups are whole neighborhoods of an atom, and have a reading;
-# the negative ones, and what flips its sign from order to order, have none
-MOLECULE_PICKS: list[tuple[list[int], list[Any], str | None]] = [
-    ([18], [1], None),
-    ([20], [1], None),
+# on, and its sentence. A few on every order, each with something of its own to say, and apart on
+# the drawing: of what says the same (the three nitro groups, the ring carbons), one stands for the
+# others. Above order 4, the sheets keep the strongest values only, and lack some among every
+# group of three atoms or more: there, pairs and atoms are picked
+MOLECULE_PICKS: Picks = [
     (
-        [0],
+        [18],
         [1],
-        "A carbon that two of the rings share: after the three nitrogens, the atom with the "
-        "largest Shapley value.",
+        "This nitrogen sits in a nitro group and raises the logit by {up}, the most of all atoms.",
     ),
-    ([13], [2], None),
-    ([9], [3], None),
-    ([18, 21], [2, 3], None),
-    ([3, 9], [2], None),
+    ([20], [1], "This oxygen of a nitro group raises the logit by {up}."),
+    ([0], [1], "Two rings share this carbon and it raises the logit by {up}."),
+    ([18, 21], [2, 3, 4, ABOVE], "Together this nitrogen and its oxygen raise the logit by {up}."),
+    (
+        [3, 9],
+        [2],
+        "Together this nitrogen and the ring carbon that carries it raise the logit by {up}.",
+    ),
+    ([0, 2], [2], "Together these two ring carbons raise the logit by {up}."),
     (
         [0, 2],
-        [2, 3],
-        "A bond shared by two of the rings. No story: its value even flips sign from one order "
-        "to the next.",
+        [3],
+        "The pair of these two carbons is negative here but together they still raise the logit "
+        "by {up}.",
     ),
+    ([13], [2], "Alone this ring carbon raises the logit by {up}."),
     (
         [7, 8, 13],
-        [3, 4, FULL],
-        "A ring carbon with its two ring neighbors, but without its hydrogen. Negative, with no "
-        "simple reading.",
+        [3, 4],
+        "Together these three ring carbons raise the logit by {up}, although their group of three "
+        "is negative.",
     ),
-    ([0, 2, 6, 7], [4, FULL], None),
-    ([0, 3, 8, 9], [4, FULL], None),
-    ([12, 18, 21, 22], [4, FULL], None),
+    ([9], [3, ABOVE], "Alone this nitrogen raises the logit by only {up}."),
+    ([0, 2, 6, 7], [4], "Together this carbon and its three neighbors raise the logit by {up}."),
     (
-        [0, 1, 2, 3, 4, 5, 6, 7, 8],
-        [FULL],
-        "A carbon and the atoms within two bonds of it, but one: about as far as the GCN's two "
-        "layers reach. No simple reading.",
+        [5, 12, 17, 18],
+        [4],
+        "Together the carbon that carries this nitro group and its three neighbors raise the "
+        "logit by {up}.",
+    ),
+    ([8, 13], [ABOVE], "Together these two ring carbons raise the logit by {up}."),
+    (
+        [6],
+        [ABOVE],
+        "Alone this ring carbon raises the logit by {up}, more than a nitrogen does alone.",
     ),
 ]
-
-
-def notes_molecule(example: dict[str, Any]) -> dict[str, Any]:
-    """Return the picks and the notes of the molecule.
-
-    The notes that the atoms' bonds give hold on every order: on its nitro groups, and on an atom
-    with all of its neighbors, the atoms that one layer of the GCN combines.
-    """
-    atoms = example["atoms"]
-    bonded: dict[int, list[int]] = {atom: [] for atom in range(len(atoms))}
-    for a, b in example["bonds"]:
-        bonded[a].append(b)
-        bonded[b].append(a)
-    notes: dict[str, Any] = {}
-    for atom, element in enumerate(atoms):
-        near = [atoms[other] for other in bonded[atom]]
-        oxygens = [other for other in bonded[atom] if atoms[other] == "O"]
-        if element == "N" and len(oxygens) == 2:
-            carbons = [other for other in bonded[atom] if atoms[other] == "C"]
-            notes[key(atom)] = (
-                "The nitrogen of a nitro group (NO₂). Nitro groups on aromatic rings are a classic "
-                "structural alert for mutagenicity."
-            )
-            for oxygen in oxygens:
-                notes[key(oxygen)] = "An oxygen of a nitro group (NO₂)."
-                notes[key(atom, oxygen)] = (
-                    "A bond of a nitro group (NO₂). Much of the nitrogen's Shapley value is what "
-                    "it does together with its oxygens."
-                )
-            for carbon in carbons:
-                notes[key(atom, carbon)] = "The bond that attaches a nitro group to the ring."
-            notes[key(atom, *oxygens, *carbons)] = (
-                "A nitro group (NO₂) with the ring carbon it sits on: the nitrogen's whole "
-                "neighborhood, which one GCN layer combines."
-            )
-        elif element == "C" and len(bonded[atom]) == 3:
-            notes[key(atom, *bonded[atom])] = (
-                "The ring carbon carrying a nitro group, with its three neighbors: the atoms one "
-                "GCN layer combines at it."
-                if "N" in near
-                else "A carbon with all three of its neighbors: exactly the atoms one GCN layer "
-                "combines at that carbon."
-            )
-            if "H" in near:
-                notes[key(atom)] = (
-                    "A ring carbon that carries a hydrogen. No story for its own value: the model "
-                    "is what it is."
-                )
-    picked = curated(example, MOLECULE_PICKS)
-    # (a note the bonds give holds on every order, whatever orders its group is picked on)
-    return {"notes": {**picked["notes"], **notes}, "picks": picked["picks"]}
-
 
 # the house's features, as the picks below name them
 INCOME, AGE, ROOMS, BEDS, POP, OCCUP, LAT, LONG = range(8)
-# what is picked on the house that XGBoost values, by hand: the place carries its story, the
-# income and the rooms raise its value (both are above California's medians: $35k, 5.2 rooms), and
-# the rest has none. A few on every order, and what the two models differ in on both of them
-HOUSE_PICKS: list[tuple[list[int], list[Any], str | None]] = [
-    (
-        [LAT],
-        [1, 2, 3, 4, FULL],
-        "Alone, the latitude seems to raise the value; the longitude takes that back: by its own "
-        "value at order 1, through their pair from order 2.",
-    ),
+# what is picked on the house that XGBoost values, by hand: its latitude and its longitude carry
+# the story (what one adds alone, the two take back together), and the income and the rooms raise
+# its value (both are above California's medians: $35k, 5.2 rooms). A few on every order, and what
+# the two models differ in on both of them
+HOUSE_PICKS: Picks = [
+    ([LAT], [1], "The latitude raises the house's value by {up}."),
     (
         [LONG],
         [1],
-        "At order 1 the longitude takes back what the latitude adds; from order 2 the pair does, "
-        "and the longitude alone is near zero.",
-    ),
-    ([INCOME], [1, 2, 3, 4, FULL], "An income above the California median raises the value."),
-    ([ROOMS], [1], "More rooms per home than is typical in California raise the value."),
-    (
-        [LAT, LONG],
-        [2, 3, 4, FULL],
-        "Where the house is. Alone, the latitude seems to raise its value; with the longitude, "
-        "that is taken back: the place as a whole hardly moves it.",
-    ),
-    (
-        [INCOME, ROOMS],
-        [2],
-        "Small for XGBoost: income and rooms add up almost independently, unlike for TabPFN.",
-    ),
-    (
-        [OCCUP, LAT, LONG],
-        [3, 4, FULL],
-        "The strongest group of three, about a tenth of the place's pair: a small correction to "
-        "the place, with no story of its own.",
-    ),
-    ([INCOME, ROOMS, POP, LONG], [4, FULL], None),
-]
-# and on the same house as TabPFN values it: the place and the income with the rooms carry its
-# stories, read off the values' sums; its groups of many features have none, and one or two of the
-# largest stand for them
-TABPFN_PICKS: list[tuple[list[int], list[Any], str | None]] = [
-    (
-        [LAT],
-        [1, 2],
-        "On its own the latitude lowers the value; with the longitude, the place as a whole "
-        "lowers it more.",
-    ),
-    (
-        [LONG],
-        [1],
-        "At order 1 the longitude lowers the value a little. From order 2 on, alone it raises "
-        "the value, and with the latitude that is taken back and more.",
+        "The longitude lowers the house's value by {down}, about as much as the latitude raises it.",
     ),
     (
         [INCOME],
-        [1, 2],
-        "At order 1 the income hardly counts. From order 2 on, alone it raises the value, and "
-        "its pair with the rooms takes that back.",
+        [1],
+        "The income is above California's median and raises the house's value by {up}.",
     ),
-    ([ROOMS], [1, 2, 3, 4], "Alone, more rooms per home than is typical raise the value."),
+    (
+        [ROOMS],
+        [1],
+        "The house has more rooms than is typical and that raises its value by {up}.",
+    ),
     (
         [LAT, LONG],
-        [2, 3, 4, FULL],
-        "Where the house is: for TabPFN, the place as a whole lowers this house's value.",
+        [2, 3, 4, ABOVE],
+        "Together the latitude and the longitude move the house's value by only {sum}.",
+    ),
+    ([INCOME, ROOMS], [2], "Together the income and the rooms raise the house's value by {up}."),
+    (
+        [LAT],
+        [2, 3, 4, ABOVE],
+        "Alone the latitude raises the house's value by {up}, which its pair with the longitude "
+        "takes back.",
+    ),
+    ([INCOME], [2, 3, 4, ABOVE], "Alone the income raises the house's value by {up}."),
+    (
+        [OCCUP, LAT, LONG],
+        [3, 4, ABOVE],
+        "Together the occupancy, the latitude and the longitude lower the house's value by {down}.",
+    ),
+]
+# and on the same house as TabPFN values it: the location (its latitude and its longitude) and the
+# income with the rooms carry its stories. Its groups of many features have large values that
+# cancel for the most part, and one of the largest stands for them
+MANY = "This group's own value is large, yet together its {} features lower the house's value by only {{down}}."
+TABPFN_PICKS: Picks = [
+    ([LAT], [1], "The latitude lowers the house's value by {down}, the most of all features."),
+    ([ROOMS], [1], "The rooms raise the house's value by {up}."),
+    ([LONG], [1], "The longitude lowers the house's value by {down}."),
+    ([INCOME], [1], "The income hardly counts here and lowers the house's value by {down}."),
+    (
+        [LAT, LONG],
+        [2, 3, 4, ABOVE],
+        "Together the latitude and the longitude lower the house's value by {down}.",
     ),
     (
         [INCOME, ROOMS],
-        [2, 3, 4, FULL],
-        "Alone, the income and the rooms each raise the value; together, they take most of that "
+        [2, 3, 4, ABOVE],
+        "Together the income and the rooms raise the house's value by only {up}, far less than "
+        "the rooms do alone.",
+    ),
+    ([ROOMS], [2, 3, 4], "Alone the rooms raise the house's value by {up}."),
+    (
+        [INCOME],
+        [2],
+        "Alone the income raises the house's value by {up}, which its pair with the rooms takes "
         "back.",
     ),
-    ([AGE, ROOMS], [3], "With the age, the rooms raise the value even more."),
+    ([AGE, ROOMS], [3], "Together the age and the rooms raise the house's value by {up}."),
     (
         [ROOMS, LAT, LONG],
-        [4, FULL],
-        "It takes back, and more, what the rooms' pairs with the latitude and the longitude add: "
-        "in sum, rooms and place lower the value.",
+        [4, ABOVE],
+        "Together the rooms and the location lower the house's value by {down}.",
     ),
     (
         [INCOME, ROOMS, LAT, LONG],
-        [4, FULL],
-        "In sum, once the rooms and the place are known, adding the income hardly moves the value.",
+        [4, ABOVE],
+        "Together the income, the rooms and the location lower the house's value by {down}.",
     ),
-    ([INCOME, BEDS, POP, LAT, LONG], [5], None),
-    ([INCOME, ROOMS, OCCUP, LAT, LONG], [6], None),
-    ([INCOME, AGE, ROOMS, BEDS, POP, LAT, LONG], [7, FULL], None),
-    ([AGE, ROOMS, BEDS, POP, LAT, LONG], [FULL], None),
+    ([INCOME, ROOMS, OCCUP, LAT, LONG], [6], MANY.format("five")),
+    ([INCOME, AGE, ROOMS, BEDS, POP, LAT, LONG], [7, FULL], MANY.format("seven")),
 ]
-
-
-def notes_house(example: dict[str, Any]) -> dict[str, Any]:
-    """Return the picks and the notes of the house that XGBoost values."""
-    picked = curated(example, HOUSE_PICKS)
-    picked["notes"]["many"] = [
-        4,
-        "Small print. The trees are 5 deep, so groups of 4 features have values too (and of 5, "
-        "in the full decomposition), but hardly any: this model's interactions are pairs and a "
-        "few triples.",
-    ]
-    return picked
-
-
-def notes_tabpfn(example: dict[str, Any]) -> dict[str, Any]:
-    """Return the picks and the notes of the house that TabPFN values."""
-    picked = curated(example, TABPFN_PICKS)
-    picked["notes"]["many"] = [
-        5,
-        "No story here. TabPFN's values of many features are large, of both signs, and cancel "
-        "for the most part: the model is what it is.",
-    ]
-    return picked
-
 
 # what is picked on the photos, by the photo's id: on a photo, only what is picked can be pointed
 # at. A row names its players as a word of the caption or a patch (its row and column in the
-# photo, from 1), the orders it is picked on, and its note: what the patch shows, and what the
-# values say on those orders, no more. A few on every order, each with something of its own to say
+# photo, from 1), the orders it is picked on, and its sentence: what the patch shows, and what the
+# values add on those orders, no more. A few on every order, each with something of its own to say
 # (of the patches of the elephant that match its word, one), and apart on the card. The
-# explanations are estimates, and many strong values have no reading: word with word, a function
-# word, a group of three; of those, a pair of two words at the most is picked, and says so
-PHOTO_PICKS: dict[str, list[tuple[list[Any], list[Any], str | None]]] = {
+# explanations are estimates: what is near zero is not picked, or its sentence says so
+PHOTO_PICKS: dict[str, Picks] = {
     "elephant": [
         (
             ["elephant"],
-            [1, 2, 4, FULL],
-            "The word for the photo's main subject: it raises the similarity on every order.",
+            [1],
+            "The word “elephant” names the photo's main subject and raises the similarity by {up}.",
         ),
-        ([(6, 1)], [1], "The egret's patch: the white bird's head and neck."),
-        (["bird"], [1, 3], "The word for the egret, the white bird at the photo's left edge."),
+        ([(6, 1)], [1], "This patch shows the egret's head and raises the similarity by {up}."),
+        (["bird"], [1], "The word “bird” names the egret and raises the similarity by {up}."),
         (
             [(6, 1), "bird"],
             [2],
-            "The egret's patch and the word for it: the model matches the two.",
-        ),
-        (
-            [(6, 1), "white"],
-            [2, 3, 4, FULL],
-            "The egret's patch and “white”: the color word matches the bird.",
+            "Together the egret's patch and the word “bird” raise the similarity by {up}.",
         ),
         (
             [(5, 4), "elephant"],
-            [2, 3, 4, FULL],
-            "The curled trunk and the word “elephant”: the model matches the two.",
+            [2, 3, 4, ABOVE],
+            "Together the curled trunk and the word “elephant” raise the similarity by {up}.",
+        ),
+        (["elephant"], [2], "Alone the word “elephant” raises the similarity by {up}."),
+        (["white"], [2, 3], "Alone the word “white” lowers the similarity by {down}."),
+        (
+            ["elephant", "bird"],
+            [3, 4, ABOVE],
+            "Together the words “elephant” and “bird” raise the similarity by {up}, less than the "
+            "two add alone.",
+        ),
+        (["bird"], [3], "Alone the word “bird” raises the similarity by {up}."),
+        (
+            [(6, 1), "white"],
+            [4, ABOVE],
+            "Together the white egret's patch and the word “white” lower the similarity by only "
+            "{down}.",
         ),
         (
             [(5, 5), "white"],
-            [4, FULL],
-            "A brown patch of the elephant and the word “white”: they do not match.",
+            [4, ABOVE],
+            "Together this brown patch of the elephant and the word “white” lower the similarity "
+            "by {down}.",
         ),
-        (
-            ["elephant", "bird"],
-            [3, 4, FULL],
-            "Two words of the caption: together they lower the match. Word with word, there is "
-            "no simple reading.",
-        ),
+        (["elephant"], [4, ABOVE], "Alone the word “elephant” raises the similarity by only {up}."),
     ],
     "giraffe-tree": [
         (
             ["giraffe"],
-            [1, 2, 4, FULL],
-            "The animal the caption is about. Its word adds to the match on every order.",
+            [1],
+            "The word “giraffe” names the animal and raises the similarity by {up}.",
         ),
-        (["water"], [1, 2], "“water”: the pond fills the lower part of the photo."),
+        (
+            ["water"],
+            [1],
+            "A pond fills the lower part of the photo and the word “water” raises the similarity "
+            "by {up}.",
+        ),
         (
             [(3, 5)],
             [1],
-            "The top of the giraffe's back: the patch the Shapley values credit most.",
+            "This patch shows the giraffe's back and raises the similarity by {up}, the most of "
+            "all patches.",
         ),
         (
             [(2, 2)],
             [1],
-            "The dead tree in the background. No giraffe is there, yet its patch gets credit: "
-            "from order 2 on, see it with “giraffe”.",
-        ),
-        (
-            [(2, 2), "giraffe"],
-            [2, 3, 4, FULL],
-            "The dead tree in the background and the word “giraffe”: together they raise the "
-            "match, though no giraffe is there.",
-        ),
-        (
-            [(6, 5), "giraffe"],
-            [2, 4, FULL],
-            "The giraffe's head, lowered to the water, and the word “giraffe”.",
-        ),
-        (
-            [(3, 5), (4, 5), "giraffe"],
-            [3],
-            "Two patches of the giraffe's body with the word “giraffe”: the body counts when "
-            "both are there.",
+            "This patch shows a dead tree and still raises the similarity by {up}.",
         ),
         (
             ["water", "pond"],
             [2, 3],
-            "Two words for the same thing: each adds less once the other is there.",
+            "Together the words “water” and “pond” raise the similarity by {up}, less than the two "
+            "add alone.",
         ),
         (
-            ["drink", "water"],
-            [3, 4, FULL],
-            "“drink” already suggests water: each adds less once the other is there.",
+            [(2, 2), "giraffe"],
+            [2, 3, 4, ABOVE],
+            "Together the dead tree's patch and the word “giraffe” raise the similarity by {up}, "
+            "more than the word does alone.",
         ),
-        ([(7, 2), "water"], [3, 4, FULL], "A patch of the pond and the word “water”."),
+        (
+            [(6, 5), "giraffe"],
+            [2, 4, ABOVE],
+            "Together the giraffe's head and the word “giraffe” raise the similarity by {up}.",
+        ),
+        (["water"], [2], "Alone the word “water” raises the similarity by {up}."),
+        (["giraffe"], [2, 4, ABOVE], "Alone the word “giraffe” raises the similarity by {up}."),
+        (
+            ["drink", "water"],
+            [3, 4],
+            "Together the words “drink” and “water” raise the similarity by only {up}, less than "
+            "“water” does alone.",
+        ),
+        (
+            [(3, 5), (4, 5), "giraffe"],
+            [3],
+            "Together two patches of the giraffe's body and the word “giraffe” raise the "
+            "similarity by {up}.",
+        ),
+        (
+            [(7, 2), "water"],
+            [3, 4, ABOVE],
+            "Together this patch of the pond and the word “water” raise the similarity by {up}.",
+        ),
     ],
     "juice-theory": [
         (
             ["traffic"],
             [1],
-            "The photo shows a traffic light, so the word “traffic” fits it.",
+            "The photo shows a traffic light and the word “traffic” raises the similarity by {up}.",
         ),
-        ([(1, 7)], [1], "The red light."),
-        ([(5, 4)], [1], "The letters “RY” of “THEORY”, below the tail of “Juice”."),
+        ([(1, 7)], [1], "This patch shows the red light and raises the similarity by {up}."),
         (
-            ["juice"],
-            [3, 4, FULL],
-            "On its own, the word “juice” lowers the match here; its pair with the “J” of the "
-            "sign's “Juice” is positive, and takes some of that back.",
+            [(5, 4)],
+            [1],
+            "This patch shows letters of the sign and raises the similarity by {up}.",
         ),
-        ([(5, 4), "theory"], [2], "The letters “RY” of “THEORY”, and the word “theory”."),
-        ([(5, 4), "sign"], [2], "The sign's lettering and the word “sign”."),
+        (
+            [(5, 4), "sign"],
+            [2],
+            "Together the sign's letters and the word “sign” raise the similarity by {up}.",
+        ),
         (
             [(1, 7), "traffic"],
-            [2, 3, 4, FULL],
-            "The red light and the word “traffic”. The word “light” is linked to this patch too, "
-            "about half as strongly.",
+            [2, 3, 4, ABOVE],
+            "Together the red light and the word “traffic” raise the similarity by {up}.",
         ),
         (
             [(5, 2), "juice"],
             [2],
-            "The “u” of “Juice” on the sign, and the word “juice”.",
+            "Together the “u” of the sign's “Juice” and the word “juice” raise the similarity by "
+            "only {up}.",
+        ),
+        (["juice"], [2, 3, 4, ABOVE], "Alone the word “juice” lowers the similarity by {down}."),
+        (
+            [(5, 1), "juice"],
+            [3],
+            "Together the “J” of the sign's “Juice” and the word “juice” lower the similarity by "
+            "only {down}.",
         ),
         (
             [(5, 1), "juice"],
-            [3, 4, FULL],
-            "The “J” of “Juice” on the sign, and the word “juice”.",
+            [4, ABOVE],
+            "Together the “J” of the sign's “Juice” and the word “juice” nearly cancel and move "
+            "the similarity by {sum}.",
         ),
         (
             [(5, 3), "theory"],
             [3],
-            "Letters of “THEORY” too, the “E” and the “O”: with the word “theory”, they lower "
-            "the match. The model does not spell.",
+            "Together letters of the sign's “THEORY” and the word “theory” lower the similarity "
+            "by {down}.",
         ),
         (
             ["traffic", "light"],
-            [4, FULL],
-            "“traffic” and “light” name one thing: each adds less once the other is there.",
+            [4, ABOVE],
+            "Together the words “traffic” and “light” raise the similarity by {up}, less than the "
+            "two add alone.",
         ),
         (
             [(7, 2), "juice"],
-            [4, FULL],
-            "Lettering of “The Pantry”, and the word “juice”: linked about as strongly as the "
-            "“u” of “Juice” is.",
+            [4, ABOVE],
+            "Together lettering of “The Pantry” and the word “juice” lower the similarity by "
+            "{down}, less than the word does alone.",
         ),
     ],
 }
 
 
-def photo_picks(
-    photo: str, grid: int, tokens: list[str]
-) -> list[tuple[list[int], list[Any], str | None]]:
+def photo_picks(photo: str, grid: int, tokens: list[str]) -> Picks:
     """Return what is picked on a photo (``PHOTO_PICKS``), its patches and words as players."""
 
     def player(named: tuple[int, int] | str) -> int:
@@ -915,13 +913,13 @@ def photo_picks(
         return (row - 1) * grid + column - 1
 
     return [
-        ([player(named) for named in players], on, note)
-        for players, on, note in PHOTO_PICKS.get(photo, [])
+        ([player(named) for named in players], on, sentence)
+        for players, on, sentence in PHOTO_PICKS.get(photo, [])
     ]
 
 
-def notes_photo(example: dict[str, Any]) -> dict[str, Any]:
-    """Return the picks and the notes of a photo and its caption, by the photo's file name."""
+def curated_photo(example: dict[str, Any]) -> dict[str, Any]:
+    """Return the picks of a photo and its caption and what the demo says of them, by its file."""
     photo = Path(example["image"]).stem
     return curated(example, photo_picks(photo, example["grid"], example["tokens"]))
 
@@ -935,27 +933,27 @@ def photo_words(photo: str) -> dict[str, Any]:
 
 
 # the examples: the file of each one's results, its words, which no result gives (its tab's name,
-# its model's, and the model as the demo shows it), what packs its results, and what notes it. They
-# are in the order of the demo's tabs; an example ``of`` another one has no tab: it is another
-# example of that tab (another photo and its caption), which the tab's picker shows
+# its model's, and the model as the demo shows it), what packs its results, and what picks its
+# insights. They are in the order of the demo's tabs; an example ``of`` another one has no tab: it
+# is another example of that tab (another photo and its caption), which the tab's picker shows
 EXAMPLES: dict[str, tuple[str, dict[str, Any], Any, Any]] = {
     "molecule": (
         "molecule",
         {"label": "Molecule", "detail": "GCN", "model": model("graph")},
         pack_molecule,
-        notes_molecule,
+        partial(curated, table=MOLECULE_PICKS),
     ),
     "house": (
         "house",
         {"label": "One house", "detail": "XGBoost", "model": model("tree")},
         pack_house,
-        notes_house,
+        partial(curated, table=HOUSE_PICKS),
     ),
     "tabpfn": (
         "house_tabpfn",
         {"label": "One house, TabPFN", "detail": "TabPFN", "model": model("tabpfn")},
         pack_tabpfn,
-        notes_tabpfn,
+        partial(curated, table=TABPFN_PICKS),
     ),
     # (the same model as the house's, with the same average)
     "houses": (
@@ -964,18 +962,18 @@ EXAMPLES: dict[str, tuple[str, dict[str, Any], Any, Any]] = {
         pack_houses,
         None,
     ),
-    "fixlip": ("fixlip", photo_words("elephant"), pack_photo, notes_photo),
+    "fixlip": ("fixlip", photo_words("elephant"), pack_photo, curated_photo),
     "giraffe": (
         "fixlip_giraffe-tree",
         {**photo_words("giraffe-tree"), "of": "fixlip"},
         pack_photo,
-        notes_photo,
+        curated_photo,
     ),
     "sign": (
         "fixlip_juice-theory",
         {**photo_words("juice-theory"), "of": "fixlip"},
         pack_photo,
-        notes_photo,
+        curated_photo,
     ),
 }
 HEADER = "// The orders demo's explanations (see demo.js), written by ../compute/pack.py.\n"
@@ -1008,18 +1006,18 @@ def main() -> None:
         indices.add(old["index"])
 
     examples = []
-    for name, (file, words, packer, noter) in EXAMPLES.items():
+    for name, (file, words, packer, picker) in EXAMPLES.items():
         if name in args.examples:
             result = json.loads((args.results / f"{file}.json").read_text(encoding="utf-8"))
             indices.add(result["index"])
             packed = packer(result)
         else:
             # (anew, whatever the data has)
-            written = ("id", "notes", "picks", "of", "photo", *words)
+            written = ("id", "says", "picks", "of", "photo", *words)
             packed = {name: value for name, value in kept[name].items() if name not in written}
         example = {"id": name, **words, **packed}
-        if noter:
-            example.update(noter(example))  # (its notes, and what is picked by hand)
+        if picker:
+            example.update(picker(example))  # (what is picked by hand, and what is said of it)
         examples.append(example)
     (index,) = indices  # of every order of every example, for the demo's labels
 

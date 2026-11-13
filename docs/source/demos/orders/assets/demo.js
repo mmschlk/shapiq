@@ -258,8 +258,6 @@
   // the haze of the weakest is not
   const POINTABLE = 0.08;
 
-  // the strongest groups of a sheet that hold a player, the strongest first (as the data has them)
-  const groupsWith = (sheet, player, most = 4) => sheet.groups.filter(([players]) => players.includes(player)).slice(0, most);
 
   // the marks of a face's groups, each with its group's key ("3,7") and how strong it is drawn: an
   // inspection brings out those of its keys, as strong as reads at the least, and the others
@@ -294,7 +292,8 @@
 
   // a face's inspector: its targets, the one that stands for a group of players (find), and for a
   // target, a ring around it, its marks brought out, and what the explanation says of it
-  // (describe: the keys of the marks to bring out, a title, and rows of a name and a value); reset
+  // (describe: the keys of the marks to bring out, and a sentence with its number, or, of a house
+  // of the map, a title and rows of a name and a value); reset
   // puts back what an inspection changed. The picked (picks: their players) wear a numbered mark
   // each, which says that they can be pointed at, where spots finds room for it (the first of its
   // places clear of the other marks and of what the face must not cover, obstacles, each a middle
@@ -372,66 +371,27 @@
     };
   };
 
-  // the data's note on a player or a group (its key), on a sheet: a sentence, where the data has
-  // one that holds on the sheet's order (a note may name its orders: [note, orders]); for a
-  // group, else the note of every group as large ("many": [size, note])
-  const noteOf = (example, sheet, key, size = 1) => {
-    const note = example.notes?.[key];
-    const said = Array.isArray(note) ? (note[1].includes(sheet.order) ? note[0] : undefined) : note;
-    return said ?? (size > 1 && size >= (example.notes?.many?.[0] ?? Infinity) ? example.notes.many[1] : undefined);
+  // all that some players add on a sheet: their own values, and those of every group of them
+  const sumOf = (sheet, players) => {
+    const among = new Set(players);
+    const own = players.reduce((sum, player) => sum + sheet.first[player], 0);
+    return sheet.groups.reduce((sum, [group, value]) => (group.every((player) => among.has(player)) ? sum + value : sum), own);
   };
 
-  // what an explanation says of a player: its own value (of order 1, its Shapley value), and the
-  // strongest groups it is in; or of a group, an interaction: its players' own values, what they
-  // add together, on top of their own, and for a pair, the sum of the three, what the pair adds
-  // in all. With it, the data's note on the player or the group, where it has one (most have
-  // none: not every value has a story). title names a player, in two parts; nameOf, in a word
-  const sayOf = (example, sheet, target, title, nameOf) => {
+  // what an explanation says of a picked player or group: one sentence, with one number, the sum
+  // of all that it adds on the sheet (sumOf). The data has the sentence of what it picks, by the
+  // sheet's order and the picked one's key (example.says, by hand: ../compute/pack.py), with the
+  // number's place in it: {up} or {down}, an amount that raises or lowers the output, or {sum},
+  // with its sign. What the data did not pick gets a sentence that only says the sum
+  const sayOf = (example, sheet, target) => {
+    const players = target.group ?? [target.player];
+    const key = players.join(",");
     const words = PLAYERS[example.kind];
-    if (target.group) {
-      const players = target.group;
-      const key = players.join(",");
-      const value = sheet.groups.find(([others]) => others.join(",") === key)?.[1] ?? 0;
-      const own = players.map((player) => sheet.first[player]);
-      const name = groupName(example, players, nameOf, 34);
-      // (a group too long to name is named by its size: under it, its players, where their names
-      // tell them apart, or the few that are not in it)
-      const counted = name !== players.map(nameOf).join(" × ");
-      const names = players.map(nameOf);
-      const rest = sheet.first.map((_, player) => player).filter((player) => !players.includes(player));
-      const members =
-        !counted || new Set(names).size < names.length
-          ? undefined
-          : rest.length && rest.length <= 2
-            ? `all ${words.players} but ${rest.map(nameOf).join(" and ")}`
-            : names.join(", ");
-      return {
-        keys: new Set([key]),
-        title: [name, players.length === 2 ? "a pair" : counted ? "" : `a group of ${players.length}`],
-        members,
-        story: noteOf(example, sheet, key, players.length),
-        rows: [
-          ...(players.length <= 4 ? players.map((player, k) => [`${nameOf(player)} alone`, own[k]]) : []),
-          ["together, on top", value],
-          ...(players.length === 2 ? [["in sum", own[0] + own[1] + value, undefined, true]] : []),
-        ],
-        when: `when ${players.length === 2 ? "both" : `all ${players.length}`} are there`,
-      };
-    }
-    const groups = groupsWith(sheet, target.player);
-    const others = (players) => players.filter((player) => player !== target.player);
-    return {
-      keys: new Set(groups.map(([players]) => players.join(","))),
-      title: title(target.player),
-      story: noteOf(example, sheet, String(target.player)),
-      rows: [
-        [sheet.order === 1 ? "Shapley value" : "alone", sheet.first[target.player]],
-        ...groups.map(([players, value]) => [
-          others(players).length <= 3 ? `with ${others(players).map(nameOf).join(", ")}` : `with ${others(players).length} others`,
-          value,
-        ]),
-      ],
-    };
+    const text =
+      example.says?.[sheet.order]?.[key] ??
+      (target.group ? `Together these ${players.length} ${words.players} move ${OF[example.kind]} by {sum}.` : `Alone this ${words.one} moves ${OF[example.kind]} by {sum}.`);
+    // (brought out with it: a group's shape; of a player, which stands alone, none)
+    return { keys: new Set(target.group ? [key] : []), text, sum: sumOf(sheet, players) };
   };
 
   // the map of points into a box that scales them, keeping their aspect, to fit it, centered
@@ -456,9 +416,6 @@
   // a face's layers: "all" for the plan's face, or, for the floating layers, the "input" (what is
   // explained, on the card) or the "marks" (the explanation, on a layer above it)
   const shows = (layer, part) => layer === "all" || layer === part;
-
-  // the elements of a molecule's atoms, in words
-  const ELEMENTS = { C: "carbon", N: "nitrogen", O: "oxygen", H: "hydrogen", S: "sulfur", P: "phosphorus", F: "fluorine", Cl: "chlorine", Br: "bromine", I: "iodine" };
 
   // the molecule: its bonds and atoms over the explanation, as in GraphSHAP-IQ's figures (the
   // card's face can be inspected, atom by atom: it returns its inspector)
@@ -500,12 +457,6 @@
       add(atoms, "text", { x, y: roundTo(y + 0.05, 2) }, atom);
     });
     if (layer !== "all") return null;
-    // an atom, named by its element and the atoms it is bonded to (so a nitro group's N reads as
-    // one: bonded to C, O, O)
-    const bonded = example.atoms.map((_, atom) =>
-      example.bonds.filter((bond) => bond.includes(atom)).map(([a, b]) => example.atoms[a === atom ? b : a]),
-    );
-    const title = (atom) => [example.atoms[atom], `${ELEMENTS[example.atoms[atom]] ?? "atom"}, bonded to ${bonded[atom].join(", ")}`];
     // (an atom's box hardly wider than its disc: between two bonded atoms, their pair's shape shows)
     const targets = position.map(([x, y], atom) => ({ x, y, rx: radius * 1.1, ry: radius * 1.1, round: true, player: atom }));
     // (a group: where its atoms' middle is, with no ring: its shape is brought out)
@@ -528,7 +479,7 @@
       const [cx, cy] = center ? place(center) : [0, 1].map((axis) => players.reduce((sum, atom) => sum + position[atom][axis], 0) / players.length);
       return [[cx, cy], [cx + 3.4, cy - 3.4], [cx - 3.4, cy + 3.4], [cx + 3.4, cy + 3.4], [cx - 3.4, cy - 3.4]];
     };
-    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, (atom) => example.atoms[atom]), {
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target), {
       find,
       picks: picksOf(example, sheet),
       spots,
@@ -636,14 +587,7 @@
       }
     });
     if (layer !== "all") return null;
-    // (the card's face can be inspected, patch by patch and word by word: its inspector) a patch,
-    // named by its row and column in the photo; a word, as the caption has it
-    const where = (patch) => [Math.floor(patch / grid) + 1, (patch % grid) + 1];
-    const nameOf = (player) => (player < patches ? `patch ${where(player).join("·")}` : `“${example.tokens[player - patches]}”`);
-    const title = (player) =>
-      player < patches
-        ? [`Patch ${where(player).join("·")}`, `row ${where(player)[0]}, column ${where(player)[1]} of the photo`]
-        : [`“${example.tokens[player - patches]}”`, `word ${player - patches + 1} of the caption`];
+    // (the card's face can be inspected, patch by patch and word by word: its inspector)
     const targets = players.map(([x, y], player) =>
       player < patches
         ? { x, y, rx: cell / 2, ry: cell / 2, player }
@@ -672,7 +616,7 @@
       const [cx, cy] = [0, 1].map((axis) => ends.reduce((sum, end) => sum + end[axis], 0) / ends.length);
       return [[cx, cy], [cx + 4, cy - 4], [cx - 4, cy + 4], [cx + 4, cy + 4], [cx - 4, cy - 4]];
     };
-    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target, title, nameOf), { find, picks: picksOf(example, sheet), spots });
+    return inspectorOf(svg, marks, targets, (target) => sayOf(example, sheet, target), { find, picks: picksOf(example, sheet), spots });
   }
 
   // one house: its explanation as a tree that grows one level per order. The features are on top,
@@ -807,13 +751,12 @@
     ];
     // (a group the tree does not draw has no place on it: nothing to point at)
     const find = (players) => targets.find((target) => (target.group ?? [target.player]).join(",") === players.join(",")) ?? null;
-    const title = (feature) => [example.features[feature], example.values[feature]];
     // a mark's places: at a corner of a feature's or a group's circle
     const spots = (target) => {
       const reach = (target.player !== undefined ? 2 : target.rx) + MARK + 0.3;
       return [[1, -1], [-1, -1], [1, 1], [-1, 1]].map(([dx, dy]) => [target.x + dx * reach * 0.74, target.y + dy * reach * 0.74]);
     };
-    return inspectorOf(svg, noted, targets, (target) => sayOf(example, sheet, target, title, (feature) => example.features[feature]), {
+    return inspectorOf(svg, noted, targets, (target) => sayOf(example, sheet, target), {
       find,
       picks: picksOf(example, sheet),
       spots,
@@ -2000,7 +1943,7 @@
     };
     // -- inspecting the card's face: the pointer over a player (or a group, a house, a row) of the
     // explanation shown brings out on the face what the explanation says of it, and the card's tip
-    // says it in numbers, over the face. With a mouse, by hovering; on a touch screen, by a tap (a
+    // says it in a sentence, over the face. With a mouse, by hovering; on a touch screen, by a tap (a
     // tap elsewhere lets go). The face's inspector (demo.js: inspectorOf) knows its targets ------
     let inspected = null; // the inspector and its target, while one is inspected
     const inspectorNow = () => inspectors.get(planView.firstChild) ?? null;
@@ -2025,22 +1968,29 @@
       cardTip.classList.toggle("orders-demo-tip-on", Boolean(said));
       if (!said) return;
       const kind = current().kind;
-      const title = el("div", "orders-demo-tip-title");
-      title.append(el("strong", "", said.title[0]), ` ${said.title[1]}`);
-      // a row: a name, and a value in the red of what raises f(x) or the blue of what lowers it (a
-      // value without a sign, as a house's prediction, in neither)
-      // (a sum, under a rule)
-      const rows = said.rows.map(([name, value, text, sum]) => {
-        const row = el("div", sum ? "orders-demo-tip-row orders-demo-tip-sum" : "orders-demo-tip-row");
-        const tone = value === null ? "" : value >= 0 ? "orders-demo-plan-raises" : "orders-demo-plan-lowers";
-        row.append(el("span", "", name), el("b", tone, text ?? VALUE[kind](value)));
-        return row;
-      });
-      // the data's note on it, where it has one, under its name; and under the rows, what the
-      // values are of (a group's: when it counts)
-      const story = said.story ? [el("div", "orders-demo-tip-story", said.story)] : [];
-      if (said.members) story.unshift(el("div", "orders-demo-tip-members", said.members));
-      cardTip.replaceChildren(title, ...story, ...rows, el("div", "orders-demo-tip-note", `added to ${OF[kind]}${said.when ? ` ${said.when}` : ""}`));
+      // a value's color: the red of what raises f(x) or the blue of what lowers it; what has no
+      // sign, as a house's prediction, or shows as zero, neither
+      const toneOf = (value, shown) => (value === null || !/[1-9]/.test(shown) ? "" : value > 0 ? "orders-demo-plan-raises" : "orders-demo-plan-lowers");
+      if (said.text) {
+        // an insight: its one sentence, and in it, at the number's place, the sum, in its color
+        // (an amount that raises or lowers has no sign: the sentence says which)
+        const [before, place, after] = said.text.split(/\{(up|down|sum)\}/);
+        const shown = VALUE[kind](said.sum);
+        const sentence = el("div", "orders-demo-tip-says", before);
+        sentence.append(el("b", toneOf(said.sum, shown), place === "sum" ? shown : shown.replace(/^[+−]/, "")), after);
+        cardTip.replaceChildren(sentence);
+      } else {
+        // a house of the map: its title, rows of a name and a value, and what the values are of
+        const title = el("div", "orders-demo-tip-title");
+        title.append(el("strong", "", said.title[0]), ` ${said.title[1]}`);
+        const rows = said.rows.map(([name, value, text]) => {
+          const row = el("div", "orders-demo-tip-row");
+          const shown = text ?? VALUE[kind](value);
+          row.append(el("span", "", name), el("b", toneOf(value, shown), shown));
+          return row;
+        });
+        cardTip.replaceChildren(title, ...rows, el("div", "orders-demo-tip-note", `added to ${OF[kind]}`));
+      }
       placeTip(target);
     }
     // the tip's place: over its target, in the middle, or under it where there is no room above,

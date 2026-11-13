@@ -10,8 +10,9 @@ The demo explains one prediction at every order of interaction, from the Shapley
 to the full decomposition (order n). The explanations are drawn as layers floating above the
 example's input, with a plot of each order's fit (R^2) beside them. Above the layers, the
 "problem" is drawn as the input `x`, wired through the model `f` (a chip) to the prediction `f(x)`.
-A card shows the explanation that is pointed at, and can be inspected: pointing at a player on it
-(an atom, a feature, a house, a patch or a word) says its values. The demo has five examples: a
+A card shows the explanation that is pointed at, and can be inspected: pointing at a mark on it
+says, in one sentence with one number, what a player or an interaction adds. The demo has five
+examples: a
 molecule (GCN), one house (XGBoost), the same house (TabPFN), 2,000 houses on the map of
 California, and an image and caption (SigLIP 2), with two more images and captions behind the same
 tab.
@@ -222,10 +223,14 @@ layers shrink to fit the window.
   order's strongest). More marks than that crowd the face: each one picked has something of its
   own to say, and they lie apart, as a mark keeps `APART` from the others wherever its places
   on the face allow. A mark's halo comes and goes until the face is first inspected. Pointing at a mark
-  brings out the interaction's shape, or the strongest groups of the player, and a tip lists the
-  values: for an interaction, its players' own, what they add together on top of them, and for a
-  pair the sum. Where the data has a note on it that holds on that order (`notes`), the tip says
-  it in a sentence: all that is picked has one, and a few of them say that there is no story.
+  brings out the interaction's shape, or rings the player, and a tip says one plain sentence
+  with one number in it: the sum of all that the marked adds on that order, its players' own
+  values and those of every group of them (`sumOf`), a player's own value for a player. The
+  sentence is the data's, by order (`says`), and marks the number's place: `{up}` or `{down}`
+  for an amount that raises or lowers the output, written without a sign as the sentence says
+  which, or `{sum}` for the sum with its sign. The number is in the red of what raises or the
+  blue of what lowers; one that shows as zero is in ink. What the data did not pick (the
+  strongest of an order without picks) gets a sentence that only says the sum.
   Only what is marked can be pointed at, in every example: what is not picked says
   nothing (hovering small shapes that lie on each other was fiddly, and what they said had no
   story). What is marked is easy to hit (`targetAt`): the mark itself; the marked itself, where
@@ -240,10 +245,9 @@ layers shrink to fit the window.
   target, or under it where there is no room above: in the demo, and in the window, as far as a
   header that sticks to its top leaves it free (`placeTip`, `freeTop`). Where the face is much
   smaller than the tip (a phone's), the tip lies under the card instead, or over it, so that it
-  does not cover the face it speaks of. A group that is too long to name is named by its size,
-  and the tip lists its players under that, or the one or two that are not in it ("all features
-  but Occup."). On the many houses' map, which has no marks, a row of the list
-  shows itself on the map, and a house says its prediction and its strongest values. With a mouse, pointing is hovering; on a
+  does not cover the face it speaks of. On the many houses' map, which has no marks, a row of the list
+  shows itself on the map, and a house's tip has a title and rows: its prediction and its
+  strongest values. With a mouse, pointing is hovering; on a
   touch screen, a tap, and a tap elsewhere lets go. The card's line "Top ...: ..." names the explanation's strongest player or group, and
   brings it out when pointed at. To inspect another layer's face, pin the layer first (click it):
   the pointer can then go to the card. The face is not reachable by keyboard; the "Top" line is
@@ -297,12 +301,12 @@ Written by `compute/pack.py`. Shape, in short:
     of,                                // optional: the id of its tab's first example, for another
                                        // example of that tab (which the picker under the input shows)
     photo,                             // optional: { title }, the picker's name of it
-    notes,                             // optional: what the tip says of a player or a group, by its
-                                       // players' key ("9", "9,14"): a note, or [note, orders],
-                                       // a note that holds on those orders only; "many": [size,
-                                       // note], of every group of that size or more
     picks,                             // optional: by order, the keys of what wears a mark on
-                                       // the card's face, the interactions first
+                                       // the card's face, the interactions first; a key is a
+                                       // player's or a group's players ("9", "9,14")
+    says,                              // optional: by order and key, the tip's sentence on what
+                                       // is picked, with the place of its number, the sum of
+                                       // all that the picked adds: "{up}", "{down}" or "{sum}"
     kind,                              // "graph" | "tree" | "map" | "image-text": how faces are drawn
     model: { icon, title, detail, method, how, short },  // the chip and the card's "Explained with"
     problem: { input, output, value }, // the problem's parts: x, f(x)
@@ -335,7 +339,7 @@ of a new `kind` also needs a face for it in `demo.js` (next to `moleculeFace`, `
 `mapFace` and `imageTextFace`), its players' words (`PLAYERS`), how its values are written and what
 they are of (`VALUE`, `OF`), and its input on the problem's card. A face that can be inspected
 returns an inspector for the card's face (`inspectorOf`): its targets, and for a target, the marks
-to bring out and the tip's title and rows.
+to bring out and the tip's sentence with its sum (`sayOf`), or a title and rows.
 
 ## Working on it
 

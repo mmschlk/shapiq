@@ -1894,7 +1894,8 @@ body[data-theme="dark"] .orders-demo {
 }
 
 /* the card's tip: what the explanation says of what is pointed at on the face, a small card of
-   paper over it (demo.js places it), which takes no pointer */
+   paper over it (demo.js places it), which takes no pointer. Of an insight, one sentence with
+   one number; of a house of the map, a title and rows of values */
 .orders-demo-tip {
   position: absolute;
   top: 0;
@@ -1945,23 +1946,23 @@ body[data-theme="dark"] .orders-demo {
   color: var(--orders-ink);
 }
 
-/* (a sum, under a rule) */
-.orders-demo-tip-sum {
-  margin-top: 0.15rem;
-  padding-top: 0.15rem;
-  border-top: 1px solid var(--orders-line);
-}
-
-/* the data's note on what is pointed at, where it has one: a sentence or two, in ink */
-/* (the players of a group that is too long to name) */
-.orders-demo-tip-members {
-  margin: -0.1rem 0 0.15rem;
-}
-
-.orders-demo-tip-story {
-  margin-bottom: 0.25rem;
+/* an insight's sentence, in ink, and its number, in the red of what raises or the blue of what
+   lowers, which does not break from its sign or its unit */
+.orders-demo-tip-says {
   color: var(--orders-ink);
-  line-height: 1.35;
+  font-size: 1.08em;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.orders-demo-tip-says b {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orders-demo-tip-says b:not([class]) {
+  color: var(--orders-ink);
 }
 
 .orders-demo-tip-note {
