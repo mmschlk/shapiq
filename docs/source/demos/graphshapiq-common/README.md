@@ -81,9 +81,12 @@ graphshapiq-<demo>/
 - **The explorer's ninth molecule is the reader's own** (*Build your own*, with a fourth view,
   *Build*): groups on the positions of a benzene ring. A click on a position (a + or a group)
   opens a wheel of the groups that can go there, around the position (`openWheel`; a group that
-  would pass the 15 atoms is dimmed). Escape, the hub or a click beside it close it. The panel
-  offers molecules to start from (`STARTS`). The tile stands out in the brand color, and stays in
-  sight where the row of tiles scrolls. Nothing of the molecule is in `data.js`. The page runs
+  would pass the 15 atoms is dimmed). The wheel is a ring of frosted glass: the molecule shows
+  through it, and the position through its hub. Escape, the hub or a click beside it close it. A
+  line of the panel offers two molecules to start from (`STARTS`: an empty ring and catechol).
+  Building has a color of its own, amber (`--gsq-build`): the tile, which stands apart from the
+  eight molecules and stays in sight where the row scrolls, the position chosen, and the progress.
+  Nothing of the molecule is in `data.js`. The page runs
   the GNN for the answer at once (`predict`), and a Web Worker (the `WORKER` string in
   `graphshapiq-explorer/assets/demo.js`, run from a Blob URL) explains it with GraphSHAP-IQ proper:
   it evaluates the GNN on the maskings inside the receptive fields only, computes the Möbius
@@ -203,7 +206,8 @@ The built molecule gained what only the explorer had: hiding atoms, and the orde
 
 A fifth pass made building direct: the wheel of groups at the position clicked replaced a palette
 of chips in the panel, the tiles took the demo's whole width, and the tile of *Build your own* its
-accent.
+accent. A sixth made that accent amber (blue is a value's color here), the wheel see-through, and
+cut the molecules to start from to two.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
