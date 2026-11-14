@@ -43,21 +43,11 @@ takes too long or needs too large a model to run with the docs, and it shows wha
 
       Three graph neural networks, eight molecules, every molecule explained for every question:
       Shapley values, interactions of up to four atoms, and the Möbius interactions of all orders,
-      exactly, with GraphSHAP-IQ, and why that does not take 2ⁿ evaluations.
-
-   .. grid-item-card:: GraphSHAP-IQ Lab: build a molecule, explain it exactly
-      :link: graphshapiq-lab/index
-      :link-type: doc
-      :img-top: /_static/images/hero_graphshapiq_lab_demo.png
-      :img-alt: The GraphSHAP-IQ lab: catechol, a benzene ring with two neighbouring OH groups, judged a PAINS by a GNN, its atoms joined by red bands.
-
-      Put groups on a benzene ring, and your browser computes the exact Shapley interactions of the
-      molecule's atoms with GraphSHAP-IQ while you watch: two neighbouring OH groups make a PAINS,
-      two apart do not.
+      exactly, with GraphSHAP-IQ, and why that does not take 2ⁿ evaluations. Build a molecule of
+      your own, and your browser explains it while you watch.
 
 .. toctree::
    :hidden:
 
    fixlip/index
    graphshapiq-explorer/index
-   graphshapiq-lab/index

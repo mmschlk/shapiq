@@ -50,8 +50,8 @@ Demos can share code. A folder of `demos/` without an `index.rst`, whose `assets
 `assets/requires.txt`, one per line (`#` starts a comment), and every page that embeds the demo gets
 their stylesheets and scripts before its own, with checksums, and is written again when they change.
 The GraphSHAP-IQ demos share `graphshapiq-common`, whose `compute/` computes all their data (its
-README has notes for working on them): the explorer, the lab, and `graphshapiq-exact`, a figure
-without a page of its own, which the explorer's page embeds.
+README has notes for working on them): the explorer and `graphshapiq-exact`, a figure without a
+page of its own, which the explorer's page embeds.
 
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).

@@ -7,9 +7,8 @@ browser would not fetch a JSON file):
 
 - ``explorer`` (``window.SHAPIQ_GRAPHSHAPIQ_EXPLORER``): the three GNNs, the molecules, and the
   explanation of every molecule for every question: the k-SII of orders 1 to 4 and the Möbius
-  interactions, the strongest of every order overall and of every atom;
-- ``lab`` (``window.SHAPIQ_GRAPHSHAPIQ_LAB``): the GNNs that run in the reader's browser, where the
-  demo computes GraphSHAP-IQ itself, for the molecules the reader builds;
+  interactions, the strongest of every order overall and of every atom (the GNNs also run in the
+  reader's browser, where the demo computes GraphSHAP-IQ itself for the molecule a reader builds);
 - ``exact`` (``window.SHAPIQ_GRAPHSHAPIQ_EXACT``), the figure of receptive fields on the explorer's
   page: molecules of growing size, and the number of maskings GraphSHAP-IQ evaluates for GNNs of
   1 to 4 layers (no GNN is evaluated).
@@ -22,12 +21,12 @@ bitmask of the atoms' indices (the molecules have at most 31 atoms).
 Usage::
 
     python pack.py                    # all of them
-    python pack.py --demos lab exact  # some of them
+    python pack.py --demos exact      # one of them
     python pack.py --texts            # only the texts of config.toml, into the data that is there
 
-``--texts`` needs no ``results/``: it reads the explorer's and the lab's ``data.js``, and writes them
-again with the tasks' and the molecules' texts as config.toml has them now (and the drawings of the
-tasks' patterns). The GNNs, the molecules' drawings and the explanations stay as they are.
+``--texts`` needs no ``results/``: it reads the explorer's ``data.js``, and writes it again with the
+tasks' and the molecules' texts as config.toml has them now (and the drawings of the tasks'
+patterns). The GNNs, the molecules' drawings and the explanations stay as they are.
 """
 
 from __future__ import annotations
@@ -266,7 +265,7 @@ def read(demo: str) -> dict[str, Any]:
 
 
 def refresh_texts(config: dict[str, Any], demos: list[str]) -> None:
-    """Write the texts of config.toml into the data of the explorer and the lab as it is.
+    """Write the texts of config.toml into the data of the explorer as it is.
 
     A task's and a molecule's entry keeps the order of its keys: the texts, then what was computed.
     """
@@ -278,17 +277,17 @@ def refresh_texts(config: dict[str, Any], demos: list[str]) -> None:
 
     task_keys = {"label", "question", "meaning", "yes", "no", "dataset", "truthLabel", "motif"}
     molecule_keys = {"name", "short", "blurb", "task", "takeaway"}
-    for demo in [demo for demo in demos if demo != "exact"]:
-        data = read(demo)
-        data["tasks"] = [
-            refreshed(entry, task_texts(tasks[entry["id"]]), task_keys) for entry in data["tasks"]
-        ]
-        if "molecules" in data:
-            data["molecules"] = [
-                refreshed(entry, molecule_texts(molecules[entry["id"]]), molecule_keys)
-                for entry in data["molecules"]
-            ]
-        write(demo, data)
+    if "explorer" not in demos:  # the figure of receptive fields has no texts of config.toml
+        return
+    data = read("explorer")
+    data["tasks"] = [
+        refreshed(entry, task_texts(tasks[entry["id"]]), task_keys) for entry in data["tasks"]
+    ]
+    data["molecules"] = [
+        refreshed(entry, molecule_texts(molecules[entry["id"]]), molecule_keys)
+        for entry in data["molecules"]
+    ]
+    write("explorer", data)
 
 
 def explanation(results: Path, molecule: str, task: str) -> dict[str, Any]:
@@ -320,17 +319,6 @@ def pack_explorer(config: dict[str, Any], results: Path) -> None:
     write("explorer", data)
 
 
-def pack_lab(config: dict[str, Any], results: Path) -> None:
-    """Write the lab's data: the GNNs that run in the reader's browser."""
-    smiles = [m["smiles"] for m in config["molecules"]]
-    by_id = {task["id"]: task for task in config["tasks"]}
-    tasks = [
-        task_entry(by_id[tid], results, pack_gnn(by_id[tid], smiles, results))
-        for tid in config["lab_demo"]["tasks"]
-    ]
-    write("lab", {"symbols": SYMBOLS, "tasks": tasks})
-
-
 def pack_exact(config: dict[str, Any]) -> None:
     """Write the exact demo's data: molecules and GraphSHAP-IQ's maskings for 1 to 4 layers."""
     molecules = []
@@ -356,13 +344,13 @@ def pack_exact(config: dict[str, Any]) -> None:
 def main() -> None:
     """Write the data of the demos named on the command line (all by default)."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    demos = ["explorer", "lab", "exact"]
+    demos = ["explorer", "exact"]
     parser.add_argument("--demos", nargs="+", choices=demos, default=demos)
     parser.add_argument("--results", type=Path, default=HERE / "results")
     parser.add_argument(
         "--texts",
         action="store_true",
-        help="only write config.toml's texts into the explorer's and the lab's data as it is",
+        help="only write config.toml's texts into the explorer's data as it is",
     )
     args = parser.parse_args()
     config = tomllib.loads((HERE / "config.toml").read_text(encoding="utf-8"))
@@ -371,8 +359,6 @@ def main() -> None:
         return
     if "explorer" in args.demos:
         pack_explorer(config, args.results)
-    if "lab" in args.demos:
-        pack_lab(config, args.results)
     if "exact" in args.demos:
         pack_exact(config)
 

@@ -172,10 +172,10 @@
   border: 2.5px solid var(--gsq-border);
   border-top-color: var(--gsq-link);
   border-radius: 50%;
-  animation: graphshapiq-lab-spin 700ms linear infinite;
+  animation: graphshapiq-explorer-spin 700ms linear infinite;
 }
 
-@keyframes graphshapiq-lab-spin {
+@keyframes graphshapiq-explorer-spin {
   to {
     transform: rotate(360deg);
   }
