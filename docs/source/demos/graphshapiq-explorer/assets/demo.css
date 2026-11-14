@@ -24,3 +24,171 @@
 .graphshapiq-explorer-demo .gsq-pred-why {
   margin-top: 1.1rem;
 }
+
+/* -- the reader's own molecule ("Build your own") ----------------------------------------------- */
+
+/* nine molecules in a row, their names in full */
+.graphshapiq-explorer-demo .gsq-mol {
+  width: 4.9rem;
+  padding-inline: 0.05rem;
+}
+
+.graphshapiq-explorer-demo .gsq-mol span {
+  font-size: 0.6rem;
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own .gsq-plus-o {
+  fill: var(--gsq-sheet);
+  stroke: var(--gsq-ink);
+  stroke-dasharray: 2.5 2;
+  stroke-width: 1.1px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* the view "Build" is for the reader's own molecule only (the pill holds a copy of the options) */
+.graphshapiq-explorer-demo .gsq-switch.gsq-no-build > .gsq-opt:first-child,
+.graphshapiq-explorer-demo .gsq-switch.gsq-no-build .gsq-pill > .gsq-opt:first-child {
+  display: none;
+}
+
+/* the positions of the ring: a + where a group can go, the ring's carbon where one is */
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot {
+  cursor: pointer;
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot circle {
+  fill: var(--gsq-stage);
+  stroke: var(--gsq-muted);
+  stroke-dasharray: 2.5 2;
+  stroke-width: 1.3px;
+  vector-effect: non-scaling-stroke;
+  transition:
+    stroke 200ms,
+    fill 200ms;
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot .gsq-plus {
+  stroke: var(--gsq-muted);
+  stroke-linecap: round;
+  stroke-width: 1.3px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled circle {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot:hover circle,
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel circle {
+  fill: color-mix(in srgb, var(--gsq-ink) 8%, var(--gsq-stage));
+  stroke: var(--gsq-ink);
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled.gsq-sel circle {
+  fill: color-mix(in srgb, var(--gsq-link) 14%, transparent);
+  stroke: var(--gsq-link);
+  stroke-dasharray: none;
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot:focus {
+  outline: none;
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot:focus-visible circle {
+  stroke: var(--gsq-link);
+  stroke-width: 2px;
+}
+
+.graphshapiq-explorer-demo .gsq-progress {
+  position: absolute;
+  inset: auto 0.8rem 0.7rem;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gsq-border) 70%, transparent);
+}
+
+.graphshapiq-explorer-demo .gsq-progress i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gsq-link);
+  transition: width 120ms linear;
+}
+
+.graphshapiq-explorer-demo .gsq-progress[hidden] {
+  display: none;
+}
+
+.graphshapiq-explorer-demo .gsq-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.graphshapiq-explorer-demo .gsq-chip {
+  min-width: 2.6rem;
+  height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--gsq-border);
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: var(--gsq-sheet);
+  color: var(--gsq-ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 200ms,
+    transform 120ms;
+}
+
+.graphshapiq-explorer-demo .gsq-chip:hover,
+.graphshapiq-explorer-demo .gsq-chip[aria-pressed="true"] {
+  border-color: var(--gsq-ink);
+}
+
+.graphshapiq-explorer-demo .gsq-chip:active {
+  transform: scale(0.95);
+}
+
+.graphshapiq-explorer-demo .gsq-chip.gsq-clear {
+  color: var(--gsq-muted);
+}
+
+.graphshapiq-explorer-demo .gsq-computing {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+}
+
+.graphshapiq-explorer-demo .gsq-spin {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2.5px solid var(--gsq-border);
+  border-top-color: var(--gsq-link);
+  border-radius: 50%;
+  animation: graphshapiq-lab-spin 700ms linear infinite;
+}
+
+@keyframes graphshapiq-lab-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.graphshapiq-explorer-demo .gsq-chip[aria-disabled="true"] {
+  opacity: 0.45;
+}
+
+.graphshapiq-explorer-demo .gsq-detail.gsq-note {
+  color: var(--gsq-link);
+}
+
+.graphshapiq-explorer-demo .gsq-starts {
+  margin: 0.7rem 0 1rem;
+}
