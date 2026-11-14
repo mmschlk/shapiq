@@ -82,6 +82,8 @@ Games whose interaction values are known in closed form.
    UnanimityGame
    SOUM
    RandomTableGame
+   LinearGaussianSCM
+   ConfoundedChainSCM
 
 .. _games-model-specific:
 
