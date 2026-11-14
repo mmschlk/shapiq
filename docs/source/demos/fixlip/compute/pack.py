@@ -21,6 +21,13 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 CLIQUES = range(2, 11)  # the sizes of the cliques the demo offers
+PREFIX = "window.SHAPIQ_FIXLIP = "
+
+
+def read_data(assets: Path = HERE.parent / "assets") -> dict[str, Any]:
+    """Return the demo's data, as ``main`` wrote it to ``data.js``."""
+    text = (assets / "data.js").read_text(encoding="utf-8")
+    return json.loads(text[text.index(PREFIX) + len(PREFIX) :].rstrip().removesuffix(";"))
 
 
 def compact(result: dict[str, Any]) -> dict[str, Any]:
@@ -71,7 +78,7 @@ def main() -> None:
     text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
     (args.assets / "data.js").write_text(
         "// The FIxLIP demo's explanations (see demo.js), written by ../compute/pack.py.\n"
-        f"window.SHAPIQ_FIXLIP = {text};\n",
+        f"{PREFIX}{text};\n",
         encoding="utf-8",
     )
     print(f"{len(explanations)} explanations, {len(text) / 1024:.0f} KiB")

@@ -38,6 +38,19 @@ is left out.
 The assets are copied before the pages are written, so that Sphinx adds its checksums to the links
 of ``demo.css`` and ``demo.js``, and they are dependencies of the pages that embed the demo, so that a
 change to them writes these pages again.
+
+A page's figures may come in two files, one for the light and one for the dark theme of the docs,
+``<name>-light.<suffix>`` and ``<name>-dark.<suffix>``. A page names the light one, and where the
+dark one exists next to it, both are written to the page, each shown in its theme (the theme's
+classes ``only-light`` and ``only-dark``)::
+
+    .. figure:: figures/game-light.webp
+       :alt: What the figure shows.
+
+       The caption, once.
+
+Outside HTML, only the light one is kept. A dark file that is added later shows once its page is
+read again.
 """
 
 from __future__ import annotations
@@ -50,6 +63,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from docutils import nodes
 from docutils.parsers.rst import directives
+from sphinx.transforms import SphinxTransform
+from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.osutil import relative_uri
 
@@ -99,6 +114,49 @@ class DemoDirective(SphinxDirective):
         if "anchor" in self.options:
             node["ids"].append(self.options["anchor"])
         return [node]
+
+
+class ThemedImages(SphinxTransform):
+    """Add the dark variant of every image named ``<name>-light.<suffix>`` that has one."""
+
+    default_priority = 400  # while a page is read, before Sphinx collects its images
+
+    def apply(self, **kwargs: Any) -> None:  # noqa: ARG002
+        """Mark the light images for the light theme and add their dark variants after them."""
+        for node in list(self.document.findall(nodes.image)):
+            stem, dot, suffix = node["uri"].rpartition(".")
+            if not stem.endswith("-light"):
+                continue
+            dark = f"{stem.removesuffix('-light')}-dark{dot}{suffix}"
+            if not Path(self.env.relfn2path(dark, self.env.docname)[1]).is_file():
+                continue
+            twin = node.deepcopy()
+            twin["uri"], twin["ids"], twin["names"] = dark, [], []
+            node["classes"].append("only-light")
+            twin["classes"].append("only-dark")
+            # an image with a target is the only child of its link, so the twin gets its own link
+            first, second = node, twin
+            if isinstance(node.parent, nodes.reference):
+                first, second = node.parent, node.parent.copy()
+                second["ids"], second["names"] = [], []
+                second += twin
+            first.parent.insert(first.parent.index(first) + 1, second)
+
+
+class LightImagesOnly(SphinxPostTransform):
+    """Drop the dark variants again where the output has no themes, as it skips the demos."""
+
+    default_priority = 5
+    formats = ("latex", "text", "man", "texinfo")
+
+    def run(self, **kwargs: Any) -> None:  # noqa: ARG002
+        """Remove the images that ``ThemedImages`` added, with the links around them."""
+        for node in list(self.document.findall(nodes.image)):
+            if "only-dark" in node["classes"]:
+                twin = node.parent if isinstance(node.parent, nodes.reference) else node
+                twin.parent.remove(twin)
+            elif "only-light" in node["classes"]:
+                node["classes"].remove("only-light")
 
 
 def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
@@ -167,11 +225,13 @@ def setup(app: Sphinx) -> ExtensionMetadata:
         texinfo=skip,
     )
     app.add_directive("shapiq-demo", DemoDirective)
+    app.add_transform(ThemedImages)
+    app.add_post_transform(LightImagesOnly)
     app.connect("html-page-context", _add_assets)
     app.connect("env-updated", _copy_assets)
     return {
         "version": "1.0",
-        "env_version": 2,  # the nodes carry a version: environments of earlier builds are read again
+        "env_version": 4,  # pages are read again where what the extension writes to them changed
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }
