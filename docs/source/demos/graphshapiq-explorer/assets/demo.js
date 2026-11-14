@@ -240,11 +240,12 @@
     const slotLayer = svg("g", { class: "gsq-slots" });
     const progress = h("div", "gsq-progress"), progressFill = h("i");
     progress.append(progressFill); progress.hidden = true; frame.append(progress);
-    // the molecules to start from, along the bottom of the frame (in the view "Build" only)
-    const starts = h("div", "gsq-starts", h("span", "gsq-starts-label", "Start from"));
-    starts.setAttribute("role", "group"); starts.setAttribute("aria-label", "Molecules to start from"); starts.hidden = true;
+    // the molecules to start from, as drawings along the bottom of the frame (in the view "Build" only)
+    const starts = h("div", "gsq-starts");
+    starts.setAttribute("role", "group"); starts.setAttribute("aria-label", "Start from"); starts.hidden = true;
     const startButtons = STARTS.map((s, k) => {
-      const b = h("button", "gsq-chip", s.name); b.type = "button";
+      const b = h("button", "gsq-start", G.tile(assemble(s.slots))); b.type = "button";
+      b.title = `Start from ${s.name.toLowerCase().replace("empty", "an empty")}`; b.setAttribute("aria-label", b.title);
       b.addEventListener("click", () => start(k));
       starts.append(b);
       return b;

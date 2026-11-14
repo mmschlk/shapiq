@@ -66,7 +66,7 @@ graphshapiq-<demo>/
     class `gsq-failed`.
 - **Styles.** Every class is named `gsq-*` (as the FIxLIP demo's are `fixlip-demo-*`), so that no
   rule of the theme or of another demo applies to them by accident; a demo's own rules start with
-  its container's class (`.graphshapiq-explorer-demo .gsq-chip`). Everything is built on the docs' tokens
+  its container's class (`.graphshapiq-explorer-demo .gsq-start`). Everything is built on the docs' tokens
   (`--color-foreground-primary`, `--shapiq-surface`, `--shapiq-surface-raised`, `--shapiq-border`,
   `--color-brand-content`). Dark mode follows Furo: `body[data-theme="dark"]` and
   `prefers-color-scheme` unless `body[data-theme="light"]`. The colors are shapiq's: red
@@ -83,7 +83,7 @@ graphshapiq-<demo>/
   opens a wheel of the groups that can go there, around the position (`openWheel`; a group that
   would pass the 15 atoms is dimmed). The wheel is a ring of frosted glass: the molecule shows
   through it, and the position through its hub. Escape, the hub or a click beside it close it. A
-  selector along the bottom of the frame offers two molecules to start from (`STARTS`: an empty ring and catechol), in the view *Build* only. The molecule is then drawn above it (`.gsq-building`), and the wheel is placed through the plot's transform.
+  pill along the bottom of the frame offers two molecules to start from, as drawings without text (`STARTS`: an empty ring and catechol, named in their tooltips), in the view *Build* only. The molecule is then drawn above it (`.gsq-building`), and the wheel is placed through the plot's transform.
   Building has a color of its own, amber (`--gsq-build`): the tile, which stands apart from the
   eight molecules and stays in sight where the row scrolls, the position chosen, and the progress.
   Nothing of the molecule is in `data.js`. The page runs
