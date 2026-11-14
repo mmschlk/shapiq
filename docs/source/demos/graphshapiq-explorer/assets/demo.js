@@ -240,6 +240,16 @@
     const slotLayer = svg("g", { class: "gsq-slots" });
     const progress = h("div", "gsq-progress"), progressFill = h("i");
     progress.append(progressFill); progress.hidden = true; frame.append(progress);
+    // the molecules to start from, along the bottom of the frame (in the view "Build" only)
+    const starts = h("div", "gsq-starts", h("span", "gsq-starts-label", "Start from"));
+    starts.setAttribute("role", "group"); starts.setAttribute("aria-label", "Molecules to start from"); starts.hidden = true;
+    const startButtons = STARTS.map((s, k) => {
+      const b = h("button", "gsq-chip", s.name); b.type = "button";
+      b.addEventListener("click", () => start(k));
+      starts.append(b);
+      return b;
+    });
+    frame.append(starts);
     const scrim = h("div", "gsq-scrim"), wheel = h("div", "gsq-wheel");
     scrim.hidden = wheel.hidden = true; wheel.tabIndex = -1; wheel.setAttribute("role", "group");
     frame.append(scrim, wheel);
@@ -351,7 +361,11 @@
         wheel.append(b);
       });
       wheel.setAttribute("aria-label", `${rest} at position ${i + 1}`);
-      wheel.style.setProperty("--x", `${build.at[i][0]}%`); wheel.style.setProperty("--y", `${build.at[i][1]}%`);
+      // where the position is in the frame (the plot leaves room for the molecules to start from)
+      const point = plot.createSVGPoint(), ctm = plot.getScreenCTM(), box = frame.getBoundingClientRect();
+      [point.x, point.y] = build.at[i];
+      const at = ctm ? point.matrixTransform(ctm) : { x: box.left + (build.at[i][0] / 100) * box.width, y: box.top + (build.at[i][1] / 100) * box.height };
+      wheel.style.setProperty("--x", `${at.x - box.left}px`); wheel.style.setProperty("--y", `${at.y - box.top}px`);
       scrim.hidden = wheel.hidden = false;
       hint.hide();
       (byKey ? wheel.querySelector('[aria-pressed="true"]') || wheel.querySelector(".gsq-wheel-item") : wheel).focus({ preventScroll: true });
@@ -399,6 +413,8 @@
     function draw() {
       const m = state.mol, e = ex();
       const building = state.view === "build";
+      starts.hidden = !building; frame.classList.toggle("gsq-building", building);
+      startButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(STARTS[k].slots.join() === build.slots.join())));
       if (building) { slots(); if (build.picked) hint.hide(); else hint.show(`${G.hovers() ? "Click" : "Tap"} a + to add a group`); }
       else {
         slotLayer.remove();
@@ -457,16 +473,10 @@
     const why = () => h("p", "gsq-pred-why", "Which atoms does the answer rest on? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), ".");
     const computing = () => h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…");
     function buildPanel(box, m, t, e) {
-      const title = h("p", "gsq-title"), detail = h("p", `gsq-detail${build.note ? " gsq-note" : ""}`), starts = h("p", "gsq-starts", "Start from");
+      const title = h("p", "gsq-title"), detail = h("p", `gsq-detail${build.note ? " gsq-note" : ""}`);
       title.append(h("strong", "", "Build your own"), "on a benzene ring");
       detail.append(build.note || `${G.hovers() ? "Click" : "Tap"} a + on the ring and pick a group for it. ${G.hovers() ? "Click" : "Tap"} a group to change or remove it. The GNN answers at once. Your browser then computes the exact interactions.`);
-      STARTS.forEach((s, k) => {
-        const b = h("button", "gsq-chip", s.name.toLowerCase().replace("empty", "an empty")); b.type = "button";
-        b.setAttribute("aria-pressed", String(s.slots.join() === build.slots.join()));
-        b.addEventListener("click", () => { start(k); panel.querySelectorAll(".gsq-chip")[k]?.focus({ preventScroll: true }); });
-        starts.append(b, k ? "" : "or");
-      });
-      box.append(title, detail, starts, legend(t, e.truth), e.pending ? computing() : meta(m, t, e), why());
+      box.append(title, detail, legend(t, e.truth), e.pending ? computing() : meta(m, t, e), why());
     }
     function maskingPanel(box, m, t, e, p) {
       const n = state.masked.size, title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), compare = h("p", "gsq-pred-compare");
