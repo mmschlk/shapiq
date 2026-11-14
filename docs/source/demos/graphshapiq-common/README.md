@@ -213,6 +213,9 @@ cut the molecules to start from to two, on a selector at the bottom of the frame
 A seventh pass cut the text the demos do not need to be understood: the questions' meanings to two
 short sentences, the molecules' formulas, blurbs and takeaways, the panels' subtitles and
 paragraphs, the "which atoms" line, and the receptive-field figure's sentences to a few words.
+Two reviews followed (code, and a first-time visitor). They removed the caption under the molecule
+(the card names it), the panels' titles that repeated the view, the card's note while hiding atoms,
+and the panel's sentence on the 15-atom limit (the wheel says it). A new molecule starts at pairs.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
