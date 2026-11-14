@@ -83,7 +83,7 @@ graphshapiq-<demo>/
   opens a wheel of the groups that can go there, around the position (`openWheel`; a group that
   would pass the 15 atoms is dimmed). The wheel is a ring of frosted glass: the molecule shows
   through it, and the position through its hub. Escape, the hub or a click beside it close it. A
-  line of the panel offers two molecules to start from (`STARTS`: an empty ring and catechol).
+  selector along the bottom of the frame offers two molecules to start from (`STARTS`: an empty ring and catechol), in the view *Build* only. The molecule is then drawn above it (`.gsq-building`), and the wheel is placed through the plot's transform.
   Building has a color of its own, amber (`--gsq-build`): the tile, which stands apart from the
   eight molecules and stays in sight where the row scrolls, the position chosen, and the progress.
   Nothing of the molecule is in `data.js`. The page runs
@@ -207,7 +207,7 @@ The built molecule gained what only the explorer had: hiding atoms, and the orde
 A fifth pass made building direct: the wheel of groups at the position clicked replaced a palette
 of chips in the panel, the tiles took the demo's whole width, and the tile of *Build your own* its
 accent. A sixth made that accent amber (blue is a value's color here), the wheel see-through, and
-cut the molecules to start from to two.
+cut the molecules to start from to two, on a selector at the bottom of the frame.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
