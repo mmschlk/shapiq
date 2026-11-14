@@ -79,6 +79,16 @@ graphshapiq-<demo>/
   `compute/results/`, which is gitignored and not committed. `pack.py` turns them into the
   `data.js` files. The GNN weights are in the data as folded affine maps, which `pack_gnn` checks
   against PyTorch (≤ 1e-3).
+- **The explorer's ninth molecule is the reader's own** (*Build your own*, with a fourth view,
+  *Build*): groups on the positions of a benzene ring. Nothing of it is in `data.js`. The page runs
+  the GNN for the answer at once (`predict`), and a Web Worker (the `WORKER` string in
+  `graphshapiq-explorer/assets/demo.js`, run from a Blob URL) explains it with GraphSHAP-IQ proper:
+  it evaluates the GNN on the maskings inside the receptive fields only, computes the Möbius
+  interactions, and from them the k-SII of orders 1 to 4. Its result has the shape of an entry of
+  `data.explanations`, so that every view works for it as for the other molecules. It is limited to
+  15 heavy atoms (`MAX_ATOMS`, at most 32,768 maskings, about five seconds). `compute/check_worker.py`
+  runs the worker with Node on the explorer's own molecules and compares it with shapiq's numbers
+  in `data.js`: the same maskings (GraphSHAP-IQ's budget), and values equal to a few 1e-3.
 - **The lab computes, it does not look up.** Its worker (the `WORKER` string in
   `graphshapiq-lab/assets/demo.js`, run from a Blob URL) evaluates the GNN on all 2ⁿ maskings. It
   then computes Möbius, Shapley values and SII up to order 2, and turns them into 2-SII. It is

@@ -430,9 +430,9 @@ body[data-theme="dark"] .gsq {
   }
 }
 
-/* on a phone, the three questions still fit in a row */
+/* on a phone, the options of a switch still fit in a row */
 @container (max-width: 26rem) {
-  .gsq .gsq-ask .gsq-opt {
+  .gsq .gsq-opt {
     padding: 0 0.6rem;
     font-size: 0.8rem;
   }

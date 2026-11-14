@@ -11,6 +11,7 @@ the figure of receptive fields on the explorer's page (`../../graphshapiq-exact`
 | `train.py` | Trains a GNN per task: `results/models/<task>.pt`, with its scores. |
 | `explain.py` | Explains every molecule for every task with GraphSHAP-IQ: `results/<molecule>_<task>.json` (all Möbius interactions, k-SII of orders 1 to 4). |
 | `pack.py` | Writes the demos' data: GNNs folded into affine maps (checked against PyTorch), drawings, compact explanations, maskings per depth (exact). |
+| `check_worker.py` | Checks the explorer's in-browser GraphSHAP-IQ (the worker of *Build your own* in `../../graphshapiq-explorer/assets/demo.js`, run with Node) against shapiq's explanations in the explorer's `data.js`. Needs neither a GNN nor `results/`. |
 | `check_lab.py` | Checks the lab's in-browser GraphSHAP-IQ (the worker in `../../graphshapiq-lab/assets/demo.js`, run with Node) against `shapiq` on a few molecules. |
 
 ## Run
