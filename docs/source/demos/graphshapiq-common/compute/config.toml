@@ -1,5 +1,5 @@
-# The GraphSHAP-IQ demos (the explorer, the lab, and the figure of receptive fields on the
-# explorer's page, exact): their tasks (one GNN each), their molecules, and the texts they show.
+# The GraphSHAP-IQ demos (the explorer, and the figure of receptive fields on the explorer's page,
+# exact): their tasks (one GNN each), their molecules, and the texts they show.
 #
 # train.py trains a GNN per task, explain.py explains every molecule for every task, and pack.py
 # writes their data, ../../graphshapiq-<demo>/assets/data.js.
@@ -142,10 +142,6 @@ smiles = "CC(=O)Oc1ccccc1C(=O)O"
 # what the explorer says of it, for its own question; its numbers are those of the data:
 # check them after explain.py ran again
 takeaway = "The four oxygens speak against, each on its own; the pairs are weak (at most 0.31). Here, the Shapley values tell the story already."
-
-# The lab: the tasks whose GNNs run in the reader's browser, in the order of its switch.
-[lab_demo]
-tasks = ["PAINS", "mutagenic"]
 
 # The figure of receptive fields (exact), on the explorer's page: molecules of growing size, whose numbers of maskings GraphSHAP-IQ needs for GNNs
 # of 1 to 4 layers it compares with all 2^n maskings (no GNN is evaluated).
