@@ -10,8 +10,8 @@
 // (../../graphshapiq-common/assets/demo.js, `ShapiqGraph`) draws and animates the molecule.
 //
 // The ninth molecule is the reader's own ("Build your own"): groups on the six positions of a
-// benzene ring, placed in a fourth view, "Build". Nothing of it is precomputed. The page runs the
-// GNN for its answer at once, and a Web Worker (`WORKER`) explains it with GraphSHAP-IQ: it
+// benzene ring, placed in a fourth view, "Build": a click on a position opens a wheel of the groups
+// that can go there. Nothing of it is precomputed. The page runs the GNN for its answer at once, and a Web Worker (`WORKER`) explains it with GraphSHAP-IQ: it
 // evaluates the GNN on the maskings inside the receptive fields, and computes the Möbius
 // interactions and from them the k-SII of orders 1 to 4, as shapiq does
 // (../../graphshapiq-common/compute/check_worker.py compares them with shapiq's). A molecule has at
@@ -47,6 +47,7 @@
     { name: "Resorcinol", slots: ["OH", "none", "OH", ...none.slice(2)], task: "PAINS" },
     { name: "Hydroquinone", slots: ["OH", "none", "none", "OH", "none", "none"], task: "PAINS" },
     { name: "Nitrobenzene", slots: ["NO2", ...none], task: "mutagenic" },
+    { name: "Empty ring", slots: ["none", ...none], task: null }, // benzene, for the question that is asked
   ];
   const KNOWN = Object.fromEntries([
     ...STARTS.map((s) => [s.slots.join(), s.name]),
@@ -87,6 +88,8 @@
     }
     return [...atoms].sort((a, b) => a - b);
   }
+
+  const TRASH = "M3.2 4.6h9.6M6.4 4.6V3.1h3.2v1.5M4.6 4.6l.6 8.3h5.6l.6-8.3M6.9 7v3.6M9.1 7v3.6"; // the wheel's "remove"
 
   // the worker: GraphSHAP-IQ for the molecule it is sent (see the header)
   const WORKER = `
@@ -183,9 +186,9 @@
     const taskById = (id) => data.tasks.find((t) => t.id === id);
     const first = data.molecules[0];
     const state = { mol: first, task: taskById(first.task), view: "together", order: 2, masked: new Set(), focus: null, pinned: false, row: null, hinted: false };
-    // the reader's own molecule: the groups on the ring's positions, the position chosen, the
-    // molecule they make, and its explanation (`result`: at first the GNN's answer only, `pending`)
-    const build = { slots: STARTS[0].slots.slice(), task: taskById(STARTS[0].task), sel: null, note: "", mol: null, result: null, run: 0, timer: 0, worker: null, picked: false };
+    // the reader's own molecule: the groups on the ring's positions, the position whose wheel is
+    // open (`sel`) and where the positions are on the stage (`at`), the molecule they make, and its explanation (`result`: at first the GNN's answer only, `pending`)
+    const build = { slots: STARTS[0].slots.slice(), task: taskById(STARTS[0].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, worker: null, picked: false };
     const built = () => state.mol.built === true;
     const ex = () => (built() ? build.result : data.explanations[`${state.mol.id}/${state.task.id}`]);
     const rowsOf = (e, order) => (order === "M" ? e.moebius : e.kSII[String(order)] || []);
@@ -210,8 +213,9 @@
     {
       const tile = mols.buttons[data.molecules.length], icon = tile.querySelector("svg"), [x, y] = G.geom(own, 78, 21).pos[6];
       tile.classList.add("gsq-mol-own");
-      svg("circle", { class: "gsq-plus-o", cx: x, cy: y, r: 9.5 }, icon);
-      svg("line", { x1: x - 4.5, y1: y, x2: x + 4.5, y2: y }, icon); svg("line", { x1: x, y1: y - 4.5, x2: x, y2: y + 4.5 }, icon);
+      svg("circle", { class: "gsq-plus-ping", cx: x, cy: y, r: 14 }, icon);
+      svg("circle", { class: "gsq-plus-o", cx: x, cy: y, r: 14 }, icon);
+      svg("line", { x1: x - 6.5, y1: y, x2: x + 6.5, y2: y }, icon); svg("line", { x1: x, y1: y - 6.5, x2: x, y2: y + 6.5 }, icon);
     }
     const views = G.switcher("View", VIEWS.map((v) => v[1]), (k) => setView(VIEWS[k][0]));
     const ask = G.question(data.tasks, (t) => { state.task = t; if (built()) compute(); reset(false); });
@@ -237,6 +241,9 @@
     const slotLayer = svg("g", { class: "gsq-slots" });
     const progress = h("div", "gsq-progress"), progressFill = h("i");
     progress.append(progressFill); progress.hidden = true; frame.append(progress);
+    const scrim = h("div", "gsq-scrim"), wheel = h("div", "gsq-wheel");
+    scrim.hidden = wheel.hidden = true; wheel.tabIndex = -1; wheel.setAttribute("role", "group");
+    frame.append(scrim, wheel);
     const caption = h("p", "gsq-caption");
     stage.append(frame, caption);
     const live = h("p", "gsq-sr"); live.setAttribute("aria-live", "polite");
@@ -244,8 +251,9 @@
     root.append(bar, body, live);
     const scene = G.createScene(plot);
 
-    function setView(id) { state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); views.buttons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }
+    function setView(id) { hideWheel(); state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); views.buttons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }
     function reset(newMolecule) {
+      hideWheel();
       state.masked = new Set(); state.focus = null; state.pinned = false; state.row = null;
       if (!orderSeq().includes(state.order)) state.order = 2;
       if (newMolecule) scene.setMolecule(state.mol);
@@ -261,17 +269,18 @@
       compute();
       reset(true);
     }
+    // a group for the position whose wheel is open ("none" removes the one there)
     function place(id) {
-      build.picked = true;
-      if (build.sel == null) build.note = `First pick a position on the ring: a + or a group that is there.`;
-      else {
-        const trial = build.slots.slice(); trial[build.sel] = id;
-        if (heavy(trial) > MAX_ATOMS) build.note = `That would make ${heavy(trial)} atoms. Your browser explains molecules of up to ${MAX_ATOMS} exactly.`;
-        else if (trial.join() !== build.slots.join()) { build.slots = trial; rebuild(); return; }
-      }
-      renderPanel();
+      const i = build.sel, trial = build.slots.slice();
+      if (i == null) return;
+      trial[i] = id;
+      if (heavy(trial) > MAX_ATOMS) { build.note = `That would make ${heavy(trial)} atoms. Your browser explains molecules of up to ${MAX_ATOMS} atoms exactly.`; renderPanel(); return; }
+      if (trial.join() === build.slots.join()) { closeWheel(true); return; }
+      build.slots = trial;
+      rebuild();
+      slotLayer.children[i]?.focus({ preventScroll: true });
     }
-    function start(k) { const s = STARTS[k]; build.slots = s.slots.slice(); build.sel = null; build.picked = true; state.task = taskById(s.task); rebuild(); }
+    function start(k) { const s = STARTS[k]; build.slots = s.slots.slice(); build.picked = true; if (s.task) state.task = taskById(s.task); rebuild(); }
     // the GNN's answer is one evaluation, at once; the worker explains the latest molecule only
     function compute() {
       const m = build.mol, t = build.task = state.task, logOdds = G.predict(data.symbols, m, t, new Set());
@@ -291,27 +300,80 @@
       progressFill.style.width = "0%";
       build.timer = setTimeout(() => { progress.hidden = false; build.worker.postMessage({ id, symbols: data.symbols, m: { atoms: m.atoms, bonds: m.bonds }, t: { gnn: t.gnn, baseline: t.baseline }, overall: OVERALL, perAtom: PER_ATOM }); }, 120);
     }
-    // the positions of the ring, over the molecule: a + where a group can go, the ring's carbon where one is
+    // the positions of the ring, over the molecule: a + where a group can go, the group where one is
     function slots() {
       const focused = slotLayer.contains(document.activeElement) ? Number(document.activeElement.dataset.slot) : null;
       slotLayer.replaceChildren();
       const { s, pos } = scene.geom;
+      let next = 6; // the atoms of a position's group follow the ring's, as `assemble` puts them
       for (let i = 0; i < 6; i++) {
-        const a = Math.PI / 2 - (i * Math.PI) / 3, [x, y] = pos[i], empty = build.slots[i] === "none";
-        const cx = empty ? x + Math.cos(a) * 0.62 * s : x, cy = empty ? y + Math.sin(a) * 0.62 * s : y;
-        const g = svg("g", { class: `gsq-slot${empty ? "" : " gsq-filled"}${build.sel === i ? " gsq-sel" : ""}`, tabindex: "0", role: "button", "data-slot": i, "aria-pressed": String(build.sel === i), "aria-label": empty ? `Position ${i + 1}: add a group` : `Position ${i + 1}: ${GROUPS[build.slots[i]].name}` }, slotLayer);
+        const a = Math.PI / 2 - (i * Math.PI) / 3, [x, y] = pos[i], group = GROUPS[build.slots[i]], empty = !group.heavy;
+        const g = svg("g", { class: `gsq-slot${empty ? "" : " gsq-filled"}${build.sel === i ? " gsq-sel" : ""}`, tabindex: "0", role: "button", "data-slot": i, "aria-haspopup": "true", "aria-expanded": String(build.sel === i), "aria-label": empty ? `Position ${i + 1}: add a group` : `Position ${i + 1}: ${group.name}. Change or remove it` }, slotLayer);
         if (empty) {
+          const cx = x + Math.cos(a) * 0.62 * s, cy = y + Math.sin(a) * 0.62 * s;
+          build.at[i] = [cx, cy];
           svg("circle", { cx, cy, r: 0.26 * s }, g);
           svg("line", { class: "gsq-plus", x1: cx - 0.12 * s, y1: cy, x2: cx + 0.12 * s, y2: cy }, g);
           svg("line", { class: "gsq-plus", x1: cx, y1: cy - 0.12 * s, x2: cx, y2: cy + 0.12 * s }, g);
-        } else svg("circle", { class: "gsq-ringpick", cx, cy, r: 0.42 * s }, g);
-        const pick = () => { build.sel = build.sel === i ? null : i; build.note = ""; build.picked = true; draw(); renderPanel(); };
-        g.addEventListener("click", (e) => { e.stopPropagation(); pick(); });
-        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); pick(); } });
+        } else {
+          build.at[i] = pos[next];
+          for (const [p, q] of group.bonds) svg("line", { class: "gsq-reach", x1: pos[next + p][0], y1: pos[next + p][1], x2: pos[next + q][0], y2: pos[next + q][1], "stroke-width": 0.5 * s }, g);
+          for (let k = 0; k < group.heavy; k++) svg("circle", { cx: pos[next + k][0], cy: pos[next + k][1], r: 0.42 * s }, g);
+          next += group.heavy;
+        }
+        const pick = (byKey) => { build.note = ""; build.picked = true; if (build.sel === i) closeWheel(byKey); else openWheel(i, byKey); };
+        g.addEventListener("click", (e) => { e.stopPropagation(); pick(false); });
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); pick(true); } });
       }
       if (slotLayer.parentNode !== plot || plot.lastChild !== slotLayer) plot.appendChild(slotLayer);
       if (focused != null && !Number.isNaN(focused)) slotLayer.children[focused]?.focus({ preventScroll: true });
     }
+    // the wheel: the groups that can go to a position, around the position (and "remove", where a
+    // group is). Its hub names the group pointed at, and closes the wheel
+    function openWheel(i, byKey) {
+      build.sel = i;
+      draw(); renderPanel();
+      const there = build.slots[i], ids = there === "none" ? PALETTE : [...PALETTE, "none"], rest = there === "none" ? "Add a group" : "Change the group";
+      const hub = h("button", "gsq-wheel-hub", rest); hub.type = "button"; hub.setAttribute("aria-label", "Close");
+      hub.addEventListener("click", () => closeWheel(true));
+      const say = (text, cls = "") => { hub.textContent = text; hub.className = `gsq-wheel-hub ${cls}`; };
+      wheel.replaceChildren(hub);
+      ids.forEach((id, k) => {
+        const group = GROUPS[id], trial = build.slots.slice(); trial[i] = id;
+        const large = heavy(trial) > MAX_ATOMS, angle = -Math.PI / 2 + (k * 2 * Math.PI) / ids.length;
+        const b = h("button", id === "none" ? "gsq-wheel-item gsq-clear" : "gsq-wheel-item"); b.type = "button";
+        if (id === "none") svg("path", { d: TRASH }, svg("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, b)); else b.textContent = group.label;
+        b.setAttribute("aria-label", id === "none" ? `Remove the ${GROUPS[there].name} group` : `${group.label} (${group.name})${large ? ", too large here" : ""}`);
+        if (large) b.setAttribute("aria-disabled", "true"); else if (id === there) b.setAttribute("aria-pressed", "true");
+        b.style.setProperty("--dx", Math.cos(angle).toFixed(4)); b.style.setProperty("--dy", Math.sin(angle).toFixed(4)); b.style.setProperty("--i", k);
+        const on = () => say(large ? `At most ${MAX_ATOMS} atoms` : id === "none" ? "remove" : group.name, large ? "gsq-off" : "gsq-on"), off = () => say(rest);
+        b.addEventListener("pointerenter", on); b.addEventListener("pointerleave", off); b.addEventListener("focus", on); b.addEventListener("blur", off);
+        b.addEventListener("click", () => place(id));
+        wheel.append(b);
+      });
+      wheel.setAttribute("aria-label", `${rest} at position ${i + 1}`);
+      wheel.style.setProperty("--x", `${build.at[i][0]}%`); wheel.style.setProperty("--y", `${build.at[i][1]}%`);
+      scrim.hidden = wheel.hidden = false;
+      hint.hide();
+      (byKey ? wheel.querySelector('[aria-pressed="true"]') || wheel.querySelector(".gsq-wheel-item") : wheel).focus({ preventScroll: true });
+    }
+    function hideWheel() { build.sel = null; scrim.hidden = wheel.hidden = true; }
+    function closeWheel(refocus) {
+      const i = build.sel;
+      if (i == null) return;
+      hideWheel(); draw(); renderPanel();
+      if (refocus) slotLayer.children[i]?.focus({ preventScroll: true });
+    }
+    scrim.addEventListener("click", () => closeWheel(false));
+    wheel.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); closeWheel(true); return; }
+      const by = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+      if (!by) return;
+      e.preventDefault();
+      const items = [...wheel.querySelectorAll(".gsq-wheel-item")], k = items.indexOf(document.activeElement);
+      items[(Math.max(k, by > 0 ? -1 : 0) + by + items.length) % items.length].focus({ preventScroll: true });
+    });
+    wheel.addEventListener("focusout", (e) => { if (e.relatedTarget && !wheel.contains(e.relatedTarget)) closeWheel(false); }); // the keyboard has left it
 
     // -- pointing at atoms, and the keyboard ------------------------------------------------------
     function toggle(k) { if (state.masked.has(k)) state.masked.delete(k); else state.masked.add(k); state.hinted = true; draw(); renderPanel(); }
@@ -396,24 +458,17 @@
     const why = () => h("p", "gsq-pred-why", "Which atoms does the answer rest on? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), ".");
     const computing = () => h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…");
     function buildPanel(box, m, t, e) {
-      const title = h("p", "gsq-title"), detail = h("p", `gsq-detail${build.note ? " gsq-note" : ""}`), palette = h("div", "gsq-palette"), starts = h("p", "gsq-starts", "Or start from ");
+      const title = h("p", "gsq-title"), detail = h("p", `gsq-detail${build.note ? " gsq-note" : ""}`), starts = h("div", "gsq-starts", h("span", "gsq-starts-label", "Start from"));
       title.append(h("strong", "", "Build your own"), "on a benzene ring");
-      const group = build.sel == null ? null : GROUPS[build.slots[build.sel]];
-      if (build.note) detail.append(build.note);
-      else if (group == null) detail.append(`${G.hovers() ? "Click" : "Tap"} a + on the ring to add a group there, or a group to change it. The GNN answers at once, and your browser computes the exact interactions.`);
-      else if (group.heavy) detail.append(`Position ${build.sel + 1} carries ${group.label}. Pick another group for it, or remove it.`);
-      else detail.append(`Position ${build.sel + 1} is free. Pick a group for it.`);
-      palette.setAttribute("role", "group"); palette.setAttribute("aria-label", "Groups to place");
-      for (const id of [...PALETTE, "none"]) {
-        const b = h("button", id === "none" ? "gsq-chip gsq-clear" : "gsq-chip", id === "none" ? "Remove" : GROUPS[id].label); b.type = "button";
-        b.setAttribute("aria-label", id === "none" ? "Remove the group" : `Place ${GROUPS[id].label} (${GROUPS[id].name})`);
-        if (build.sel == null || (id === "none" && !group.heavy)) b.setAttribute("aria-disabled", "true");
-        else if (id !== "none") b.setAttribute("aria-pressed", String(build.slots[build.sel] === id)); // the group that is there
-        b.addEventListener("click", () => { place(id); panel.querySelectorAll(".gsq-chip")[[...PALETTE, "none"].indexOf(id)]?.focus({ preventScroll: true }); });
-        palette.append(b);
-      }
-      STARTS.forEach((s, k) => { const b = h("button", "gsq-link", s.name.toLowerCase()); b.type = "button"; b.addEventListener("click", () => start(k)); starts.append(b, k < STARTS.length - 2 ? ", " : k === STARTS.length - 2 ? " or " : "."); });
-      box.append(title, detail, palette, starts, legend(t, e.truth), e.pending ? computing() : meta(m, t, e), why());
+      detail.append(build.note || `${G.hovers() ? "Click" : "Tap"} a + on the ring and pick a group for it. ${G.hovers() ? "Click" : "Tap"} a group to change or remove it. The GNN answers at once. Your browser then computes the exact interactions.`);
+      starts.setAttribute("role", "group"); starts.setAttribute("aria-label", "Molecules to start from");
+      STARTS.forEach((s, k) => {
+        const b = h("button", "gsq-chip", s.name); b.type = "button";
+        b.setAttribute("aria-pressed", String(s.slots.join() === build.slots.join()));
+        b.addEventListener("click", () => { start(k); panel.querySelectorAll(".gsq-chip")[k]?.focus({ preventScroll: true }); });
+        starts.append(b);
+      });
+      box.append(title, detail, starts, legend(t, e.truth), e.pending ? computing() : meta(m, t, e), why());
     }
     function maskingPanel(box, m, t, e, p) {
       const n = state.masked.size, title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), compare = h("p", "gsq-pred-compare");

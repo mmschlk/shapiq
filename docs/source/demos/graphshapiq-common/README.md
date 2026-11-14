@@ -8,7 +8,7 @@ graphs. This folder is not a page: it holds what they share, a library of code a
 
 | Demo | Folder | What a reader does | What they should learn |
 |---|---|---|---|
-| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Hide atoms* (click atoms to mask them, the GNN reruns in the browser and answers again), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring in a fourth view, *Build*. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
+| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Hide atoms* (click atoms to mask them, the GNN reruns in the browser and answers again), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring in a fourth view, *Build*: a click on a position opens a wheel of the groups. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
 | Exact (a figure on the explorer's page, under "Exact, and still feasible"; no page or card of its own) | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
 
 Each demo's `index.rst` is its page. For now a page holds its demos only: the write-up (what you
@@ -79,7 +79,11 @@ graphshapiq-<demo>/
   `data.js` files. The GNN weights are in the data as folded affine maps, which `pack_gnn` checks
   against PyTorch (≤ 1e-3).
 - **The explorer's ninth molecule is the reader's own** (*Build your own*, with a fourth view,
-  *Build*): groups on the positions of a benzene ring. Nothing of it is in `data.js`. The page runs
+  *Build*): groups on the positions of a benzene ring. A click on a position (a + or a group)
+  opens a wheel of the groups that can go there, around the position (`openWheel`; a group that
+  would pass the 15 atoms is dimmed). Escape, the hub or a click beside it close it. The panel
+  offers molecules to start from (`STARTS`). The tile stands out in the brand color, and stays in
+  sight where the row of tiles scrolls. Nothing of the molecule is in `data.js`. The page runs
   the GNN for the answer at once (`predict`), and a Web Worker (the `WORKER` string in
   `graphshapiq-explorer/assets/demo.js`, run from a Blob URL) explains it with GraphSHAP-IQ proper:
   it evaluates the GNN on the maskings inside the receptive fields only, computes the Möbius
@@ -196,6 +200,10 @@ demos were the same instrument (card, GNNs, drawing, views), and the lab's catec
 the explorer's question of when a molecule is a PAINS. The lab's page and card went. Its last
 version is in the repository's history (`docs/source/demos/graphshapiq-lab` at commit 2f980a2).
 The built molecule gained what only the explorer had: hiding atoms, and the orders beyond pairs.
+
+A fifth pass made building direct: the wheel of groups at the position clicked replaced a palette
+of chips in the panel, the tiles took the demo's whole width, and the tile of *Build your own* its
+accent.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide

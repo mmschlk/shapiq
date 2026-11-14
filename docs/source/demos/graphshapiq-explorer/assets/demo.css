@@ -27,9 +27,15 @@
 
 /* -- the reader's own molecule ("Build your own") ----------------------------------------------- */
 
-/* nine molecules in a row, their names in full */
+/* nine molecules in a row, over the demo's whole width, their names in full */
+.graphshapiq-explorer-demo .gsq-mols {
+  width: 100%;
+  gap: 0.15rem;
+}
+
 .graphshapiq-explorer-demo .gsq-mol {
-  width: 4.9rem;
+  flex: 1 0 4.5rem;
+  width: auto;
   padding-inline: 0.05rem;
 }
 
@@ -37,12 +43,77 @@
   font-size: 0.6rem;
 }
 
+/* the reader's own molecule stands out, and stays in sight where the row scrolls */
+.graphshapiq-explorer-demo .gsq-mol-own {
+  position: sticky;
+  z-index: 1;
+  right: 0;
+  flex-basis: 5.4rem;
+  margin-left: 0.3rem;
+  border: 2px dashed color-mix(in srgb, var(--gsq-link) 60%, transparent);
+  background: color-mix(in srgb, var(--gsq-link) 9%, var(--gsq-sheet));
+  color: var(--gsq-link);
+  opacity: 1;
+  transition:
+    background-color 220ms var(--gsq-ease),
+    border-color 220ms var(--gsq-ease),
+    transform 120ms var(--gsq-ease);
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own:hover {
+  border-color: var(--gsq-link);
+  background: color-mix(in srgb, var(--gsq-link) 15%, var(--gsq-sheet));
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] {
+  border-style: solid;
+  border-color: var(--gsq-link);
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own span {
+  font-weight: 800;
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own line {
+  stroke: var(--gsq-link);
+}
+
 .graphshapiq-explorer-demo .gsq-mol-own .gsq-plus-o {
-  fill: var(--gsq-sheet);
-  stroke: var(--gsq-ink);
-  stroke-dasharray: 2.5 2;
-  stroke-width: 1.1px;
-  vector-effect: non-scaling-stroke;
+  fill: var(--gsq-link);
+}
+
+/* the + beckons a few times, until the reader's molecule is the one shown */
+.graphshapiq-explorer-demo .gsq-mol-own svg {
+  overflow: visible;
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own .gsq-plus-ping {
+  fill: var(--gsq-link);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own:not([aria-pressed="true"]) .gsq-plus-ping {
+  animation: graphshapiq-explorer-beckon 2s ease-out 1.2s 3;
+}
+
+@keyframes graphshapiq-explorer-beckon {
+  0% {
+    opacity: 0.55;
+    scale: 1;
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    scale: 2.4;
+  }
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own .gsq-plus-o ~ line {
+  stroke: var(--gsq-sheet);
+  stroke-width: 1.6px;
 }
 
 /* the view "Build" is for the reader's own molecule only (the pill holds a copy of the options) */
@@ -51,7 +122,7 @@
   display: none;
 }
 
-/* the positions of the ring: a + where a group can go, the ring's carbon where one is */
+/* the positions of the ring: a + where a group can go, the group where one is */
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot {
   cursor: pointer;
 }
@@ -73,6 +144,12 @@
   stroke-width: 1.3px;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
+}
+
+/* between the atoms of a group, a click is for the group too */
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot .gsq-reach {
+  stroke: transparent;
+  pointer-events: stroke;
 }
 
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled circle {
@@ -123,21 +200,173 @@
   display: none;
 }
 
-.graphshapiq-explorer-demo .gsq-palette {
+/* the wheel of groups, around the position it is for. The scrim under it closes it */
+.graphshapiq-explorer-demo .gsq-scrim {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background: color-mix(in srgb, var(--gsq-stage) 62%, transparent);
+  animation: graphshapiq-explorer-fade 200ms var(--gsq-ease) backwards;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel {
+  --r: 3.7rem; /* from the hub to the middle of a group */
+  --item: 2.7rem;
+  --half: calc(var(--r) + var(--item) / 2 + 0.35rem);
+  position: absolute;
+  z-index: 5;
+  top: clamp(calc(var(--half) + 0.3rem), var(--y), calc(100% - var(--half) - 0.3rem));
+  left: clamp(calc(var(--half) + 0.3rem), var(--x), calc(100% - var(--half) - 0.3rem));
+  width: calc(2 * var(--half));
+  height: calc(2 * var(--half));
+  border: 1px solid color-mix(in srgb, var(--gsq-muted) 45%, var(--gsq-border));
+  border-radius: 50%;
+  outline: none;
+  background: color-mix(in srgb, var(--gsq-sheet) 94%, transparent);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.5);
+  translate: -50% -50%;
+  animation: graphshapiq-explorer-wheel 220ms var(--gsq-ease) backwards;
+}
+
+.graphshapiq-explorer-demo :is(.gsq-scrim, .gsq-wheel)[hidden] {
+  display: none;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-item,
+.graphshapiq-explorer-demo .gsq-wheel-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-item {
+  width: var(--item);
+  height: var(--item);
+  border: 1.5px solid color-mix(in srgb, var(--gsq-muted) 30%, var(--gsq-border));
+  background: var(--gsq-sheet);
+  color: var(--gsq-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  translate: calc(-50% + var(--dx) * var(--r)) calc(-50% + var(--dy) * var(--r));
+  animation: graphshapiq-explorer-item 260ms var(--gsq-ease) backwards;
+  animation-delay: calc(var(--i) * 16ms);
+  transition:
+    border-color 160ms,
+    background-color 160ms,
+    color 160ms,
+    scale 160ms var(--gsq-ease);
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-item:hover,
+.graphshapiq-explorer-demo .gsq-wheel-item:focus-visible {
+  border-color: var(--gsq-ink);
+  scale: 1.1;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-item[aria-pressed="true"] {
+  border-color: var(--gsq-ink);
+  background: var(--gsq-ink);
+  color: var(--gsq-sheet);
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-item[aria-disabled="true"] {
+  opacity: 0.4;
+  scale: 1;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-item.gsq-clear {
+  color: var(--gsq-red-text);
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-item svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.3;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-hub {
+  width: calc(2 * var(--r) - var(--item) - 0.5rem);
+  height: calc(2 * var(--r) - var(--item) - 0.5rem);
+  border: 0;
+  background: none;
+  color: var(--gsq-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  translate: -50% -50%;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-hub:hover,
+.graphshapiq-explorer-demo .gsq-wheel-hub.gsq-on {
+  color: var(--gsq-ink);
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-hub.gsq-off {
+  color: var(--gsq-link);
+}
+
+.graphshapiq-explorer-demo :is(.gsq-wheel-item, .gsq-wheel-hub):focus-visible {
+  outline: 2px solid var(--gsq-ink);
+  outline-offset: 2px;
+}
+
+@keyframes graphshapiq-explorer-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes graphshapiq-explorer-wheel {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes graphshapiq-explorer-item {
+  from {
+    opacity: 0;
+    translate: -50% -50%;
+    scale: 0.4;
+  }
+}
+
+/* the molecules to start from */
+.graphshapiq-explorer-demo .gsq-starts {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.35rem;
+  margin: 0.8rem 0 1.1rem;
+}
+
+.graphshapiq-explorer-demo .gsq-starts-label {
+  width: 100%;
+  color: var(--gsq-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .graphshapiq-explorer-demo .gsq-chip {
-  min-width: 2.6rem;
-  height: 2rem;
-  padding: 0 0.6rem;
+  height: 1.9rem;
+  padding: 0 0.65rem;
   border: 1px solid var(--gsq-border);
-  border-radius: var(--shapiq-radius-small, 8px);
+  border-radius: 999px;
   background: var(--gsq-sheet);
   color: var(--gsq-ink);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -152,10 +381,6 @@
 
 .graphshapiq-explorer-demo .gsq-chip:active {
   transform: scale(0.95);
-}
-
-.graphshapiq-explorer-demo .gsq-chip.gsq-clear {
-  color: var(--gsq-muted);
 }
 
 .graphshapiq-explorer-demo .gsq-computing {
@@ -181,14 +406,6 @@
   }
 }
 
-.graphshapiq-explorer-demo .gsq-chip[aria-disabled="true"] {
-  opacity: 0.45;
-}
-
 .graphshapiq-explorer-demo .gsq-detail.gsq-note {
   color: var(--gsq-link);
-}
-
-.graphshapiq-explorer-demo .gsq-starts {
-  margin: 0.7rem 0 1rem;
 }
