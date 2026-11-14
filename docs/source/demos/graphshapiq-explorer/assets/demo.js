@@ -186,7 +186,7 @@
     const state = { mol: first, task: taskById(first.task), view: "together", order: 2, masked: new Set(), focus: null, pinned: false, row: null, hinted: false };
     // the reader's own molecule: the groups on the ring's positions, the position whose wheel is
     // open (`sel`) and where the positions are on the stage (`at`), the molecule they make, and its explanation (`result`: at first the GNN's answer only, `pending`)
-    const build = { slots: STARTS[1].slots.slice(), task: taskById(STARTS[1].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, worker: null, picked: false };
+    const build = { slots: STARTS[1].slots.slice(), task: taskById(STARTS[1].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, worker: null, busy: false, picked: false };
     const built = () => state.mol.built === true;
     const ex = () => (built() ? build.result : data.explanations[`${state.mol.id}/${state.task.id}`]);
     const rowsOf = (e, order) => (order === "M" ? e.moebius : e.kSII[String(order)] || []);
@@ -271,11 +271,16 @@
 
     // -- the reader's own molecule: its groups, and its explanation by the worker -----------------
     const heavy = (slots) => 6 + slots.reduce((n, s) => n + GROUPS[s].heavy, 0);
+    // a known molecule's name, wherever on the ring its groups are: every rotation, in both directions
+    function nameOf(slots) {
+      for (const turn of [slots, [slots[0], ...slots.slice(1).reverse()]]) for (let r = 0; r < 6; r++) { const name = KNOWN[[...turn.slice(r), ...turn.slice(0, r)].join()]; if (name) return name; }
+      return "A substituted benzene";
+    }
     function rebuild() {
       build.note = "";
-      build.mol = { ...assemble(build.slots), id: "own", built: true, name: KNOWN[build.slots.join()] || "A substituted benzene", blurb: "Your molecule, built on a benzene ring." };
+      build.mol = { ...assemble(build.slots), id: "own", built: true, name: nameOf(build.slots) };
       state.mol = build.mol;
-      compute();
+      compute(); // the worker starts later, in a timer: a failure there cannot leave the scene behind
       reset(true);
     }
     // a group for the position whose wheel is open ("none" removes the one there)
@@ -290,24 +295,38 @@
       slotLayer.children[i]?.focus({ preventScroll: true });
     }
     function start(k) { const s = STARTS[k]; build.slots = s.slots.slice(); build.picked = true; if (s.task) state.task = taskById(s.task); rebuild(); }
-    // the GNN's answer is one evaluation, at once; the worker explains the latest molecule only
+    // the GNN's answer is one evaluation, at once; the worker explains the latest molecule only. A
+    // job still running is stopped (the worker is replaced), so that jobs do not queue up
+    function stopWorker() { if (build.worker) build.worker.terminate(); build.worker = null; build.busy = false; }
+    function failed() {
+      stopWorker(); progress.hidden = true;
+      build.result = { ...build.result, pending: false, failed: true };
+      if (built()) { draw(); renderPanel(); }
+    }
+    function startWorker() {
+      try { build.worker = new Worker(URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }))); } catch (err) { console.error(err); return false; }
+      build.worker.onerror = (err) => { console.error(err.message || err); failed(); };
+      build.worker.onmessage = ({ data: d }) => {
+        if (d.id !== build.run) return; // an earlier molecule's
+        if (d.progress != null) { progressFill.style.width = `${Math.round(d.progress * 100)}%`; return; }
+        build.busy = false; progress.hidden = true;
+        build.result = { ...build.result, ...d, p: sig(d.logOdds), pending: false };
+        if (built()) { draw(); renderPanel(); }
+      };
+      return true;
+    }
     function compute() {
       const m = build.mol, t = build.task = state.task, logOdds = G.predict(data.symbols, m, t, new Set());
       build.result = { pending: true, logOdds, p: sig(logOdds), nAtoms: m.atoms.length, truth: patternOf(t, build.slots), kSII: {}, moebius: [], moebiusCount: 0 };
-      if (!build.worker) {
-        build.worker = new Worker(URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" })));
-        build.worker.onmessage = ({ data: d }) => {
-          if (d.id !== build.run) return; // an earlier molecule's
-          if (d.progress != null) { progressFill.style.width = `${Math.round(d.progress * 100)}%`; return; }
-          progress.hidden = true;
-          build.result = { ...build.result, ...d, p: sig(d.logOdds), pending: false };
-          if (built()) { draw(); renderPanel(); }
-        };
-      }
       clearTimeout(build.timer);
       const id = ++build.run;
       progressFill.style.width = "0%";
-      build.timer = setTimeout(() => { progress.hidden = false; build.worker.postMessage({ id, symbols: data.symbols, m: { atoms: m.atoms, bonds: m.bonds }, t: { gnn: t.gnn, baseline: t.baseline }, overall: OVERALL, perAtom: PER_ATOM }); }, 120);
+      build.timer = setTimeout(() => {
+        if (build.busy) stopWorker();
+        if (!build.worker && !startWorker()) return failed();
+        build.busy = true; progress.hidden = !built();
+        build.worker.postMessage({ id, symbols: data.symbols, m: { atoms: m.atoms, bonds: m.bonds }, t: { gnn: t.gnn, baseline: t.baseline }, overall: OVERALL, perAtom: PER_ATOM });
+      }, 120);
     }
     // the positions of the ring, over the molecule: a + where a group can go, the group where one is
     function slots() {
@@ -317,7 +336,7 @@
       let next = 6; // the atoms of a position's group follow the ring's, as `assemble` puts them
       for (let i = 0; i < 6; i++) {
         const a = Math.PI / 2 - (i * Math.PI) / 3, [x, y] = pos[i], group = GROUPS[build.slots[i]], empty = !group.heavy;
-        const g = svg("g", { class: `gsq-slot${empty ? "" : " gsq-filled"}${build.sel === i ? " gsq-sel" : ""}`, tabindex: "0", role: "button", "data-slot": i, "aria-haspopup": "true", "aria-expanded": String(build.sel === i), "aria-label": empty ? `Position ${i + 1}: add a group` : `Position ${i + 1}: ${group.name}. Change or remove it` }, slotLayer);
+        const g = svg("g", { class: `gsq-slot${empty ? "" : " gsq-filled"}${build.sel === i ? " gsq-sel" : ""}`, tabindex: "0", role: "button", "data-slot": i, "aria-expanded": String(build.sel === i), "aria-label": empty ? `Position ${i + 1}: add a group` : `Position ${i + 1}: ${group.name}. Change or remove it` }, slotLayer);
         if (empty) {
           const cx = x + Math.cos(a) * 0.62 * s, cy = y + Math.sin(a) * 0.62 * s;
           build.at[i] = [cx, cy];
@@ -378,6 +397,7 @@
       if (refocus) slotLayer.children[i]?.focus({ preventScroll: true });
     }
     scrim.addEventListener("click", () => closeWheel(false));
+    window.addEventListener("resize", () => { if (build.sel != null) closeWheel(false); }); // the wheel would be off its position
     wheel.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { e.preventDefault(); closeWheel(true); return; }
       const by = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
@@ -414,6 +434,7 @@
       const m = state.mol, e = ex();
       const building = state.view === "build";
       starts.hidden = !building; frame.classList.toggle("gsq-building", building);
+      progress.hidden = !built() || !build.busy;
       startButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(STARTS[k].slots.join() === build.slots.join())));
       if (building) { slots(); if (build.picked) hint.hide(); else hint.show(`${G.hovers() ? "Click" : "Tap"} a + to add a group`); }
       else {
@@ -465,11 +486,11 @@
       if (state.view === "build") buildPanel(content, m, t, e); else if (state.view === "predict") maskingPanel(content, m, t, e, p); else explanationPanel(content, m, t, e);
       panel.replaceChildren(content);
     }
-    const computing = () => h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…");
+    const computing = () => (ex().failed ? h("p", "gsq-detail gsq-note", "Your browser could not compute the interactions here.") : h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…"));
     function buildPanel(box, m, t, e) {
       box.append(h("p", "gsq-title", h("strong", "", "Build your own")));
       if (build.note) box.append(h("p", "gsq-detail gsq-note", build.note));
-      box.append(legend(t, e.truth), e.pending ? computing() : meta(m, t, e));
+      box.append(legend(t, e.truth), e.pending || e.failed ? computing() : meta(m, t, e));
     }
     function maskingPanel(box, m, t, e, p) {
       const n = state.masked.size, compare = h("p", "gsq-pred-compare");
@@ -486,7 +507,7 @@
     }
     function explanationPanel(box, m, t, e) {
       const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), slot = h("div", "gsq-slot"), list = h("ol", "gsq-rows");
-      if (e.pending) { title.append(h("strong", "", state.view === "alone" ? "Atoms alone" : "Atoms together")); box.append(title, computing()); return; }
+      if (e.pending || e.failed) { title.append(h("strong", "", state.view === "alone" ? "Atoms alone" : "Atoms together")); box.append(title, computing()); return; }
       if (state.view === "alone") {
         title.append(h("strong", "", "Atoms alone"));
         detail.append("What each atom adds on its own (its Shapley value).");
