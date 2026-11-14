@@ -359,9 +359,9 @@
     const choice = switcher("Question", tasks.map((t) => t.label), (k) => pick(tasks[k]));
     const picture = h("div", "gsq-ask-motif"), title = h("p", "gsq-ask-title"), meaning = h("p"), here = h("p", "gsq-ask-here");
     const number = h("span", "gsq-pred-value"), verdict = h("span", "gsq-verdict"), note = h("p", "gsq-ask-note");
-    const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark"), no = h("span", "gsq-scale-label"), yes = h("span", "gsq-scale-label gsq-r");
+    const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark");
     scale.setAttribute("aria-hidden", "true");
-    scale.append(fill, h("span", "gsq-scale-half"), mark, no, yes);
+    scale.append(fill, h("span", "gsq-scale-half"), mark);
     const card = h("div", "gsq-ask-card", picture, h("div", "gsq-ask-text", title, meaning, here), h("div", "gsq-ask-answer", h("p", "gsq-barlab", "The GNN answers"), h("p", "gsq-pred-number", number, verdict), scale, note));
     const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", "Question"), choice.node), card);
     let asked = null;
@@ -374,14 +374,12 @@
           asked = task;
           picture.replaceChildren(motif(task.motif));
           title.textContent = task.question; meaning.textContent = task.meaning;
-          no.textContent = task.no; yes.textContent = task.yes;
         }
         const name = task.truthLabel;
         here.replaceChildren(h("strong", "", subject), has ? ` contains ${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}. ` : ` contains no ${name}.`);
-        if (has) here.append(h("span", "gsq-key", h("i", "gsq-outline"), "The grey outline marks it."));
         number.textContent = percent(p); verdict.textContent = p >= 0.5 ? task.yes : task.no;
         fill.style.width = mark.style.left = `${p * 100}%`;
-        note.textContent = about || `A graph neural network (GNN), trained on ${task.trained.toLocaleString("en")} molecules.`;
+        note.textContent = about || "";
       },
     };
   }

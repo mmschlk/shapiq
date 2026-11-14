@@ -409,7 +409,7 @@ body[data-theme="dark"] .gsq {
 /* beside the answer, the card keeps its height from question to question: the texts' most lines */
 @container (min-width: 42.01rem) {
   .gsq .gsq-ask-text {
-    min-height: 10rem;
+    min-height: 6.5rem;
   }
 }
 
@@ -595,7 +595,7 @@ body[data-theme="dark"] .gsq {
 }
 
 .gsq .gsq-caption {
-  min-height: 3em;
+  min-height: 1.5em;
   margin: 0.8rem 0 0;
   color: var(--gsq-muted);
   font-size: 0.86rem;
@@ -649,7 +649,7 @@ body[data-theme="dark"] .gsq {
 }
 
 .gsq .gsq-detail {
-  min-height: calc(3 * 1.55em);
+  min-height: calc(2 * 1.55em);
   margin: 0 0 0.8rem;
   line-height: 1.55;
 }
