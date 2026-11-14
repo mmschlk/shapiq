@@ -19,13 +19,12 @@
 (() => {
   const G = window.ShapiqGraph;
   if (!G) return console.error("The GraphSHAP-IQ explorer needs ../graphshapiq-common/demo.js first.");
-  const { h, svg, sig, bits, signed, percent, value, legend, formula } = G;
+  const { h, svg, sig, bits, signed, percent, legend } = G;
   const VIEWS = [["build", "Build"], ["predict", "Hide atoms"], ["alone", "Atoms alone"], ["together", "Atoms together"]];
   const ORDERS = { 2: ["Pairs", "2-SII"], 3: ["Groups of 3", "3-SII"], 4: ["Groups of 4", "4-SII"], M: ["All orders", "Möbius"] };
 
   const MAX_ATOMS = 15; // of a molecule the reader builds: at most 2^15 maskings
   const OVERALL = 24, PER_ATOM = 8; // the interactions of an order the worker sends: as compute/pack.py keeps
-  const sup = (n) => String(n).replace(/[0-9]/g, (d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[d]);
 
   // the groups a position of the ring can carry: heavy atoms with their place in the frame of the
   // position (x outward, y across, in bond lengths), hydrogens, charges, and bonds
@@ -451,11 +450,7 @@
 
     // -- the panel --------------------------------------------------------------------------------
     function meta(m, t, e) {
-      const p = h("p", "gsq-meta"), a = h("span"), b = h("span");
-      a.append("Explained with ", h("strong", "", "GraphSHAP-IQ"), `${m.built ? " in your browser, just now" : ""}, exact: ${e.budget.toLocaleString("en")} of ${(2 ** e.nAtoms).toLocaleString("en")} maskings${m.built ? ` (2${sup(e.nAtoms)})` : ""}`);
-      b.append(`The GNN’s score for “${t.yes}” (its log-odds): `, value(e.logOdds));
-      p.append(a, b);
-      return p;
+      return h("p", "gsq-meta", "Exact with ", h("strong", "", "GraphSHAP-IQ"), `, from ${e.budget.toLocaleString("en")} of ${(2 ** e.nAtoms).toLocaleString("en")} maskings`);
     }
     // the GNN's answer, on the question's card: for the whole molecule, or without the atoms hidden
     function answer(m, t, e) {
@@ -470,48 +465,41 @@
       if (state.view === "build") buildPanel(content, m, t, e); else if (state.view === "predict") maskingPanel(content, m, t, e, p); else explanationPanel(content, m, t, e);
       panel.replaceChildren(content);
     }
-    const link = (v, label) => { const b = h("button", "gsq-link", label); b.type = "button"; b.addEventListener("click", () => setView(v)); return b; };
-    const why = () => h("p", "gsq-pred-why", "Which atoms does the answer rest on? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), ".");
     const computing = () => h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…");
     function buildPanel(box, m, t, e) {
-      const title = h("p", "gsq-title"), detail = h("p", `gsq-detail${build.note ? " gsq-note" : ""}`);
-      title.append(h("strong", "", "Build your own"), "on a benzene ring");
-      detail.append(build.note || `${G.hovers() ? "Click" : "Tap"} a + on the ring and pick a group for it. ${G.hovers() ? "Click" : "Tap"} a group to change or remove it. The GNN answers at once. Your browser then computes the exact interactions.`);
-      box.append(title, detail, legend(t, e.truth), e.pending ? computing() : meta(m, t, e), why());
+      box.append(h("p", "gsq-title", h("strong", "", "Build your own")));
+      if (build.note) box.append(h("p", "gsq-detail gsq-note", build.note));
+      box.append(legend(t, e.truth), e.pending ? computing() : meta(m, t, e));
     }
     function maskingPanel(box, m, t, e, p) {
-      const n = state.masked.size, title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), compare = h("p", "gsq-pred-compare");
-      title.append(h("strong", "", "Hide atoms"), "and ask the GNN again");
-      detail.append(`${G.hovers() ? "Click" : "Tap"} an atom to hide it from the GNN. A hidden atom keeps its bonds, but the GNN no longer knows its element. The GNN runs in your browser, and its answer above follows.`);
+      const n = state.masked.size, compare = h("p", "gsq-pred-compare");
       if (n) {
         const d = Math.round(p * 100) - Math.round(e.p * 100);
-        compare.append(`With ${n} ${n === 1 ? "atom" : "atoms"} hidden, the GNN answers `, h("strong", "", percent(p)), ". That is ", h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${Math.abs(d)} points ${d >= 0 ? "more" : "less"}`), ` than for the whole molecule (${percent(e.p)}).`);
-      } else compare.append(`For the whole molecule, the GNN answers ${percent(e.p)}.`);
+        compare.append(h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${Math.abs(d)} points ${d >= 0 ? "more" : "less"}`), ` than with all atoms (${percent(e.p)})`);
+      } else compare.append(`${G.hovers() ? "Click" : "Tap"} atoms to hide them from the GNN.`);
       const actions = h("div", "gsq-actions");
       const act = (label, fn, hidden) => { const b = h("button", "gsq-act", label); b.type = "button"; b.hidden = !!hidden; b.addEventListener("click", () => { fn(); state.hinted = true; draw(); renderPanel(); }); actions.append(b); };
       if (e.truth.length) act(`Hide the ${t.truthLabel}`, () => { state.masked = new Set(e.truth); });
       act("Hide all", () => { state.masked = new Set(m.atoms.map((_, k) => k)); });
       act("Show all", () => { state.masked = new Set(); }, !n);
-      box.append(title, detail, compare, actions, why());
+      box.append(h("p", "gsq-title", h("strong", "", "Hide atoms")), compare, actions);
     }
     function explanationPanel(box, m, t, e) {
       const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), slot = h("div", "gsq-slot"), list = h("ol", "gsq-rows");
       if (e.pending) { title.append(h("strong", "", state.view === "alone" ? "Atoms alone" : "Atoms together")); box.append(title, computing()); return; }
       if (state.view === "alone") {
-        title.append(h("strong", "", "Atoms alone"), "the Shapley value of every atom");
-        detail.append("What each atom adds to the GNN’s score, on average over all maskings. With the masked molecule’s ", value(e.empty), ", the atoms add up to the GNN’s ", value(e.logOdds), ".");
+        title.append(h("strong", "", "Atoms alone"));
+        detail.append("What each atom adds on its own (its Shapley value).");
         const own = singles(e, 1), rows = Object.keys(own).map((k) => ({ atoms: [Number(k)], v: own[k] })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
         const largest = Math.max(1e-9, Math.abs(rows[0]?.v || 0));
         for (const g of rows.slice(0, 5)) list.append(G.row(m, g.atoms, g.v, largest, G.atomName(m, g.atoms[0])));
       } else {
         const groups = groupsOf(e, state.order), seq = orderSeq(), at = seq.indexOf(state.order), [label, index] = ORDERS[state.order];
         if (state.focus != null) {
-          title.append(h("strong", "", G.atomName(m, state.focus)), "its strongest interactions");
-          detail.append("On its own, this atom adds ", value(singles(e, state.order)[state.focus] || 0), ". The rest of what it adds, it adds together with the atoms it is joined to here.");
+          title.append(h("strong", "", G.atomName(m, state.focus)), "and its partners");
         } else {
-          title.append(h("strong", "", "Atoms together"), state.order === "M" ? "groups of any size" : state.order === 2 ? "pairs of atoms" : `groups of up to ${state.order} atoms`);
-          if (state.order === "M") detail.append(`The Möbius interactions: the share of every group of atoms that no smaller group explains, ${e.moebiusCount.toLocaleString("en")} of them here. Exact, but not simple: large groups add and subtract a lot.`);
-          else detail.append(`The ${index}: what an atom adds alone (the ring around it) and what ${state.order === 2 ? "two atoms" : "groups of atoms"} add only together (${state.order === 2 ? "a band" : "a band or a shape"}). They still add up to the GNN’s `, value(e.logOdds), ".");
+          title.append(h("strong", "", "Atoms together"));
+          detail.append(state.order === "M" ? "What every group adds that no smaller group explains." : `A ring is what an atom adds alone. A ${state.order === 2 ? "band" : "band or shape"} is what atoms add only together.`);
         }
         const stepper = h("div", "gsq-stepper"), less = h("button", "gsq-step", "−"), more = h("button", "gsq-step", "+");
         less.type = more.type = "button";
@@ -537,7 +525,6 @@
       }
       slot.append(list);
       box.append(title, detail, slot, legend(t, e.truth));
-      if (t.id === m.task && m.takeaway && state.focus == null) box.append(h("p", "gsq-takeaway", m.takeaway));
       box.append(meta(m, t, e));
     }
 
@@ -546,7 +533,7 @@
       mols.set(m.built ? data.molecules.length : data.molecules.indexOf(m));
       views.node.classList.toggle("gsq-no-build", !m.built); // only the reader's own molecule is built
       views.set(VIEWS.findIndex((v) => v[0] === state.view));
-      caption.replaceChildren(h("strong", "", m.name), formula(m.formula), h("span", "gsq-blurb", m.blurb));
+      caption.replaceChildren(h("strong", "", m.name));
       draw();
       renderPanel();
     }

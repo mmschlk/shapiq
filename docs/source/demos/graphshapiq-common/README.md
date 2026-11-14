@@ -73,7 +73,7 @@ graphshapiq-<demo>/
   `#FF0D57` raises the odds of *yes*, blue `#1E88E5` lowers them, and violet is the receptive
   field. The layout breaks at a container width of 42rem, not at the viewport.
 - **Data.** `compute/config.toml` is the single source of the molecules, the questions and their
-  texts (the questions' plain words, blurbs and takeaways). `pack.py --texts` writes changed texts
+  texts (the questions' plain words, blurbs and takeaways; the demos show neither blurbs nor takeaways since the seventh pass, they wait for the write-up). `pack.py --texts` writes changed texts
   into the `data.js` files as they are, without `compute/results/`. `explain.py` writes the full GraphSHAP-IQ results to
   `compute/results/`, which is gitignored and not committed. `pack.py` turns them into the
   `data.js` files. The GNN weights are in the data as folded affine maps, which `pack_gnn` checks
@@ -208,6 +208,10 @@ A fifth pass made building direct: the wheel of groups at the position clicked r
 of chips in the panel, the tiles took the demo's whole width, and the tile of *Build your own* its
 accent. A sixth made that accent amber (blue is a value's color here), the wheel see-through, and
 cut the molecules to start from to two, on a selector at the bottom of the frame.
+
+A seventh pass cut the text the demos do not need to be understood: the questions' meanings to two
+short sentences, the molecules' formulas, blurbs and takeaways, the panels' subtitles and
+paragraphs, the "which atoms" line, and the receptive-field figure's sentences to a few words.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide

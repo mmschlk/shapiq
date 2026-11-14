@@ -91,7 +91,7 @@
       frames.forEach(cancelAnimationFrame); frames = [];
       const m = state.mol, L = state.layers, n = m.n, all = 2 ** n, ours = m.budgets[L], factor = all / ours;
       const box = h("div", "gsq-panel-in");
-      box.append(h("p", "gsq-ctitle", h("strong", "", m.name), ` has ${n} atoms. A GNN with `, h("strong", "", `${L} ${L === 1 ? "layer" : "layers"}`), ` mixes each atom with the atoms up to ${L} ${L === 1 ? "bond" : "bonds"} away.`));
+      box.append(h("p", "gsq-ctitle", "With ", h("strong", "", `${L} ${L === 1 ? "layer" : "layers"}`), `, an atom reaches ${L} ${L === 1 ? "bond" : "bonds"} far.`));
       const allValue = h("span", "gsq-bignum gsq-muted"), oursValue = h("span", "gsq-bignum gsq-accent");
       allValue.dataset.v = shown.all ?? 0; oursValue.dataset.v = shown.ours ?? 0;
       box.append(h("div", "gsq-stat", h("div", "gsq-statrow", h("span", "gsq-statlab", `All maskings, 2${sup(n)}`), allValue), h("div", "gsq-statrow", h("span", "gsq-statlab", "GraphSHAP-IQ evaluates"), oursValue)));
@@ -100,15 +100,13 @@
       const barRow = (label, count, cls) => { const r = h("div", `gsq-logrow${cls.includes("gsq-soft") ? "" : " gsq-on"}`), track = h("div", "gsq-logbar"), fill = h("i", cls); fill.style.width = `${Math.max(2, (Math.log10(Math.max(2, count)) / Math.log10(all)) * 100)}%`; track.append(fill); r.append(h("span", "gsq-loglab", label), track, h("span", "gsq-logn", fmt(count))); return r; };
       bars.append(barRow("All maskings", all, "gsq-all"));
       for (const LL of LAYERS) bars.append(barRow(`${LL} ${LL === 1 ? "layer" : "layers"}`, m.budgets[LL], LL === L ? "gsq-accent" : "gsq-accent gsq-soft"));
-      box.append(bars, h("p", "gsq-barnote", "What GraphSHAP-IQ evaluates, by the GNN’s layers. The bars’ lengths are on a logarithmic scale."));
+      box.append(bars, h("p", "gsq-barnote", "Logarithmic scale"));
       if (factor > 1.05) {
         const fewer = factor >= 10 ? `${fmt(Math.round(factor))}× fewer` : `${factor.toFixed(1)}× fewer`;
-        box.append(h("p", "gsq-punch", "Every interaction, of every order, from ", h("strong", "gsq-accent", fewer), " evaluations of the GNN than all maskings, and ", h("strong", "", "exact"), ", not estimated."));
-      } else if (ours < all) box.append(h("p", "gsq-punch", `Here the receptive fields cover nearly the whole molecule: GraphSHAP-IQ skips only ${fmt(all - ours)} of all maskings. The larger the molecule, the more it saves.`));
-      else box.append(h("p", "gsq-punch", "Here the receptive fields cover the whole molecule, so GraphSHAP-IQ evaluates every masking. The larger the molecule, the more it saves."));
+        box.append(h("p", "gsq-punch", h("strong", "gsq-accent", fewer), " evaluations, and still ", h("strong", "", "exact"), "."));
+      } else box.append(h("p", "gsq-punch", "Small molecule, little to skip. The larger the molecule, the more GraphSHAP-IQ saves."));
       const line = h("p", "gsq-fieldline");
-      if (state.focus != null) { const f = fieldOf(state.focus); line.append(`The receptive field of ${G.atomName(m, state.focus).toLowerCase()} ${state.focus + 1}: `, h("strong", "", `${f.size} of ${n} atoms`), ". It cannot interact with any atom outside it: those interactions are exactly zero."); }
-      else line.append("Point at an atom to see its receptive field: the only atoms it can interact with.");
+      if (state.focus != null) { const f = fieldOf(state.focus); line.append("This atom can interact with ", h("strong", "", `${f.size} of ${n} atoms`), "."); }
       box.append(line);
       panel.replaceChildren(box);
       countUp(allValue, all);
@@ -116,7 +114,7 @@
       shown.all = all; shown.ours = ours;
       depth.set(LAYERS.indexOf(L));
       mols.set(molecules.indexOf(m));
-      caption.replaceChildren(h("strong", "", m.name), G.formula(m.formula), h("span", "gsq-blurb", m.blurb));
+      caption.replaceChildren(h("strong", "", m.name));
     }
 
     state.focus = central(state.mol);
