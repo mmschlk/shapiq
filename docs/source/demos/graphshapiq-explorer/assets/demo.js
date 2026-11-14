@@ -21,7 +21,7 @@
   if (!G) return console.error("The GraphSHAP-IQ explorer needs ../graphshapiq-common/demo.js first.");
   const { h, svg, sig, bits, signed, percent, legend } = G;
   const VIEWS = [["build", "Build"], ["predict", "Hide atoms"], ["alone", "Atoms alone"], ["together", "Atoms together"]];
-  const ORDERS = { 2: ["Pairs", "2-SII"], 3: ["Groups of 3", "3-SII"], 4: ["Groups of 4", "4-SII"], M: ["All orders", "Möbius"] };
+  const ORDERS = { 2: ["Pairs", "2-SII"], 3: ["Up to 3 atoms", "3-SII"], 4: ["Up to 4 atoms", "4-SII"], M: ["Any size", "Möbius"] };
 
   const MAX_ATOMS = 15; // of a molecule the reader builds: at most 2^15 maskings
   const OVERALL = 24, PER_ATOM = 8; // the interactions of an order the worker sends: as compute/pack.py keeps
@@ -204,7 +204,7 @@
         if (build.mol) { state.mol = build.mol; reset(true); } else rebuild();
         return;
       }
-      state.mol = data.molecules[k]; state.task = taskById(state.mol.task);
+      state.mol = data.molecules[k]; state.task = taskById(state.mol.task); state.order = 2;
       if (state.view === "build") state.view = "together";
       reset(true);
     });
@@ -253,8 +253,7 @@
     const scrim = h("div", "gsq-scrim"), wheel = h("div", "gsq-wheel");
     scrim.hidden = wheel.hidden = true; wheel.tabIndex = -1; wheel.setAttribute("role", "group");
     frame.append(scrim, wheel);
-    const caption = h("p", "gsq-caption");
-    stage.append(frame, caption);
+    stage.append(frame);
     const live = h("p", "gsq-sr"); live.setAttribute("aria-live", "polite");
     body.append(stage, panel);
     root.append(bar, body, live);
@@ -288,7 +287,7 @@
       const i = build.sel, trial = build.slots.slice();
       if (i == null) return;
       trial[i] = id;
-      if (heavy(trial) > MAX_ATOMS) { build.note = `That would make ${heavy(trial)} atoms. Your browser explains molecules of up to ${MAX_ATOMS} atoms exactly.`; renderPanel(); return; }
+      if (heavy(trial) > MAX_ATOMS) return; // the wheel's hub says so
       if (trial.join() === build.slots.join()) { closeWheel(true); return; }
       build.slots = trial;
       rebuild();
@@ -476,7 +475,7 @@
     // the GNN's answer, on the question's card: for the whole molecule, or without the atoms hidden
     function answer(m, t, e) {
       const n = state.view === "predict" ? state.masked.size : 0, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
-      ask.set({ task: t, subject: m.built ? "This molecule" : m.name, has: e.truth.length > 0, p, note: n ? `With ${n} ${n === 1 ? "atom" : "atoms"} hidden from the GNN.` : "" });
+      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p });
       const said = `${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
       if (live.textContent !== said) live.textContent = said;
       return p;
@@ -488,8 +487,6 @@
     }
     const computing = () => (ex().failed ? h("p", "gsq-detail gsq-note", "Your browser could not compute the interactions here.") : h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…"));
     function buildPanel(box, m, t, e) {
-      box.append(h("p", "gsq-title", h("strong", "", "Build your own")));
-      if (build.note) box.append(h("p", "gsq-detail gsq-note", build.note));
       box.append(legend(t, e.truth), e.pending || e.failed ? computing() : meta(m, t, e));
     }
     function maskingPanel(box, m, t, e, p) {
@@ -503,13 +500,12 @@
       if (e.truth.length) act(`Hide the ${t.truthLabel}`, () => { state.masked = new Set(e.truth); });
       act("Hide all", () => { state.masked = new Set(m.atoms.map((_, k) => k)); });
       act("Show all", () => { state.masked = new Set(); }, !n);
-      box.append(h("p", "gsq-title", h("strong", "", "Hide atoms")), compare, actions);
+      box.append(compare, actions);
     }
     function explanationPanel(box, m, t, e) {
       const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), slot = h("div", "gsq-slot"), list = h("ol", "gsq-rows");
-      if (e.pending || e.failed) { title.append(h("strong", "", state.view === "alone" ? "Atoms alone" : "Atoms together")); box.append(title, computing()); return; }
+      if (e.pending || e.failed) { box.append(computing()); return; }
       if (state.view === "alone") {
-        title.append(h("strong", "", "Atoms alone"));
         detail.append("What each atom adds on its own (its Shapley value).");
         const own = singles(e, 1), rows = Object.keys(own).map((k) => ({ atoms: [Number(k)], v: own[k] })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
         const largest = Math.max(1e-9, Math.abs(rows[0]?.v || 0));
@@ -517,9 +513,8 @@
       } else {
         const groups = groupsOf(e, state.order), seq = orderSeq(), at = seq.indexOf(state.order), [label, index] = ORDERS[state.order];
         if (state.focus != null) {
-          title.append(h("strong", "", G.atomName(m, state.focus)), "and its partners");
+          title.append(h("strong", "", G.atomName(m, state.focus)), " and its partners");
         } else {
-          title.append(h("strong", "", "Atoms together"));
           detail.append(state.order === "M" ? "What every group adds that no smaller group explains." : `A ring is what an atom adds alone. A ${state.order === 2 ? "band" : "band or shape"} is what atoms add only together.`);
         }
         const stepper = h("div", "gsq-stepper"), less = h("button", "gsq-step", "−"), more = h("button", "gsq-step", "+");
@@ -545,7 +540,7 @@
         if (!rows.length) list.append(h("li", "gsq-none", "No interactions of this atom at this order."));
       }
       slot.append(list);
-      box.append(title, detail, slot, legend(t, e.truth));
+      box.append(...(title.childNodes.length ? [title] : [detail]), slot, legend(t, e.truth));
       box.append(meta(m, t, e));
     }
 
@@ -554,7 +549,6 @@
       mols.set(m.built ? data.molecules.length : data.molecules.indexOf(m));
       views.node.classList.toggle("gsq-no-build", !m.built); // only the reader's own molecule is built
       views.set(VIEWS.findIndex((v) => v[0] === state.view));
-      caption.replaceChildren(h("strong", "", m.name));
       draw();
       renderPanel();
     }

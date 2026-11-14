@@ -217,7 +217,8 @@ body[data-theme="dark"] .graphshapiq-explorer-demo {
 
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot:focus-visible circle {
   stroke: var(--gsq-build-text);
-  stroke-width: 2px;
+  stroke-width: 3px;
+  stroke-dasharray: none;
 }
 
 .graphshapiq-explorer-demo .gsq-progress {
@@ -346,7 +347,7 @@ body[data-theme="dark"] .graphshapiq-explorer-demo {
 }
 
 .graphshapiq-explorer-demo .gsq-wheel-item.gsq-clear {
-  color: var(--gsq-red-text);
+  color: var(--gsq-muted);
 }
 
 .graphshapiq-explorer-demo .gsq-wheel-item svg {

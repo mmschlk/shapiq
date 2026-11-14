@@ -94,7 +94,7 @@
     li.append(h("span", "gsq-who", name), meter, h("span", `gsq-num ${v >= 0 ? "gsq-up" : "gsq-down"}`, signed(v)));
     return li;
   }
-  const groupName = (m, atoms) => { const els = atoms.map((k) => m.atoms[k][0]); return els.length > 4 ? `${els.slice(0, 3).join(" · ")} +${els.length - 3}` : els.join(" · "); };
+  const groupName = (m, atoms) => { const els = atoms.map((k) => m.atoms[k][0]); return els.length > 4 ? `${els.length} atoms` : els.join(" · "); };
   const atomName = (m, k) => NAMES[m.atoms[k][0]] || m.atoms[k][0];
   // the legend: red, blue, and the outline of the ground truth (if the molecule has one)
   function legend(task, truth) {
