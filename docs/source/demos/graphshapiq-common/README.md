@@ -116,8 +116,9 @@ Before you push, check every demo you changed:
    sessions: `require("playwright")`, `chromium.launch()`) and collect `console` and `pageerror`
    events.
 2. **Light, dark and phone.** Toggle Furo's theme with `document.body.dataset.theme = "dark"`, and
-   use a 390 px wide viewport for the phone. `document.documentElement.scrollWidth` must not exceed
-   the viewport: no horizontal scroll.
+   use viewports of 390 and 320 px for phones. No control may reach past the demo's container
+   (compare each switch's bounding box with the container's). `documentElement.scrollWidth` is not
+   enough: Furo's `.content` scrolls on its own.
 3. **Keyboard.** Every control is a button or radio group. In the explorer, the molecule's atoms
    take focus with Tab and show it as a drawn ring (`keyFocus`). Focus must stay visible.
 4. **Reduced motion.** With `prefers-reduced-motion: reduce`, the scene must not tween

@@ -438,6 +438,21 @@ body[data-theme="dark"] .gsq {
   }
 }
 
+@container (max-width: 23.5rem) {
+  .gsq .gsq-opt {
+    padding: 0 0.42rem;
+    font-size: 0.72rem;
+    letter-spacing: -0.01em;
+  }
+}
+
+@container (max-width: 20.5rem) {
+  .gsq .gsq-opt {
+    padding: 0 0.3rem;
+    font-size: 0.64rem;
+  }
+}
+
 /* -- the body: the molecule and the panel ------------------------------------------------------- */
 
 .gsq .gsq-body {
@@ -963,8 +978,9 @@ body[data-theme="dark"] .gsq {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gsq .gsq-hint {
-    animation: none;
+  .gsq .gsq-hint,
+  .gsq .gsq-spin {
+    animation: none !important;
   }
 
   .gsq *,
