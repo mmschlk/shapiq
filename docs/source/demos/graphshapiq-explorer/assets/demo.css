@@ -43,16 +43,34 @@
   font-size: 0.6rem;
 }
 
-/* the reader's own molecule stands out, and stays in sight where the row scrolls */
+/* building has a color of its own, amber: not the red and blue of the values, nor the violet */
+.graphshapiq-explorer-demo {
+  --gsq-build: #f59e0b;
+  --gsq-build-text: #a8500a;
+  --gsq-build-ink: #1b1e27; /* on amber */
+}
+
+body[data-theme="dark"] .graphshapiq-explorer-demo {
+  --gsq-build-text: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .graphshapiq-explorer-demo {
+    --gsq-build-text: #fbbf24;
+  }
+}
+
+/* the reader's own molecule stands out and apart, and stays in sight where the row scrolls */
 .graphshapiq-explorer-demo .gsq-mol-own {
   position: sticky;
   z-index: 1;
   right: 0;
   flex-basis: 5.4rem;
-  margin-left: 0.3rem;
-  border: 2px dashed color-mix(in srgb, var(--gsq-link) 60%, transparent);
-  background: color-mix(in srgb, var(--gsq-link) 9%, var(--gsq-sheet));
-  color: var(--gsq-link);
+  margin-left: 1.3rem;
+  border-color: var(--gsq-build);
+  background: color-mix(in srgb, var(--gsq-build) 16%, var(--gsq-sheet));
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--gsq-build) 80%, transparent);
+  color: var(--gsq-build-text);
   opacity: 1;
   transition:
     background-color 220ms var(--gsq-ease),
@@ -60,14 +78,25 @@
     transform 120ms var(--gsq-ease);
 }
 
+/* a rule between the molecules that are given and the reader's */
+.graphshapiq-explorer-demo .gsq-mol-own::before {
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: calc(-0.65rem - 2px);
+  width: 1px;
+  background: color-mix(in srgb, var(--gsq-muted) 45%, var(--gsq-border));
+  content: "";
+}
+
 .graphshapiq-explorer-demo .gsq-mol-own:hover {
-  border-color: var(--gsq-link);
-  background: color-mix(in srgb, var(--gsq-link) 15%, var(--gsq-sheet));
+  background: color-mix(in srgb, var(--gsq-build) 26%, var(--gsq-sheet));
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] {
-  border-style: solid;
-  border-color: var(--gsq-link);
+  border-color: var(--gsq-build);
+  background: var(--gsq-build);
+  color: var(--gsq-build-ink);
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own span {
@@ -75,11 +104,19 @@
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own line {
-  stroke: var(--gsq-link);
+  stroke: currentColor;
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own .gsq-plus-o {
-  fill: var(--gsq-link);
+  fill: var(--gsq-build);
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] .gsq-plus-o {
+  fill: var(--gsq-build-ink);
+}
+
+.graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] .gsq-plus-o ~ line {
+  stroke: var(--gsq-build);
 }
 
 /* the + beckons a few times, until the reader's molecule is the one shown */
@@ -88,7 +125,7 @@
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own .gsq-plus-ping {
-  fill: var(--gsq-link);
+  fill: var(--gsq-build);
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
@@ -112,7 +149,7 @@
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own .gsq-plus-o ~ line {
-  stroke: var(--gsq-sheet);
+  stroke: var(--gsq-build-ink);
   stroke-width: 1.6px;
 }
 
@@ -159,13 +196,22 @@
 
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot:hover circle,
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel circle {
-  fill: color-mix(in srgb, var(--gsq-ink) 8%, var(--gsq-stage));
-  stroke: var(--gsq-ink);
+  fill: color-mix(in srgb, var(--gsq-build) 22%, var(--gsq-stage));
+  stroke: var(--gsq-build);
 }
 
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled.gsq-sel circle {
-  fill: color-mix(in srgb, var(--gsq-link) 14%, transparent);
-  stroke: var(--gsq-link);
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot:hover .gsq-plus,
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel .gsq-plus {
+  stroke: var(--gsq-build-text);
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:is(:hover, .gsq-sel) circle {
+  fill: color-mix(in srgb, var(--gsq-build) 22%, transparent);
+  stroke-dasharray: none;
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel circle {
+  stroke-width: 2px;
   stroke-dasharray: none;
 }
 
@@ -174,7 +220,7 @@
 }
 
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot:focus-visible circle {
-  stroke: var(--gsq-link);
+  stroke: var(--gsq-build-text);
   stroke-width: 2px;
 }
 
@@ -192,7 +238,7 @@
   width: 0;
   height: 100%;
   border-radius: 999px;
-  background: var(--gsq-link);
+  background: var(--gsq-build);
   transition: width 120ms linear;
 }
 
@@ -200,12 +246,13 @@
   display: none;
 }
 
-/* the wheel of groups, around the position it is for. The scrim under it closes it */
+/* the wheel of groups, around the position it is for: a ring of frosted glass, so that the
+   molecule shows through it and the position in its middle. The scrim under it closes it */
 .graphshapiq-explorer-demo .gsq-scrim {
   position: absolute;
   z-index: 4;
   inset: 0;
-  background: color-mix(in srgb, var(--gsq-stage) 62%, transparent);
+  background: color-mix(in srgb, var(--gsq-stage) 30%, transparent);
   animation: graphshapiq-explorer-fade 200ms var(--gsq-ease) backwards;
 }
 
@@ -213,19 +260,41 @@
   --r: 3.7rem; /* from the hub to the middle of a group */
   --item: 2.7rem;
   --half: calc(var(--r) + var(--item) / 2 + 0.35rem);
+  --hole: calc(var(--r) - var(--item) / 2 - 0.3rem); /* the radius of the hub */
   position: absolute;
   z-index: 5;
-  top: clamp(calc(var(--half) + 0.3rem), var(--y), calc(100% - var(--half) - 0.3rem));
-  left: clamp(calc(var(--half) + 0.3rem), var(--x), calc(100% - var(--half) - 0.3rem));
+  top: clamp(calc(var(--half) + 0.2rem), var(--y), calc(100% - var(--half) - 0.2rem));
+  left: clamp(calc(var(--half) + 0.2rem), var(--x), calc(100% - var(--half) - 0.2rem));
   width: calc(2 * var(--half));
   height: calc(2 * var(--half));
-  border: 1px solid color-mix(in srgb, var(--gsq-muted) 45%, var(--gsq-border));
   border-radius: 50%;
   outline: none;
-  background: color-mix(in srgb, var(--gsq-sheet) 94%, transparent);
   box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.5);
   translate: -50% -50%;
   animation: graphshapiq-explorer-wheel 220ms var(--gsq-ease) backwards;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel::before {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--gsq-muted) 45%, var(--gsq-border));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gsq-sheet) 45%, transparent);
+  content: "";
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(var(--hole) - 0.5px), #000 var(--hole));
+  mask: radial-gradient(circle closest-side, transparent calc(var(--hole) - 0.5px), #000 var(--hole));
+}
+
+/* the rim of the hub */
+.graphshapiq-explorer-demo .gsq-wheel::after {
+  position: absolute;
+  inset: calc(var(--half) - var(--hole));
+  border: 1.5px solid var(--gsq-build);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
 }
 
 .graphshapiq-explorer-demo :is(.gsq-scrim, .gsq-wheel)[hidden] {
@@ -295,24 +364,32 @@
 }
 
 .graphshapiq-explorer-demo .gsq-wheel-hub {
-  width: calc(2 * var(--r) - var(--item) - 0.5rem);
-  height: calc(2 * var(--r) - var(--item) - 0.5rem);
+  width: calc(2 * var(--hole));
+  height: calc(2 * var(--hole));
   border: 0;
   background: none;
-  color: var(--gsq-muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.2;
   translate: -50% -50%;
 }
 
-.graphshapiq-explorer-demo .gsq-wheel-hub:hover,
-.graphshapiq-explorer-demo .gsq-wheel-hub.gsq-on {
-  color: var(--gsq-ink);
+/* the name of the group pointed at, over the position */
+.graphshapiq-explorer-demo .gsq-wheel-name {
+  max-width: calc(2 * var(--hole) + 1rem);
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.7rem;
+  background: var(--gsq-ink);
+  color: var(--gsq-sheet);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.graphshapiq-explorer-demo .gsq-wheel-hub.gsq-off {
-  color: var(--gsq-link);
+.graphshapiq-explorer-demo .gsq-wheel-name:empty {
+  display: none;
+}
+
+.graphshapiq-explorer-demo .gsq-wheel-name.gsq-off {
+  background: var(--gsq-build);
+  color: var(--gsq-build-ink);
 }
 
 .graphshapiq-explorer-demo :is(.gsq-wheel-item, .gsq-wheel-hub):focus-visible {
@@ -341,26 +418,18 @@
   }
 }
 
-/* the molecules to start from */
+/* the molecules to start from, in a line of the panel */
 .graphshapiq-explorer-demo .gsq-starts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
-  margin: 0.8rem 0 1.1rem;
-}
-
-.graphshapiq-explorer-demo .gsq-starts-label {
-  width: 100%;
-  color: var(--gsq-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  gap: 0.45rem;
+  margin: 0.2rem 0 1.1rem;
+  font-size: 0.86rem;
 }
 
 .graphshapiq-explorer-demo .gsq-chip {
-  height: 1.9rem;
+  height: 1.8rem;
   padding: 0 0.65rem;
   border: 1px solid var(--gsq-border);
   border-radius: 999px;
@@ -395,7 +464,7 @@
   width: 1.1rem;
   height: 1.1rem;
   border: 2.5px solid var(--gsq-border);
-  border-top-color: var(--gsq-link);
+  border-top-color: var(--gsq-build);
   border-radius: 50%;
   animation: graphshapiq-explorer-spin 700ms linear infinite;
 }
@@ -407,5 +476,5 @@
 }
 
 .graphshapiq-explorer-demo .gsq-detail.gsq-note {
-  color: var(--gsq-link);
+  color: var(--gsq-build-text);
 }

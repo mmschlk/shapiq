@@ -41,16 +41,15 @@
   };
   const PALETTE = ["OH", "NH2", "NO2", "CH3", "Cl", "OMe", "COOH"];
   const none = ["none", "none", "none", "none", "none"];
-  // molecules to start from, each with the question it is an example of
+  // the molecules to start from: the empty ring (for the question that is asked) and catechol, the
+  // example of a PAINS. Move one of its OH groups, and it is none
   const STARTS = [
+    { name: "Empty ring", slots: ["none", ...none], task: null },
     { name: "Catechol", slots: ["OH", "OH", ...none.slice(1)], task: "PAINS" },
-    { name: "Resorcinol", slots: ["OH", "none", "OH", ...none.slice(2)], task: "PAINS" },
-    { name: "Hydroquinone", slots: ["OH", "none", "none", "OH", "none", "none"], task: "PAINS" },
-    { name: "Nitrobenzene", slots: ["NO2", ...none], task: "mutagenic" },
-    { name: "Empty ring", slots: ["none", ...none], task: null }, // benzene, for the question that is asked
   ];
   const KNOWN = Object.fromEntries([
-    ...STARTS.map((s) => [s.slots.join(), s.name]),
+    [["OH", "OH", ...none.slice(1)].join(), "Catechol"], [["OH", "none", "OH", ...none.slice(2)].join(), "Resorcinol"],
+    [["OH", "none", "none", "OH", "none", "none"].join(), "Hydroquinone"], [["NO2", ...none].join(), "Nitrobenzene"],
     [["none", ...none].join(), "Benzene"], [["NO2", "none", "NO2", ...none.slice(2)].join(), "1,3-Dinitrobenzene"],
     [["OH", ...none].join(), "Phenol"], [["NH2", ...none].join(), "Aniline"], [["CH3", ...none].join(), "Toluene"],
     [["Cl", ...none].join(), "Chlorobenzene"], [["COOH", ...none].join(), "Benzoic acid"], [["OMe", ...none].join(), "Anisole"],
@@ -188,7 +187,7 @@
     const state = { mol: first, task: taskById(first.task), view: "together", order: 2, masked: new Set(), focus: null, pinned: false, row: null, hinted: false };
     // the reader's own molecule: the groups on the ring's positions, the position whose wheel is
     // open (`sel`) and where the positions are on the stage (`at`), the molecule they make, and its explanation (`result`: at first the GNN's answer only, `pending`)
-    const build = { slots: STARTS[0].slots.slice(), task: taskById(STARTS[0].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, worker: null, picked: false };
+    const build = { slots: STARTS[1].slots.slice(), task: taskById(STARTS[1].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, worker: null, picked: false };
     const built = () => state.mol.built === true;
     const ex = () => (built() ? build.result : data.explanations[`${state.mol.id}/${state.task.id}`]);
     const rowsOf = (e, order) => (order === "M" ? e.moebius : e.kSII[String(order)] || []);
@@ -329,14 +328,14 @@
       if (focused != null && !Number.isNaN(focused)) slotLayer.children[focused]?.focus({ preventScroll: true });
     }
     // the wheel: the groups that can go to a position, around the position (and "remove", where a
-    // group is). Its hub names the group pointed at, and closes the wheel
+    // group is). The position shows through its hub, which names the group pointed at and closes it
     function openWheel(i, byKey) {
       build.sel = i;
       draw(); renderPanel();
       const there = build.slots[i], ids = there === "none" ? PALETTE : [...PALETTE, "none"], rest = there === "none" ? "Add a group" : "Change the group";
-      const hub = h("button", "gsq-wheel-hub", rest); hub.type = "button"; hub.setAttribute("aria-label", "Close");
+      const name = h("span", "gsq-wheel-name"), hub = h("button", "gsq-wheel-hub", name); hub.type = "button"; hub.setAttribute("aria-label", "Close");
       hub.addEventListener("click", () => closeWheel(true));
-      const say = (text, cls = "") => { hub.textContent = text; hub.className = `gsq-wheel-hub ${cls}`; };
+      const say = (text = "", large = false) => { name.textContent = text; name.classList.toggle("gsq-off", large); }; // the group pointed at
       wheel.replaceChildren(hub);
       ids.forEach((id, k) => {
         const group = GROUPS[id], trial = build.slots.slice(); trial[i] = id;
@@ -346,7 +345,7 @@
         b.setAttribute("aria-label", id === "none" ? `Remove the ${GROUPS[there].name} group` : `${group.label} (${group.name})${large ? ", too large here" : ""}`);
         if (large) b.setAttribute("aria-disabled", "true"); else if (id === there) b.setAttribute("aria-pressed", "true");
         b.style.setProperty("--dx", Math.cos(angle).toFixed(4)); b.style.setProperty("--dy", Math.sin(angle).toFixed(4)); b.style.setProperty("--i", k);
-        const on = () => say(large ? `At most ${MAX_ATOMS} atoms` : id === "none" ? "remove" : group.name, large ? "gsq-off" : "gsq-on"), off = () => say(rest);
+        const on = () => say(large ? `At most ${MAX_ATOMS} atoms` : id === "none" ? "remove" : group.name, large), off = () => say();
         b.addEventListener("pointerenter", on); b.addEventListener("pointerleave", off); b.addEventListener("focus", on); b.addEventListener("blur", off);
         b.addEventListener("click", () => place(id));
         wheel.append(b);
@@ -458,15 +457,14 @@
     const why = () => h("p", "gsq-pred-why", "Which atoms does the answer rest on? See the ", link("alone", "atoms alone"), " or the ", link("together", "atoms together"), ".");
     const computing = () => h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…");
     function buildPanel(box, m, t, e) {
-      const title = h("p", "gsq-title"), detail = h("p", `gsq-detail${build.note ? " gsq-note" : ""}`), starts = h("div", "gsq-starts", h("span", "gsq-starts-label", "Start from"));
+      const title = h("p", "gsq-title"), detail = h("p", `gsq-detail${build.note ? " gsq-note" : ""}`), starts = h("p", "gsq-starts", "Start from");
       title.append(h("strong", "", "Build your own"), "on a benzene ring");
       detail.append(build.note || `${G.hovers() ? "Click" : "Tap"} a + on the ring and pick a group for it. ${G.hovers() ? "Click" : "Tap"} a group to change or remove it. The GNN answers at once. Your browser then computes the exact interactions.`);
-      starts.setAttribute("role", "group"); starts.setAttribute("aria-label", "Molecules to start from");
       STARTS.forEach((s, k) => {
-        const b = h("button", "gsq-chip", s.name); b.type = "button";
+        const b = h("button", "gsq-chip", s.name.toLowerCase().replace("empty", "an empty")); b.type = "button";
         b.setAttribute("aria-pressed", String(s.slots.join() === build.slots.join()));
         b.addEventListener("click", () => { start(k); panel.querySelectorAll(".gsq-chip")[k]?.focus({ preventScroll: true }); });
-        starts.append(b);
+        starts.append(b, k ? "" : "or");
       });
       box.append(title, detail, starts, legend(t, e.truth), e.pending ? computing() : meta(m, t, e), why());
     }
