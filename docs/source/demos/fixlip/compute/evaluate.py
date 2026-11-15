@@ -19,7 +19,6 @@ photo. They are written to ``../assets/figures-data.js`` under ``images``.
   and the least, for every size, which gives FIxLIP's insertion and deletion curves. The search
   for the subsets is the demo's greedy search for cliques.
 - ``cliques``: the similarity of the demo's cliques, shown alone.
-- ``cross``: the similarity of every combination of 6 masked photos and 6 masked captions.
 
 Usage::
 
@@ -195,16 +194,6 @@ def evaluate(photo: dict[str, Any], model: dict[str, Any], data: dict[str, Any])
     cliques = data["explanations"][f"{photo['id']}/{MODEL}"]["cliques"]
     values = game.similarity(as_masks([members for members, _ in cliques.values()], n))
     out["cliques"] = {size: float(value) for size, value in zip(cliques, values, strict=True)}
-
-    # every combination of 6 masked photos and 6 masked captions
-    photos = np.random.default_rng(3).random((6, n_patches)) < 0.5
-    captions = np.random.default_rng(4).random((6, len(tokens))) < 0.5
-    masks = np.array([np.concatenate([a, b]) for a in photos for b in captions])
-    out["cross"] = {
-        "photos": [np.flatnonzero(a).tolist() for a in photos],
-        "captions": [np.flatnonzero(b).tolist() for b in captions],
-        "values": game.similarity(masks).reshape(6, 6).tolist(),
-    }
     return out
 
 

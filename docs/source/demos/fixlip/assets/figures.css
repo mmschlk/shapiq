@@ -435,6 +435,10 @@ body[data-theme="dark"] .fixlip-figure {
   background: var(--fixlip-gray);
 }
 
+.fixlip-figure-swatch.fixlip-figure-ink {
+  background: var(--fixlip-ink);
+}
+
 .fixlip-figure-swatch.fixlip-figure-round {
   width: 0.6rem;
   height: 0.6rem;
@@ -669,64 +673,6 @@ body[data-theme="dark"] .fixlip-figure {
   color: var(--fixlip-muted);
 }
 
-.fixlip-figure-cross {
-  display: grid;
-  grid-template-columns: minmax(1.9rem, 3rem) repeat(6, minmax(0, 4.4rem));
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-}
-
-.fixlip-figure-cross .fixlip-figure-value {
-  min-height: 0;
-  font-size: 0.8rem;
-}
-
-.fixlip-figure-cross .fixlip-figure-photo {
-  border-radius: 4px;
-}
-
-/* a masked text, drawn as its tokens: filled where a token is kept */
-.fixlip-figure-marks {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2px;
-  padding: 0 0.2rem 0.2rem;
-}
-
-.fixlip-figure-marks i {
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: 1.5px;
-  box-shadow: inset 0 0 0 1px var(--fixlip-gray);
-}
-
-.fixlip-figure-marks .fixlip-figure-on {
-  background: var(--fixlip-ink);
-  box-shadow: none;
-}
-
-.fixlip-figure-marks .fixlip-figure-framed {
-  outline: 1.5px solid var(--shapiq-amber);
-  outline-offset: 1px;
-}
-
-@container (max-width: 34rem) {
-  .fixlip-figure-cross {
-    gap: 3px;
-  }
-
-  .fixlip-figure-cross .fixlip-figure-value {
-    font-size: 0.68rem;
-  }
-
-  .fixlip-figure-marks i {
-    width: 0.32rem;
-    height: 0.32rem;
-  }
-}
-
 /* -- an interaction measured on the model: bars -------------------------------------------------- */
 
 .fixlip-figure-players {
@@ -885,29 +831,39 @@ body[data-theme="dark"] .fixlip-figure {
 /* -- the pointing game ------------------------------------------------------------------------------ */
 
 .fixlip-figure-pointed {
-  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
   gap: 1.75rem;
 }
 
 .fixlip-figure-pointing {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
 }
 
-.fixlip-figure-mosaic {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 3px;
+/* the four photos of the game: a cross in the page's color between them */
+.fixlip-figure-quarters .fixlip-figure-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--fixlip-page), var(--fixlip-page)) center / 3px 100% no-repeat,
+    linear-gradient(var(--fixlip-page), var(--fixlip-page)) center / 100% 3px no-repeat;
+  pointer-events: none;
 }
 
-.fixlip-figure-mosaic img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 4px;
-  object-fit: cover;
+/* a name that can be chosen */
+.fixlip-figure-name {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fixlip-figure-name:hover {
+  box-shadow: inset 0 0 0 1px var(--fixlip-muted);
+}
+
+.fixlip-figure-name:focus-visible {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
 }
 
 @container (max-width: 34rem) {
@@ -915,8 +871,8 @@ body[data-theme="dark"] .fixlip-figure {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .fixlip-figure-pointing {
-    width: min(100%, 13rem);
+  .fixlip-figure-pointed > .fixlip-figure-panel:first-child {
+    width: min(100%, 15rem);
     margin: 0 auto;
   }
 }
@@ -1051,6 +1007,19 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-area-gray {
   fill: color-mix(in srgb, var(--fixlip-gray) 20%, transparent);
+}
+
+/* what a slider points at in a chart */
+.fixlip-figure-guide {
+  stroke: var(--fixlip-ink);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+/* a chart that a press or a drag sets the slider on */
+.fixlip-figure-scrub {
+  cursor: ew-resize;
+  touch-action: pan-y;
 }
 
 /* what a chart points at: an ink dot with a ring in the page's color */
@@ -1199,4 +1168,83 @@ article[role="main"] :is(p, li, td, figcaption) a.reference:hover {
 
 article[role="main"] :is(p, li, td, figcaption) a.reference code {
   color: inherit;
+}
+
+/* -- a slider of a figure ---------------------------------------------------------------------------- */
+
+.fixlip-figure-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-slider input {
+  flex: 1;
+  min-width: 0;
+  height: 1.75rem; /* a target for a finger */
+  margin: 0;
+  accent-color: var(--shapiq-amber);
+  cursor: pointer;
+}
+
+.fixlip-figure-slider output {
+  min-width: 1.6em;
+  font-size: 0.95rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--fixlip-ink);
+}
+
+/* a slider under the axis of a chart, with its label under it */
+.fixlip-figure-under {
+  display: grid;
+  grid-template-columns: 1fr auto auto 1fr;
+  gap: 0 0.5rem;
+  margin-top: 0;
+}
+
+.fixlip-figure-under input {
+  grid-area: 1 / 1 / 2 / -1;
+  margin: 0 var(--fixlip-right, 0) 0 var(--fixlip-left, 0);
+}
+
+.fixlip-figure-under span {
+  grid-area: 2 / 2;
+}
+
+.fixlip-figure-under output {
+  grid-area: 2 / 3;
+  min-width: 0;
+}
+
+/* a clique of the size that the slider sets, next to the chart of all sizes */
+.fixlip-figure-sized {
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 1.75rem;
+}
+
+.fixlip-figure-sized .fixlip-figure-legend {
+  margin: 0;
+}
+
+.fixlip-figure-readings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-sized {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fixlip-figure-sized > .fixlip-figure-panel:first-child {
+    width: min(100%, 17rem);
+    margin: 0 auto;
+  }
 }

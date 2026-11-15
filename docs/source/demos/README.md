@@ -51,7 +51,7 @@ width of the page, and what is chosen in the demo. The `shapiq-demo-figure` dire
 demo and the figure, with a description for screen readers and the caption as its content:
 
 ```rst
-.. shapiq-demo-figure:: fixlip game
+.. shapiq-demo-figure:: fixlip masks
    :alt: What the figure shows.
 
    The caption.
@@ -73,7 +73,7 @@ figure or a table with the role `shapiq-figure`, which becomes its number and a 
 target is the name of a demo's figure, or the `:name:` of a `figure` or a table:
 
 ```rst
-:shapiq-figure:`game` shows four masks.
+:shapiq-figure:`masks` shows eight masks.
 ```
 
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`

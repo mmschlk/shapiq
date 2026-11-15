@@ -12,6 +12,7 @@ are run by hand, once; the docs only show their result.
 | `pack.py` | Writes the demo's data, `../assets/data.js`, and copies the photos next to it. |
 | `evaluate.py` | Evaluates SigLIP 2 on the masks that the page's figures show, for every photo. |
 | `paper.py` | Reads the data of the paper's plots that the page draws again from the paper's figures. |
+| `pointing.py` | Plays the paper's pointing game for SigLIP 2 on four photos of the demo. |
 
 ## Run
 
@@ -37,6 +38,7 @@ write:
 ```bash
 python evaluate.py [photo ...]  # SigLIP 2 on about 3,500 masks of each photo, 4 minutes each on four CPU cores
 python paper.py <figures>       # needs PyMuPDF and the folder "figures" of the paper's LaTeX sources
+python pointing.py              # one explanation of four photos in one image, about 10 minutes
 ```
 
 `evaluate.py` needs scipy and writes the part `images` of the file, one entry for each photo. It
@@ -44,7 +46,10 @@ reads the two objects of each photo from `config.toml` (`objects`, with their pa
 that name them). Run it again for a photo when its explanation for SigLIP 2 in `data.js` changes.
 `paper.py` writes the part `paper`. It reads the boxes and the curves of the paper's vector figures
 (Figures 3, 4 and 5) with their exact coordinates, and holds the scores of Table 1. The figure
-`../figures/paper-methods.webp` is Figure 2 of the paper as it is.
+`../figures/paper-methods.webp` is Figure 2 of the paper as it is. `pointing.py` writes the part
+`pointing` and the image `../assets/pointing.jpg`. It combines four photos of the demo into one
+image, explains it with a text that names the four photos as `explain.py` does, and keeps the
+interactions between names and patches with their pointing game recognition.
 
 The data of the docs was computed with Python 3.13, shapiq from the repository (after release 1.8.0),
 torch 2.14, transformers 5.20 and xgboost 3.4.

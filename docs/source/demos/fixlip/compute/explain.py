@@ -184,6 +184,28 @@ def r2(y: np.ndarray, y_hat: np.ndarray) -> float:
     return float(1 - np.sum((y - y_hat) ** 2) / np.sum((y - y.mean()) ** 2))
 
 
+def interactions(game: shapiq.Game, budget: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return the main effects and the matrix of interactions of a game, by ProxySHAP."""
+    n = game.n_players
+    approximator = shapiq.approximator.ProxySHAP(
+        n=n,
+        index="FBII",
+        max_order=2,
+        proxy_model=XGBRegressor(**PROXY, random_state=0, n_jobs=4),
+        adjustment=False,
+        # coalitions of players present with probability 1/2, where FBII puts its weight
+        sampling_weights=np.array([math.comb(n, k) for k in range(n + 1)], dtype=float),
+        random_state=0,
+    )
+    values = approximator.approximate(budget=budget, game=game)
+    first = np.array([values[(i,)] for i in range(n)])
+    pairs = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            pairs[i, j] = pairs[j, i] = values[(i, j)]
+    return first, pairs
+
+
 def explain(photo: dict[str, Any], model: dict[str, Any], budget: int, results: Path) -> None:
     """Explain a photo and its caption for a model, and write the explanation to ``results``."""
     # shapiq_games names its models: CLIP ViT-B/32 is one of them, SigLIP 2 ViT-B/32 is not; a name
@@ -203,23 +225,8 @@ def explain(photo: dict[str, Any], model: dict[str, Any], budget: int, results: 
     n = game.n_players
 
     start = time.time()
-    approximator = shapiq.approximator.ProxySHAP(
-        n=n,
-        index="FBII",
-        max_order=2,
-        proxy_model=XGBRegressor(**PROXY, random_state=0, n_jobs=4),
-        adjustment=False,
-        # coalitions of players present with probability 1/2, where FBII puts its weight
-        sampling_weights=np.array([math.comb(n, k) for k in range(n + 1)], dtype=float),
-        random_state=0,
-    )
-    values = approximator.approximate(budget=budget, game=game)
+    first, pairs = interactions(game, budget)
     seconds = time.time() - start
-    first = np.array([values[(i,)] for i in range(n)])
-    pairs = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            pairs[i, j] = pairs[j, i] = values[(i, j)]
     cliques = greedy_cliques(first, pairs, MAX_CLIQUE)
     similarity = float(game.similarity(np.ones((1, n), dtype=bool))[0])
 

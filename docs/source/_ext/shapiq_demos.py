@@ -43,7 +43,7 @@ The ``shapiq-demo-figure`` directive adds a figure that a demo's script draws on
 one that follows what the demo shows. Its arguments are the demo and the name of the figure, and
 its content is the caption::
 
-    .. shapiq-demo-figure:: fixlip game
+    .. shapiq-demo-figure:: fixlip masks
        :alt: What the figure shows.
 
        **The game assigns a similarity to every mask.** The caption.
@@ -60,7 +60,7 @@ their captions as they are. The role ``shapiq-figure`` refers to a figure or a t
 its number, as a link. Its target is the name of a demo's figure, or the ``:name:`` of a ``figure``
 or a table::
 
-    :shapiq-figure:`game` shows four masks.
+    :shapiq-figure:`masks` shows eight masks.
 """
 
 from __future__ import annotations
