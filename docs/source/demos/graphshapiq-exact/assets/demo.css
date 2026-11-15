@@ -25,18 +25,18 @@
 }
 
 .graphshapiq-exact-demo .gsq-plot .gsq-atom.gsq-in {
-  fill: color-mix(in srgb, var(--gsq-violet) 16%, var(--gsq-sheet));
-  stroke: var(--gsq-violet);
+  fill: color-mix(in srgb, var(--gsq-build) 16%, var(--gsq-sheet));
+  stroke: var(--gsq-build);
 }
 
 .graphshapiq-exact-demo .gsq-plot .gsq-atom.gsq-src {
-  fill: var(--gsq-violet);
-  stroke: var(--gsq-violet);
+  fill: var(--gsq-build);
+  stroke: var(--gsq-build);
   stroke-width: 2.4px;
 }
 
 .graphshapiq-exact-demo .gsq-plot .gsq-aura circle {
-  fill: var(--gsq-violet);
+  fill: var(--gsq-build);
   opacity: 0.14;
 }
 
@@ -96,7 +96,7 @@
 
 .graphshapiq-exact-demo .gsq-bignum.gsq-accent,
 .graphshapiq-exact-demo .gsq-punch .gsq-accent {
-  color: var(--gsq-violet-text);
+  color: var(--gsq-build-text);
 }
 
 .graphshapiq-exact-demo .gsq-logbars {
@@ -145,11 +145,11 @@
 }
 
 .graphshapiq-exact-demo .gsq-logbar i.gsq-accent {
-  background: var(--gsq-violet);
+  background: var(--gsq-build);
 }
 
 .graphshapiq-exact-demo .gsq-logbar i.gsq-soft {
-  background: color-mix(in srgb, var(--gsq-violet) 40%, var(--gsq-stage));
+  background: color-mix(in srgb, var(--gsq-build) 40%, var(--gsq-stage));
 }
 
 .graphshapiq-exact-demo .gsq-barnote {
@@ -166,11 +166,20 @@
 
 .graphshapiq-exact-demo .gsq-fieldline {
   padding: 0.1rem 0 0.1rem 0.7rem;
-  border-left: 3px solid var(--gsq-violet);
+  border-left: 3px solid var(--gsq-build);
   font-size: 0.92rem;
   line-height: 1.45;
 }
 
 .graphshapiq-exact-demo .gsq-fieldline strong {
   color: var(--gsq-ink);
+}
+
+/* the layers chosen, in amber like the receptive field they set */
+.graphshapiq-exact-demo .gsq-pill {
+  background: var(--gsq-build);
+}
+
+.graphshapiq-exact-demo .gsq-pill .gsq-opt {
+  color: var(--gsq-build-ink);
 }

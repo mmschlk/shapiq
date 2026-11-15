@@ -329,7 +329,8 @@
     let at = -1;
     const move = (instant) => {
       const b = buttons[at];
-      if (!b || !pill.clientWidth) return;
+      if (!b) { pill.style.clipPath = "inset(50% 50% 50% 50% round 999px)"; return; } // none chosen
+      if (!pill.clientWidth) return;
       if (instant) pill.style.transition = "none";
       pill.style.clipPath = `inset(${b.offsetTop}px ${pill.clientWidth - b.offsetLeft - b.offsetWidth}px ${pill.clientHeight - b.offsetTop - b.offsetHeight}px ${b.offsetLeft}px round 999px)`;
       if (instant) { pill.getBoundingClientRect(); pill.style.transition = ""; }

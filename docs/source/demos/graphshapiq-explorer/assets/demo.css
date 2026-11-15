@@ -39,23 +39,6 @@
   font-size: 0.6rem;
 }
 
-/* building has a color of its own, amber: not the red and blue of the values, nor the violet */
-.graphshapiq-explorer-demo {
-  --gsq-build: #f59e0b;
-  --gsq-build-text: #a8500a;
-  --gsq-build-ink: #1b1e27; /* on amber */
-}
-
-body[data-theme="dark"] .graphshapiq-explorer-demo {
-  --gsq-build-text: #fbbf24;
-}
-
-@media (prefers-color-scheme: dark) {
-  body:not([data-theme="light"]) .graphshapiq-explorer-demo {
-    --gsq-build-text: #fbbf24;
-  }
-}
-
 /* the reader's own molecule stands out and apart, and stays in sight where the row scrolls */
 .graphshapiq-explorer-demo .gsq-mol-own {
   position: sticky;
@@ -149,10 +132,133 @@ body[data-theme="dark"] .graphshapiq-explorer-demo {
   stroke-width: 1.6px;
 }
 
-/* the view "Build" is for the reader's own molecule only (the pill holds a copy of the options) */
-.graphshapiq-explorer-demo .gsq-switch.gsq-no-build > .gsq-opt:first-child,
-.graphshapiq-explorer-demo .gsq-switch.gsq-no-build .gsq-pill > .gsq-opt:first-child {
+/* the views, inside the frame at its top: three for every molecule, and "Build" beside them, after
+   a rule, for the reader's own (it comes in without moving the three) */
+.graphshapiq-explorer-demo .gsq-viewbar {
+  position: absolute;
+  z-index: 3;
+  top: 0.6rem;
+  left: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.graphshapiq-explorer-demo .gsq-viewbar .gsq-switch {
+  background: color-mix(in srgb, var(--gsq-sheet) 80%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
+  padding: 0 0.62rem;
+  font-size: 0.8rem;
+}
+
+.graphshapiq-explorer-demo .gsq-buildtab {
+  position: relative;
+  height: var(--gsq-control);
+  padding: 0 0.85rem;
+  border: 1px solid var(--gsq-build);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gsq-build) 14%, var(--gsq-sheet));
+  color: var(--gsq-build-text);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  animation: graphshapiq-explorer-tab 260ms var(--gsq-ease) backwards;
+  transition:
+    background-color 200ms var(--gsq-ease),
+    color 200ms var(--gsq-ease);
+}
+
+.graphshapiq-explorer-demo .gsq-buildtab::before {
+  position: absolute;
+  top: 22%;
+  bottom: 22%;
+  left: calc(-0.5rem - 1px);
+  width: 1px;
+  background: color-mix(in srgb, var(--gsq-muted) 45%, var(--gsq-border));
+  content: "";
+}
+
+.graphshapiq-explorer-demo .gsq-buildtab[aria-pressed="true"] {
+  background: var(--gsq-build);
+  color: var(--gsq-build-ink);
+}
+
+.graphshapiq-explorer-demo .gsq-buildtab[hidden] {
   display: none;
+}
+
+.graphshapiq-explorer-demo .gsq-buildtab:focus-visible {
+  outline: 2px solid var(--gsq-ink);
+  outline-offset: 2px;
+}
+
+@keyframes graphshapiq-explorer-tab {
+  from {
+    opacity: 0;
+    translate: -0.6rem 0;
+    scale: 0.85;
+  }
+}
+
+/* the molecule under the views, and the hint under them too */
+.graphshapiq-explorer-demo .gsq-frame .gsq-plot {
+  height: calc(100% - 2.9rem);
+  margin-top: 2.9rem;
+}
+
+.graphshapiq-explorer-demo .gsq-hint {
+  top: 3.5rem;
+}
+
+/* the "i", right of the questions */
+.graphshapiq-explorer-demo .gsq-ask-pick {
+  position: relative;
+}
+
+.graphshapiq-explorer-demo .gsq-ask-pick .gsq-info {
+  margin-left: auto;
+}
+
+@container (max-width: 23.5rem) {
+  .graphshapiq-explorer-demo .gsq-viewbar {
+    gap: 0.8rem;
+    left: 0.4rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
+    padding: 0 0.45rem;
+    font-size: 0.72rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-buildtab {
+    padding: 0 0.6rem;
+    font-size: 0.72rem;
+  }
+}
+
+@container (max-width: 20.5rem) {
+  .graphshapiq-explorer-demo .gsq-viewbar {
+    gap: 0.6rem;
+    left: 0.3rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
+    padding: 0 0.34rem;
+    font-size: 0.66rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-buildtab {
+    padding: 0 0.45rem;
+    font-size: 0.66rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-buildtab::before {
+    left: calc(-0.3rem - 1px);
+  }
 }
 
 /* the positions of the ring: a + where a group can go, the group where one is */
@@ -492,7 +598,7 @@ body[data-theme="dark"] .graphshapiq-explorer-demo {
 
 /* while building, the molecule is drawn above it */
 .graphshapiq-explorer-demo .gsq-frame.gsq-building .gsq-plot {
-  height: calc(100% - 3.2rem);
+  height: calc(100% - 6.1rem);
 }
 
 .graphshapiq-explorer-demo .gsq-starts-label {
