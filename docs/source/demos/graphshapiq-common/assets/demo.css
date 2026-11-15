@@ -30,7 +30,7 @@
   --gsq-build: #f59e0b;
   --gsq-build-text: #a8500a;
   --gsq-build-ink: #1b1e27; /* on amber */
-  --gsq-build-strong: #c2620a; /* a dark amber, for what is selected: white reads on it (4.2:1) */
+  --gsq-build-strong: #c98500; /* a darker, yellow amber, for what is selected: white reads on it (3.1:1) */
 }
 
 body[data-theme="dark"] .gsq {
