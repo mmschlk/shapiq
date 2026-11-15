@@ -271,7 +271,7 @@
       if (key !== truthKey) {
         truthKey = key;
         layers.truth.replaceChildren();
-        const R = 0.6 * s, w = 0.42 * s;
+        const R = 0.54 * s, w = 0.3 * s;
         for (const [cls, rad] of [["gsq-lasso-out", R], ["gsq-lasso-in", R - w]]) {
           for (const comp of components(mol, truth)) {
             const inComp = new Set(comp);
@@ -281,7 +281,7 @@
           }
         }
       }
-      const shown = state.truthShown && truth.length ? 0.5 : 0, from = Number(layers.truth.style.opacity || 0);
+      const shown = state.truthShown && truth.length ? 0.6 : 0, from = Number(layers.truth.style.opacity || 0);
       if (from !== shown) animate("truth", [{ from, to: shown, set: (v) => { layers.truth.style.opacity = v; } }]);
     }
     function moveRing(node, key, k) {
