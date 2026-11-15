@@ -203,9 +203,13 @@
     padding: 0.4rem 0.4rem 0;
   }
 
-  .graphshapiq-explorer-demo :is(.gsq-viewbar, .gsq-kinds) .gsq-opt {
+  .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
     padding: 0 0.45rem;
     font-size: 0.72rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-kinds .gsq-opt {
+    font-size: 0.76rem;
   }
 
 }
@@ -225,9 +229,13 @@
     height: 1.3rem;
   }
 
-  .graphshapiq-explorer-demo :is(.gsq-viewbar, .gsq-kinds) .gsq-opt {
+  .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
     padding: 0 0.3rem;
     font-size: 0.66rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-kinds .gsq-opt {
+    font-size: 0.72rem;
   }
 
 
@@ -626,14 +634,35 @@
   scroll-padding-inline-end: 7rem;
 }
 
-/* on a narrow demo, the "i" sits on the row of the label, and the questions under them */
+/* on a phone, "Q", the questions and the "i" in one row */
 @container (max-width: 26rem) {
   .graphshapiq-explorer-demo .gsq-ask-pick {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
   }
 
   .graphshapiq-explorer-demo .gsq-ask-pick .gsq-switch {
-    order: 3;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .graphshapiq-explorer-demo .gsq-ask-pick .gsq-info {
+    flex: none;
+  }
+}
+
+/* under the molecule (a narrow demo), the explanations' switch takes the panel's width */
+@container (max-width: 42rem) {
+  .graphshapiq-explorer-demo .gsq-kinds {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .graphshapiq-explorer-demo .gsq-kinds .gsq-opt {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0 0.2rem;
   }
 }
 

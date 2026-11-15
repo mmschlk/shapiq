@@ -286,3 +286,8 @@ and a GNN at every order. The orders demo is in the history of the repository (i
 after commit 47bf168): FSII of every order from GraphSHAP-IQ's Möbius interactions, with its R²
 beyond size. Its finding, should the guide want it: the Shapley values scored below 0 for all five
 molecules; 1,3-dinitrobenzene reached 0.95 with pairs, dopamine 0.89 only at order 3.
+
+A sixteenth pass named the questions as the field does: Mutagenic, Indole and PAINS (they were
+"Damages DNA?", "Has an indole?" and "Fools lab tests?"). Each card's explainer says what the term
+means in one more sentence. On a phone the question row reads "Q", and it fits one row with the
+"i" down to 320 px. The explanations' switch takes the panel's width under the molecule.
