@@ -68,7 +68,13 @@ Builders other than HTML keep only the caption.
 On a page with such figures, the extension numbers the captions in the order of the page. The
 figures of the directive and the `figure` directives with a caption become Figure 1, Figure 2, and
 so on, and the tables with a title become Table 1, and so on. The figures are narrower than the
-text column and sit in its middle (`--fixlip-figure-width` in `figures.css`).
+text column and sit in its middle (`--fixlip-figure-width` in `figures.css`). The text refers to a
+figure or a table with the role `shapiq-figure`, which becomes its number and a link to it. The
+target is the name of a demo's figure, or the `:name:` of a `figure` or a table:
+
+```rst
+:shapiq-figure:`game` shows four masks.
+```
 
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).

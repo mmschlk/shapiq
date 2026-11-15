@@ -162,14 +162,23 @@ body[data-theme="dark"] .fixlip-figure {
 .fixlip-figure-dots {
   display: none;
   justify-content: center;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+/* what the first figure says under its dots, on a touch screen, until it was swiped */
+.fixlip-figure-hint {
+  display: none;
+  margin: 0;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--fixlip-muted);
 }
 
 .fixlip-figure-dot-button {
   display: grid;
   place-items: center;
-  width: 1.25rem;
-  height: 1.5rem;
+  width: 2rem;
+  height: 2.25rem;
   padding: 0;
   border: 0;
   background: none;
@@ -178,10 +187,11 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-dot-button::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--fixlip-line);
+  background: var(--fixlip-gray);
+  opacity: 0.55;
   transition:
     background var(--fixlip-duration) var(--fixlip-ease),
     scale var(--fixlip-duration) var(--fixlip-ease);
@@ -189,6 +199,7 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-dot-button[aria-pressed="true"]::before {
   background: var(--fixlip-ink);
+  opacity: 1;
   scale: 1.3;
 }
 
@@ -199,6 +210,12 @@ body[data-theme="dark"] .fixlip-figure {
 
   .fixlip-figure-dots {
     display: flex;
+  }
+
+  @media (hover: none) {
+    .fixlip-figure-hint {
+      display: block;
+    }
   }
 
   .fixlip-figure-bar {
@@ -219,7 +236,12 @@ body[data-theme="dark"] .fixlip-figure {
 
 /* room under the tokens for the arcs between two of them */
 .fixlip-figure-pair.fixlip-figure-arcs {
-  padding-bottom: 1rem;
+  padding-bottom: 0.9rem;
+}
+
+/* the arcs between two tokens run in the gaps between the rows of the text */
+.fixlip-figure-arcs .fixlip-figure-tokens {
+  row-gap: 13px;
 }
 
 .fixlip-figure-photo {
@@ -801,6 +823,21 @@ body[data-theme="dark"] .fixlip-figure {
   font-variant-numeric: tabular-nums;
 }
 
+.fixlip-figure-names {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  min-width: 0;
+}
+
+.fixlip-figure-names .fixlip-figure-thumb {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--fixlip-line);
+}
+
 .fixlip-figure-list .fixlip-figure-title {
   margin: 0.9rem 0 0.2rem;
   text-align: left;
@@ -812,7 +849,7 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-curves {
   grid-template-columns: minmax(0, 1fr) minmax(0, 8rem);
-  align-items: center;
+  align-items: start;
   gap: 1.5rem;
 }
 
@@ -973,6 +1010,30 @@ body[data-theme="dark"] .fixlip-figure {
   stroke: var(--fixlip-ink);
 }
 
+/* a method next to FIxLIP that a chart does not point at, but that is no weak baseline */
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-dark {
+  fill: var(--fixlip-muted);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-dark {
+  stroke: var(--fixlip-muted);
+}
+
+/* the variants of FIxLIP that a chart does not point at: a soft amber */
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-soft {
+  fill: color-mix(in srgb, var(--shapiq-amber) 45%, var(--fixlip-page));
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-soft {
+  stroke: color-mix(in srgb, var(--shapiq-amber) 45%, var(--fixlip-page));
+}
+
+/* how many times faster, between two lines of a chart */
+.fixlip-figure-bracket {
+  stroke: var(--fixlip-ink);
+  stroke-width: 1;
+}
+
 .fixlip-figure-line {
   fill: none;
   stroke-width: 2;
@@ -1052,6 +1113,53 @@ figure.fixlip-paper-figure figcaption strong {
 article[role="main"] .caption-number {
   font-weight: 700;
   color: var(--shapiq-amber-ink);
+}
+
+/* -- the tables of the page ---------------------------------------------------------------------------- */
+
+/* as the figures: narrower than the text, with a caption in their style */
+article[role="main"] .table-wrapper {
+  max-width: var(--fixlip-figure-width, 38rem);
+  margin: 2rem auto 2.25rem;
+}
+
+article[role="main"] .table-wrapper table.docutils {
+  width: 100%;
+  font-size: 0.88rem;
+}
+
+article[role="main"] .table-wrapper table.docutils caption {
+  caption-side: bottom;
+  margin: 0;
+  padding: 0.7rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--shapiq-text-muted, #5b6275);
+}
+
+article[role="main"] .table-wrapper table.docutils th {
+  text-align: left;
+}
+
+/* -- the demo on this page ----------------------------------------------------------------------------- */
+
+/* amber where the demo is lavender or blue elsewhere, as in the figures */
+.fixlip-demo {
+  --shapiq-lavender: var(--shapiq-amber);
+}
+
+.fixlip-demo :is(a, .fixlip-demo-link) {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(1.5px, 0.09em);
+  text-underline-offset: 0.18em;
+}
+
+.fixlip-demo :is(a, .fixlip-demo-link):hover {
+  text-decoration-thickness: max(2.5px, 0.16em);
+  text-shadow: 0.06em 0.06em 0.03em var(--shapiq-amber);
 }
 
 /* -- on paper ------------------------------------------------------------------------------------------ */

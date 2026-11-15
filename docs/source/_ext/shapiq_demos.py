@@ -56,7 +56,11 @@ one) and ``figures.js`` of the demo's assets. Outside HTML, only the caption is 
 On a page with such figures, the captions are numbered in the order of the page. The figures of
 the directive and the ``figure`` directives with a caption count as ``Figure 1``, ``Figure 2``,
 and so on, and the tables with a title as ``Table 1``, and so on. The other pages of the docs keep
-their captions as they are.
+their captions as they are. The role ``shapiq-figure`` refers to a figure or a table of the page by
+its number, as a link. Its target is the name of a demo's figure, or the ``:name:`` of a ``figure``
+or a table::
+
+    :shapiq-figure:`game` shows four masks.
 """
 
 from __future__ import annotations
@@ -69,6 +73,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from docutils import nodes
 from docutils.parsers.rst import directives
+from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.osutil import relative_uri
 
@@ -76,6 +81,8 @@ if TYPE_CHECKING:
     from sphinx.application import Sphinx
     from sphinx.util.typing import ExtensionMetadata
     from sphinx.writers.html5 import HTML5Translator
+
+logger = logging.getLogger(__name__)
 
 _ASSETS = ("demo.js", "demo.css")  # the files that every demo's assets folder has
 _DATA = "data.js"  # the demo's data, which its script loads, if it has any
@@ -151,6 +158,10 @@ class FigureDirective(SphinxDirective):
         return [node]
 
 
+class FigureReference(nodes.Inline, nodes.Element):
+    """A reference to a numbered figure or table of the page, resolved when the page is written."""
+
+
 _CAPTIONED = (FigureNode, nodes.figure, nodes.table)  # what a page with figures numbers
 
 
@@ -203,28 +214,57 @@ def _keep_caption(self: nodes.NodeVisitor, node: FigureNode) -> None:
     """Outside HTML, a figure is its caption."""
 
 
-def _number_captions(app: Sphinx, doctree: nodes.document, docname: str) -> None:  # noqa: ARG001
-    """Number the captions of the figures and the tables of a page with a demo's figures."""
-    if next(iter(doctree.findall(FigureNode)), None) is None:
-        return
-    counts = {"Figure": 0, "Table": 0}
-    for node in list(doctree.findall(lambda n: isinstance(n, _CAPTIONED))):
-        kind = "Table" if isinstance(node, nodes.table) else "Figure"
-        # the caption is the title of a table, the caption of a figure, or the first paragraph
-        # of a demo's figure
-        holder = (
-            nodes.title
-            if kind == "Table"
-            else nodes.paragraph
-            if isinstance(node, FigureNode)
-            else nodes.caption
-        )
-        caption = next((child for child in node.children if isinstance(child, holder)), None)
-        if caption is None:
-            continue
-        counts[kind] += 1
-        number = nodes.inline("", f"{kind} {counts[kind]}. ", classes=["caption-number"])
-        caption.insert(0, number)
+def _figure_role(
+    name: str,  # noqa: ARG001
+    rawtext: str,
+    text: str,
+    lineno: int,  # noqa: ARG001
+    inliner: object,  # noqa: ARG001
+    options: dict[str, Any] | None = None,  # noqa: ARG001
+    content: list[str] | None = None,  # noqa: ARG001
+) -> tuple[list[nodes.Node], list[nodes.system_message]]:
+    """Refer to a figure or a table of the page by its number: ``:shapiq-figure:`<name>```."""
+    return [FigureReference(rawtext, target=text.strip())], []
+
+
+def _number_captions(app: Sphinx, doctree: nodes.document, docname: str) -> None:
+    """Number the captions of a page with a demo's figures, and link the references to them."""
+    labels: dict[str, tuple[str, str]] = {}  # the name of a figure or a table: its number and id
+    if next(iter(doctree.findall(FigureNode)), None) is not None:
+        counts = {"Figure": 0, "Table": 0}
+        for node in list(doctree.findall(lambda n: isinstance(n, _CAPTIONED))):
+            kind = "Table" if isinstance(node, nodes.table) else "Figure"
+            # the caption is the title of a table, the caption of a figure, or the first
+            # paragraph of a demo's figure
+            holder = (
+                nodes.title
+                if kind == "Table"
+                else nodes.paragraph
+                if isinstance(node, FigureNode)
+                else nodes.caption
+            )
+            caption = next((child for child in node.children if isinstance(child, holder)), None)
+            if caption is None:
+                continue
+            counts[kind] += 1
+            label = f"{kind} {counts[kind]}"
+            caption.insert(0, nodes.inline("", f"{label}. ", classes=["caption-number"]))
+            names = [node["figure"]] if isinstance(node, FigureNode) else node["names"]
+            for name in names:
+                labels[name] = (label, node["ids"][0] if node["ids"] else "")
+    for reference in list(doctree.findall(FigureReference)):
+        label, target = labels.get(reference["target"], ("", ""))
+        if not label:
+            logger.warning(
+                "no numbered figure or table %r on this page",
+                reference["target"],
+                location=(docname, reference.line),
+            )
+            reference.replace_self(nodes.Text(reference["target"]))
+        elif target and app.builder.format == "html":
+            reference.replace_self(nodes.reference("", label, refid=target, internal=True))
+        else:
+            reference.replace_self(nodes.Text(label))
 
 
 def _add_assets(
@@ -289,12 +329,14 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     )
     app.add_directive("shapiq-demo", DemoDirective)
     app.add_directive("shapiq-demo-figure", FigureDirective)
+    app.add_node(FigureReference)
+    app.add_role("shapiq-figure", _figure_role)
     app.connect("doctree-resolved", _number_captions)
     app.connect("html-page-context", _add_assets)
     app.connect("env-updated", _copy_assets)
     return {
         "version": "1.0",
-        "env_version": 6,  # pages are read again where what the extension writes to them changed
+        "env_version": 7,  # pages are read again where what the extension writes to them changed
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

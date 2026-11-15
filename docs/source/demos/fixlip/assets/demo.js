@@ -181,9 +181,10 @@
       "but were never told where in a photo a giraffe is. That is why, in the photo of the giraffe " +
       "at the pond, they also see one in the dead tree behind it.</p>" +
       "<p>To explain a prediction, <code>shapiq</code> hides patches and words in many combinations " +
-      "and watches how the similarity changes. The patches and words are the <strong>players</strong>: " +
-      "what each adds on its own, and what pairs of them add together (their " +
-      "<strong>interactions</strong>). A <strong>clique</strong> is a group of players that raise " +
+      "and watches how the similarity changes. The patches and words are the <strong>players</strong>. " +
+      "The explanation gives each player a <strong>main effect</strong> and each pair of players an " +
+      "<strong>interaction</strong>, which is what the two add together beyond their main effects. " +
+      "A <strong>clique</strong> is a group of players that raise " +
       "the similarity the most together.</p>";
     const close = el("button", "fixlip-demo-about-close", "×");
     close.type = "button";
@@ -821,7 +822,7 @@
       return `Clique of ${clique.length} players, ${clique.map(name).join(", ")}, that add ${signed(value)} together.`;
     }
 
-    // the full explanation: every player tinted by what it adds on its own, the strongest
+    // the full explanation: every player tinted by its main effect, the strongest
     // interactions drawn between them, the five strongest between a region and a token listed
     function showFull() {
       const largest = Math.max(...ex.first.map(Math.abs));
@@ -833,10 +834,10 @@
         button.style.setProperty("--fixlip-tint", color);
         button.classList.toggle("fixlip-demo-strong", alpha > 0.55);
       });
-      title.replaceChildren(el("strong", "", "Full explanation"), " every player, alone and in pairs");
+      title.replaceChildren(el("strong", "", "Full explanation"), " every main effect and the strongest interactions");
       detail.textContent =
-        "Each region and word is colored by what it adds alone; " +
-        `lines link the ${STRONGEST} strongest interactions. Listed: the strongest image–text pairs.`;
+        "Each region and word is colored by its main effect. " +
+        `Lines link the ${STRONGEST} strongest interactions. The list shows the strongest image–text pairs.`;
       sizer.hidden = true;
       graph.hidden = true;
       list.hidden = false;
@@ -880,9 +881,9 @@
         title.replaceChildren(el("strong", "", "Interactions"), ` of ${name(player)}`);
       }
       detail.replaceChildren(
-        "On its own, it adds ",
+        "Its main effect is ",
         valued(ex.first[player]),
-        " to the similarity. Together with each player below, it adds more (red) or less (blue) than the two do alone.",
+        ". Together with each player below, it adds more (red) or less (blue) than their main effects.",
       );
       sizer.hidden = true;
       graph.hidden = true;
@@ -904,8 +905,8 @@
       drawEdges([]);
       const [best] = order;
       return (
-        `Interactions of ${name(player)}: on its own, it adds ${signed(ex.first[player])}; ` +
-        `most with ${name(best)}, ${signed(values[best])}.`
+        `Interactions of ${name(player)}. Its main effect is ${signed(ex.first[player])}. ` +
+        `The strongest is with ${name(best)}, ${signed(values[best])}.`
       );
     }
 

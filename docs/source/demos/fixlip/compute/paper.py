@@ -66,6 +66,8 @@ AID = {
 }
 RUNTIME = "time_google-siglip2-base-patch32-256.pdf"
 ESTIMATORS = {(0.26, 0.52, 0.96): "model-agnostic", (0.92, 0.26, 0.21): "cross-modal"}
+# the speedups that the figure notes at two budgets, for the whole explanation and for inference
+SPEEDUPS = [[16, 5, 20], [18, 6, 45]]
 # Table 1 of the paper, for texts that name one to four objects
 POINTING = {
     "GAME": [0.61, 0.43, 0.33, 0.28],
@@ -176,6 +178,7 @@ def runtime(path: Path) -> dict[str, Any]:
         seconds = [10 ** (4 * (133.73 - y) / (133.73 - 1.65)) for y in ys]
         kind = "total" if d["dashes"].startswith("[ 8") else "inference"
         out.setdefault(ESTIMATORS[d["color"]], {})[kind] = [float(f"{s:.3g}") for s in seconds]
+    out["speedups"] = SPEEDUPS
     return out
 
 
