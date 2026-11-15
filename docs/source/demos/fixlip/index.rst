@@ -21,9 +21,9 @@ compute it with ``shapiq``.
 **The figures follow the demo.** They show the image–text pair that is chosen in the demo, and
 each figure has its own selector to change the pair for the whole page. Below each figure, a short
 note reads off its numbers for the chosen pair. Where a figure reports predictions of a model,
-these are predictions of SigLIP 2. The figures with results of the paper do not change with the
-pair. Two of the five pairs are examples of the paper, which explains the pair with the elephant
-and the pair with the sign *juice theory* for CLIP in its appendix.
+these are predictions of SigLIP 2. The figures with results of :cite:t:`Baniecki.2025` do not change
+with the pair. Two of the five pairs are also examples of the authors, who explain the pair with
+the elephant and the pair with the sign *juice theory* for CLIP in their appendix.
 
 Why explain similarity?
 -----------------------
@@ -156,10 +156,10 @@ the interactions with bilinear models, which :cite:t:`Sammani.2024` apply to ima
 In concurrent work to FIxLIP, exCLIP :cite:p:`Moeller.2025` approximates only the cross-modal
 interactions, based on Integrated Hessians :cite:p:`Janizek.2021`. It omits the *main effects* of
 single tokens and the *intra-modal* interactions, e.g. between two words. Its explanation is thus a
-bipartite graph without weights on its nodes. In the experiments of the paper, exCLIP fails to
-recover the subsets of tokens that matter most for the prediction, which the authors attribute to
-these missing terms. :shapiq-figure:`paper-methods` compares the methods on one input, and
-:shapiq-figure:`methods` summarizes them.
+bipartite graph without weights on its nodes. In the experiments of :cite:t:`Baniecki.2025`,
+exCLIP fails to recover the subsets of tokens that matter most for the prediction, which the
+authors attribute to these missing terms. :shapiq-figure:`paper-methods` compares the methods on
+one input, and :shapiq-figure:`methods` summarizes them.
 
 .. figure:: figures/paper-methods.webp
    :name: paper-methods
@@ -168,8 +168,8 @@ these missing terms. :shapiq-figure:`paper-methods` compares the methods on one 
    :figclass: fixlip-paper-figure
 
    **The methods on one input.** Explanations of CLIP (ViT-B/32) by two first-order methods, by
-   exCLIP, and by FIxLIP. In this example, the paper finds the text token *ant* to be the most
-   important for the prediction. Reproduced from Figure 2 of the paper :cite:p:`Baniecki.2025`.
+   exCLIP, and by FIxLIP. In this example, the text token *ant* is the most important for the
+   prediction. Reproduced from Figure 2 of :cite:t:`Baniecki.2025`.
 
 .. list-table:: Families of explanation methods for vision–language encoders.
    :name: methods
@@ -220,9 +220,9 @@ kept.
 lowers the similarity for all five pairs, although the text still names the object. With
 :math:`2^n` masks, the game cannot be inspected directly. An explanation has to summarize it.
 
-The paper explains the logit-scaled similarity :math:`C \cdot f(x_I, x_T)`, where the
-learnt constant :math:`C` is about 100 for CLIP and about 112 for SigLIP 2. The demo explains the
-cosine similarity itself, so its values are smaller by this factor.
+:cite:t:`Baniecki.2025` explain the logit-scaled similarity :math:`C \cdot f(x_I, x_T)`, where
+the learnt constant :math:`C` is about 100 for CLIP and about 112 for SigLIP 2. The demo explains
+the cosine similarity itself, so its values are smaller by this factor.
 
 The FIxLIP explanation
 ----------------------
@@ -284,10 +284,10 @@ precise.
 
 **First-order conversion.** A second-order explanation can always be simplified into a first-order
 one. The attribution of a token is then its main effect plus :math:`p` times the sum of its
-interactions, i.e. one half of this sum in the demo. The paper shows that these attributions are
-the weighted Banzhaf values of the additive model. They can be visualized as a traditional saliency
-map. However, the conversion keeps only the sum of the interactions of a token and no longer says
-with which tokens it interacts.
+interactions, i.e. one half of this sum in the demo. :cite:t:`Baniecki.2025` show that these
+attributions are the weighted Banzhaf values of the additive model. They can be visualized as a
+traditional saliency map. However, the conversion keeps only the sum of the interactions of a token
+and no longer says with which tokens it interacts.
 
 Conditioning on a token
 -----------------------
@@ -307,7 +307,8 @@ three tokens of the chosen pair.
 Conditioning on a word highlights the patches it goes with, and conditioning on a patch highlights
 its words. Intra-modal interactions show up as well, and they can differ between the models. For
 the pair with the elephant, the words *elephant* and *small* interact negatively for SigLIP 2 and
-positively for CLIP. The paper reports the same positive interaction for CLIP on this pair.
+positively for CLIP. :cite:t:`Baniecki.2025` report the same positive interaction for CLIP on this
+pair.
 
 Cliques of tokens
 -----------------
@@ -382,39 +383,41 @@ and the similarities of all :math:`m_I \cdot m_T` combinations follow from cheap
 example, six masked images and six masked texts cost twelve passes of an encoder and give 36
 predictions. This is also a reason to prefer weighted Banzhaf interactions over Shapley
 interactions, for which it is unknown if the weights factor into one distribution per modality.
-The paper shows that the resulting estimate of :math:`F_p` is unbiased. Its variance is at most of
-the same order as for the model-agnostic estimator with :math:`m \approx m_I \approx m_T` masks,
-and at least the variance of the model-agnostic estimator with :math:`m_I \cdot m_T` independent
-masks.
+:cite:t:`Baniecki.2025` show that the resulting estimate of :math:`F_p` is unbiased. Its variance
+is at most of the same order as for the model-agnostic estimator with
+:math:`m \approx m_I \approx m_T` masks, and at least the variance of the model-agnostic estimator
+with :math:`m_I \cdot m_T` independent masks.
 
 Empirically, this *cross-modal estimator* speeds up model inference by over 20× and the whole
-explanation pipeline by about 5×. :shapiq-figure:`paper-runtime` shows the runtime of both
-estimators in the paper. In its experiments, FIxLIP with weighted Banzhaf interactions uses the
-cross-modal estimator with a budget of :math:`2^{21}` masks, whereas FIxLIP with Shapley
-interactions uses the model-agnostic estimator with :math:`2^{17}` masks.
+explanation pipeline by about 5×. :shapiq-figure:`paper-runtime` shows the runtime that the
+authors measure for both estimators. In their experiments, FIxLIP with weighted Banzhaf
+interactions uses the cross-modal estimator with a budget of :math:`2^{21}` masks, whereas FIxLIP
+with Shapley interactions uses the model-agnostic estimator with :math:`2^{17}` masks.
 
 .. shapiq-demo-figure:: fixlip paper-runtime
    :alt: A line chart of the runtime in seconds against the number of sampled masks, from 2 to the power of 15 to 2 to the power of 21, on a logarithmic scale. The cross-modal estimator is several times faster than the model-agnostic estimator for the whole explanation, and far faster in model inference.
 
-   **Runtime of the two estimators in the paper.** Seconds on one GPU (A100) for SigLIP 2
-   (ViT-B/32). Redrawn from the data of Figure 5 of the paper :cite:p:`Baniecki.2025`.
+   **Runtime of the two estimators.** Seconds on one GPU (A100) for SigLIP 2 (ViT-B/32). Redrawn
+   from the data of Figure 5 of :cite:t:`Baniecki.2025`.
 
 **Scaling up.** The number of interactions grows quadratically with the number of tokens, from
 2,701 for the first pair of the demo to 25,425 for a ViT-B/16 version of CLIP with 196 patches and
-30 text tokens. For such models, the paper first computes cheap first-order attributions and then
-restricts the interactions to the most important tokens or to cross-modal pairs.
+30 text tokens. For such models, :cite:t:`Baniecki.2025` first compute cheap first-order
+attributions and then restrict the interactions to the most important tokens or to cross-modal
+pairs.
 
 **In the demo.** The demo computes FIxLIP for :math:`p = 0.5` with a different estimator, which
 needs fewer model evaluations. :class:`~shapiq.approximator.ProxySHAP` :cite:p:`Thies.2026` fits a
 gradient-boosted tree model to 10,000 sampled masks. It then computes the faithful Banzhaf
 interactions of this tree model up to order 2 exactly. The explanation therefore targets the same
-index as the paper, but it inherits the approximation error of the tree model.
+index as the cross-modal estimator, but it inherits the approximation error of the tree model.
 
 How faithful is the explanation?
 --------------------------------
 
-The paper derives three evaluation metrics that also apply to second-order explanations. We
-illustrate the first two on the chosen pair and show the results of the paper for all three.
+:cite:t:`Baniecki.2025` derive three evaluation metrics that also apply to second-order
+explanations. We illustrate each metric on inputs of the demo and show the results of the authors
+next to it.
 
 **Faithfulness correlation.** The first metric samples new masks and compares the predictions of
 the explanation with those of the model. The *p-faithfulness correlation* is their Spearman rank
@@ -436,27 +439,27 @@ sparser masks sampled with :math:`p = 0.3`, its :math:`R^2` drops for every pair
 an even sparser mask, since it keeps only a few of the tokens. This is why the value of a small
 clique differs from the prediction of the model for the clique alone.
 
-In the paper, FIxLIP with the matching :math:`p` is the most faithful method for CLIP, as
-:shapiq-figure:`paper-faithfulness` shows. The evaluation uses the 1,000 image–text pairs from the
-MS COCO test set for which the model predicts the highest similarity. GAME and Grad-ECLIP stay at a
-median correlation of about 0.5, and exCLIP has the lowest median with 0.40. Shapley and Banzhaf
-values rank the masks well, with median correlations of about 0.8. However, they predict the
-similarity itself poorly. Their median :math:`R^2` is below 0 for Shapley values and 0.58 for
-Banzhaf values, against 0.85 for FIxLIP with :math:`p = 0.5`. FIxLIP with Shapley interactions
-(SI) lies in between with 0.73.
+In the evaluation of :cite:t:`Baniecki.2025`, FIxLIP with the matching :math:`p` is the most
+faithful method for CLIP, as :shapiq-figure:`paper-faithfulness` shows. This evaluation uses the
+1,000 image–text pairs from the MS COCO test set for which the model predicts the highest
+similarity. GAME and Grad-ECLIP stay at a median correlation of about 0.5, and exCLIP has the
+lowest median with 0.40. Shapley and Banzhaf values rank the masks well, with median correlations
+of about 0.8. However, they predict the similarity itself poorly. Their median :math:`R^2` is below
+0 for Shapley values and 0.58 for Banzhaf values, against 0.85 for FIxLIP with :math:`p = 0.5`.
+FIxLIP with Shapley interactions (SI) lies in between with 0.73.
 
-The paper also studies the choice of :math:`p`. An explanation computed with :math:`p = 0.7`
+The authors also study the choice of :math:`p`. An explanation computed with :math:`p = 0.7`
 predicts masks sampled with :math:`p = 0.3` much better than vice versa. The demo only shows
 :math:`p = 0.5`.
 
 .. shapiq-demo-figure:: fixlip paper-faithfulness
    :alt: Box plots of the p-faithfulness correlation for p equal to 0.7 and of R squared for p equal to 0.5. FIxLIP with the matching p has the highest median and the narrowest box in both. GAME, Grad-ECLIP and exCLIP have median correlations between 0.40 and 0.51.
 
-   **Faithfulness in the paper.** The distribution of both metrics over 1,000 image–text pairs for
-   CLIP (ViT-B/32). Boxes cover the middle half of the pairs and gaps mark the medians. FIxLIP is
-   shown with Shapley interactions (SI) and with weighted Banzhaf interactions for three values of
-   :math:`p`. Values below 0 are cut off at the axis. Redrawn from the data of Figure 4 of the paper
-   :cite:p:`Baniecki.2025`.
+   **Faithfulness of the methods.** The distribution of both metrics over 1,000 image–text pairs
+   for CLIP (ViT-B/32). Boxes cover the middle half of the pairs and gaps mark the medians. FIxLIP
+   is shown with Shapley interactions (SI) and with weighted Banzhaf interactions for three values
+   of :math:`p`. Values below 0 are cut off at the axis. Redrawn from the data of Figure 4 of
+   :cite:t:`Baniecki.2025`.
 
 **Insertion and deletion.** The second metric evaluates whether the explanation finds the subsets
 of tokens that matter. For every size :math:`k`, it selects the subsets with the highest and the
@@ -467,11 +470,11 @@ follow from ranking the tokens. With interactions, the best subset of size :math
 have to contain the best subset of size :math:`k`.
 
 :shapiq-figure:`curves` shows both curves for the chosen pair, on the cosine scale of the demo. Its
-slider sets the size :math:`k` and shows the two subsets of this size. The AID is normalized as in
-the paper, i.e. by the difference between the predictions for the full and the empty input. For
-all five pairs, the second-order explanation reaches a larger AID than its conversion to first
-order. It also finds five tokens whose removal lowers the similarity below the prediction for an
-empty input. Moreover, it finds subsets with a higher similarity than the full input.
+slider sets the size :math:`k` and shows the two subsets of this size. The AID is normalized by the
+difference between the predictions for the full and the empty input. For all five pairs, the
+second-order explanation reaches a larger AID than its conversion to first order. It also finds
+five tokens whose removal lowers the similarity below the prediction for an empty input. Moreover,
+it finds subsets with a higher similarity than the full input.
 
 .. shapiq-demo-figure:: fixlip curves
    :alt: Insertion and deletion curves for the pair. The curves of the second-order explanation enclose a larger area than those of its first-order conversion. A slider sets the number of tokens kept. Next to the chart, the subset of this size that the explanation values the most, with a high similarity, and the one it values the least, with a low similarity.
@@ -482,19 +485,22 @@ empty input. Moreover, it finds subsets with a higher similarity than the full i
    size that the second-order explanation values the most and the least, which the dots mark on
    its curves.
 
-The paper reports the same behavior on 1,000 pairs from MS COCO, as :shapiq-figure:`paper-curves`
-shows. FIxLIP finds tokens whose removal increases the prediction, contrary to gradient-based
-methods. The curves also depend on :math:`p`. In the paper, :math:`p = 0.7` is the most faithful
-while up to half of the tokens are deleted, and :math:`p = 0.3` when more than half are deleted.
+:cite:t:`Baniecki.2025` report the same behavior on 1,000 pairs from MS COCO, as
+:shapiq-figure:`paper-curves` shows. Its upper plot overlays the methods that are ticked, so that
+they can be compared directly. FIxLIP finds tokens whose removal increases the prediction, contrary
+to gradient-based methods. The curves also depend on :math:`p`. In these results, :math:`p = 0.7`
+is the most faithful while up to half of the tokens are deleted, and :math:`p = 0.3` when more than
+half are deleted.
 
 .. shapiq-demo-figure:: fixlip paper-curves
-   :alt: Seven small plots, one for each method, with its insertion curve, its deletion curve and the area between them. The three variants of FIxLIP enclose the largest areas, between 0.94 and 1.02. Shapley values reach 0.77, Grad-ECLIP 0.37, GAME 0.33 and exCLIP 0.25.
+   :alt: A plot that overlays the insertion and deletion curves of the methods that are ticked. Below it, seven small plots, one for each method, with a tick box, its insertion curve, its deletion curve and the area between them. The three variants of FIxLIP enclose the largest areas, between 0.94 and 1.02. Shapley values reach 0.77, Grad-ECLIP 0.37, GAME 0.33 and exCLIP 0.25.
 
-   **Insertion and deletion in the paper.** The normalized prediction of CLIP (ViT-B/32) from no
+   **Insertion and deletion of the methods.** The normalized prediction of CLIP (ViT-B/32) from no
    tokens on the left to all tokens on the right, on average over 1,000 image–text pairs. A value
-   of 0 is the prediction for the empty input and 1 is the prediction for the full input. The AID
-   is given with its standard deviation. Redrawn from the data of Figure 3 of the paper
-   :cite:p:`Baniecki.2025`, which draws the curves in the other direction.
+   of 0 is the prediction for the empty input and 1 is the prediction for the full input. The upper
+   plot overlays the methods that are ticked in the small plots below it. The AID is given with
+   its standard deviation. Redrawn from the data of Figure 3 of :cite:t:`Baniecki.2025`, who draw
+   the curves in the other direction.
 
 **Pointing game.** The third metric is a sanity check with a designed ground truth. Four images
 from ImageNet-1k :cite:p:`Deng.2009` are combined into one, and the text names up to four of their
@@ -503,23 +509,23 @@ interactions is correct. A positive interaction is correct if it links a class n
 patches of its object. A negative interaction is correct if it links a class name with the patches
 of another object. A random baseline scores 0.25. The left panel of :shapiq-figure:`pointing` plays
 this game for SigLIP 2 on four photos of the demo, explained as in the demo. For this input, 0.92
-of the absolute interactions are correct, which is in line with the 0.89 that the paper reports
-for SigLIP 2 with four objects.
+of the absolute interactions are correct, which is in line with the 0.89 that
+:cite:t:`Baniecki.2025` report for SigLIP 2 with four objects.
 
 .. shapiq-demo-figure:: fixlip pointing
-   :alt: Left, four photos of the demo in one image, an elephant, a giraffe, a pineapple and a clock tower, with the text 'elephant giraffe pineapple clock'. The patches are tinted by their interaction with one of the four names, which can be chosen. Right, the pointing game recognition in the paper for one to four objects. First-order methods fall from between 0.61 and 0.70 for one object to between 0.28 and 0.37 for four objects. exCLIP reaches 0.92 and FIxLIP 0.83 for four objects.
+   :alt: Left, four photos of the demo in one image, an elephant, a giraffe, a pineapple and a clock tower, with the text 'elephant giraffe pineapple clock'. The patches are tinted by their interaction with one of the four names, which can be chosen. Right, the reported pointing game recognition of CLIP for one to four objects. First-order methods fall from between 0.61 and 0.70 for one object to between 0.28 and 0.37 for four objects. exCLIP reaches 0.92 and FIxLIP 0.83 for four objects.
 
    **The pointing game.** The left panel shows a pointing game on four photos of the demo. The
    patches are tinted by their interaction with the framed name in the explanation of SigLIP 2.
-   **Red** raises the similarity and **blue** lowers it. The right panel shows Table 1 of the paper
-   :cite:p:`Baniecki.2025` for CLIP (ViT-B/32), where FIxLIP uses :math:`p = 0.5`. Each score is an
-   average over 500 inputs.
+   **Red** raises the similarity and **blue** lowers it. The right panel shows Table 1 of
+   :cite:t:`Baniecki.2025` for CLIP (ViT-B/32), where FIxLIP uses :math:`p = 0.5`. Each score is
+   an average over 500 inputs.
 
-The right panel shows the results of the paper. First-order methods fail to distinguish between
-several objects and approach the random baseline. With four objects, Grad-ECLIP and GAME
+The right panel shows the results of the authors for CLIP. First-order methods fail to distinguish
+between several objects and approach the random baseline. With four objects, Grad-ECLIP and GAME
 reach 0.28 and Shapley values reach 0.37. In contrast, the two second-order methods pass the check
 with 0.83 for FIxLIP and 0.92 for exCLIP. exCLIP scores higher for two or more objects, which the
-paper attributes to its specialization in cross-modal interactions.
+authors attribute to its specialization in cross-modal interactions.
 
 Comparing CLIP and SigLIP 2
 ---------------------------
@@ -535,24 +541,25 @@ differ, as :shapiq-figure:`models` shows for the chosen pair.
    The width of a line is relative to the strongest interaction of each clique. The two models
    have different tokenizers and image resolutions.
 
-The paper also compares the two models quantitatively with the pointing game. In this separate
-experiment on a subset of the games, the explanations of SigLIP 2 (ViT-B/32) reach a recognition of
-about 0.90 for one to four objects, while the explanations of CLIP reach 0.81 to 0.85. Thus,
-SigLIP 2 can be explained more faithfully with cross-modal interactions than CLIP. In general, the
-paper finds that smaller models such as ViT-B/32 can be explained more faithfully than larger ones.
+:cite:t:`Baniecki.2025` also compare the two models quantitatively with the pointing game. In this
+separate experiment on a subset of the games, the explanations of SigLIP 2 (ViT-B/32) reach a
+recognition of about 0.90 for one to four objects, while the explanations of CLIP reach 0.81 to
+0.85. Thus, SigLIP 2 can be explained more faithfully with cross-modal interactions than CLIP. In
+general, the authors find that smaller models such as ViT-B/32 can be explained more faithfully
+than larger ones.
 
 Limitations
 -----------
 
 FIxLIP explanations are restricted to the second order. Interactions between three or more tokens
 are only captured as far as main effects and pairs can absorb them, as for the largest main effect
-above. The paper itself points to a possible third-order interaction in one of its examples.
-Moreover, the greedy search is not guaranteed to find the best subset. The explanations also depend
-on the masking baseline, and sparse masks remain out-of-distribution inputs for the model. In the
-paper, the faithfulness of the explanations drops when the number of input tokens increases. How
-useful the visualizations are for humans is left to future user studies. Finally, the explanations
-of the demo are approximated from 10,000 masks for each pair, so their :math:`R^2` on held-out
-masks shows how far each of them can be trusted.
+above. :cite:t:`Baniecki.2025` themselves point to a possible third-order interaction in one of
+their examples. Moreover, the greedy search is not guaranteed to find the best subset. The
+explanations also depend on the masking baseline, and sparse masks remain out-of-distribution
+inputs for the model. In the experiments of the authors, the faithfulness of the explanations drops
+when the number of input tokens increases. How useful the visualizations are for humans is left to
+future user studies. Finally, the explanations of the demo are approximated from 10,000 masks for
+each pair, so their :math:`R^2` on held-out masks shows how far each of them can be trusted.
 
 Explain it yourself
 -------------------
@@ -669,6 +676,6 @@ elephant go with *elephant*. Try another text, or evaluate the game on your own 
 
 The scripts that computed the demo and the data of the figures on this page are in
 `docs/source/demos/fixlip/compute <https://github.com/mmschlk/shapiq/tree/main/docs/source/demos/fixlip/compute>`__,
-with a README on how to run them. The code of the paper is available at
+with a README on how to run them. The original code of FIxLIP is available at
 `github.com/hbaniecki/fixlip <https://github.com/hbaniecki/fixlip>`__. The images are from MS COCO
 :cite:p:`Lin.2014`, and the demo credits each one with its author and license.

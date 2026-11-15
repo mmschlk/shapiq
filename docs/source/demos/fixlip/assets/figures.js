@@ -23,6 +23,8 @@
   const MODEL = "siglip2"; // the model of the predictions in figures-data.js
   const STRONGEST = 12; // the interactions drawn in an explanation
   const STATIC = new Set(["pointing", "paper-faithfulness", "paper-curves", "paper-runtime"]);
+  // the methods of the paper, in the order of their colors (figures.css)
+  const SERIES = ["FIxLIP (p = 0.3)", "FIxLIP (p = 0.5)", "FIxLIP (p = 0.7)", "Shapley values", "Grad-ECLIP", "GAME", "exCLIP"];
   const root = figures[0].dataset.root;
 
   // -- helpers -------------------------------------------------------------------------------------
@@ -932,7 +934,7 @@
         columns(
           "fixlip-figure-pointed",
           add(el("div", "fixlip-figure-panel"), title, mosaic, names, readings),
-          panel("Pointing game recognition in the paper", holder),
+          panel("Pointing game recognition for CLIP", holder),
         ),
       );
       const plot = chart(holder, 260, { left: 40, right: 138, top: 10, bottom: 34 });
@@ -1003,47 +1005,165 @@
       return "";
     },
 
-    // the paper's insertion and deletion curves, one small plot for every method
-    "paper-curves"(stage) {
-      const grid = el("div", "fixlip-figure-multiples");
-      stage.append(grid);
+    // the paper's insertion and deletion curves: one plot that overlays the ticked methods, and one
+    // small plot for every method, which ticks it
+    "paper-curves"(stage, _, state) {
       // FIxLIP by its p, as in the box plots, then the other methods as in the paper
       const order = (method) => (method.name.startsWith("FIxLIP") ? Number(method.name.match(/[\d.]+/)?.[0] ?? 0) : 9);
       const methods = [...extra.paper.curves].sort((a, b) => order(a) - order(b));
-      const cards = methods.map((method) => {
-        const ours = method.name.startsWith("FIxLIP");
-        const card = panel(method.name);
-        if (ours) card.classList.add("fixlip-figure-ours");
-        const holder = el("div", "fixlip-figure-plot");
-        add(card, holder, reading("AID", `${fmt(method.aid, 2)} ± ${fmt(method.sd, 2)}`));
-        grid.append(card);
-        return [card, holder, method, ours ? "amber" : "gray"];
-      });
-      for (const [, holder, method, kind] of cards) {
-        const plot = chart(holder, 136, { left: 16, right: 4, top: 6, bottom: 18 });
-        const { box } = plot;
-        const steps = method.insertion.length - 1;
-        // the paper's curves run from all tokens to none: here from none to all, as for the pair
+      // a method keeps its color (figures.css), whichever methods are ticked next to it
+      const colorOf = (method) => `fixlip-figure-method-${1 + SERIES.indexOf(method.name)}`;
+      state.ticked ??= ["FIxLIP (p = 0.5)", "Shapley values", "exCLIP"];
+      const ticked = () => methods.filter((method) => state.ticked.includes(method.name));
+      const steps = methods[0].insertion.length - 1;
+      const span = [-0.6, 1.1];
+      // the paper's curves run from all tokens to none: here from none to all, as for the pair
+      const curve = (plot, x, y, values, attributes) => plot.path(values.map((value, k) => [x(k), y(value)]), attributes);
+
+      const holder = el("div", "fixlip-figure-plot fixlip-figure-compared");
+      const tip = el("div", "fixlip-figure-tip");
+      tip.hidden = true;
+      let focused = null;
+      let groups = new Map();
+      const focus = (name) => {
+        focused = name;
+        const on = name !== null && groups.has(name);
+        for (const [key, group] of groups) group.classList.toggle("fixlip-figure-dimmed", on && key !== name);
+      };
+      const compare = () => {
+        holder.replaceChildren(tip);
+        tip.hidden = true;
+        const plot = chart(holder, 250, { left: 38, right: 10, top: 10, bottom: 36 });
+        const { box, draw } = plot;
         const x = plot.linear([steps, 0], [box.x0, box.x1]);
-        const y = plot.linear([-0.6, 1.1], [box.y1, box.y0]);
-        const points = (values) => values.map((value, k) => [x(k), y(value)]);
-        const area = [...points(method.insertion), ...points(method.deletion).reverse()];
-        plot.draw("path", { class: `fixlip-figure-area fixlip-figure-area-${kind}`, d: `${area.map(([px, py], k) => `${k ? "L" : "M"} ${px.toFixed(1)} ${py.toFixed(1)}`).join(" ")} Z` });
-        plot.draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: y(0), y2: y(0) });
-        plot.draw("line", { class: "fixlip-figure-mark", x1: box.x0, x2: box.x1, y1: y(1), y2: y(1) });
-        for (const tick of [0, 1]) plot.draw("text", { x: box.x0 - 5, y: y(tick) + 4, "text-anchor": "end" }, String(tick));
-        plot.draw("text", { x: box.x0, y: plot.height - 3 }, "0%");
-        plot.draw("text", { x: box.x1, y: plot.height - 3, "text-anchor": "end" }, "100%");
-        plot.path(points(method.insertion), { class: `fixlip-figure-line fixlip-figure-${kind}` });
-        plot.path(points(method.deletion), { class: `fixlip-figure-line fixlip-figure-${kind} fixlip-figure-dashed` });
-      }
+        const y = plot.linear(span, [box.y1, box.y0]);
+        plot.yAxis(y, [-0.5, 0, 0.5, 1], "", (t) => fmt(t, 1));
+        draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: y(0), y2: y(0) });
+        for (const share of [0, 0.25, 0.5, 0.75, 1])
+          draw("text", { x: x(steps * (1 - share)), y: box.y1 + 14, "text-anchor": share === 0 ? "start" : share === 1 ? "end" : "middle" }, percent(share));
+        draw("text", { x: (box.x0 + box.x1) / 2, y: plot.height - 2, "text-anchor": "middle" }, "tokens kept");
+        const shown = ticked();
+        groups = new Map();
+        for (const method of shown) {
+          const group = draw("g", { class: `fixlip-figure-series ${colorOf(method)}` });
+          for (const [key, dashed, what] of [
+            ["insertion", "", "the subsets valued the most"],
+            ["deletion", " fixlip-figure-dashed", "the subsets valued the least"],
+          ]) {
+            const line = curve(plot, x, y, method[key], { class: `fixlip-figure-line${dashed}` });
+            line.append(svgEl("title", {}, `${method.name}, ${what}`));
+            group.append(line);
+          }
+          groups.set(method.name, group);
+        }
+        if (!shown.length) draw("text", { x: (box.x0 + box.x1) / 2, y: y(0.75) + 4, "text-anchor": "middle" }, "No method is ticked.");
+        focus(focused);
+        // what the pointer is over: a line at this share of tokens, and the values of the ticked methods
+        const guide = draw("line", { class: "fixlip-figure-guide", y1: box.y0, y2: box.y1, visibility: "hidden" });
+        const dots = shown.flatMap((method) =>
+          ["insertion", "deletion"].map((key) => [method, key, draw("circle", { class: `fixlip-figure-marker ${colorOf(method)}`, r: 3.5, visibility: "hidden" })]),
+        );
+        const point = (event) => {
+          const rect = plot.svg.getBoundingClientRect();
+          const px = ((event.clientX - rect.left) / rect.width) * plot.width;
+          const k = Math.max(0, Math.min(steps, Math.round(steps * (1 - (px - box.x0) / (box.x1 - box.x0)))));
+          guide.setAttribute("x1", x(k));
+          guide.setAttribute("x2", x(k));
+          guide.setAttribute("visibility", "visible");
+          for (const [method, key, dot] of dots) {
+            dot.setAttribute("cx", x(k));
+            dot.setAttribute("cy", y(method[key][k]));
+            dot.setAttribute("visibility", "visible");
+          }
+          const rows = shown.map((method) =>
+            add(
+              el("tr"),
+              add(el("th"), el("i", `fixlip-figure-swatch ${colorOf(method)}`), method.name),
+              el("td", "", fmt(method.insertion[k], 2)),
+              el("td", "", fmt(method.deletion[k], 2)),
+            ),
+          );
+          const head = add(el("tr"), el("th", "", `${percent(1 - k / steps)} of the tokens kept`), el("td", "", "most"), el("td", "", "least"));
+          tip.replaceChildren(add(el("table"), add(el("thead"), head), add(el("tbody"), ...rows)));
+          tip.hidden = !shown.length;
+          // next to the line, on the side with more room, and inside the plot
+          const wide = tip.offsetWidth;
+          const at = x(k) < (box.x0 + box.x1) / 2 ? x(k) + 10 : x(k) - 10 - wide;
+          tip.style.left = `${Math.max(0, Math.min(plot.width - wide, at))}px`;
+        };
+        const leave = () => {
+          guide.setAttribute("visibility", "hidden");
+          for (const [, , dot] of dots) dot.setAttribute("visibility", "hidden");
+          tip.hidden = true;
+        };
+        plot.svg.addEventListener("pointermove", point);
+        plot.svg.addEventListener("pointerdown", point);
+        // a finger that lifts leaves the values in place, a mouse that leaves takes them away
+        plot.svg.addEventListener("pointerleave", (event) => {
+          if (event.pointerType !== "touch") leave();
+        });
+      };
+
+      const grid = el("div", "fixlip-figure-multiples");
+      grid.setAttribute("role", "group");
+      grid.setAttribute("aria-label", "Methods in the plot above");
+      const cards = methods.map((method) => {
+        const card = el("div", `fixlip-figure-panel fixlip-figure-tick ${colorOf(method)}`);
+        if (method.name.startsWith("FIxLIP")) card.classList.add("fixlip-figure-ours");
+        const box = el("input");
+        box.type = "checkbox";
+        box.checked = state.ticked.includes(method.name);
+        const head = add(el("label", "fixlip-figure-title"), box, el("span", "", method.name));
+        const plotHolder = el("div", "fixlip-figure-plot");
+        add(card, head, plotHolder, reading("AID", `${fmt(method.aid, 2)} ± ${fmt(method.sd, 2)}`));
+        const set = () => card.classList.toggle("fixlip-figure-ticked", box.checked);
+        set();
+        box.addEventListener("change", () => {
+          state.ticked = methods.map((m) => m.name).filter((name) => (name === method.name ? box.checked : state.ticked.includes(name)));
+          set();
+          compare();
+        });
+        // a press anywhere on the card ticks it
+        card.addEventListener("click", (event) => {
+          if (!head.contains(event.target)) box.click();
+        });
+        for (const [type, name] of [
+          ["pointerenter", method.name],
+          ["pointerleave", null],
+          ["focusin", method.name],
+          ["focusout", null],
+        ])
+          card.addEventListener(type, () => focus(name));
+        grid.append(card);
+        return [plotHolder, method];
+      });
+
       stage.append(
+        panel("Insertion and deletion curves of the ticked methods", holder),
         add(
           el("p", "fixlip-figure-legend"),
           add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-solid"), "subsets valued the most"),
           add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-dashed"), "subsets valued the least"),
         ),
+        grid,
       );
+      compare();
+      for (const [plotHolder, method] of cards) {
+        const plot = chart(plotHolder, 136, { left: 16, right: 4, top: 6, bottom: 18 });
+        const { box } = plot;
+        const x = plot.linear([steps, 0], [box.x0, box.x1]);
+        const y = plot.linear(span, [box.y1, box.y0]);
+        const points = (values) => values.map((value, k) => [x(k), y(value)]);
+        const area = [...points(method.insertion), ...points(method.deletion).reverse()];
+        plot.draw("path", { class: "fixlip-figure-area", d: `${area.map(([px, py], k) => `${k ? "L" : "M"} ${px.toFixed(1)} ${py.toFixed(1)}`).join(" ")} Z` });
+        plot.draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: y(0), y2: y(0) });
+        plot.draw("line", { class: "fixlip-figure-mark", x1: box.x0, x2: box.x1, y1: y(1), y2: y(1) });
+        for (const tick of [0, 1]) plot.draw("text", { x: box.x0 - 5, y: y(tick) + 4, "text-anchor": "end" }, String(tick));
+        plot.draw("text", { x: box.x0, y: plot.height - 3 }, "0%");
+        plot.draw("text", { x: box.x1, y: plot.height - 3, "text-anchor": "end" }, "100%");
+        curve(plot, x, y, method.insertion, { class: "fixlip-figure-line" });
+        curve(plot, x, y, method.deletion, { class: "fixlip-figure-line fixlip-figure-dashed" });
+      }
       return "";
     },
 

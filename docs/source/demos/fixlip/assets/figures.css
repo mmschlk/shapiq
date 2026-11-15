@@ -22,6 +22,16 @@
   --fixlip-blue-text: #1565c0;
   --fixlip-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
   --fixlip-duration: var(--shapiq-duration, 220ms);
+  /* the methods of the paper in a plot that overlays them (figures.js, SERIES): the warm colors
+     are FIxLIP's, the cool ones are the other methods'. Every two of the seven are told apart on
+     both surfaces, also with a red-green color vision deficiency. */
+  --fixlip-method-1: #e17174;
+  --fixlip-method-2: var(--shapiq-amber);
+  --fixlip-method-3: #833444;
+  --fixlip-method-4: #649029;
+  --fixlip-method-5: #49c7c0;
+  --fixlip-method-6: #5880c2;
+  --fixlip-method-7: #094bae;
 }
 
 body[data-theme="dark"] .fixlip-figure {
@@ -30,6 +40,12 @@ body[data-theme="dark"] .fixlip-figure {
   --fixlip-veil: rgba(19, 20, 22, 0.66);
   --fixlip-red-text: #ff3d74;
   --fixlip-blue-text: #4ba3f0;
+  --fixlip-method-1: #da6b6e;
+  --fixlip-method-3: #934252;
+  --fixlip-method-4: #558113;
+  --fixlip-method-5: #18a7a1;
+  --fixlip-method-6: #3a5f9e;
+  --fixlip-method-7: #508ff9;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,6 +55,12 @@ body[data-theme="dark"] .fixlip-figure {
     --fixlip-veil: rgba(19, 20, 22, 0.66);
     --fixlip-red-text: #ff3d74;
     --fixlip-blue-text: #4ba3f0;
+    --fixlip-method-1: #da6b6e;
+    --fixlip-method-3: #934252;
+    --fixlip-method-4: #558113;
+    --fixlip-method-5: #18a7a1;
+    --fixlip-method-6: #3a5f9e;
+    --fixlip-method-7: #508ff9;
   }
 }
 
@@ -882,7 +904,163 @@ body[data-theme="dark"] .fixlip-figure {
 .fixlip-figure-multiples {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr));
-  gap: 1.2rem 1rem;
+  gap: 0.6rem;
+}
+
+/* the plot that overlays the ticked methods, and what it reads off under the pointer */
+.fixlip-figure-compared {
+  position: relative;
+  touch-action: pan-y pinch-zoom;
+}
+
+.fixlip-figure-tip {
+  position: absolute;
+  top: 0.5rem;
+  z-index: 1;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--fixlip-line);
+  border-radius: 6px;
+  background: var(--fixlip-page);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--fixlip-ink);
+  pointer-events: none;
+}
+
+.fixlip-figure-tip table {
+  margin: 0;
+  border-collapse: collapse;
+}
+
+.fixlip-figure-tip :is(th, td) {
+  padding: 0 0 0 0.7rem;
+  border: 0;
+  background: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fixlip-figure-tip th {
+  padding-left: 0;
+  text-align: left;
+}
+
+.fixlip-figure-tip td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-tip thead :is(th, td) {
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure[data-figure="paper-curves"] .fixlip-figure-legend {
+  margin: 0.4rem 0 0.9rem;
+}
+
+.fixlip-figure-method-1 {
+  --fixlip-series: var(--fixlip-method-1);
+}
+
+.fixlip-figure-method-2 {
+  --fixlip-series: var(--fixlip-method-2);
+}
+
+.fixlip-figure-method-3 {
+  --fixlip-series: var(--fixlip-method-3);
+}
+
+.fixlip-figure-method-4 {
+  --fixlip-series: var(--fixlip-method-4);
+}
+
+.fixlip-figure-method-5 {
+  --fixlip-series: var(--fixlip-method-5);
+}
+
+.fixlip-figure-method-6 {
+  --fixlip-series: var(--fixlip-method-6);
+}
+
+.fixlip-figure-method-7 {
+  --fixlip-series: var(--fixlip-method-7);
+}
+
+.fixlip-figure-swatch[class*="fixlip-figure-method-"] {
+  background: var(--fixlip-series);
+}
+
+.fixlip-figure-series {
+  transition: opacity var(--fixlip-duration) var(--fixlip-ease);
+}
+
+.fixlip-figure-series .fixlip-figure-line {
+  stroke: var(--fixlip-series);
+}
+
+.fixlip-figure-chart circle[class*="fixlip-figure-method-"] {
+  fill: var(--fixlip-series);
+}
+
+/* while a card is pointed at, the other methods step back */
+.fixlip-figure-series.fixlip-figure-dimmed {
+  opacity: 0.16;
+}
+
+/* a method's own small plot is its tick: gray until it is ticked, then in the method's color */
+.fixlip-figure-tick {
+  padding: 0.55rem 0.45rem 0.5rem;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--fixlip-line);
+  cursor: pointer;
+  transition: box-shadow var(--fixlip-duration) var(--fixlip-ease);
+}
+
+.fixlip-figure-tick:hover {
+  box-shadow: inset 0 0 0 1px var(--fixlip-muted);
+}
+
+.fixlip-figure-tick.fixlip-figure-ticked {
+  box-shadow: inset 0 0 0 2px var(--fixlip-series);
+}
+
+.fixlip-figure-tick:has(input:focus-visible) {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
+}
+
+.fixlip-figure-tick .fixlip-figure-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.fixlip-figure-tick input {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--fixlip-series);
+  cursor: pointer;
+}
+
+.fixlip-figure-tick .fixlip-figure-line {
+  stroke: var(--fixlip-gray);
+}
+
+.fixlip-figure-tick .fixlip-figure-area {
+  fill: color-mix(in srgb, var(--fixlip-gray) 20%, transparent);
+}
+
+.fixlip-figure-ticked .fixlip-figure-line {
+  stroke: var(--fixlip-series);
+}
+
+.fixlip-figure-ticked .fixlip-figure-area {
+  fill: color-mix(in srgb, var(--fixlip-series) 20%, transparent);
 }
 
 .fixlip-figure-multiples .fixlip-figure-title {
@@ -1003,10 +1181,6 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-area {
   fill: var(--shapiq-amber-soft);
-}
-
-.fixlip-figure-area-gray {
-  fill: color-mix(in srgb, var(--fixlip-gray) 20%, transparent);
 }
 
 /* what a slider points at in a chart */
