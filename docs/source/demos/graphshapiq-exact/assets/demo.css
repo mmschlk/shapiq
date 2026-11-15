@@ -183,3 +183,8 @@
 .graphshapiq-exact-demo .gsq-pill .gsq-opt {
   color: var(--gsq-build-ink);
 }
+
+/* the layers' options wide enough for a finger */
+.graphshapiq-exact-demo .gsq-switch .gsq-opt {
+  min-width: 2rem;
+}

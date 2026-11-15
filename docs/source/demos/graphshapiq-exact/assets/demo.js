@@ -17,7 +17,8 @@
     const molecules = data.molecules;
     const state = { mol: molecules.find((m) => m.id === "cholesterol") || molecules[molecules.length - 1], layers: 3, focus: null };
     const distances = (m, from) => { const d = m.atoms.map(() => -1), queue = [from]; d[from] = 0; while (queue.length) { const k = queue.shift(); for (const j of G.neighbors(m)[k]) if (d[j] < 0) { d[j] = d[k] + 1; queue.push(j); } } return d; };
-    const fieldOf = (k) => new Set(distances(state.mol, k).flatMap((d, j) => (d >= 0 && d <= state.layers ? [j] : [])));
+    // the atoms an atom can interact with: both in some atom's field, so up to twice the layers apart
+    const partnersOf = (k) => distances(state.mol, k).filter((d) => d >= 1 && d <= 2 * state.layers).length;
     const central = (m) => { const { pos } = G.geom(m, 78, 13); let best = 0, bd = Infinity; pos.forEach(([x, y], k) => { const d = (x - 50) ** 2 + (y - 50) ** 2; if (d < bd) { bd = d; best = k; } }); return best; };
 
     // -- the frame --------------------------------------------------------------------------------
@@ -44,7 +45,7 @@
       discs = m.atoms.map((a, k) => {
         const [x, y] = pos[k], disc = svg("circle", { class: "gsq-atom", cx: x, cy: y, r: 0.26 * s }, atoms);
         if (a[0] !== "C") svg("text", { class: "gsq-el", x, y, "font-size": (a[0].length > 1 ? 0.24 : 0.3) * s }, atoms).textContent = a[0];
-        svg("circle", { class: "gsq-hit", cx: x, cy: y, r: 0.5 * s, "data-k": k, tabindex: "0", role: "button", "aria-label": `${G.atomName(m, k)} ${k + 1}: show its receptive field` }, hits);
+        svg("circle", { class: "gsq-hit", cx: x, cy: y, r: 0.5 * s, "data-k": k, tabindex: "0", "aria-label": `${G.atomName(m, k)} ${k + 1}: its receptive field` }, hits);
         return disc;
       });
       pulse();
@@ -93,7 +94,7 @@
       const box = h("div", "gsq-panel-in");
       box.append(h("p", "gsq-ctitle", "With ", h("strong", "", `${L} ${L === 1 ? "layer" : "layers"}`), `, an atom reaches ${L} ${L === 1 ? "bond" : "bonds"} far.`));
       const allValue = h("span", "gsq-bignum gsq-muted"), oursValue = h("span", "gsq-bignum gsq-accent");
-      allValue.dataset.v = shown.all ?? 0; oursValue.dataset.v = shown.ours ?? 0;
+      allValue.dataset.v = shown.all?.dataset.v ?? 0; oursValue.dataset.v = shown.ours?.dataset.v ?? 0; // count on from what is on screen
       box.append(h("div", "gsq-stat", h("div", "gsq-statrow", h("span", "gsq-statlab", `All maskings, 2${sup(n)}`), allValue), h("div", "gsq-statrow", h("span", "gsq-statlab", "GraphSHAP-IQ evaluates"), oursValue)));
       const bars = h("div", "gsq-logbars");
       bars.setAttribute("aria-hidden", "true");
@@ -104,14 +105,14 @@
       if (factor > 1.05) {
         const fewer = factor >= 10 ? `${fmt(Math.round(factor))}× fewer` : `${factor.toFixed(1)}× fewer`;
         box.append(h("p", "gsq-punch", h("strong", "gsq-accent", fewer), " evaluations, and still ", h("strong", "", "exact"), "."));
-      } else box.append(h("p", "gsq-punch", "Small molecule, little to skip. The larger the molecule, the more GraphSHAP-IQ saves."));
+      } else box.append(h("p", "gsq-punch", "Here every masking is needed. The larger the molecule, the more GraphSHAP-IQ saves."));
       const line = h("p", "gsq-fieldline");
-      if (state.focus != null) { const f = fieldOf(state.focus); line.append("This atom can interact with ", h("strong", "", `${f.size} of ${n} atoms`), "."); }
+      if (state.focus != null) line.append("This atom can interact with ", h("strong", "", `${partnersOf(state.focus)} of the other ${n - 1} atoms`), `, up to ${2 * L} bonds away.`);
       box.append(line);
       panel.replaceChildren(box);
       countUp(allValue, all);
       countUp(oursValue, ours);
-      shown.all = all; shown.ours = ours;
+      shown.all = allValue; shown.ours = oursValue;
       depth.set(LAYERS.indexOf(L));
       mols.set(molecules.indexOf(m));
       caption.replaceChildren(h("strong", "", m.name));

@@ -139,7 +139,7 @@ Before you push, check every demo you changed:
 ## Verified numbers (do not change a text without the data)
 
 - Explorer, 1,3-dinitrobenzene, *Mutagenic?*: Shapley values N +1.86 each and O +0.07. 2-SII: an
-  oxygen alone −0.70, with its nitrogen +1.83. GNN: 98%, log-odds +3.98, exact over 4,096 of 4,096
+  oxygen's own share −0.70, with its nitrogen +1.83. GNN: 98%, log-odds +3.98, exact over 4,096 of 4,096
   maskings.
 - Explorer, *Explain it yourself* snippet: 43,968 of 2¹⁶ maskings; O–O −1.72, N–O +1.32.
 - Explorer, *Build your own*, *PAINS?*: catechol >99%, resorcinol 11%, hydroquinone 25%.
@@ -149,7 +149,9 @@ Before you push, check every demo you changed:
 ## Design decisions (and what was tried and dropped)
 
 - **Masking keeps bonds** and gives the atom the average atom of the GNN's training set. That is
-  `GraphBaselineImputer` with a mean baseline, as in the paper.
+  `GraphBaselineImputer` with a mean baseline. The paper takes the mean over the explained graph
+  itself. The demos take the training set's mean, so that baselines agree across molecules,
+  the reader's own included.
 - **The GNN sees elements and links only**, not bond orders. That is why indigo fools the
   *Indole?* GNN, which the explorer turns into a story.
 - **A lay reader must know what is asked.** *Indole?*, *Mutagenic?* and *PAINS?* on a bare switch
@@ -250,6 +252,24 @@ A twelfth pass:
   `compute/config.toml` on all 154,245 molecules of at most 15 atoms the builder can make.
 A thirteenth pass made what is selected white on a darker, yellow amber (`--gsq-build-strong`, #c98500, 3.1:1): the
 tiles and the starts. The ground-truth outline is slimmer and light amber (`--gsq-lasso`).
+
+A fourteenth pass followed four reviews (correctness, UI/UX, accessibility and mobile, fidelity
+to shapiq and the paper). The worker agrees with `ExactComputer` on every value. The fixes:
+- Interactions reach **twice the layers** (two atoms meet in a third atom's field). The "i" text
+  says six bonds, and the receptive-field figure counts partners up to 2L bonds away.
+- The captions no longer say "alone" for k-SII singletons. A Shapley halo is a share, with each
+  interaction split evenly.
+- One scale per explanation, over all its values, so halos do not change size on hover.
+- Hubs never land on an atom (none of the 2,982 groups of 3+ atoms in `data.js`).
+- Cut-offs keep ties together, and the drawing shows every group the list shows.
+- The row of molecules fades where it scrolls on (phones), before the pinned tile.
+- Keyboard: the focus stays on a row through re-renders and when leaving the wheel. Escape and a
+  click outside close the "i". Rows read their atoms with numbers. The live region names the
+  molecule and says when a built molecule's interactions are ready.
+- Touch: invisible hit circles around the + and ×, wider layer options in the second figure.
+- The hint sits under the menu, off the molecule. The progress bar comes back with the molecule.
+- Hidden atoms keep a faint letter. One worker script URL for all workers. "Catechol is the
+  catechol itself" instead of "contains a catechol".
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide

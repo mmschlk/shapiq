@@ -37,21 +37,6 @@
   margin-left: 0.55rem;
 }
 
-/* the molecule shown, white on a dark amber */
-.graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] {
-  border-color: var(--gsq-build-strong);
-  background: var(--gsq-build-strong);
-  color: #fff;
-}
-
-.graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] line {
-  stroke: #fff;
-}
-
-.graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] circle {
-  fill: #fff;
-}
-
 /* the reader's own molecule stands out and apart, and stays in sight where the row scrolls */
 .graphshapiq-explorer-demo .gsq-mol-own {
   position: sticky;
@@ -70,8 +55,27 @@
     transform 120ms var(--gsq-ease);
 }
 
+/* where the row scrolls on, the molecules fade out before the reader's */
+.graphshapiq-explorer-demo .gsq-mol-own::after {
+  position: absolute;
+  top: -2px;
+  right: calc(100% + 2px);
+  bottom: -2px;
+  width: 4rem;
+  background: linear-gradient(to right, transparent, var(--gsq-sheet) calc(100% - 0.75rem));
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--gsq-ease);
+}
+
+.graphshapiq-explorer-demo .gsq-more-right .gsq-mol-own::after {
+  opacity: 1;
+}
+
 /* a rule between the molecules that are given and the reader's */
 .graphshapiq-explorer-demo .gsq-mol-own::before {
+  z-index: 1;
   position: absolute;
   top: 12%;
   bottom: 12%;
@@ -181,8 +185,7 @@
 }
 
 .graphshapiq-explorer-demo .gsq-hint {
-  top: auto;
-  bottom: 0.9rem;
+  top: 3.4rem;
 }
 
 /* the "i", right of the questions */
@@ -238,7 +241,7 @@
 /* a + in light amber: a group can go here */
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot circle {
   fill: color-mix(in srgb, var(--gsq-build) 16%, var(--gsq-stage));
-  stroke: color-mix(in srgb, var(--gsq-build) 70%, var(--gsq-stage));
+  stroke: var(--gsq-build);
   stroke-width: 1.3px;
   vector-effect: non-scaling-stroke;
   transition:
@@ -612,7 +615,29 @@
   background: color-mix(in srgb, var(--gsq-lasso) 60%, var(--gsq-stage));
 }
 
-/* the hint above the key */
-.graphshapiq-explorer-demo .gsq-frame.gsq-has-key .gsq-hint {
-  bottom: 2.4rem;
+/* a finger's room around the + and the ×, invisible */
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot circle.gsq-slot-hit {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+/* a tile that gets the keyboard's focus is not hidden under the reader's own */
+.graphshapiq-explorer-demo .gsq-mols {
+  scroll-padding-inline-end: 7rem;
+}
+
+/* on a narrow demo, the "i" sits on the row of the label, and the questions under them */
+@container (max-width: 26rem) {
+  .graphshapiq-explorer-demo .gsq-ask-pick {
+    flex-wrap: wrap;
+  }
+
+  .graphshapiq-explorer-demo .gsq-ask-pick .gsq-switch {
+    order: 3;
+  }
+}
+
+/* the panel itself takes the keyboard's focus only when the row that had it is gone */
+.graphshapiq-explorer-demo .gsq-panel-in:focus {
+  outline: none;
 }
