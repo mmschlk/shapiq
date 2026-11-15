@@ -84,10 +84,11 @@ graphshapiq-<demo>/
   atoms is dimmed). The wheel is a ring of frosted glass: the molecule shows through it, and the
   position through its hub. Escape, the hub or a click beside it close it. A small × in the middle
   of a group's bond to the ring removes the group. The + and the × stay off the atoms, so that the
-  atoms can still be hidden and pointed at. A pill along the bottom of the frame offers two
-  molecules to start from, as drawings without text (`STARTS`: an empty ring and catechol, named in
-  their tooltips). The molecule is then drawn above it (`.gsq-building`), and the wheel is placed
-  through the plot's transform.
+  atoms can still be hidden and pointed at. A pill beside the views offers two molecules to start
+  from, as drawings without text (`STARTS`: an empty ring and catechol, named in their tooltips).
+  The views and the pill form one menu, centred along the top of the frame (`.gsq-viewbar`, a flex
+  row that wraps only if it must). The frame is a flex column, so the molecule takes all the room
+  under the menu. The hint sits at the bottom. The wheel is placed through the plot's transform.
   Building has a color of its own, amber (`--gsq-build`): the tile, which stands apart from the
   eight molecules and stays in sight where the row scrolls, the position chosen, and the progress.
   Nothing of the molecule is in `data.js`. The page runs
@@ -228,6 +229,9 @@ bar shows only for a job that takes longer than 350 ms (a short one flickered), 
 receptive-field figure took the amber of building (`--gsq-build`, now in the shared stylesheet).
 A ninth pass dropped the *Build* tab again: the reader builds in every view, with the + and a × to
 remove a group.
+A tenth pass moved the molecules to start from up beside the views and centred that menu, so that
+the molecule gets the room below (the atoms had become small). The menu fits one row down to
+320 px phones.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
