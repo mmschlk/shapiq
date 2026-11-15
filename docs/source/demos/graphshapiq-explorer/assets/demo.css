@@ -37,19 +37,19 @@
   margin-left: 0.55rem;
 }
 
-/* the molecule shown, in amber */
+/* the molecule shown, white on a dark amber */
 .graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] {
-  border-color: var(--gsq-build);
-  background: var(--gsq-build);
-  color: var(--gsq-build-ink);
+  border-color: var(--gsq-build-strong);
+  background: var(--gsq-build-strong);
+  color: #fff;
 }
 
 .graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] line {
-  stroke: var(--gsq-build-ink);
+  stroke: #fff;
 }
 
 .graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] circle {
-  fill: var(--gsq-build-ink);
+  fill: #fff;
 }
 
 /* the reader's own molecule stands out and apart, and stays in sight where the row scrolls */
@@ -86,9 +86,9 @@
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] {
-  border-color: var(--gsq-build);
-  background: var(--gsq-build);
-  color: var(--gsq-build-ink);
+  border-color: var(--gsq-build-strong);
+  background: var(--gsq-build-strong);
+  color: #fff;
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own span {
@@ -104,11 +104,11 @@
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] .gsq-plus-o {
-  fill: var(--gsq-build-ink);
+  fill: #fff;
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] .gsq-plus-o ~ line {
-  stroke: var(--gsq-build);
+  stroke: var(--gsq-build-strong);
 }
 
 /* the + beckons a few times, until the reader's molecule is the one shown */
@@ -540,8 +540,8 @@
 
 /* the molecule shown is the one to start from */
 .graphshapiq-explorer-demo .gsq-start[aria-pressed="true"] {
-  background: var(--gsq-build);
-  color: var(--gsq-build-ink);
+  background: var(--gsq-build-strong);
+  color: #fff;
 }
 
 .graphshapiq-explorer-demo .gsq-start:focus-visible {
@@ -609,7 +609,7 @@
   width: 1.5rem;
   height: 0.85rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--gsq-lasso) 50%, var(--gsq-stage));
+  background: color-mix(in srgb, var(--gsq-lasso) 60%, var(--gsq-stage));
 }
 
 /* the hint above the key */

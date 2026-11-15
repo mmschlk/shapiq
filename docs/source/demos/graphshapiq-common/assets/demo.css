@@ -20,7 +20,7 @@
   --gsq-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
   --gsq-glide: cubic-bezier(0.45, 0, 0.15, 1); /* for what moves a distance: the pill */
   --gsq-control: 2.35rem; /* the height of a switch, as in the FIxLIP and orders demos */
-  --gsq-lasso: color-mix(in srgb, var(--gsq-muted) 62%, var(--gsq-stage));
+  --gsq-lasso: color-mix(in srgb, var(--gsq-build) 55%, var(--gsq-stage)); /* the ground truth: a light amber */
   /* red and blue for values in text, darker than the marks so that they read well as text */
   --gsq-red-text: #d6003f;
   --gsq-blue-text: #1565c0;
@@ -30,6 +30,7 @@
   --gsq-build: #f59e0b;
   --gsq-build-text: #a8500a;
   --gsq-build-ink: #1b1e27; /* on amber */
+  --gsq-build-strong: #c2620a; /* a dark amber, for what is selected: white reads on it (4.2:1) */
 }
 
 body[data-theme="dark"] .gsq {
