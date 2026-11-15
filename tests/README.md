@@ -60,6 +60,11 @@ Keep reusable jaxtyping aliases in assignment form (`BoolCoalition = Bool[...]`)
 
 ## Typing Conventions
 
+- ndlike's protected-axis generic names the wrapper's owner/result type.
+  Extensible families forward `OwnerT` to preserve concrete subclass results
+  through batch operations. An argument accepting any owner specialization uses
+  `Any` in that slot. The ty lint hook also checks `typing/axis_protected_types.py`
+  for result types and subclass compatibility.
 - Shared aliases describe individual representations, not relationships:
   `BoolCoalition = Bool[Array, "... _"]` requires boolean storage and a final
   membership axis without binding a batch name or player count. Packed-coalition

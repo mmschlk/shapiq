@@ -17,7 +17,9 @@ from .finite import PackedFinitePlayerGame
 
 @typechecked
 @dataclass(slots=True, frozen=True, weakref_slot=True)
-class TableGame[P](PackedFinitePlayerGame[P, Float[jax.Array, "..."]], JaxAxisProtected[jax.Array]):
+class TableGame[P](
+    PackedFinitePlayerGame[P, Float[jax.Array, "..."]], JaxAxisProtected["TableGame[P]"]
+):
     """A batch of finite games stored as dense coalition-value tables.
 
     Args:

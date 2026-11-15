@@ -4,12 +4,13 @@ import dataclasses
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import accumulate
-from typing import ClassVar, Self, override
+from typing import Any, ClassVar, Self, override
 
 import jax
 import jax.numpy as jnp
 from jaxtyping import Bool, Float, Shaped
 from ndlike.jax_functions import jax_concatenate
+from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.errors import HistoryError, SamplingError
@@ -33,7 +34,7 @@ class ApproximationState(ABC):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class Sample[P](JaxAxisProtected[jax.Array]):
+class Sample[P, OwnerT: JaxLike[Any] = "Sample[P, Any]"](JaxAxisProtected[OwnerT]):
     """The coalitions a sampler drew in one step, with what its design says about them.
 
     The sampler sets ``log_weights`` so that the mean of ``exp(log_weights[i]) * g(S_i)``
@@ -79,7 +80,7 @@ class Sample[P](JaxAxisProtected[jax.Array]):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class Evaluations[P](Sample[P]):
+class Evaluations[P](Sample[P, "Evaluations[P]"]):
     """A sample and the values the games gave its coalitions.
 
     The batch is the game batch of ``values``. The sample's fields stay compact: a sharing
@@ -91,7 +92,9 @@ class Evaluations[P](Sample[P]):
     broadcasted_batch: ClassVar[set[str]] = {"coalitions", "log_weights", "players"}
 
     @classmethod
-    def from_sample(cls, sample: Sample[P], values: Shaped[JaxValue, "*batch n_samples"]) -> Self:
+    def from_sample(
+        cls, sample: Sample[P, Any], values: Shaped[JaxValue, "*batch n_samples"]
+    ) -> Self:
         """Attach the values the games gave the coalitions of ``sample``."""
         return cls(
             coalitions=sample.coalitions,
@@ -193,7 +196,7 @@ class SamplingState[P](ApproximationState):
         self._require_samples()
         return _concatenate_shared([step.log_weights for step in self.steps], n_internal=1)
 
-    def append(self, sample: Sample[P], values: Shaped[JaxValue, "*batch n_samples"]) -> Self:
+    def append(self, sample: Sample[P, Any], values: Shaped[JaxValue, "*batch n_samples"]) -> Self:
         """Return the state with one more step: ``sample`` and the values the games gave it."""
         if sample.n_samples == 0:
             return self

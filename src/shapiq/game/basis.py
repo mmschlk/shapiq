@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import ClassVar, override
+from typing import Any, ClassVar, override
 
 import jax
 import jax.numpy as jnp
@@ -20,8 +20,8 @@ from shapiq.value.value import JaxValue
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class BasisGame[P, V: JaxLike](
-    BoolFinitePlayerGame[P, JaxValue], JaxAxisProtected[jax.Array], KAdditive
+class BasisGame[P, V: JaxLike[Any], OwnerT: JaxLike[Any] = "BasisGame[P, V, Any]"](
+    BoolFinitePlayerGame[P, JaxValue], JaxAxisProtected[OwnerT], KAdditive
 ):
     """A batch of k-additive games stored as basis coefficients on interaction sets.
 

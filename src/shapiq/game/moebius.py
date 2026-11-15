@@ -1,7 +1,7 @@
 """K-additive games stored as Möbius coefficients."""
 
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal, override
+from typing import Any, ClassVar, Literal, override
 
 import jax
 import jax.numpy as jnp
@@ -16,7 +16,9 @@ from shapiq.typing import typechecked
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class MoebiusGame[P, V: JaxLike](BasisGame[P, V]):
+class MoebiusGame[P, V: JaxLike[Any], OwnerT: JaxLike[Any] = "MoebiusGame[P, V, Any]"](
+    BasisGame[P, V, OwnerT]
+):
     """A batch of k-additive games stored as Möbius coefficients.
 
     ``values[..., t]`` is the Möbius coefficient m(T_t) of ``interactions[t]``, and
@@ -33,7 +35,9 @@ class MoebiusGame[P, V: JaxLike](BasisGame[P, V]):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class SetMoebiusGame[P, V: JaxLike](MoebiusGame[P, V]):
+class SetMoebiusGame[P, V: JaxLike[Any], OwnerT: JaxLike[Any] = "SetMoebiusGame[P, V, Any]"](
+    MoebiusGame[P, V, OwnerT]
+):
     """A batch of k-additive games with Möbius coefficients on explicitly stored sets.
 
     Sets not in ``interactions`` have coefficient zero.
@@ -47,7 +51,9 @@ class SetMoebiusGame[P, V: JaxLike](MoebiusGame[P, V]):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class AdditiveMoebiusGame[P, V: JaxLike](SetMoebiusGame[P, V], Additive):
+class AdditiveMoebiusGame[P, V: JaxLike[Any]](
+    SetMoebiusGame[P, V, "AdditiveMoebiusGame[P, V]"], Additive
+):
     """A batch of additive games: ``values[..., t]`` is the Möbius coefficient of ``interactions[t]``.
 
     The interactions are the singletons in any order, each player exactly once, so
@@ -62,7 +68,7 @@ class AdditiveMoebiusGame[P, V: JaxLike](SetMoebiusGame[P, V], Additive):
         Raises:
             ValueError: An interaction is no singleton, or a player is missing or repeated.
         """
-        SetMoebiusGame.__post_init__(self)
+        super(AdditiveMoebiusGame, self).__post_init__()
         if not isinstance(self.interactions, Tracer):
             rows_single = jnp.all(jnp.sum(self.interactions, axis=-1) == 1)
             each_player_once = jnp.all(jnp.sum(self.interactions, axis=-2) == 1)

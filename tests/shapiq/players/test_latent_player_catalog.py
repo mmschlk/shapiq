@@ -17,7 +17,7 @@ from shapiq.players import FinitePlayers, LatentPlayers
 
 
 @dataclass
-class _JaxRows(JaxAxisProtected[jax.Array]):
+class _JaxRows(JaxAxisProtected["_JaxRows"]):
     __hash__ = None
     left: jax.Array
     right: jax.Array
@@ -32,7 +32,7 @@ class _JaxRows(JaxAxisProtected[jax.Array]):
 
 
 @dataclass
-class _NumpyRows(NumpyAxisProtected[np.ndarray]):
+class _NumpyRows(NumpyAxisProtected["_NumpyRows"]):
     __hash__ = None
     left: np.ndarray
     right: np.ndarray
@@ -238,6 +238,89 @@ def test_array_player_queries_use_whole_array_equality(backend):
     assert catalog.index(player, 1) == 2
     assert np.array([1]) not in catalog
     assert np.array([8, 9]) not in catalog
+
+
+@pytest.mark.parametrize("array", [np.asarray, jnp.asarray])
+@pytest.mark.parametrize("player_shape", [(), (2,), (2, 3), (0,), (2, 0)])
+def test_packed_queries_match_whole_players_with_bounded_search(array, player_shape):
+    entries = np.zeros((5, *player_shape), dtype=int)
+    entries[1] = 1
+    entries[3] = 1
+    catalog = LatentPlayers(array(entries))
+    query = array(np.ones(player_shape, dtype=int))
+    expected = [i for i, entry in enumerate(entries) if np.array_equal(entry, query)]
+    assert (query in catalog) == bool(expected)
+    assert catalog.count(query) == len(expected)
+    for start, stop in [(0, None), (1, 4), (2, None), (-3, -1), (4, 2), (9, None)]:
+        begin, end, _ = slice(start, stop).indices(len(entries))
+        positions = [i for i in expected if begin <= i < end]
+        if positions:
+            assert catalog.index(query, start, stop) == positions[0]
+        else:
+            with pytest.raises(ValueError, match="not in"):
+                catalog.index(query, start, stop)
+
+
+@pytest.mark.parametrize("array", [np.asarray, jnp.asarray])
+@pytest.mark.parametrize("shape", [(), (1,), (1, 2), (3, 2)])
+def test_packed_row_queries_do_not_broadcast_player_shapes(array, shape):
+    catalog = LatentPlayers(array(np.ones((3, 2))))
+    query = array(np.ones(shape))
+    assert query not in catalog
+    assert catalog.count(query) == 0
+    with pytest.raises(ValueError, match="not in"):
+        catalog.index(query)
+
+
+@pytest.mark.parametrize("array", [np.asarray, jnp.asarray])
+@pytest.mark.parametrize("shape", [(0,), (0, 2), (0, 2, 3)])
+def test_empty_packed_catalog_queries(array, shape):
+    catalog = LatentPlayers(array(np.empty(shape)))
+    query = array(np.empty(shape[1:]))
+    assert query not in catalog
+    assert catalog.count(query) == 0
+    with pytest.raises(ValueError, match="not in"):
+        catalog.index(query)
+
+
+@pytest.mark.parametrize("array", [np.asarray, jnp.asarray])
+def test_packed_queries_preserve_nan_and_cross_dtype_equality(array):
+    catalog = LatentPlayers(array([[np.nan, 1], [2, 3], [2, 3]]))
+    assert array([np.nan, 1]) not in catalog
+    assert catalog.count(array([np.nan, 1])) == 0
+    assert catalog.count(np.array([2, 3], dtype=np.int16)) == 2
+    assert catalog.index(np.array([2, 3], dtype=np.int16)) == 1
+
+
+@pytest.mark.parametrize("query", [0.1, np.float64(0.1), np.array([0.1]), 256])
+def test_numpy_scalar_queries_preserve_scalar_equality(query):
+    entries = np.array([0.1, 0.2, 0.1], dtype=np.float32)
+    catalog = LatentPlayers(entries)
+    expected = [i for i, entry in enumerate(entries) if bool(entry == query)]
+    assert (query in catalog) == bool(expected)
+    assert catalog.count(query) == len(expected)
+    if expected:
+        assert catalog.index(query) == expected[0]
+    else:
+        with pytest.raises(ValueError, match="not in"):
+            catalog.index(query)
+
+
+def test_object_queries_preserve_identity_and_short_circuiting():
+    class IdentityOnly:
+        __hash__ = None
+
+        def __eq__(self, other):
+            msg = "Identity must be checked before equality."
+            raise AssertionError(msg)
+
+    player = IdentityOnly()
+    catalog = LatentPlayers([player, player])
+    assert player in catalog
+    assert catalog.count(player) == 2
+    assert catalog.index(player) == 0
+    nan = float("nan")
+    assert LatentPlayers([nan, nan]).count(nan) == 2
 
 
 @pytest.mark.parametrize("writeable", [False, True])

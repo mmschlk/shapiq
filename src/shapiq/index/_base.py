@@ -83,7 +83,7 @@ class LeastSquaresIndex[R: Game](IndexProtocol[R], Protocol):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class CardinalInteractionIndex(DiscreteDerivativeIndex[SetMoebiusGame]):
+class CardinalInteractionIndex(DiscreteDerivativeIndex[SetMoebiusGame[Any, Any, Any]]):
     """A batch of cardinal interaction indices, building an k-additive game on the Moebius Basis."""
 
     min_order: int = field(default=1, init=False)
@@ -96,7 +96,7 @@ class CardinalInteractionIndex(DiscreteDerivativeIndex[SetMoebiusGame]):
         values: Float[jax.Array, "*batch n_interactions"],
         interactions: Bool[jax.Array, "n_interactions n_players"],
         players: Shaped[FinitePlayers, "#*batch"],
-    ) -> SetMoebiusGame:
+    ) -> SetMoebiusGame[Any, Any, Any]:
         """Store the coefficients on their interaction sets, bounded by ``max_order``."""
         return SetMoebiusGame(
             values=values, interactions=interactions, players=players, additivity=self.max_order
@@ -128,7 +128,9 @@ class SemivalueIndex(CardinalInteractionIndex):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class WeightedBanzhafIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]):
+class WeightedBanzhafIndex[OwnerT: JaxLike[Any] = "WeightedBanzhafIndex[Any]"](
+    CardinalInteractionIndex, JaxAxisProtected[OwnerT]
+):
     """The weighted Banzhaf index, with a single parameter p for the Bernoulli distribution.
 
     The index is the discrete-derivative fit under the weights w(|S|, |T|, n) = p**|S| * (1-p)**(n-|S|-|T|).
@@ -153,7 +155,7 @@ class WeightedBanzhafIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class BanzhafIndex(WeightedBanzhafIndex):
+class BanzhafIndex(WeightedBanzhafIndex["BanzhafIndex"]):
     """The Banzhaf index, with p fixed to 1/2."""
 
     p: float | Float[jax.Array, "#*batch"] = field(default=0.5, init=False)
@@ -166,7 +168,9 @@ class BanzhafIndex(WeightedBanzhafIndex):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class AlphaBetaIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]):
+class AlphaBetaIndex[OwnerT: JaxLike[Any] = "AlphaBetaIndex[Any]"](
+    CardinalInteractionIndex, JaxAxisProtected[OwnerT]
+):
     """The alpha-beta index, with two parameters for the Beta distribution.
 
     The discrete-derivative weights are ``w(|S|, |T|, n) = B(|S| + beta, n - |S| - |T| + alpha)
@@ -196,7 +200,9 @@ class AlphaBetaIndex(CardinalInteractionIndex, JaxAxisProtected[jax.Array]):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class ShapleyInteractionIndex(AlphaBetaIndex):
+class ShapleyInteractionIndex[OwnerT: JaxLike[Any] = "ShapleyInteractionIndex[Any]"](
+    AlphaBetaIndex[OwnerT]
+):
     """The Shapley interaction index, with alpha and beta fixed to one."""
 
     alpha: float | Float[jax.Array, "#*batch"] = field(default=1.0, init=False)
@@ -218,7 +224,11 @@ class ShapleyInteractionIndex(AlphaBetaIndex):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class ShapleyValueIndex(SemivalueIndex, ShapleyInteractionIndex, LeastSquaresIndex[SetMoebiusGame]):
+class ShapleyValueIndex(
+    SemivalueIndex,
+    ShapleyInteractionIndex["ShapleyValueIndex"],
+    LeastSquaresIndex[SetMoebiusGame[Any, Any, Any]],
+):
     """The Shapley value: the Shapley interaction index restricted to the singletons."""
 
     @override

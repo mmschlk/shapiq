@@ -54,7 +54,7 @@ def _array_game_class(base, *, metaclass=None):
 
     @typechecked
     @dataclass
-    class ArrayGame(base, JaxAxisProtected[jax.Array], metaclass=metaclass):
+    class ArrayGame(base, JaxAxisProtected["ArrayGame"], metaclass=metaclass):
         values: Float[jax.Array, "*batch 1"]
         _players: Shaped[FinitePlayers, "#*batch"]
         protected_axes: ClassVar[dict[str, int]] = {"values": 1}
@@ -345,7 +345,7 @@ def test_packed_fallback_unpacks_local_count_and_ignores_padding(monkeypatch):
 
 @typechecked
 @dataclass
-class _StructuredValue(JaxAxisProtected[jax.Array]):
+class _StructuredValue(JaxAxisProtected["_StructuredValue"]):
     count: Shaped[jax.Array, "*batch"]
     vector: Shaped[jax.Array, "*batch 2"]
     protected_axes: ClassVar[dict[str, int]] = {"count": 0, "vector": 1}

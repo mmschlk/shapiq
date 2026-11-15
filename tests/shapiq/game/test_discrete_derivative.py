@@ -21,7 +21,7 @@ COEFFICIENTS = jnp.array([1.0, 2.0, 3.0, 4.0])
 
 
 @dataclass
-class _CubicGame(BoolFinitePlayerGame[Any, jax.Array], JaxAxisProtected[jax.Array]):
+class _CubicGame(BoolFinitePlayerGame[Any, jax.Array], JaxAxisProtected["_CubicGame"]):
     """v(S) = (sum of the coefficients in S)**3; cubic so that pair derivatives depend on S."""
 
     coefficients: Float[jax.Array, "*batch n_players"]

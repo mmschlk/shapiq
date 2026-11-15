@@ -18,7 +18,7 @@ dependencies = [
     "matplotlib",
     "colour",
     "flextype>=0.3.0",
-    "ndlike>=0.4.0",
+    "ndlike>=0.5.0",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -210,8 +210,8 @@ exclude = [
 convention = "google"
 
 [tool.ty.src]
-include = ["src/shapiq"]
-exclude = ["tests", "docs", "src/shapiq_games"]
+include = ["src/shapiq", "tests/shapiq/typing/axis_protected_types.py"]
+exclude = ["docs", "src/shapiq_games"]
 
 [tool.ty.environment]
 python-version = "3.13"
@@ -267,9 +267,9 @@ test-typeguard = [
     "typeguard>=2.13.3,<3", # jaxtyping's supported typeguard series
 ]
 lint = [
-    "ruff>=0.17.3",       # for linting
+    "ruff>=0.17.5",       # for linting
     "prek>=0.4.3",        # for running the linters as pre-commit hooks
-    "ty>=0.0.95",         # for type checking
+    "ty>=0.0.104",         # for type checking
 ]
 docs = [
     "sphinx>=9.1.0",            # documentation generator

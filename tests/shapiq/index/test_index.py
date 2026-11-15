@@ -96,11 +96,13 @@ def test_fixed_indices_preserve_constants_when_batched(index, constants):
             assert getattr(rebuilt, name).shape == ()
             assert jnp.all(getattr(rebuilt, name) == value)
 
-        weights = jax.jit(lambda idx: idx.discrete_derivative_weight(jnp.array(2), 1, N_PLAYERS))(
-            rebuilt
-        )
+        weights = jax.jit(
+            lambda idx: idx.discrete_derivative_weight(jnp.array(2), jnp.array(1), N_PLAYERS)
+        )(rebuilt)
         assert weights.shape == shape
-        assert jnp.allclose(weights, index.discrete_derivative_weight(jnp.array(2), 1, N_PLAYERS))
+        assert jnp.allclose(
+            weights, index.discrete_derivative_weight(jnp.array(2), jnp.array(1), N_PLAYERS)
+        )
 
         if isinstance(rebuilt, LeastSquaresIndex):
             kernel = rebuilt.least_squares_weight(jnp.array(2), N_PLAYERS)
@@ -109,8 +111,8 @@ def test_fixed_indices_preserve_constants_when_batched(index, constants):
 
     sizes = jnp.arange(3)
     assert jnp.allclose(
-        jax.jit(lambda idx: idx.discrete_derivative_weight(sizes, 1, N_PLAYERS))(index),
-        index.discrete_derivative_weight(sizes, 1, N_PLAYERS),
+        jax.jit(lambda idx: idx.discrete_derivative_weight(sizes, jnp.array(1), N_PLAYERS))(index),
+        index.discrete_derivative_weight(sizes, jnp.array(1), N_PLAYERS),
     )
 
 
@@ -122,11 +124,14 @@ def test_alpha_beta_parameters_stay_compact():
     assert index.alpha.shape == (2, 1)
     assert index.beta.shape == (3,)
 
-    weights = jax.jit(lambda idx: idx.discrete_derivative_weight(jnp.array(2), 1, N_PLAYERS))(index)
+    weights = jax.jit(
+        lambda idx: idx.discrete_derivative_weight(jnp.array(2), jnp.array(1), N_PLAYERS)
+    )(index)
     assert weights.shape == (2, 3)
     for i in range(2):
         for j in range(3):
             scalar = AlphaBetaIndex(max_order=2, alpha=index.alpha[i, 0], beta=index.beta[j])
             assert jnp.allclose(
-                weights[i, j], scalar.discrete_derivative_weight(jnp.array(2), 1, N_PLAYERS)
+                weights[i, j],
+                scalar.discrete_derivative_weight(jnp.array(2), jnp.array(1), N_PLAYERS),
             )

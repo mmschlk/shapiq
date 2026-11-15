@@ -1,7 +1,7 @@
 """K-additive games stored as Fourier coefficients on listed interaction sets."""
 
 from dataclasses import dataclass, field
-from typing import ClassVar, override
+from typing import Any, ClassVar, override
 
 import jax
 import jax.numpy as jnp
@@ -14,7 +14,7 @@ from shapiq.typing import typechecked
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class FourierGame[P, V: JaxLike](BasisGame[P, V]):
+class FourierGame[P, V: JaxLike[Any]](BasisGame[P, V, "FourierGame[P, V]"]):
     """A batch of k-additive games with Fourier coefficients on explicitly stored sets.
 
     ``values[..., t]`` is the Fourier coefficient f(T_t) of ``interactions[t]``, and

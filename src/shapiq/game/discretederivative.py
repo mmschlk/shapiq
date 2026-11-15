@@ -1,7 +1,7 @@
 """Discrete derivative game for explaining model predictions."""
 
 from dataclasses import dataclass
-from typing import ClassVar, override
+from typing import Any, ClassVar, override
 
 import jax
 import jax.numpy as jnp
@@ -99,8 +99,8 @@ def _derivative(
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class DiscreteDerivative[P, V: JaxLike](
-    BoolFinitePlayerGame[P, JaxValue], JaxAxisProtected[jax.Array]
+class DiscreteDerivative[P, V: JaxLike[Any]](
+    BoolFinitePlayerGame[P, JaxValue], JaxAxisProtected["DiscreteDerivative[P, V]"]
 ):
     """The discrete derivative S ↦ Δ_T v(S) of a game with respect to interactions T.
 

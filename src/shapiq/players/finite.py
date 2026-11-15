@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from math import prod
-from typing import ClassVar, Literal, TypeIs, overload, override
+from typing import Any, ClassVar, Literal, TypeIs, overload, override
 
 import jax
 import jax.numpy as jnp
@@ -25,7 +25,7 @@ from .latent import LatentPlayers
 from .players import Players
 
 type _PlayerMetadata[P] = (
-    LatentPlayers[P] | list[P] | tuple[P, ...] | np.ndarray | JaxLike | NumpyLike
+    LatentPlayers[P] | list[P] | tuple[P, ...] | np.ndarray | JaxLike[Any] | NumpyLike[Any]
 )
 
 
@@ -290,7 +290,7 @@ def _is_valid_coalition(
 
 @typechecked
 @dataclass(slots=True, init=False, frozen=True)
-class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected[jax.Array]):
+class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected["FinitePlayers[P]"]):
     """A batch of equally sized finite player sets.
 
     ``ids`` has shape ``(*batch, n_players)`` and is sorted in ascending order
@@ -444,7 +444,7 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected[jax.Array]):
             )
 
         if players is not None and not isinstance(players, LatentPlayers):
-            players = LatentPlayers(players)
+            players = LatentPlayers[P](players)
 
         object.__setattr__(self, "ids", ids)
         object.__setattr__(self, "players", players)

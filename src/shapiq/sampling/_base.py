@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 from jaxtyping import Bool, Float, Int, Key
+from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.sampling._state import ApproximationState, Sample, SamplingState
@@ -25,7 +26,7 @@ class Sampler[StateT: ApproximationState](ABC):
     """
 
     @abstractmethod
-    def sample(self, state: StateT, budget: int) -> tuple[Sample[Any], Self]:
+    def sample(self, state: StateT, budget: int) -> tuple[Sample[Any, Any], Self]:
         """Draw ``budget`` coalitions per entry of the sampler's batch, with their log weights.
 
         The sampler's batch is the sample's sharing batch: it broadcasts into the game batch,
@@ -48,7 +49,10 @@ class Sampler[StateT: ApproximationState](ABC):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class RandomSampler[StateT: ApproximationState](Sampler[StateT], JaxAxisProtected[jax.Array], ABC):
+class RandomSampler[
+    StateT: ApproximationState,
+    OwnerT: JaxLike[Any] = "RandomSampler[StateT, Any]",
+](Sampler[StateT], JaxAxisProtected[OwnerT], ABC):
     """A sampler that draws coalitions from a random distribution.
 
     The distribution may depend on the current state, but the next step's coalitions are
@@ -119,7 +123,7 @@ def _draw_sizes(
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class SizeSampler(RandomSampler[SamplingState]):
+class SizeSampler(RandomSampler[SamplingState, "SizeSampler"]):
     """Sample coalitions based on size probabilities, uniform within each size."""
 
     def _allocate(
@@ -172,7 +176,7 @@ class SizeSampler(RandomSampler[SamplingState]):
         # (3) Construct coalitions of exactly size s
         return u < threshold  # (*batch, budget, n_players)
 
-    def sample(self, state: SamplingState[Any], budget: int) -> tuple[Sample[Any], Self]:
+    def sample(self, state: SamplingState[Any], budget: int) -> tuple[Sample[Any, Any], Self]:
         """Draw ``budget`` coalitions per entry of the sampler's batch, with their log weights.
 
         The mean of ``exp(log_weights[i]) * g(S_i)`` over all samples estimates the sum of

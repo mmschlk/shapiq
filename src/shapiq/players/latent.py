@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from operator import index as integer_index
-from typing import TYPE_CHECKING, Self, SupportsIndex, cast, overload, override
+from typing import TYPE_CHECKING, Any, Self, SupportsIndex, cast, overload, override
 
 import jax
 import jax.numpy as jnp
@@ -14,7 +14,7 @@ from ndlike.jax_like import JaxLike
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
-_BackingArray = np.ndarray | jax.Array | JaxLike | NumpyLike
+_BackingArray = np.ndarray | jax.Array | JaxLike[Any] | NumpyLike[Any]
 
 
 def _is_numeric(data: np.ndarray | jax.Array) -> bool:
@@ -58,6 +58,27 @@ def _same_player(left: object, right: object) -> bool:
     if isinstance(left, (JaxLike, NumpyLike)):
         return bool(np.all(left == right))
     return bool(left == right)
+
+
+def _player_matches(data: _BackingArray, value: object) -> np.ndarray | None:
+    """Batch native array comparisons, or defer to per-player object equality."""
+    if not isinstance(data, (np.ndarray, jax.Array)) or data.dtype == object:
+        return None
+    if len(data) == 0:
+        return np.empty(0, dtype=bool)
+    query = np.asarray(value)
+    # NumPy scalar equality permits queries that array_equal would reject.
+    if isinstance(data, np.ndarray) and data.ndim == 1 and query.ndim != 0:
+        return None
+    if query.shape != data.shape[1:]:
+        return np.zeros(len(data), dtype=bool)
+    if isinstance(data, np.ndarray) and data.ndim == 1:
+        # Keep NumPy's weak scalar promotion for Python scalar queries.
+        return data == value
+    # Equality already uses NumPy semantics. Transfer a JAX batch once instead
+    # of indexing and transferring each player separately.
+    matches = np.asarray(data) == query
+    return np.all(matches, axis=tuple(range(1, data.ndim)))
 
 
 @dataclass(frozen=True, slots=True, init=False, eq=False)
@@ -142,11 +163,17 @@ class LatentPlayers[P](Sequence[P]):
 
     @override
     def __contains__(self, value: object) -> bool:
+        matches = _player_matches(self._data, value)
+        if matches is not None:
+            return bool(np.any(matches))
         return any(_same_player(player, value) for player in self)
 
     @override
     def count(self, value: object) -> int:
         """Count occurrences of a whole player, including array-valued players."""
+        matches = _player_matches(self._data, value)
+        if matches is not None:
+            return int(np.count_nonzero(matches))
         return sum(_same_player(player, value) for player in self)
 
     @override
@@ -155,8 +182,13 @@ class LatentPlayers[P](Sequence[P]):
     ) -> int:
         """Find the first matching whole player within list-style index bounds."""
         begin, end, _ = slice(start, stop).indices(len(self))
-        for position in range(begin, end):
-            if _same_player(self[position], value):
-                return position
+        matches = _player_matches(self._data[begin:end], value)
+        if matches is not None:
+            if np.any(matches):
+                return begin + int(np.argmax(matches))
+        else:
+            for position in range(begin, end):
+                if _same_player(self[position], value):
+                    return position
         msg = "Player is not in the catalog."
         raise ValueError(msg)

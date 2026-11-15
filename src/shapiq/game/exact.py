@@ -18,7 +18,7 @@ from shapiq.typing import typechecked
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class ExactComputer(JaxAxisProtected[jax.Array]):
+class ExactComputer(JaxAxisProtected["ExactComputer"]):
     """Exact interaction indices of a game batch, evaluating each coalition only once.
 
     ``from_game`` stores every coalition value as a ``TableGame``; calling the computer with
