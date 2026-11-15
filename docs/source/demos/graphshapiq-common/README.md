@@ -8,7 +8,7 @@ graphs. This folder is not a page: it holds what they share, a library of code a
 
 | Demo | Folder | What a reader does | What they should learn |
 |---|---|---|---|
-| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Input* (formerly *Hide atoms*) (click atoms to mask them, the GNN reruns in the browser and answers again), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring in a fourth view, *Build*: a click on a position opens a wheel of the groups. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
+| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Input* (formerly *Hide atoms*) (click atoms to mask them, the GNN reruns in the browser and answers again), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring, in every view: a + opens a wheel of the groups, a × on a group removes it. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
 | Exact (a figure on the explorer's page, under "Exact, and still feasible"; no page or card of its own) | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
 
 Each demo's `index.rst` is its page. For now a page holds its demos only: the write-up (what you
@@ -78,12 +78,16 @@ graphshapiq-<demo>/
   `compute/results/`, which is gitignored and not committed. `pack.py` turns them into the
   `data.js` files. The GNN weights are in the data as folded affine maps, which `pack_gnn` checks
   against PyTorch (≤ 1e-3).
-- **The explorer's ninth molecule is the reader's own** (*Build your own*, with a fourth view,
-  *Build*): groups on the positions of a benzene ring. A click on a position (a + or a group)
-  opens a wheel of the groups that can go there, around the position (`openWheel`; a group that
-  would pass the 15 atoms is dimmed). The wheel is a ring of frosted glass: the molecule shows
-  through it, and the position through its hub. Escape, the hub or a click beside it close it. A
-  pill along the bottom of the frame offers two molecules to start from, as drawings without text (`STARTS`: an empty ring and catechol, named in their tooltips), in the view *Build* only. The molecule is then drawn above it (`.gsq-building`), and the wheel is placed through the plot's transform.
+- **The explorer's ninth molecule is the reader's own** (*Build your own*): groups on the positions
+  of a benzene ring, built in every view (`slots`). A light-amber + on a free position opens a wheel
+  of the groups that can go there, around the position (`openWheel`; a group that would pass the 15
+  atoms is dimmed). The wheel is a ring of frosted glass: the molecule shows through it, and the
+  position through its hub. Escape, the hub or a click beside it close it. A small × in the middle
+  of a group's bond to the ring removes the group. The + and the × stay off the atoms, so that the
+  atoms can still be hidden and pointed at. A pill along the bottom of the frame offers two
+  molecules to start from, as drawings without text (`STARTS`: an empty ring and catechol, named in
+  their tooltips). The molecule is then drawn above it (`.gsq-building`), and the wheel is placed
+  through the plot's transform.
   Building has a color of its own, amber (`--gsq-build`): the tile, which stands apart from the
   eight molecules and stays in sight where the row scrolls, the position chosen, and the progress.
   Nothing of the molecule is in `data.js`. The page runs
@@ -222,6 +226,8 @@ alone*, *Atoms together*). *Build* is a separate amber tab after a rule, which c
 reader's own molecule without moving the three. The "i" sits right of the questions. The progress
 bar shows only for a job that takes longer than 350 ms (a short one flickered), and the
 receptive-field figure took the amber of building (`--gsq-build`, now in the shared stylesheet).
+A ninth pass dropped the *Build* tab again: the reader builds in every view, with the + and a × to
+remove a group.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
