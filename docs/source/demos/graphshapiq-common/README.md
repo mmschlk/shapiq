@@ -248,7 +248,7 @@ A twelfth pass:
 - The ground truth's key is a shaded patch in the frame's bottom left.
 - `patternOf` (the ground truth of the reader's own molecule) agrees with RDKit and the SMARTS of
   `compute/config.toml` on all 154,245 molecules of at most 15 atoms the builder can make.
-A thirteenth pass made what is selected white on a dark amber (`--gsq-build-strong`, 4.2:1): the
+A thirteenth pass made what is selected white on a darker, yellow amber (`--gsq-build-strong`, #c98500, 3.1:1): the
 tiles and the starts. The ground-truth outline is slimmer and light amber (`--gsq-lasso`).
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
