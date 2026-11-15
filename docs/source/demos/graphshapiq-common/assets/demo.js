@@ -130,9 +130,10 @@
   }
 
   // -- the animated SI-graph scene ----------------------------------------------------------------
-  // Atoms are stable nodes; rings (what an atom adds alone), bands (pairs) and shapes (groups of
-  // three or more) tween in and out; a masked atom dissolves; the focus glides. Geometry and
-  // opacity are tweened with requestAnimationFrame, so that it is smooth in every browser.
+  // As shapiq's si_graph_plot (the GraphSHAP-IQ paper's figures): atoms are stable nodes, a halo is
+  // what an atom adds alone, and an interaction is a hyperedge, a tapered band from each of its
+  // atoms to a common hub (for a pair, from one atom to the other). They tween in and out; a masked
+  // atom dissolves; the focus glides. Geometry and opacity are tweened with requestAnimationFrame.
   function createScene(plot, options = {}) {
     const ease = (t) => 1 - Math.pow(1 - t, 3);
     const duration = () => (reducedMotion() ? 0 : options.duration || 430);
@@ -151,15 +152,37 @@
       tweens.set(key, { t0: performance.now(), dur: duration(), anim, done });
       if (!frame) frame = requestAnimationFrame(tick);
     }
-    let layers = null, atoms = [], rings = [], bands = new Map(), shapes = new Map(), focusRing = null, keyRing = null, mol = null, g = null, truthKey = null;
-    const hull = (points) => {
-      const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-      if (p.length < 3) return p;
-      const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
-      for (const q of p) { while (lo.length > 1 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
-      for (const q of p.slice().reverse()) { while (up.length > 1 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
-      return lo.slice(0, -1).concat(up.slice(0, -1));
-    };
+    let layers = null, atoms = [], rings = [], edges = new Map(), focusRing = null, keyRing = null, mol = null, g = null, truthKey = null;
+    // the hub of a hyperedge: the centre of its atoms, moved off an atom that sits there (a chain)
+    function hubOf(group) {
+      const { s, pos } = g, P = group.map((k) => pos[k]);
+      let x = P.reduce((a, p) => a + p[0], 0) / P.length, y = P.reduce((a, p) => a + p[1], 0) / P.length;
+      if (P.some((p) => Math.hypot(p[0] - x, p[1] - y) < 0.4 * s)) {
+        const mx = pos.reduce((a, p) => a + p[0], 0) / pos.length, my = pos.reduce((a, p) => a + p[1], 0) / pos.length;
+        let [a, b] = [P[0], P[1]], far = 0;
+        for (const p of P) for (const q of P) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d > far) { far = d; a = p; b = q; } }
+        let nx = -(b[1] - a[1]) / (far || 1), ny = (b[0] - a[0]) / (far || 1);
+        if (nx * (x - mx) + ny * (y - my) < 0) { nx = -nx; ny = -ny; }
+        x += nx * 0.55 * s; y += ny * 0.55 * s;
+      }
+      return [x, y];
+    }
+    // a hyperedge of width w as two paths: the round ends, and the bands that narrow halfway (as
+    // _draw_fancy_hyper_edges draws them)
+    function edgePaths(group, w) {
+      const { pos } = g, r = Math.max(0, w) / 2, f = (v) => v.toFixed(2);
+      const hub = group.length === 2 ? pos[group[1]] : hubOf(group), from = group.length === 2 ? [group[0]] : group;
+      const disc = ([x, y]) => `M${f(x - r)} ${f(y)}a${f(r)} ${f(r)} 0 1 1 ${f(2 * r)} 0a${f(r)} ${f(r)} 0 1 1 ${f(-2 * r)} 0Z`;
+      let ends = disc(hub), bands = "";
+      for (const k of from) {
+        const [px, py] = pos[k], dx = hub[0] - px, dy = hub[1] - py, L = Math.hypot(dx, dy);
+        ends += disc(pos[k]);
+        if (L < 1e-6) continue;
+        const nx = (-dy / L) * r, ny = (dx / L) * r, mx = px + dx / 2, my = py + dy / 2;
+        bands += `M${f(px - nx)} ${f(py - ny)}Q${f(mx)} ${f(my)} ${f(hub[0] - nx)} ${f(hub[1] - ny)}L${f(hub[0] + nx)} ${f(hub[1] + ny)}Q${f(mx)} ${f(my)} ${f(px + nx)} ${f(py + ny)}Z`;
+      }
+      return [ends, bands];
+    }
     function components(m, set) {
       const inSet = new Set(set), seen = new Set(), nb = neighbors(m), out = [];
       for (const a of set) {
@@ -175,9 +198,9 @@
       tweens.clear();
       plot.replaceChildren();
       const layer = () => svg("g", {}, plot);
-      layers = { truth: layer(), shape: layer(), ring: layer(), band: layer(), bond: layer(), atom: layer(), over: layer(), hit: layer() };
+      layers = { truth: layer(), edge: layer(), ring: layer(), bond: layer(), atom: layer(), over: layer(), hit: layer() };
       layers.truth.style.opacity = 0;
-      bands = new Map(); shapes = new Map(); rings = []; atoms = []; truthKey = null;
+      edges = new Map(); rings = []; atoms = []; truthKey = null;
       const { s, pos } = g, r = 0.27 * s;
       skeleton(layers.bond, m, 0.15, "gsq-bond", g);
       m.atoms.forEach((a, k) => {
@@ -215,57 +238,24 @@
       }
       const want = new Map(), gl = state.groupLargest || 1;
       for (const group of state.groups || []) {
-        const strength = Math.abs(group.v) / gl, color = colorOf(group.v), em = group.emph == null ? 1 : group.emph;
-        if (group.atoms.length === 2) {
-          const [a, b] = group.atoms;
-          want.set(`b${Math.min(a, b)}-${Math.max(a, b)}`, { kind: "band", a, b, color, w: (0.07 + 0.3 * strength) * s, op: (0.35 + 0.65 * strength) * em });
-        } else {
-          const points = hull(group.atoms.map((k) => pos[k]));
-          want.set(`s${group.atoms.slice().sort((x, y) => x - y).join(",")}`, { kind: "shape", points: points.map((p) => p.join(",")).join(" "), poly: points.length > 2, color, fop: (0.07 + 0.13 * strength) * em, sop: (0.35 + 0.65 * strength) * em });
-        }
+        const strength = Math.min(1, Math.abs(group.v) / gl), em = group.emph == null ? 1 : group.emph;
+        want.set(group.atoms.join(","), { atoms: group.atoms, color: colorOf(group.v), w: (0.06 + 0.3 * strength) * s, op: (0.3 + 0.55 * strength) * em });
       }
-      for (const [key, band] of bands) {
+      const shape = (edge) => { const [a, b] = edgePaths(edge.atoms, edge.w); edge.ends.setAttribute("d", a); edge.bands.setAttribute("d", b); };
+      const tween = (key, edge, w, op, done) => animate(key, [
+        { from: edge.w, to: w, set: (v) => { edge.w = v; shape(edge); } },
+        { from: edge.op, to: op, set: (v) => { edge.op = v; edge.el.setAttribute("opacity", Math.max(0, v)); } },
+      ], done);
+      for (const [key, edge] of edges) {
         const w = want.get(key);
-        if (w) {
-          band.el.setAttribute("stroke", w.color);
-          animate(key, [
-            { from: band.w, to: w.w, set: (v) => { band.w = v; band.el.setAttribute("stroke-width", Math.max(0, v)); } },
-            { from: band.op, to: w.op, set: (v) => { band.op = v; band.el.setAttribute("opacity", Math.max(0, v)); } },
-          ]);
-          want.delete(key);
-        } else animate(key, [{ from: band.op, to: 0, set: (v) => { band.op = v; band.el.setAttribute("opacity", Math.max(0, v)); } }], () => { band.el.remove(); bands.delete(key); });
-      }
-      for (const [key, shape] of shapes) {
-        const w = want.get(key);
-        if (w) {
-          shape.el.setAttribute("stroke", w.color); shape.el.setAttribute("fill", w.poly ? w.color : "none");
-          animate(key, [
-            { from: shape.fop, to: w.fop, set: (v) => { shape.fop = v; shape.el.setAttribute("fill-opacity", Math.max(0, v)); } },
-            { from: shape.sop, to: w.sop, set: (v) => { shape.sop = v; shape.el.setAttribute("stroke-opacity", Math.max(0, v)); } },
-          ]);
-          want.delete(key);
-        } else animate(key, [
-          { from: shape.fop, to: 0, set: (v) => { shape.fop = v; shape.el.setAttribute("fill-opacity", Math.max(0, v)); } },
-          { from: shape.sop, to: 0, set: (v) => { shape.sop = v; shape.el.setAttribute("stroke-opacity", Math.max(0, v)); } },
-        ], () => { shape.el.remove(); shapes.delete(key); });
+        if (w) { edge.el.setAttribute("fill", w.color); tween(`e${key}`, edge, w.w, w.op); want.delete(key); }
+        else tween(`e${key}`, edge, edge.w * 0.6, 0, () => { edge.el.remove(); edges.delete(key); });
       }
       for (const [key, w] of want) {
-        if (w.kind === "band") {
-          const [x1, y1] = pos[w.a], [x2, y2] = pos[w.b];
-          const band = { el: svg("line", { class: "gsq-band", x1, y1, x2, y2, stroke: w.color, "stroke-width": 0, opacity: 0 }, layers.band), w: 0, op: 0 };
-          bands.set(key, band);
-          animate(key, [
-            { from: 0, to: w.w, set: (v) => { band.w = v; band.el.setAttribute("stroke-width", Math.max(0, v)); } },
-            { from: 0, to: w.op, set: (v) => { band.op = v; band.el.setAttribute("opacity", Math.max(0, v)); } },
-          ]);
-        } else {
-          const shape = { el: svg(w.poly ? "polygon" : "polyline", { class: "gsq-shape", points: w.points, fill: w.poly ? w.color : "none", stroke: w.color, "fill-opacity": 0, "stroke-opacity": 0 }, layers.shape), fop: 0, sop: 0 };
-          shapes.set(key, shape);
-          animate(key, [
-            { from: 0, to: w.fop, set: (v) => { shape.fop = v; shape.el.setAttribute("fill-opacity", Math.max(0, v)); } },
-            { from: 0, to: w.sop, set: (v) => { shape.sop = v; shape.el.setAttribute("stroke-opacity", Math.max(0, v)); } },
-          ]);
-        }
+        const el = svg("g", { class: "gsq-edge", fill: w.color, opacity: 0 }, layers.edge);
+        const edge = { el, ends: svg("path", {}, el), bands: svg("path", {}, el), atoms: w.atoms, w: 0.6 * w.w, op: 0 };
+        edges.set(key, edge); shape(edge);
+        tween(`e${key}`, edge, w.w, w.op);
       }
       const masked = state.masked || new Set(), keep = state.dim;
       for (const atom of atoms) {

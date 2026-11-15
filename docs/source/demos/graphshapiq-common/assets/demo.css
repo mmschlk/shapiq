@@ -538,15 +538,9 @@ body[data-theme="dark"] .gsq {
   transition: opacity 300ms ease;
 }
 
-.gsq .gsq-plot .gsq-band {
-  stroke-linecap: round;
-}
-
-.gsq .gsq-plot .gsq-shape {
-  stroke-width: 1.6px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
+/* a hyperedge: its ends and bands share one opacity, so that where they overlap is not darker */
+.gsq .gsq-plot .gsq-edge path {
+  stroke: none;
 }
 
 .gsq .gsq-plot .gsq-lasso-out {

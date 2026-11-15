@@ -32,6 +32,26 @@
   font-size: 0.6rem;
 }
 
+/* a little more room between the molecules of one question and the next */
+.graphshapiq-explorer-demo .gsq-mol-next {
+  margin-left: 0.55rem;
+}
+
+/* the molecule shown, in amber */
+.graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] {
+  border-color: var(--gsq-build);
+  background: var(--gsq-build);
+  color: var(--gsq-build-ink);
+}
+
+.graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] line {
+  stroke: var(--gsq-build-ink);
+}
+
+.graphshapiq-explorer-demo .gsq-mol[aria-pressed="true"] circle {
+  fill: var(--gsq-build-ink);
+}
+
 /* the reader's own molecule stands out and apart, and stays in sight where the row scrolls */
 .graphshapiq-explorer-demo .gsq-mol-own {
   position: sticky;
@@ -39,8 +59,8 @@
   right: 0;
   flex-basis: 5.4rem;
   margin-left: 1.3rem;
-  border-color: var(--gsq-build);
-  background: color-mix(in srgb, var(--gsq-build) 16%, var(--gsq-sheet));
+  border-color: color-mix(in srgb, var(--gsq-build) 35%, var(--gsq-sheet));
+  background: color-mix(in srgb, var(--gsq-build) 18%, var(--gsq-sheet));
   box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--gsq-build) 80%, transparent);
   color: var(--gsq-build-text);
   opacity: 1;
@@ -148,7 +168,7 @@
   backdrop-filter: blur(6px);
 }
 
-.graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
+.graphshapiq-explorer-demo :is(.gsq-viewbar, .gsq-kinds) .gsq-opt {
   padding: 0 0.62rem;
   font-size: 0.8rem;
 }
@@ -180,7 +200,7 @@
     padding: 0.4rem 0.4rem 0;
   }
 
-  .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
+  .graphshapiq-explorer-demo :is(.gsq-viewbar, .gsq-kinds) .gsq-opt {
     padding: 0 0.45rem;
     font-size: 0.72rem;
   }
@@ -202,7 +222,7 @@
     height: 1.3rem;
   }
 
-  .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
+  .graphshapiq-explorer-demo :is(.gsq-viewbar, .gsq-kinds) .gsq-opt {
     padding: 0 0.3rem;
     font-size: 0.66rem;
   }
@@ -554,4 +574,45 @@
 
 .graphshapiq-explorer-demo .gsq-detail.gsq-note {
   color: var(--gsq-build-text);
+}
+
+/* the explanations' switch, at the top of the panel */
+.graphshapiq-explorer-demo .gsq-kinds {
+  margin-bottom: 0.7rem;
+}
+
+.graphshapiq-explorer-demo .gsq-kinds[hidden] {
+  display: none;
+}
+
+/* the key of the ground truth, in the frame's bottom left, a shaded patch as the outline */
+.graphshapiq-explorer-demo .gsq-truthkey {
+  position: absolute;
+  z-index: 2;
+  bottom: 0.7rem;
+  left: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: var(--gsq-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.graphshapiq-explorer-demo .gsq-truthkey[hidden] {
+  display: none;
+}
+
+.graphshapiq-explorer-demo .gsq-truthkey i {
+  width: 1.5rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gsq-lasso) 50%, var(--gsq-stage));
+}
+
+/* the hint above the key */
+.graphshapiq-explorer-demo .gsq-frame.gsq-has-key .gsq-hint {
+  bottom: 2.4rem;
 }

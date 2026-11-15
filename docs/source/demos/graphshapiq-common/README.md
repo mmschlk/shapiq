@@ -8,7 +8,7 @@ graphs. This folder is not a page: it holds what they share, a library of code a
 
 | Demo | Folder | What a reader does | What they should learn |
 |---|---|---|---|
-| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Input* (formerly *Hide atoms*) (click atoms to mask them, the GNN reruns in the browser and answers again), *Atoms alone* (Shapley values) and *Atoms together* (k-SII of order 2, 3 or 4, or Möbius). The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring, in every view: a + opens a wheel of the groups, a × on a group removes it. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
+| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Input* (click atoms to mask them, the GNN reruns in the browser and answers again) and *Explanation*, with a switch of every explanation (Shapley values, 2-, 3- and 4-SII, Möbius) drawn as an SI graph. The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring, in every view: a + opens a wheel of the groups, a × on a group removes it. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
 | Exact (a figure on the explorer's page, under "Exact, and still feasible"; no page or card of its own) | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
 
 Each demo's `index.rst` is its page. For now a page holds its demos only: the write-up (what you
@@ -39,8 +39,8 @@ graphshapiq-<demo>/
   add it to the library.
 - **`window.ShapiqGraph`** (`assets/demo.js`):
   - `createScene(plot, {duration})` builds the persistent, animated SVG molecule. Its
-    `setMolecule(m)` tweens to a new molecule. Its `update(state)` tweens rings (own effects),
-    bands and shapes (interactions), masking, focus, the ground-truth outline and dimming, with
+    `setMolecule(m)` tweens to a new molecule. Its `update(state)` tweens halos (own effects),
+    hyperedges as shapiq's `si_graph_plot` draws them (interactions), masking, focus, the ground-truth outline and dimming, with
     state keys `rings`, `ringLargest`, `groups`, `groupLargest`, `masked`, `focus`, `truth`,
     `truthKey`, `truthShown` and `dim`. It also has `atomAt(event)`, `keyFocus(k)`, `hits()` and
     `geom`.
@@ -235,6 +235,19 @@ the molecule gets the room below (the atoms had become small). The menu fits one
 An eleventh pass removed the buttons under *Input* (hide the pattern, hide all, show all). The
 reader hides atoms by clicking them only. The ground truth stays outlined in every view, and the
 *Input* panel shows its key too.
+A twelfth pass:
+- The tiles are grouped by question, in the questions' order (mutagenic, indole, PAINS), with the
+  molecules that have the pattern first. The question switch takes the same order.
+- The selected tile is amber. *Build your own* is light amber until it is selected.
+- Two views remain, *Input* and *Explanation*. The switch at the top of the panel picks the
+  explanation (`KINDS`).
+- The scene draws an SI graph as shapiq's `si_graph_plot` does. A halo is an atom's own value. An
+  interaction is a hyperedge, a band that narrows halfway from each of its atoms to a hub (a pair
+  runs from one atom to the other). Halos and hyperedges share one scale. The bands and shapes
+  (convex hulls) are gone.
+- The ground truth's key is a shaded patch in the frame's bottom left.
+- `patternOf` (the ground truth of the reader's own molecule) agrees with RDKit and the SMARTS of
+  `compute/config.toml` on all 154,245 molecules of at most 15 atoms the builder can make.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
