@@ -238,8 +238,8 @@
     const hint = G.hinter(frame);
     const slotLayer = svg("g", { class: "gsq-slots" });
     const progress = h("div", "gsq-progress"), progressFill = h("i");
-    progress.append(progressFill); progress.hidden = true; frame.append(progress, viewbar);
-    // the molecules to start from, as drawings along the bottom of the frame (in the view "Build" only)
+    progress.append(progressFill); progress.hidden = true; frame.prepend(viewbar); frame.append(progress);
+    // the molecules to start from, as drawings beside the views (for the own molecule only)
     const starts = h("div", "gsq-starts");
     starts.setAttribute("role", "group"); starts.setAttribute("aria-label", "Start from"); starts.hidden = true;
     const startButtons = STARTS.map((s, k) => {
@@ -249,7 +249,7 @@
       starts.append(b);
       return b;
     });
-    frame.append(starts);
+    viewbar.append(starts);
     const scrim = h("div", "gsq-scrim"), wheel = h("div", "gsq-wheel");
     scrim.hidden = wheel.hidden = true; wheel.tabIndex = -1; wheel.setAttribute("role", "group");
     frame.append(scrim, wheel);
@@ -387,7 +387,7 @@
         wheel.append(b);
       });
       wheel.setAttribute("aria-label", `${rest} at position ${i + 1}`);
-      // where the position is in the frame (the plot leaves room for the molecules to start from)
+      // where the position is in the frame (the plot sits under the menu)
       const point = plot.createSVGPoint(), ctm = plot.getScreenCTM(), box = frame.getBoundingClientRect();
       [point.x, point.y] = build.at[i];
       const at = ctm ? point.matrixTransform(ctm) : { x: box.left + (build.at[i][0] / 100) * box.width, y: box.top + (build.at[i][1] / 100) * box.height };

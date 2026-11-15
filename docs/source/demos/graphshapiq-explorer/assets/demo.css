@@ -132,12 +132,21 @@
   stroke-width: 1.6px;
 }
 
-/* the views, inside the frame at its top */
+/* the menu, centred along the top of the frame: the views, and the starts while building */
+.graphshapiq-explorer-demo .gsq-frame {
+  display: flex;
+  flex-direction: column;
+}
+
 .graphshapiq-explorer-demo .gsq-viewbar {
-  position: absolute;
+  position: relative;
   z-index: 3;
-  top: 0.6rem;
-  left: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.4rem 0;
 }
 
 .graphshapiq-explorer-demo .gsq-viewbar .gsq-switch {
@@ -151,14 +160,16 @@
   font-size: 0.8rem;
 }
 
-/* the molecule under the views, and the hint under them too */
+/* the molecule takes all the room under the menu, the hint sits at the bottom */
 .graphshapiq-explorer-demo .gsq-frame .gsq-plot {
-  height: calc(100% - 2.9rem);
-  margin-top: 2.9rem;
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
 }
 
 .graphshapiq-explorer-demo .gsq-hint {
-  top: 3.5rem;
+  top: auto;
+  bottom: 0.9rem;
 }
 
 /* the "i", right of the questions */
@@ -172,7 +183,8 @@
 
 @container (max-width: 23.5rem) {
   .graphshapiq-explorer-demo .gsq-viewbar {
-    left: 0.4rem;
+    gap: 0.3rem;
+    padding: 0.4rem 0.4rem 0;
   }
 
   .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
@@ -184,11 +196,21 @@
 
 @container (max-width: 20.5rem) {
   .graphshapiq-explorer-demo .gsq-viewbar {
-    left: 0.3rem;
+    gap: 0.2rem;
+    padding: 0.3rem 0.2rem 0;
+  }
+
+  .graphshapiq-explorer-demo .gsq-viewbar .gsq-start {
+    width: 1.95rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-viewbar .gsq-start svg {
+    width: 1.6rem;
+    height: 1.3rem;
   }
 
   .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
-    padding: 0 0.34rem;
+    padding: 0 0.3rem;
     font-size: 0.66rem;
   }
 
@@ -445,20 +467,14 @@
   }
 }
 
-/* the molecules to start from: a pill of two drawings along the bottom of the frame */
+/* the molecules to start from: a pill of two drawings, beside the views */
 .graphshapiq-explorer-demo .gsq-starts {
-  position: absolute;
-  z-index: 3;
-  bottom: 0.9rem;
-  left: 50%;
   display: flex;
-  gap: 0.2rem;
-  padding: 0.2rem;
+  gap: 2px;
+  padding: 3px;
   border: 1px solid var(--gsq-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--gsq-sheet) 80%, transparent);
-  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.35);
-  translate: -50% 0;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
@@ -470,8 +486,8 @@
 .graphshapiq-explorer-demo .gsq-start {
   display: grid;
   place-items: center;
-  width: 3rem;
-  height: 2.1rem;
+  width: 2.3rem;
+  height: calc(var(--gsq-control) - 8px);
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -485,8 +501,8 @@
 }
 
 .graphshapiq-explorer-demo .gsq-start svg {
-  width: 2.3rem;
-  height: 1.85rem;
+  width: 1.9rem;
+  height: 1.5rem;
 }
 
 .graphshapiq-explorer-demo .gsq-start line {
@@ -518,20 +534,6 @@
 .graphshapiq-explorer-demo .gsq-start:focus-visible {
   outline: 2px solid var(--gsq-ink);
   outline-offset: 2px;
-}
-
-/* while building, the molecule is drawn above it */
-.graphshapiq-explorer-demo .gsq-frame.gsq-building .gsq-plot {
-  height: calc(100% - 6.1rem);
-}
-
-.graphshapiq-explorer-demo .gsq-starts-label {
-  margin-right: 0.2rem;
-  color: var(--gsq-muted);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .graphshapiq-explorer-demo .gsq-computing {
