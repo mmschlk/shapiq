@@ -517,7 +517,7 @@
       const patchSum = sum(ex.first.slice(0, ex.patches));
       const crossSum = sum(strongest(ex, crossModal(ex)).map((p) => p.value));
       const alone = fig.presets.word - fig.presets.empty;
-      return `The word ${nameOf(ex, word)} has the largest main effect with ${signed(ex.first[word])}. Alone, this word changes the prediction of the model by only ${signed(alone)}. The strongest cross-modal interaction links ${nameOf(ex, link.i)} with ${nameOf(ex, link.j)} (${signed(link.value)}). The main effects of all ${ex.patches} patches sum to ${signed(patchSum)}, while the cross-modal interactions sum to ${signed(crossSum)}.`;
+      return `The word ${nameOf(ex, word)} has the largest main effect with ${signed(ex.first[word])}. Alone, this word changes the prediction of the model by ${signed(alone)}. The strongest cross-modal interaction links ${nameOf(ex, link.i)} with ${nameOf(ex, link.j)} (${signed(link.value)}). The main effects of all ${ex.patches} patches sum to ${signed(patchSum)}, while the cross-modal interactions sum to ${signed(crossSum)}.`;
     },
 
     // conditioning on a token: every player tinted by its interaction with the framed one
