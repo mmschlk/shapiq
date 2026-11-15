@@ -20,7 +20,7 @@
   const G = window.ShapiqGraph;
   if (!G) return console.error("The GraphSHAP-IQ explorer needs ../graphshapiq-common/demo.js first.");
   const { h, svg, sig, bits, signed, percent, legend } = G;
-  const VIEWS = [["build", "Build"], ["predict", "Hide atoms"], ["alone", "Atoms alone"], ["together", "Atoms together"]];
+  const VIEWS = [["predict", "Input"], ["alone", "Atoms alone"], ["together", "Atoms together"]]; // and "build", for the reader's own
   const ORDERS = { 2: ["Pairs", "2-SII"], 3: ["Up to 3 atoms", "3-SII"], 4: ["Up to 4 atoms", "4-SII"], M: ["Any size", "Möbius"] };
 
   const MAX_ATOMS = 15; // of a molecule the reader builds: at most 2^15 maskings
@@ -195,7 +195,7 @@
     const orderSeq = () => { const s = []; for (let k = 2; k <= (built() ? 4 : Math.min(4, Object.keys(ex().kSII).length)); k++) s.push(k); s.push("M"); return s; };
 
     // -- the frame --------------------------------------------------------------------------------
-    const bar = h("div", "gsq-bar"), switches = h("div", "gsq-switches");
+    const bar = h("div", "gsq-bar");
     // the tile of the reader's own molecule: a ring with a + where a group can go
     const own = { ...assemble(["CH3", ...none]), name: "Build your own" };
     const mols = G.picker("Molecule", [...data.molecules, own], (k) => {
@@ -226,8 +226,11 @@
       "<p>A <strong>graph neural network</strong> (GNN) reads a molecule as a graph: atoms, linked by bonds. In each of its three layers, every atom gathers what its neighbours know. At the end, the GNN sums its atoms and answers one yes/no question, each question with a GNN of its own.</p>" +
       "<p>To explain an answer, <code>shapiq</code> hides atoms in many combinations and watches the answer change. The atoms are the <strong>players</strong>: what each adds alone, and what groups add only together, their <strong>interactions</strong>.</p>" +
       "<p>For a GNN these are computed <strong>exactly</strong>: atoms more than three bonds apart cannot interact, so a fraction of all combinations suffices.</p>";
-    switches.append(views.node, info);
-    bar.append(mols.node, ask.node, switches, about);
+    const buildTab = h("button", "gsq-buildtab", "Build"); buildTab.type = "button"; buildTab.hidden = true;
+    buildTab.addEventListener("click", () => setView("build"));
+    const viewbar = h("div", "gsq-viewbar", views.node, buildTab);
+    ask.node.querySelector(".gsq-ask-pick").append(info, about);
+    bar.append(mols.node, ask.node);
     const setAbout = (open) => { about.hidden = !open; info.setAttribute("aria-expanded", String(open)); };
     info.addEventListener("click", () => setAbout(about.hidden));
     about.querySelector(".gsq-about-close").addEventListener("click", () => { setAbout(false); info.focus(); });
@@ -238,7 +241,7 @@
     const hint = G.hinter(frame);
     const slotLayer = svg("g", { class: "gsq-slots" });
     const progress = h("div", "gsq-progress"), progressFill = h("i");
-    progress.append(progressFill); progress.hidden = true; frame.append(progress);
+    progress.append(progressFill); progress.hidden = true; frame.append(progress, viewbar);
     // the molecules to start from, as drawings along the bottom of the frame (in the view "Build" only)
     const starts = h("div", "gsq-starts");
     starts.setAttribute("role", "group"); starts.setAttribute("aria-label", "Start from"); starts.hidden = true;
@@ -259,7 +262,7 @@
     root.append(bar, body, live);
     const scene = G.createScene(plot);
 
-    function setView(id) { hideWheel(); state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); views.buttons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }
+    function setView(id) { hideWheel(); state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); (id === "build" ? buildTab : views.buttons[VIEWS.findIndex((v) => v[0] === id)]).focus({ preventScroll: true }); }
     function reset(newMolecule) {
       hideWheel();
       state.masked = new Set(); state.focus = null; state.pinned = false; state.row = null;
@@ -323,7 +326,8 @@
       build.timer = setTimeout(() => {
         if (build.busy) stopWorker();
         if (!build.worker && !startWorker()) return failed();
-        build.busy = true; progress.hidden = !built();
+        build.busy = true;
+        setTimeout(() => { if (build.busy && build.run === id && built()) progress.hidden = false; }, 350);
         build.worker.postMessage({ id, symbols: data.symbols, m: { atoms: m.atoms, bonds: m.bonds }, t: { gnn: t.gnn, baseline: t.baseline }, overall: OVERALL, perAtom: PER_ATOM });
       }, 120);
     }
@@ -433,7 +437,7 @@
       const m = state.mol, e = ex();
       const building = state.view === "build";
       starts.hidden = !building; frame.classList.toggle("gsq-building", building);
-      progress.hidden = !built() || !build.busy;
+      if (!built() || !build.busy) progress.hidden = true;
       startButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(STARTS[k].slots.join() === build.slots.join())));
       if (building) { slots(); if (build.picked) hint.hide(); else hint.show(`${G.hovers() ? "Click" : "Tap"} a + to add a group`); }
       else {
@@ -547,7 +551,7 @@
     function update() {
       const m = state.mol, t = state.task;
       mols.set(m.built ? data.molecules.length : data.molecules.indexOf(m));
-      views.node.classList.toggle("gsq-no-build", !m.built); // only the reader's own molecule is built
+      buildTab.hidden = !m.built; buildTab.setAttribute("aria-pressed", String(state.view === "build")); // only the reader's own molecule is built
       views.set(VIEWS.findIndex((v) => v[0] === state.view));
       draw();
       renderPanel();
