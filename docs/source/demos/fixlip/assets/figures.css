@@ -1,0 +1,1085 @@
+/* The figures of the FIxLIP demo's page (figures.js, demos/fixlip/index.rst), and the page's links.
+   A figure sits open on the page, as the demo. Amber is the color of the docs (tokens.css): it
+   marks what a figure points at and the series of FIxLIP in a chart. Red raises the similarity
+   and blue lowers it, as in the demo. Everything else is ink and gray. */
+
+.fixlip-figure {
+  clear: both;
+  margin: 2rem 0 2.25rem;
+  container-type: inline-size; /* the layout follows the figure's width, not the window's */
+  -webkit-tap-highlight-color: transparent;
+  --fixlip-ink: var(--color-foreground-primary, #1b1e27);
+  --fixlip-muted: var(--shapiq-text-muted, #5b6275);
+  --fixlip-line: var(--shapiq-border, #e2e6f3);
+  --fixlip-raised: var(--shapiq-surface-raised, #f7f8fc);
+  --fixlip-page: var(--color-background-primary, #ffffff);
+  --fixlip-masked: #c9cdd8; /* a masked patch: the gray that the model sees */
+  --fixlip-gray: #9299ab; /* the series that are not FIxLIP's */
+  --fixlip-veil: rgba(255, 255, 255, 0.62); /* over the patches outside a clique */
+  --fixlip-red-text: #d6003f;
+  --fixlip-blue-text: #1565c0;
+  --fixlip-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --fixlip-duration: var(--shapiq-duration, 220ms);
+}
+
+body[data-theme="dark"] .fixlip-figure {
+  --fixlip-masked: #3d414e;
+  --fixlip-gray: #737a8e;
+  --fixlip-veil: rgba(19, 20, 22, 0.66);
+  --fixlip-red-text: #ff3d74;
+  --fixlip-blue-text: #4ba3f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-figure {
+    --fixlip-masked: #3d414e;
+    --fixlip-gray: #737a8e;
+    --fixlip-veil: rgba(19, 20, 22, 0.66);
+    --fixlip-red-text: #ff3d74;
+    --fixlip-blue-text: #4ba3f0;
+  }
+}
+
+/* while the script draws a figure, it keeps some room, so the page jumps less */
+@media (scripting: enabled) {
+  .fixlip-figure:not(.fixlip-figure-ready) .fixlip-figure-stage {
+    min-height: 14rem;
+  }
+}
+
+.fixlip-figure-stage {
+  position: relative;
+  /* a swipe sideways goes to the next image (figures.js), up or down scrolls the page */
+  touch-action: pan-y pinch-zoom;
+}
+
+.fixlip-figure-missing {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure figcaption {
+  margin-top: 0.7rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure figcaption p {
+  margin: 0;
+}
+
+.fixlip-figure figcaption strong {
+  color: var(--fixlip-ink);
+}
+
+/* what the figure reads off for the image shown: set apart by an amber line */
+.fixlip-figure-note {
+  margin: 0.9rem 0 0;
+  padding: 0.05rem 0 0.05rem 0.8rem;
+  border-left: 3px solid var(--shapiq-amber);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.fixlip-figure-up {
+  color: var(--fixlip-red-text);
+}
+
+.fixlip-figure-down {
+  color: var(--fixlip-blue-text);
+}
+
+/* -- the selector: the image shown, and the others to choose from ------------------------------- */
+
+.fixlip-figure-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.1rem;
+  margin-bottom: 0.7rem;
+}
+
+.fixlip-figure-shown {
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-photos {
+  display: flex;
+  flex: none;
+  gap: 0.3rem;
+}
+
+.fixlip-figure-photo-button {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: none;
+  opacity: 0.5;
+  cursor: pointer;
+  transition:
+    opacity var(--fixlip-duration) var(--fixlip-ease),
+    border-color var(--fixlip-duration) var(--fixlip-ease),
+    transform 120ms var(--fixlip-ease);
+}
+
+.fixlip-figure-photo-button img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fixlip-figure-photo-button:hover,
+.fixlip-figure-photo-button[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.fixlip-figure-photo-button[aria-pressed="true"] {
+  border-color: var(--fixlip-ink);
+}
+
+.fixlip-figure-photo-button:active {
+  transform: scale(0.95);
+}
+
+.fixlip-figure :is(.fixlip-figure-photo-button, .fixlip-figure-dot-button):focus-visible {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
+}
+
+/* on a narrow page, dots under the figure in place of the thumbnails, the one shown dark (as the
+   orders demo's examples) */
+.fixlip-figure-dots {
+  display: none;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.fixlip-figure-dot-button {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.fixlip-figure-dot-button::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fixlip-line);
+  transition:
+    background var(--fixlip-duration) var(--fixlip-ease),
+    scale var(--fixlip-duration) var(--fixlip-ease);
+}
+
+.fixlip-figure-dot-button[aria-pressed="true"]::before {
+  background: var(--fixlip-ink);
+  scale: 1.3;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-photos {
+    display: none;
+  }
+
+  .fixlip-figure-dots {
+    display: flex;
+  }
+
+  .fixlip-figure-bar {
+    min-height: 0;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* -- a photo with its patches, and the tokens of its text ---------------------------------------- */
+
+.fixlip-figure-pair {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* room under the tokens for the arcs between two of them */
+.fixlip-figure-pair.fixlip-figure-arcs {
+  padding-bottom: 1rem;
+}
+
+.fixlip-figure-photo {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--fixlip-masked);
+}
+
+.fixlip-figure-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fixlip-figure-cells {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--fixlip-grid), 1fr);
+  grid-template-rows: repeat(var(--fixlip-grid), 1fr);
+}
+
+.fixlip-figure-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fixlip-figure-lined .fixlip-figure-cell {
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.6);
+}
+
+.fixlip-figure-cell.fixlip-figure-masked {
+  background: var(--fixlip-masked);
+}
+
+.fixlip-figure-cell.fixlip-figure-rest {
+  background: var(--fixlip-veil);
+}
+
+/* the patch a figure points at, and the patches of a clique: an amber frame, on a dark edge so
+   that it shows on every photo */
+.fixlip-figure-cell:is(.fixlip-figure-framed, .fixlip-figure-member) {
+  z-index: 1;
+  box-shadow:
+    inset 0 0 0 2.5px var(--shapiq-amber),
+    0 0 0 1px rgba(17, 19, 24, 0.75);
+}
+
+.fixlip-figure-tokens {
+  position: relative;
+  z-index: 1; /* over the lines of the interactions */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.fixlip-figure-token {
+  padding: 0.08em 0.4em;
+  border-radius: 5px;
+  background-color: var(--fixlip-raised);
+  box-shadow: inset 0 0 0 1px var(--fixlip-line);
+  color: var(--fixlip-ink);
+  white-space: nowrap;
+}
+
+.fixlip-figure-token.fixlip-figure-masked {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--fixlip-line);
+  color: var(--fixlip-muted);
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.fixlip-figure-token.fixlip-figure-rest {
+  opacity: 0.45;
+}
+
+.fixlip-figure-token:is(.fixlip-figure-framed, .fixlip-figure-member) {
+  box-shadow: inset 0 0 0 2px var(--shapiq-amber);
+  font-weight: 700;
+}
+
+.fixlip-figure-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* -- panels side by side -------------------------------------------------------------------------- */
+
+.fixlip-figure-columns {
+  display: grid;
+  gap: 1.1rem 1.2rem;
+  align-items: start;
+}
+
+.fixlip-figure-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fixlip-figure-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fixlip-figure-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fixlip-figure-five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.1rem 0.8rem;
+}
+
+.fixlip-figure-narrow {
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.fixlip-figure-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.fixlip-figure-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--fixlip-ink);
+}
+
+.fixlip-figure-reading {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.fixlip-figure-reading span {
+  font-size: 0.75rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-reading strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-reading.fixlip-figure-second {
+  margin-top: -0.35rem;
+}
+
+.fixlip-figure-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 1.1rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-swatch {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.55rem;
+  margin-right: 0.4rem;
+  border-radius: 2px;
+}
+
+.fixlip-figure-swatch.fixlip-figure-amber {
+  background: var(--shapiq-amber);
+}
+
+.fixlip-figure-swatch.fixlip-figure-gray {
+  background: var(--fixlip-gray);
+}
+
+.fixlip-figure-swatch.fixlip-figure-round {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--fixlip-ink);
+}
+
+.fixlip-figure-swatch:is(.fixlip-figure-solid, .fixlip-figure-dashed) {
+  height: 0;
+  border-top: 2px solid var(--fixlip-muted);
+  border-radius: 0;
+  vertical-align: middle;
+}
+
+.fixlip-figure-swatch.fixlip-figure-dashed {
+  border-top-style: dashed;
+}
+
+@container (max-width: 34rem) {
+  /* three panels under each other */
+  .fixlip-figure-three {
+    grid-template-columns: minmax(0, 17rem);
+    justify-content: center;
+    gap: 1.6rem;
+  }
+
+  .fixlip-figure-four,
+  .fixlip-figure-five {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fixlip-figure-two:not(.fixlip-figure-narrow) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* -- from an image–text pair to a similarity ------------------------------------------------------ */
+
+.fixlip-figure-encoders {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) auto auto auto auto;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem 2rem;
+}
+
+.fixlip-figure-input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.fixlip-figure-input .fixlip-figure-pair {
+  width: min(100%, 8.5rem);
+}
+
+.fixlip-figure-encoders small {
+  font-size: 0.72rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-encoder {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: var(--shapiq-amber-soft);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* the arrows into an encoder and out of it */
+.fixlip-figure-encoder::before,
+.fixlip-figure-encoder::after {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  font-weight: 400;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-encoder::before {
+  right: calc(100% + 0.45rem);
+}
+
+.fixlip-figure-encoder::after {
+  left: calc(100% + 0.45rem);
+}
+
+.fixlip-figure-vector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.fixlip-figure-embedding {
+  display: flex;
+  gap: 2px;
+}
+
+.fixlip-figure-embedding span {
+  width: 0.5rem;
+  height: 1.25rem;
+  border-radius: 2px;
+  background: var(--shapiq-amber);
+}
+
+/* both embeddings meet in the similarity */
+.fixlip-figure-join {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  width: 0.8rem;
+  margin: 4.2rem -1rem 3.2rem -1.2rem;
+  border: 1.5px solid var(--fixlip-line);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+}
+
+.fixlip-figure-similarity {
+  grid-column: 5;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.fixlip-figure-similarity span {
+  font-size: 0.75rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-similarity strong {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* on a narrow page, both branches run down the page, side by side */
+@container (max-width: 34rem) {
+  .fixlip-figure-encoders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto auto;
+    grid-auto-flow: column;
+    justify-items: center;
+    gap: 1.9rem 1rem;
+  }
+
+  .fixlip-figure-encoder::before,
+  .fixlip-figure-encoder::after {
+    content: "↓";
+    left: 50%;
+    right: auto;
+    translate: -50% 0;
+  }
+
+  .fixlip-figure-encoder::before {
+    top: auto;
+    bottom: calc(100% + 0.15rem);
+  }
+
+  .fixlip-figure-encoder::after {
+    top: calc(100% + 0.15rem);
+  }
+
+  .fixlip-figure-join {
+    display: none;
+  }
+
+  .fixlip-figure-similarity {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    flex-direction: row;
+    align-items: baseline;
+    justify-self: stretch;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: -0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1.5px solid var(--fixlip-line);
+  }
+}
+
+/* -- cells filled by their value: regions and words, masked images and masked texts ------------ */
+
+.fixlip-figure-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-height: 2.2rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--shapiq-amber) calc(6% + var(--fixlip-level, 0) * 80%), var(--fixlip-raised));
+  font-size: 0.9rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--fixlip-ink);
+}
+
+.fixlip-figure-value.fixlip-figure-bright {
+  color: #1b1e27; /* on amber, dark in both themes */
+}
+
+.fixlip-figure-matrix {
+  display: grid;
+  grid-template-columns: minmax(4rem, 6.5rem) repeat(2, minmax(0, 8.5rem));
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fixlip-figure-matrix .fixlip-figure-value {
+  font-size: 1.05rem;
+}
+
+.fixlip-figure-region {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-cross {
+  display: grid;
+  grid-template-columns: minmax(1.9rem, 3rem) repeat(6, minmax(0, 4.4rem));
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+
+.fixlip-figure-cross .fixlip-figure-value {
+  min-height: 0;
+  font-size: 0.8rem;
+}
+
+.fixlip-figure-cross .fixlip-figure-photo {
+  border-radius: 4px;
+}
+
+/* a masked text, drawn as its tokens: filled where a token is kept */
+.fixlip-figure-marks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 0.2rem 0.2rem;
+}
+
+.fixlip-figure-marks i {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 1.5px;
+  box-shadow: inset 0 0 0 1px var(--fixlip-gray);
+}
+
+.fixlip-figure-marks .fixlip-figure-on {
+  background: var(--fixlip-ink);
+  box-shadow: none;
+}
+
+.fixlip-figure-marks .fixlip-figure-framed {
+  outline: 1.5px solid var(--shapiq-amber);
+  outline-offset: 1px;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-cross {
+    gap: 3px;
+  }
+
+  .fixlip-figure-cross .fixlip-figure-value {
+    font-size: 0.68rem;
+  }
+
+  .fixlip-figure-marks i {
+    width: 0.32rem;
+    height: 0.32rem;
+  }
+}
+
+/* -- an interaction measured on the model: bars -------------------------------------------------- */
+
+.fixlip-figure-players {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 400;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-thumb {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px var(--shapiq-amber);
+}
+
+.fixlip-figure-players .fixlip-figure-token {
+  box-shadow: inset 0 0 0 2px var(--shapiq-amber);
+  font-weight: 700;
+}
+
+.fixlip-figure-bars {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.fixlip-figure-label {
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-track {
+  position: relative;
+  height: 0.9rem;
+}
+
+.fixlip-figure-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+}
+
+.fixlip-figure-fill-gray {
+  background: var(--fixlip-gray);
+}
+
+.fixlip-figure-fill-ink {
+  background: var(--fixlip-ink);
+}
+
+.fixlip-figure-fill-up {
+  background: rgb(255, 13, 87);
+}
+
+.fixlip-figure-fill-down {
+  background: rgb(30, 136, 229);
+}
+
+.fixlip-figure-origin {
+  position: absolute;
+  top: -0.25rem;
+  bottom: -0.25rem;
+  width: 1px;
+  background: var(--fixlip-muted);
+}
+
+.fixlip-figure-number {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* -- the explanation with its list ----------------------------------------------------------------- */
+
+.fixlip-figure-explained {
+  grid-template-columns: minmax(0, 19rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.fixlip-figure-list p:not(.fixlip-figure-title) {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.24rem 0;
+  border-bottom: 1px solid var(--fixlip-line);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-list .fixlip-figure-title {
+  margin: 0.9rem 0 0.2rem;
+  text-align: left;
+}
+
+.fixlip-figure-list .fixlip-figure-title:first-child {
+  margin-top: 0;
+}
+
+.fixlip-figure-curves {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 8rem);
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.fixlip-figure-curves .fixlip-figure-legend {
+  margin: 0 0 0.4rem;
+}
+
+.fixlip-figure-subsets {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fixlip-figure-subsets .fixlip-figure-tokens {
+  font-size: 0.68rem;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-explained,
+  .fixlip-figure-curves {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fixlip-figure-subsets {
+    flex-direction: row;
+  }
+
+  .fixlip-figure-subsets .fixlip-figure-panel {
+    flex: 1;
+  }
+}
+
+/* -- the pointing game ------------------------------------------------------------------------------ */
+
+.fixlip-figure-pointed {
+  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+  gap: 1.75rem;
+}
+
+.fixlip-figure-pointing {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.fixlip-figure-mosaic {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+}
+
+.fixlip-figure-mosaic img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-pointed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fixlip-figure-pointing {
+    width: min(100%, 13rem);
+    margin: 0 auto;
+  }
+}
+
+/* -- the plots of the paper -------------------------------------------------------------------------- */
+
+.fixlip-figure-multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr));
+  gap: 1.2rem 1rem;
+}
+
+.fixlip-figure-multiples .fixlip-figure-title {
+  font-weight: 500;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-multiples .fixlip-figure-ours .fixlip-figure-title {
+  font-weight: 700;
+  color: var(--fixlip-ink);
+}
+
+.fixlip-figure[data-figure="paper-faithfulness"] .fixlip-figure-panel + .fixlip-figure-panel {
+  margin-top: 1.2rem;
+}
+
+.fixlip-figure[data-figure="paper-faithfulness"] .fixlip-figure-title {
+  text-align: left;
+}
+
+/* -- charts ------------------------------------------------------------------------------------------- */
+
+.fixlip-figure-plot {
+  min-width: 0;
+}
+
+.fixlip-figure-chart {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.fixlip-figure-chart text {
+  fill: var(--fixlip-muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-chart .fixlip-figure-strong {
+  fill: var(--fixlip-ink);
+  font-weight: 650;
+}
+
+.fixlip-figure-axis {
+  stroke: var(--fixlip-muted);
+  stroke-width: 1;
+}
+
+.fixlip-figure-grid {
+  stroke: var(--fixlip-line);
+  stroke-width: 1;
+}
+
+.fixlip-figure-mark {
+  stroke: var(--fixlip-muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-amber {
+  fill: var(--shapiq-amber);
+}
+
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-gray {
+  fill: var(--fixlip-gray);
+}
+
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-ink {
+  fill: var(--fixlip-ink);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-amber {
+  stroke: var(--shapiq-amber);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-gray {
+  stroke: var(--fixlip-gray);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-ink {
+  stroke: var(--fixlip-ink);
+}
+
+.fixlip-figure-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fixlip-figure-line.fixlip-figure-dashed {
+  stroke-dasharray: 1.5 4.5;
+}
+
+.fixlip-figure-area {
+  fill: var(--shapiq-amber-soft);
+}
+
+.fixlip-figure-area-gray {
+  fill: color-mix(in srgb, var(--fixlip-gray) 20%, transparent);
+}
+
+/* what a chart points at: an ink dot with a ring in the page's color */
+.fixlip-figure-dot {
+  fill: var(--fixlip-ink);
+  stroke: var(--fixlip-page);
+  stroke-width: 2;
+}
+
+.fixlip-figure-marker {
+  stroke: var(--fixlip-page);
+  stroke-width: 1.5;
+}
+
+.fixlip-figure-point {
+  fill-opacity: 0.5;
+}
+
+/* the median of a box: a gap in the page's color */
+.fixlip-figure-median {
+  stroke: var(--fixlip-page);
+  stroke-width: 2;
+}
+
+/* -- a figure copied from the paper -------------------------------------------------------------------- */
+
+/* The paper's figure is drawn for a white page, so it keeps a white ground in both themes. */
+figure.fixlip-paper-figure {
+  clear: both;
+  margin: 2rem 0 2.25rem;
+}
+
+figure.fixlip-paper-figure img {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+figure.fixlip-paper-figure figcaption {
+  margin-top: 0.7rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--shapiq-text-muted, #5b6275);
+}
+
+figure.fixlip-paper-figure figcaption p {
+  margin: 0;
+}
+
+figure.fixlip-paper-figure figcaption strong {
+  color: var(--color-foreground-primary, #1b1e27);
+}
+
+/* -- on paper ------------------------------------------------------------------------------------------ */
+
+@media print {
+  .fixlip-figure {
+    break-inside: avoid;
+  }
+
+  .fixlip-figure-photos,
+  .fixlip-figure-dots {
+    display: none;
+  }
+}
+
+/* -- the links of the page ----------------------------------------------------------------------------- */
+
+/* This stylesheet is loaded only by pages with these figures. Their links are underlined in amber,
+   and on hover the underline grows and the text casts a soft offset shadow in amber. */
+article[role="main"] :is(p, li, td, figcaption) a.reference {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(1.5px, 0.09em);
+  text-underline-offset: 0.18em;
+  transition:
+    text-decoration-thickness var(--shapiq-duration) var(--shapiq-ease),
+    text-shadow var(--shapiq-duration) var(--shapiq-ease);
+}
+
+article[role="main"] :is(p, li, td, figcaption) a.reference:hover {
+  color: inherit;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(2.5px, 0.16em);
+  text-shadow: 0.06em 0.06em 0.03em var(--shapiq-amber);
+}
+
+article[role="main"] :is(p, li, td, figcaption) a.reference code {
+  color: inherit;
+}

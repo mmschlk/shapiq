@@ -22,12 +22,35 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 CLIQUES = range(2, 11)  # the sizes of the cliques the demo offers
 PREFIX = "window.SHAPIQ_FIXLIP = "
+FIGURES_PREFIX = "window.SHAPIQ_FIXLIP_FIGURES = "
 
 
 def read_data(assets: Path = HERE.parent / "assets") -> dict[str, Any]:
     """Return the demo's data, as ``main`` wrote it to ``data.js``."""
     text = (assets / "data.js").read_text(encoding="utf-8")
     return json.loads(text[text.index(PREFIX) + len(PREFIX) :].rstrip().removesuffix(";"))
+
+
+def read_figures(assets: Path = HERE.parent / "assets") -> dict[str, Any]:
+    """Return the data of the page's figures, ``figures-data.js``, or an empty one."""
+    path = assets / "figures-data.js"
+    if not path.exists():
+        return {"images": {}, "paper": {}}
+    text = path.read_text(encoding="utf-8")
+    start = text.index(FIGURES_PREFIX) + len(FIGURES_PREFIX)
+    return json.loads(text[start:].rstrip().removesuffix(";"))
+
+
+def write_figures(data: dict[str, Any], assets: Path = HERE.parent / "assets") -> None:
+    """Write the data of the page's figures, which evaluate.py and paper.py each fill a part of."""
+    text = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
+    (assets / "figures-data.js").write_text(
+        "// The data of the figures of the FIxLIP demo's page (see figures.js), written by\n"
+        "// ../compute/evaluate.py (images) and ../compute/paper.py (paper).\n"
+        f"{FIGURES_PREFIX}{text};\n",
+        encoding="utf-8",
+    )
+    print(f"figures-data.js: {len(text) / 1024:.0f} KiB")
 
 
 def compact(result: dict[str, Any]) -> dict[str, Any]:

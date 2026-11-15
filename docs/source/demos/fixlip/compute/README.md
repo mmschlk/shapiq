@@ -1,8 +1,8 @@
 # How the FIxLIP demo was computed
 
 These scripts computed the data of the [FIxLIP demo](https://shapiq.readthedocs.io/en/latest/demos/fixlip/index.html)
-(`../assets/data.js`) and the figures of its page (`../figures/`). They are run by hand, once; the
-docs only show their result.
+(`../assets/data.js`) and the data of the figures of its page (`../assets/figures-data.js`). They
+are run by hand, once; the docs only show their result.
 
 | File | What it does |
 |---|---|
@@ -10,8 +10,8 @@ docs only show their result.
 | `explain.py` | Explains every photo and model with ProxySHAP: `results/<photo>_<model>.json`. |
 | `norms.py` | The scale of the similarities, on 200 COCO photos: `results/norms.json`. |
 | `pack.py` | Writes the demo's data, `../assets/data.js`, and copies the photos next to it. |
-| `evaluate.py` | Evaluates SigLIP 2 on the masks that the page's figures show: `figures.json`. |
-| `figures.py` | Draws the page's figures in both themes: `../figures/<name>-<theme>.webp`. |
+| `evaluate.py` | Evaluates SigLIP 2 on the masks that the page's figures show, for every photo. |
+| `paper.py` | Reads the data of the paper's plots that the page draws again from the paper's figures. |
 
 ## Run
 
@@ -29,16 +29,22 @@ python pack.py
 `explain.py` skips the explanations that exist in `results/`, so a new photo costs only its own
 explanations. The intermediate results (`results/`) are not part of the repository.
 
-The figures of the page explain the demo on its first photo, for SigLIP 2. They are drawn from the
-demo's data and from the model's predictions for the masks they show:
+The figures of the page are drawn in the browser by `../assets/figures.js`, for the photo chosen
+in the demo. Most of them only read the demo's data. The predictions of SigLIP 2 for the masks they
+show, and the data of the paper's plots, are in `../assets/figures-data.js`, which two scripts
+write:
 
 ```bash
-python evaluate.py  # SigLIP 2 on about 3,500 masks of the elephant, 4 minutes on four CPU cores
-python figures.py   # needs matplotlib, scipy and the Inter typeface, and no model
+python evaluate.py [photo ...]  # SigLIP 2 on about 3,500 masks of each photo, 4 minutes each on four CPU cores
+python paper.py <figures>       # needs PyMuPDF and the folder "figures" of the paper's LaTeX sources
 ```
 
-`figures.json` is part of the repository, so `figures.py` runs on its own, e.g. after a change to
-a figure's layout. Run both again when the elephant's explanation in `data.js` changes.
+`evaluate.py` needs scipy and writes the part `images` of the file, one entry for each photo. It
+reads the two objects of each photo from `config.toml` (`objects`, with their patches and the words
+that name them). Run it again for a photo when its explanation for SigLIP 2 in `data.js` changes.
+`paper.py` writes the part `paper`. It reads the boxes and the curves of the paper's vector figures
+(Figures 3, 4 and 5) with their exact coordinates, and holds the scores of Table 1. The figure
+`../figures/paper-methods.webp` is Figure 2 of the paper as it is.
 
 The data of the docs was computed with Python 3.13, shapiq from the repository (after release 1.8.0),
 torch 2.14, transformers 5.20 and xgboost 3.4.
@@ -49,3 +55,5 @@ torch 2.14, transformers 5.20 and xgboost 3.4.
    crop, the caption, and the texts the demo shows (title, alt text, excerpt and credit; the credit
    and license of a COCO photo are on [cocodataset.org](https://cocodataset.org/#explore)).
 2. Run `explain.py`, then `pack.py`.
+3. For the figures of the page, give the photo two `objects` in `config.toml` and run
+   `evaluate.py <photo>`.

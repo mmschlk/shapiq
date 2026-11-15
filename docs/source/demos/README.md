@@ -15,7 +15,7 @@ demos/
     │                  orders demo has none: its card opens the guide that builds it up)
     ├── README.md      optional: notes for maintainers on how the demo is built and embedded
     ├── assets/        what the page loads: demo.js, demo.css and the demo's data
-    ├── figures/       optional: the static figures of the write-up (the FIxLIP demo has them)
+    ├── figures/       optional: the static images of the write-up (the FIxLIP demo has one)
     └── compute/       the scripts that computed the data, with a README on how to run them
 ```
 
@@ -46,20 +46,24 @@ Three more options are passed on to the demo's script, as `data-step`, `data-sel
 and `:examples:` only the examples it names, in that order (`:examples: tabpfn`, or
 `house, houses`). `orders/README.md` lists their values.
 
-A write-up's figures come in two files, one for each theme of the docs, `<name>-light.<suffix>`
-and `<name>-dark.<suffix>`. The page names the light one, and the extension adds the dark one next
-to it, each shown in its theme (`only-light`, `only-dark`), so that a caption is written once:
+A write-up's figures are drawn in the browser, so that they follow the theme of the docs, the
+width of the page, and what is chosen in the demo. The `shapiq-demo-figure` directive names the
+demo and the figure, with a description for screen readers and the caption as its content:
 
 ```rst
-.. figure:: figures/game-light.webp
+.. shapiq-demo-figure:: fixlip game
    :alt: What the figure shows.
 
    The caption.
 ```
 
-The figures are WebP files, which the HTML build takes as they are. A PDF build of the docs would
-need `sphinx.ext.imgconverter` for them. After adding a dark file to a page that was built before,
-touch the page, since Sphinx reads a page again only when one of its known files changed.
+It writes `<figure class="<name>-figure" data-figure="..." data-root="...">` with an empty stage
+and the caption, and adds `assets/figures.css`, `assets/figures-data.js` (if there is one) and
+`assets/figures.js` to the page, next to the demo's data. The script draws every figure into its
+stage. Without JavaScript, the stage shows the description. The figures of the FIxLIP demo show
+the image–text pair chosen in the demo. Each of them has its own selector, and the demo and the
+figures tell each other about a choice with the event `fixlip-demo-image` on the document.
+Builders other than HTML keep only the caption.
 
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).

@@ -26,13 +26,19 @@ grid = 7
 # FIxLIP's figures. ``crop`` is the square of the photo that the models and the demo see, as
 # (left, top, right, bottom) in pixels. The other texts are what the demo shows: the title and the
 # alt text of the photo, the excerpt (an invented text around the caption, shown without an
-# explanation) and the credit of the photo.
+# explanation) and the credit of the photo. ``objects`` are two things that the photo shows and the
+# caption names, for the figures of the page (evaluate.py): a name, the words of the caption, and
+# the patches of SigLIP 2's 8 x 8 grid that show it, row by row from 0, chosen by eye.
 
 [[photos]]
 id = "elephant"
 coco = 46761
 crop = [76, 0, 503, 427]
 caption = "a small elephant standing next to a white bird."
+objects = [
+    { name = "elephant", words = ["elephant"], patches = [13, 14, 15, 20, 21, 22, 23, 27, 28, 29, 30, 31, 35, 36, 37, 38, 39, 43, 45, 46, 47, 53, 54, 55] },
+    { name = "egret", words = ["white", "bird"], patches = [40, 41, 48] },
+]
 title = "A baby elephant and an egret"
 alt = "A baby elephant in tall grass, looking at a small white egret on the left."
 excerpt = [
@@ -50,6 +56,10 @@ id = "giraffe-tree"
 coco = 277208
 crop = [128, 0, 552, 424]
 caption = "a giraffe has its front legs spread to bend down for a drink of water at a pond."
+objects = [
+    { name = "giraffe", words = ["giraffe"], patches = [20, 21, 28, 29, 34, 35, 36, 37, 42, 43, 44, 45, 46] },
+    { name = "water", words = ["water"], patches = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63] },
+]
 title = "A giraffe drinking at a pond, a dead tree behind it"
 alt = "A giraffe spreads its front legs to drink at a pond; a dead tree stands in the background."
 excerpt = [
@@ -67,6 +77,10 @@ id = "pineapple"
 coco = 321973
 crop = [80, 0, 560, 480]
 caption = "a pineapple, banana, and piece of meat placed next to each other."
+objects = [
+    { name = "pineapple", words = ["pineapple"], patches = [9, 10, 11, 12, 17, 18, 19, 20, 25, 26, 27, 28, 33, 34, 35, 36, 42, 43, 44] },
+    { name = "banana", words = ["banana"], patches = [22, 23, 29, 30, 37, 38, 45, 46, 53, 54, 62] },
+]
 title = "A pineapple, a banana, and a piece of meat"
 alt = "A pineapple between a bag of meat and a banana on a granite cutting board."
 excerpt = [
@@ -84,6 +98,10 @@ id = "juice-theory"
 coco = 527164
 crop = [62, 0, 437, 375]
 caption = "a sign reading \"juice theory\" near a traffic light."
+objects = [
+    { name = "sign", words = ["juice", "theory"], patches = [16, 17, 18, 24, 25, 26, 27, 32, 33, 34, 35, 36, 40, 41, 42, 43, 44, 48, 49, 50, 51, 57, 58] },
+    { name = "traffic light", words = ["traffic", "light"], patches = [5, 6, 7, 13, 14, 15, 21, 22, 23, 29, 30, 31, 37, 38, 39] },
+]
 title = "A sign reading “Juice Theory” next to a traffic light"
 alt = "A diamond-shaped party poster reading “Juice Theory” on a wooden pole, next to a red traffic light."
 excerpt = [
@@ -101,6 +119,10 @@ id = "clock-tower"
 coco = 371958
 crop = [0, 0, 640, 640]
 caption = "a flock of birds is seen flying around a clock tower."
+objects = [
+    { name = "tower", words = ["clock", "tower"], patches = [3, 4, 10, 11, 12, 13, 18, 19, 20, 21, 26, 27, 28, 29, 34, 35, 36, 37, 42, 43, 44, 45, 50, 51, 52, 53, 58, 59, 60, 61] },
+    { name = "birds", words = ["birds"], patches = [7, 15, 22, 23, 30, 31, 32, 38, 39, 41, 46, 47, 49, 54, 55, 56] },
+]
 title = "A flock of birds around a clock tower"
 alt = "Birds fly around a brick church tower with a clock and a domed roof, against a pale evening sky."
 excerpt = [

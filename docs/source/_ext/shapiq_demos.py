@@ -39,18 +39,19 @@ The assets are copied before the pages are written, so that Sphinx adds its chec
 of ``demo.css`` and ``demo.js``, and they are dependencies of the pages that embed the demo, so that a
 change to them writes these pages again.
 
-A page's figures may come in two files, one for the light and one for the dark theme of the docs,
-``<name>-light.<suffix>`` and ``<name>-dark.<suffix>``. A page names the light one, and where the
-dark one exists next to it, both are written to the page, each shown in its theme (the theme's
-classes ``only-light`` and ``only-dark``)::
+The ``shapiq-demo-figure`` directive adds a figure that a demo's script draws on the page, e.g.
+one that follows what the demo shows. Its arguments are the demo and the name of the figure, and
+its content is the caption::
 
-    .. figure:: figures/game-light.webp
+    .. shapiq-demo-figure:: fixlip game
        :alt: What the figure shows.
 
-       The caption, once.
+       **The game assigns a similarity to every mask.** The caption.
 
-Outside HTML, only the light one is kept. A dark file that is added later shows once its page is
-read again.
+It writes ``<figure class="<demo>-figure" data-figure="<name>" data-root="...">`` with an empty
+stage, which is labeled with the alt text and shows it without JavaScript, and the caption. A page
+with such figures gets ``figures.css``, the demo's ``data.js``, ``figures-data.js`` (if the demo has
+one) and ``figures.js`` of the demo's assets. Outside HTML, only the caption is kept.
 """
 
 from __future__ import annotations
@@ -63,8 +64,6 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from docutils import nodes
 from docutils.parsers.rst import directives
-from sphinx.transforms import SphinxTransform
-from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.osutil import relative_uri
 
@@ -75,6 +74,8 @@ if TYPE_CHECKING:
 
 _ASSETS = ("demo.js", "demo.css")  # the files that every demo's assets folder has
 _DATA = "data.js"  # the demo's data, which its script loads, if it has any
+_FIGURES = ("figures.js", "figures.css")  # the files of a demo with figures on a page
+_FIGURES_DATA = "figures-data.js"  # what the figures show beyond the demo's data, if anything
 
 
 class DemoNode(nodes.General, nodes.Element):
@@ -116,47 +117,33 @@ class DemoDirective(SphinxDirective):
         return [node]
 
 
-class ThemedImages(SphinxTransform):
-    """Add the dark variant of every image named ``<name>-light.<suffix>`` that has one."""
-
-    default_priority = 400  # while a page is read, before Sphinx collects its images
-
-    def apply(self, **kwargs: Any) -> None:  # noqa: ARG002
-        """Mark the light images for the light theme and add their dark variants after them."""
-        for node in list(self.document.findall(nodes.image)):
-            stem, dot, suffix = node["uri"].rpartition(".")
-            if not stem.endswith("-light"):
-                continue
-            dark = f"{stem.removesuffix('-light')}-dark{dot}{suffix}"
-            if not Path(self.env.relfn2path(dark, self.env.docname)[1]).is_file():
-                continue
-            twin = node.deepcopy()
-            twin["uri"], twin["ids"], twin["names"] = dark, [], []
-            node["classes"].append("only-light")
-            twin["classes"].append("only-dark")
-            # an image with a target is the only child of its link, so the twin gets its own link
-            first, second = node, twin
-            if isinstance(node.parent, nodes.reference):
-                first, second = node.parent, node.parent.copy()
-                second["ids"], second["names"] = [], []
-                second += twin
-            first.parent.insert(first.parent.index(first) + 1, second)
+class FigureNode(nodes.General, nodes.Element):
+    """A figure that a demo's script draws; its children are the caption."""
 
 
-class LightImagesOnly(SphinxPostTransform):
-    """Drop the dark variants again where the output has no themes, as it skips the demos."""
+class FigureDirective(SphinxDirective):
+    """Add a figure of a demo: ``.. shapiq-demo-figure:: <demo> <name>``, with its caption."""
 
-    default_priority = 5
-    formats = ("latex", "text", "man", "texinfo")
+    required_arguments = 2
+    has_content = True
+    option_spec: ClassVar[dict[str, Any]] = {
+        "alt": directives.unchanged_required,  # what the figure shows, in words
+    }
 
-    def run(self, **kwargs: Any) -> None:  # noqa: ARG002
-        """Remove the images that ``ThemedImages`` added, with the links around them."""
-        for node in list(self.document.findall(nodes.image)):
-            if "only-dark" in node["classes"]:
-                twin = node.parent if isinstance(node.parent, nodes.reference) else node
-                twin.parent.remove(twin)
-            elif "only-light" in node["classes"]:
-                node["classes"].remove("only-light")
+    def run(self) -> list[nodes.Node]:
+        """Return the figure with its parsed caption, after checking the demo's assets."""
+        demo, name = self.arguments
+        assets = Path(self.env.srcdir) / "demos" / demo / "assets"
+        if missing := [file for file in _FIGURES if not (assets / file).is_file()]:
+            msg = f"the demo {demo!r} has no {', '.join(missing)} in demos/{demo}/assets"
+            raise self.error(msg)
+        for file in (*_FIGURES, _DATA, _FIGURES_DATA):
+            if (assets / file).is_file():
+                self.env.note_dependency(str(assets / file))
+        node = FigureNode(demo=demo, figure=name, alt=self.options.get("alt", ""))
+        node["ids"].append(f"{demo}-figure-{name}")
+        self.state.nested_parse(self.content, self.content_offset, node)
+        return [node]
 
 
 def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
@@ -184,6 +171,30 @@ def _skip_demo(self: nodes.NodeVisitor, node: DemoNode) -> None:  # noqa: ARG001
     raise nodes.SkipNode
 
 
+def _visit_figure(self: HTML5Translator, node: FigureNode) -> None:
+    page = self.builder.get_target_uri(self.builder.current_docname)
+    root = relative_uri(page, f"_static/demos/{node['demo']}/")
+    name = f"{node['demo']}-figure"
+    self.body.append(
+        self.starttag(
+            node, "figure", CLASS=name, **{"data-figure": node["figure"], "data-root": root}
+        )
+    )
+    alt = escape(node["alt"])
+    self.body.append(
+        f'<div class="{name}-stage" role="group" aria-label="{alt}">'
+        f'<noscript><p class="{name}-missing">{alt}</p></noscript></div>\n<figcaption>\n'
+    )
+
+
+def _depart_figure(self: HTML5Translator, node: FigureNode) -> None:  # noqa: ARG001
+    self.body.append("</figcaption>\n</figure>\n")
+
+
+def _keep_caption(self: nodes.NodeVisitor, node: FigureNode) -> None:
+    """Outside HTML, a figure is its caption."""
+
+
 def _add_assets(
     app: Sphinx,
     pagename: str,  # noqa: ARG001
@@ -194,14 +205,25 @@ def _add_assets(
     """Add the stylesheet and the script of every demo of a page to it."""
     if doctree is None:
         return
-    for name in sorted({node["demo"] for node in doctree.findall(DemoNode)}):
-        # the stylesheet after html_css_files, whose tokens.css it uses
-        app.add_css_file(f"demos/{name}/demo.css", priority=900)
-        # the data, if any, just before the script and loaded alongside it (not by it, once it has
-        # run): the script uses the data on the page, and loads it itself where it is missing
-        if (Path(app.srcdir) / "demos" / name / "assets" / _DATA).is_file():
-            app.add_js_file(f"demos/{name}/{_DATA}", loading_method="defer", priority=499)
-        app.add_js_file(f"demos/{name}/demo.js", loading_method="defer")
+    demos = {node["demo"] for node in doctree.findall(DemoNode)}
+    figures = {node["demo"] for node in doctree.findall(FigureNode)}
+    for name in sorted(demos | figures):
+        assets = Path(app.srcdir) / "demos" / name / "assets"
+        # the stylesheets after html_css_files, whose tokens.css they use
+        if name in demos:
+            app.add_css_file(f"demos/{name}/demo.css", priority=900)
+        if name in figures:
+            app.add_css_file(f"demos/{name}/figures.css", priority=900)
+        # the data, if any, just before the scripts and loaded alongside them (not by them, once
+        # they have run): a script uses the data on the page, and loads it itself where it is missing
+        data = [_DATA, *([_FIGURES_DATA] if name in figures else [])]
+        for file in data:
+            if (assets / file).is_file():
+                app.add_js_file(f"demos/{name}/{file}", loading_method="defer", priority=499)
+        if name in demos:
+            app.add_js_file(f"demos/{name}/demo.js", loading_method="defer")
+        if name in figures:
+            app.add_js_file(f"demos/{name}/figures.js", loading_method="defer")
 
 
 def _copy_assets(app: Sphinx, env: object) -> None:  # noqa: ARG001
@@ -224,14 +246,22 @@ def setup(app: Sphinx) -> ExtensionMetadata:
         man=skip,
         texinfo=skip,
     )
+    keep = (_keep_caption, _keep_caption)
+    app.add_node(
+        FigureNode,
+        html=(_visit_figure, _depart_figure),
+        latex=keep,
+        text=keep,
+        man=keep,
+        texinfo=keep,
+    )
     app.add_directive("shapiq-demo", DemoDirective)
-    app.add_transform(ThemedImages)
-    app.add_post_transform(LightImagesOnly)
+    app.add_directive("shapiq-demo-figure", FigureDirective)
     app.connect("html-page-context", _add_assets)
     app.connect("env-updated", _copy_assets)
     return {
         "version": "1.0",
-        "env_version": 4,  # pages are read again where what the extension writes to them changed
+        "env_version": 5,  # pages are read again where what the extension writes to them changed
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

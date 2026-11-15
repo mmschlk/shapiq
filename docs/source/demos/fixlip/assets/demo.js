@@ -15,6 +15,9 @@
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
+// On the demo's page, the figures of the write-up show the photo chosen here (figures.js), and a
+// photo chosen in a figure is shown here.
+//
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load or
 // does not fit, the script shows that figure itself.
 (() => {
@@ -33,6 +36,7 @@
   const BLUE = [30, 136, 229];
   const TOP = 5; // the strongest interactions listed for a player
   const STRONGEST = 12; // the interactions drawn in the full explanation
+  const IMAGE_EVENT = "fixlip-demo-image"; // a photo was chosen, here or in a figure of the page
   const VIEWS = [
     // the view, its label, and the label on small screens
     ["none", "No explanation", "None"],
@@ -295,6 +299,17 @@
     body.append(stage, panel);
     root.append(bar, about, body);
 
+    // another photo: the demo shows it, and tells the page, whose figures follow the photo
+    // (figures.js); a figure that chooses a photo tells the demo the same way
+    const setImage = (id, tell = true) => {
+      if (id === state.image || !data.models.some((model) => has(id, model.id))) return;
+      crossFade(() => {
+        state.image = id;
+        reset();
+      }, true);
+      if (tell) document.dispatchEvent(new CustomEvent(IMAGE_EVENT, { detail: { image: id, source: null } }));
+    };
+    document.addEventListener(IMAGE_EVENT, (event) => setImage(event.detail?.image, false));
     const photoButtons = data.images.map((image) => {
       const button = el("button", "fixlip-demo-photo");
       button.type = "button";
@@ -305,12 +320,7 @@
       thumb.alt = "";
       thumb.loading = "lazy";
       button.append(thumb);
-      button.addEventListener("click", () =>
-        crossFade(() => {
-          state.image = image.id;
-          reset();
-        }, true),
-      );
+      button.addEventListener("click", () => setImage(image.id));
       photos.append(button);
       return button;
     });
