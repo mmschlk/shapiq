@@ -492,14 +492,11 @@
       const n = state.masked.size, compare = h("p", "gsq-pred-compare");
       if (n) {
         const d = Math.round(p * 100) - Math.round(e.p * 100);
-        compare.append(h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${Math.abs(d)} points ${d >= 0 ? "more" : "less"}`), ` than with all atoms (${percent(e.p)})`);
+        compare.append(h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${Math.abs(d)} ${Math.abs(d) === 1 ? "point" : "points"} ${d >= 0 ? "more" : "less"}`), ` than with all atoms (${percent(e.p)})`);
       } else compare.append(`${G.hovers() ? "Click" : "Tap"} atoms to hide them from the GNN.`);
-      const actions = h("div", "gsq-actions");
-      const act = (label, fn, hidden) => { const b = h("button", "gsq-act", label); b.type = "button"; b.hidden = !!hidden; b.addEventListener("click", () => { fn(); state.hinted = true; draw(); renderPanel(); }); actions.append(b); };
-      if (e.truth.length) act(`Hide the ${t.truthLabel}`, () => { state.masked = new Set(e.truth); });
-      act("Hide all", () => { state.masked = new Set(m.atoms.map((_, k) => k)); });
-      act("Show all", () => { state.masked = new Set(); }, !n);
-      box.append(compare, actions);
+      box.append(compare);
+      // the ground truth stays outlined in every view: here its key, without the colors of values
+      if (e.truth.length) box.append(h("p", "gsq-legend", h("span", "gsq-key", h("i", "gsq-outline"), `the ${t.truthLabel}`)));
     }
     function explanationPanel(box, m, t, e) {
       const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), slot = h("div", "gsq-slot"), list = h("ol", "gsq-rows");

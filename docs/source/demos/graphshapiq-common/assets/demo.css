@@ -81,7 +81,7 @@ body[data-theme="dark"] .gsq {
   clip-path: inset(50%);
 }
 
-.gsq :is(.gsq-mol, .gsq-opt, .gsq-step, .gsq-act, .gsq-info, .gsq-link, .gsq-row[tabindex], .gsq-chip):focus-visible {
+.gsq :is(.gsq-mol, .gsq-opt, .gsq-step, .gsq-info, .gsq-link, .gsq-row[tabindex], .gsq-chip):focus-visible {
   outline: 2px solid var(--gsq-ink);
   outline-offset: 2px;
 }
@@ -954,33 +954,6 @@ body[data-theme="dark"] .gsq {
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
-}
-
-.gsq .gsq-act {
-  height: calc(var(--gsq-control) - 6px);
-  padding: 0 0.9rem;
-  border: 1px solid var(--gsq-border);
-  border-radius: 999px;
-  background: var(--gsq-stage);
-  color: var(--gsq-ink);
-  font-size: 0.86rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color 220ms,
-    transform 120ms;
-}
-
-.gsq .gsq-act:hover {
-  border-color: var(--gsq-ink);
-}
-
-.gsq .gsq-act:active {
-  transform: scale(0.96);
-}
-
-.gsq .gsq-act[hidden] {
-  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
