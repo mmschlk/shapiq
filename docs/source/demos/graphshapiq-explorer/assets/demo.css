@@ -132,16 +132,12 @@
   stroke-width: 1.6px;
 }
 
-/* the views, inside the frame at its top: three for every molecule, and "Build" beside them, after
-   a rule, for the reader's own (it comes in without moving the three) */
+/* the views, inside the frame at its top */
 .graphshapiq-explorer-demo .gsq-viewbar {
   position: absolute;
   z-index: 3;
   top: 0.6rem;
   left: 0.6rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
 }
 
 .graphshapiq-explorer-demo .gsq-viewbar .gsq-switch {
@@ -153,55 +149,6 @@
 .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
   padding: 0 0.62rem;
   font-size: 0.8rem;
-}
-
-.graphshapiq-explorer-demo .gsq-buildtab {
-  position: relative;
-  height: var(--gsq-control);
-  padding: 0 0.85rem;
-  border: 1px solid var(--gsq-build);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--gsq-build) 14%, var(--gsq-sheet));
-  color: var(--gsq-build-text);
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  animation: graphshapiq-explorer-tab 260ms var(--gsq-ease) backwards;
-  transition:
-    background-color 200ms var(--gsq-ease),
-    color 200ms var(--gsq-ease);
-}
-
-.graphshapiq-explorer-demo .gsq-buildtab::before {
-  position: absolute;
-  top: 22%;
-  bottom: 22%;
-  left: calc(-0.5rem - 1px);
-  width: 1px;
-  background: color-mix(in srgb, var(--gsq-muted) 45%, var(--gsq-border));
-  content: "";
-}
-
-.graphshapiq-explorer-demo .gsq-buildtab[aria-pressed="true"] {
-  background: var(--gsq-build);
-  color: var(--gsq-build-ink);
-}
-
-.graphshapiq-explorer-demo .gsq-buildtab[hidden] {
-  display: none;
-}
-
-.graphshapiq-explorer-demo .gsq-buildtab:focus-visible {
-  outline: 2px solid var(--gsq-ink);
-  outline-offset: 2px;
-}
-
-@keyframes graphshapiq-explorer-tab {
-  from {
-    opacity: 0;
-    translate: -0.6rem 0;
-    scale: 0.85;
-  }
 }
 
 /* the molecule under the views, and the hint under them too */
@@ -225,7 +172,6 @@
 
 @container (max-width: 23.5rem) {
   .graphshapiq-explorer-demo .gsq-viewbar {
-    gap: 0.8rem;
     left: 0.4rem;
   }
 
@@ -234,15 +180,10 @@
     font-size: 0.72rem;
   }
 
-  .graphshapiq-explorer-demo .gsq-buildtab {
-    padding: 0 0.6rem;
-    font-size: 0.72rem;
-  }
 }
 
 @container (max-width: 20.5rem) {
   .graphshapiq-explorer-demo .gsq-viewbar {
-    gap: 0.6rem;
     left: 0.3rem;
   }
 
@@ -251,14 +192,7 @@
     font-size: 0.66rem;
   }
 
-  .graphshapiq-explorer-demo .gsq-buildtab {
-    padding: 0 0.45rem;
-    font-size: 0.66rem;
-  }
 
-  .graphshapiq-explorer-demo .gsq-buildtab::before {
-    left: calc(-0.3rem - 1px);
-  }
 }
 
 /* the positions of the ring: a + where a group can go, the group where one is */
@@ -266,10 +200,10 @@
   cursor: pointer;
 }
 
+/* a + in light amber: a group can go here */
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot circle {
-  fill: var(--gsq-stage);
-  stroke: var(--gsq-muted);
-  stroke-dasharray: 2.5 2;
+  fill: color-mix(in srgb, var(--gsq-build) 16%, var(--gsq-stage));
+  stroke: color-mix(in srgb, var(--gsq-build) 70%, var(--gsq-stage));
   stroke-width: 1.3px;
   vector-effect: non-scaling-stroke;
   transition:
@@ -278,43 +212,33 @@
 }
 
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot .gsq-plus {
-  stroke: var(--gsq-muted);
+  stroke: var(--gsq-build-text);
   stroke-linecap: round;
-  stroke-width: 1.3px;
+  stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
 
-/* between the atoms of a group, a click is for the group too */
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot .gsq-reach {
-  stroke: transparent;
-  pointer-events: stroke;
-}
-
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled circle {
-  fill: transparent;
-  stroke: transparent;
-}
-
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot:hover circle,
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel circle {
-  fill: color-mix(in srgb, var(--gsq-build) 22%, var(--gsq-stage));
+  fill: color-mix(in srgb, var(--gsq-build) 34%, var(--gsq-stage));
+  stroke: var(--gsq-build);
+  stroke-width: 2px;
+}
+
+/* a × on the bond of a group: it removes the group. Quiet until pointed at */
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled circle {
+  fill: var(--gsq-stage);
+  stroke: color-mix(in srgb, var(--gsq-build) 70%, var(--gsq-stage));
+}
+
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:hover circle {
+  fill: var(--gsq-build);
   stroke: var(--gsq-build);
 }
 
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot:hover .gsq-plus,
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel .gsq-plus {
-  stroke: var(--gsq-build-text);
-}
-
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:is(:hover, .gsq-sel) circle {
-  fill: color-mix(in srgb, var(--gsq-build) 22%, transparent);
-  stroke-dasharray: none;
-}
-
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel circle {
-  stroke-width: 2px;
-  stroke-dasharray: none;
+.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:hover .gsq-plus {
+  stroke: var(--gsq-build-ink);
 }
 
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot:focus {
