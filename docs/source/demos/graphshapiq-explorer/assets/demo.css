@@ -14,13 +14,6 @@
   line-height: 1.5;
 }
 
-.graphshapiq-explorer-demo .gsq-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.9rem;
-}
-
 /* -- the reader's own molecule ("Build your own") ----------------------------------------------- */
 
 /* nine molecules in a row, over the demo's whole width, their names in full */

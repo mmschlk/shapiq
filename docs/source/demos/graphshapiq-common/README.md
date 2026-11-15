@@ -232,6 +232,9 @@ remove a group.
 A tenth pass moved the molecules to start from up beside the views and centred that menu, so that
 the molecule gets the room below (the atoms had become small). The menu fits one row down to
 320 px phones.
+An eleventh pass removed the buttons under *Input* (hide the pattern, hide all, show all). The
+reader hides atoms by clicking them only. The ground truth stays outlined in every view, and the
+*Input* panel shows its key too.
 
 A third pass made the questions understandable (the question card above), moved the GNN's answer
 from the panel onto that card in both demos, renamed the explorer's *Prediction* view to *Hide
