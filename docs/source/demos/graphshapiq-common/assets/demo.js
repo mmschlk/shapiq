@@ -371,7 +371,7 @@
     scale.setAttribute("aria-hidden", "true");
     scale.append(fill, h("span", "gsq-scale-half"), mark);
     const card = h("div", "gsq-ask-card", picture, h("div", "gsq-ask-text", title, meaning, here), h("div", "gsq-ask-answer", h("p", "gsq-barlab", "The GNN answers"), h("p", "gsq-pred-number", number, verdict), scale, note));
-    const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", "Question"), choice.node), card);
+    const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", h("span", "gsq-long", "Question"), h("abbr", "gsq-short", "Q")), choice.node), card);
     let asked = null;
     return {
       node,

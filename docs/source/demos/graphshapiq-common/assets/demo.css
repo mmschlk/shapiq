@@ -117,6 +117,25 @@ body[data-theme="dark"] .gsq {
   text-transform: uppercase;
 }
 
+/* a label in full, and short on a phone ("Q" for "Question") */
+.gsq .gsq-barlab abbr {
+  text-decoration: none;
+}
+
+.gsq .gsq-short {
+  display: none;
+}
+
+@container (max-width: 26rem) {
+  .gsq .gsq-ask-pick .gsq-long {
+    display: none;
+  }
+
+  .gsq .gsq-ask-pick .gsq-short {
+    display: inline;
+  }
+}
+
 .gsq .gsq-mols {
   display: flex;
   gap: 0.1rem;
