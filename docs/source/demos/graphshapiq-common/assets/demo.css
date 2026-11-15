@@ -169,8 +169,19 @@ body[data-theme="dark"] .gsq {
   opacity: 1;
 }
 
+/* the molecule shown, white on a dark amber, in both demos */
 .gsq .gsq-mol[aria-pressed="true"] {
-  border-color: var(--gsq-ink);
+  border-color: var(--gsq-build-strong);
+  background: var(--gsq-build-strong);
+  color: #fff;
+}
+
+.gsq .gsq-mol[aria-pressed="true"] line {
+  stroke: #fff;
+}
+
+.gsq .gsq-mol[aria-pressed="true"] circle {
+  fill: #fff;
 }
 
 .gsq .gsq-mol:active {
@@ -298,7 +309,9 @@ body[data-theme="dark"] .gsq {
 
 .gsq .gsq-about-close {
   float: right;
-  margin: -0.35rem -0.5rem 0 0;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  margin: -0.45rem -0.6rem 0 0;
   padding: 0 0.3rem;
   border: 0;
   background: none;

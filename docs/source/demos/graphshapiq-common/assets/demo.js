@@ -154,18 +154,20 @@
     }
     let layers = null, atoms = [], rings = [], edges = new Map(), focusRing = null, keyRing = null, mol = null, g = null, truthKey = null;
     // the hub of a hyperedge: the centre of its atoms, moved off an atom that sits there (a chain)
+    // the hub of a hyperedge: the centre of its atoms, moved off any atom that sits there (a chain,
+    // or an atom of another group), outward first and then further, until it is clear
     function hubOf(group) {
       const { s, pos } = g, P = group.map((k) => pos[k]);
-      let x = P.reduce((a, p) => a + p[0], 0) / P.length, y = P.reduce((a, p) => a + p[1], 0) / P.length;
-      if (P.some((p) => Math.hypot(p[0] - x, p[1] - y) < 0.4 * s)) {
-        const mx = pos.reduce((a, p) => a + p[0], 0) / pos.length, my = pos.reduce((a, p) => a + p[1], 0) / pos.length;
-        let [a, b] = [P[0], P[1]], far = 0;
-        for (const p of P) for (const q of P) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d > far) { far = d; a = p; b = q; } }
-        let nx = -(b[1] - a[1]) / (far || 1), ny = (b[0] - a[0]) / (far || 1);
-        if (nx * (x - mx) + ny * (y - my) < 0) { nx = -nx; ny = -ny; }
-        x += nx * 0.55 * s; y += ny * 0.55 * s;
-      }
-      return [x, y];
+      const x = P.reduce((a, p) => a + p[0], 0) / P.length, y = P.reduce((a, p) => a + p[1], 0) / P.length;
+      const clear = (cx, cy) => pos.every((p) => Math.hypot(p[0] - cx, p[1] - cy) >= 0.42 * s);
+      if (clear(x, y)) return [x, y];
+      const mx = pos.reduce((a, p) => a + p[0], 0) / pos.length, my = pos.reduce((a, p) => a + p[1], 0) / pos.length;
+      let [a, b] = [P[0], P[1]], far = 0;
+      for (const p of P) for (const q of P) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d > far) { far = d; a = p; b = q; } }
+      let nx = -(b[1] - a[1]) / (far || 1), ny = (b[0] - a[0]) / (far || 1);
+      if (nx * (x - mx) + ny * (y - my) < 0) { nx = -nx; ny = -ny; }
+      for (const step of [0.5, 0.75, 1]) for (const side of [1, -1]) { const cx = x + side * nx * step * s, cy = y + side * ny * step * s; if (clear(cx, cy)) return [cx, cy]; }
+      return [x + nx * 0.5 * s, y + ny * 0.5 * s];
     }
     // a hyperedge of width w as two paths: the round ends, and the bands that narrow halfway (as
     // _draw_fancy_hyper_edges draws them)
@@ -262,7 +264,7 @@
         const m = masked.has(atom.k), faded = keep && !keep.has(atom.k);
         if (m !== atom.masked) { atom.masked = m; atom.disc.classList.toggle("gsq-masked", m); }
         atom.disc.style.opacity = faded ? 0.3 : 1;
-        if (atom.label) atom.label.style.opacity = m ? 0 : faded ? 0.3 : 1;
+        if (atom.label) atom.label.style.opacity = m ? 0.35 : faded ? 0.3 : 1; // a hidden atom keeps a faint letter
         rings[atom.k].el.style.opacity = faded ? 0.25 : 1;
       }
       moveRing(focusRing, "focus", state.focus);
@@ -338,7 +340,22 @@
       b.addEventListener("click", () => pick(k)); node.append(b);
       return b;
     });
-    return { node, buttons, set(k) { buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); } };
+    // where the row scrolls (phones), its edges fade, so that one sees there is more: on the side
+    // that can scroll on. A tile pinned at the end (the explorer's own molecule) draws the fade
+    // before it itself (`gsq-more-right`), and nothing shows past it
+    const fade = () => {
+      const max = node.scrollWidth - node.clientWidth, W = 56;
+      const left = max > 1 && node.scrollLeft > 1, right = max > 1 && node.scrollLeft < max - 1;
+      const pinned = buttons.find((b) => getComputedStyle(b).position === "sticky");
+      node.classList.toggle("gsq-more-left", left); node.classList.toggle("gsq-more-right", right);
+      if (max <= 1) { node.style.maskImage = node.style.webkitMaskImage = ""; return; }
+      const tail = pinned ? Math.max(0, Math.floor(node.getBoundingClientRect().right - pinned.getBoundingClientRect().right)) : 0;
+      const end = pinned ? `#000 calc(100% - ${tail}px), transparent calc(100% - ${tail}px)` : `#000 calc(100% - ${right ? W : 0}px), transparent 100%`;
+      node.style.maskImage = node.style.webkitMaskImage = `linear-gradient(to right, transparent 0, #000 ${left ? W : 0}px, ${end})`;
+    };
+    node.addEventListener("scroll", fade, { passive: true });
+    new ResizeObserver(fade).observe(node);
+    return { node, buttons, set(k) { buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); fade(); } };
   }
   // The question, in plain words. A switch of the questions, and under it a card of the one asked:
   // the question in full, what its term means and the pattern that makes a yes (drawn), whether the
@@ -367,7 +384,8 @@
           title.textContent = task.question; meaning.textContent = task.meaning;
         }
         const name = task.truthLabel;
-        here.replaceChildren(h("strong", "", subject), has ? ` contains ${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}. ` : ` contains no ${name}.`);
+        const itself = subject.toLowerCase() === name.toLowerCase(); // "Catechol is a catechol itself"
+        here.replaceChildren(h("strong", "", subject), has ? (itself ? ` is the ${name} itself. ` : ` contains ${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}. `) : ` contains no ${name}.`);
         number.textContent = percent(p); verdict.textContent = p >= 0.5 ? task.yes : task.no;
         fill.style.width = mark.style.left = `${p * 100}%`;
         note.textContent = about || "";

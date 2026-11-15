@@ -193,7 +193,7 @@
     const state = { mol: first, task: taskById(first.task), view: "explain", order: 2, masked: new Set(), focus: null, pinned: false, row: null, hinted: false };
     // the reader's own molecule: the groups on the ring's positions, the position whose wheel is
     // open (`sel`) and where the positions are on the stage (`at`), the molecule they make, and its explanation (`result`: at first the GNN's answer only, `pending`)
-    const build = { slots: STARTS[1].slots.slice(), task: taskById(STARTS[1].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, worker: null, busy: false, picked: false };
+    const build = { slots: STARTS[1].slots.slice(), task: taskById(STARTS[1].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, t0: 0, worker: null, busy: false, picked: false };
     const built = () => state.mol.built === true;
     const ex = () => (built() ? build.result : data.explanations[`${state.mol.id}/${state.task.id}`]);
     const rowsOf = (e, order) => (order === "M" ? e.moebius : e.kSII[String(order)] || []);
@@ -201,6 +201,8 @@
     const groupsOf = (e, order) => rowsOf(e, order).map(([mask, v]) => ({ atoms: bits(mask), v })).filter((g) => g.atoms.length > 1).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
     const orderSeq = () => KINDS.map((k) => k[0]).filter((k) => k === "M" || built() || ex().kSII[String(k)]);
     const pointing = () => state.view === "explain" && state.order !== 1; // atoms to point at: their interactions
+    // the first n of a list sorted by size, and any more of the same size (so that a tie is not split)
+    const upTo = (list, n) => { let k = Math.min(n, list.length); while (k > 0 && k < list.length && Math.abs(Math.abs(list[k].v) - Math.abs(list[k - 1].v)) < 1e-4) k++; return list.slice(0, k); };
 
     // -- the frame --------------------------------------------------------------------------------
     const bar = h("div", "gsq-bar");
@@ -238,7 +240,7 @@
       "<p><strong>What does the demo show?</strong></p>" +
       "<p>A <strong>graph neural network</strong> (GNN) reads a molecule as a graph: atoms, linked by bonds. In each of its three layers, every atom gathers what its neighbours know. At the end, the GNN sums its atoms and answers one yes/no question, each question with a GNN of its own.</p>" +
       "<p>To explain an answer, <code>shapiq</code> hides atoms in many combinations and watches the answer change. The atoms are the <strong>players</strong>: what each adds alone, and what groups add only together, their <strong>interactions</strong>.</p>" +
-      "<p>For a GNN these are computed <strong>exactly</strong>: atoms more than three bonds apart cannot interact, so a fraction of all combinations suffices.</p>";
+      "<p>For a GNN these are computed <strong>exactly</strong>. With three layers, atoms more than six bonds apart never meet in the GNN. So for a larger molecule a fraction of all combinations suffices.</p>";
     const viewbar = h("div", "gsq-viewbar", views.node);
     ask.node.querySelector(".gsq-ask-pick").append(info, about);
     bar.append(mols.node, ask.node);
@@ -246,6 +248,8 @@
     info.addEventListener("click", () => setAbout(about.hidden));
     about.querySelector(".gsq-about-close").addEventListener("click", () => { setAbout(false); info.focus(); });
     about.addEventListener("focusout", (e) => { if (!about.contains(e.relatedTarget) && e.relatedTarget !== info) setAbout(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !about.hidden) { setAbout(false); info.focus(); } });
+    document.addEventListener("pointerdown", (e) => { if (!about.hidden && !about.contains(e.target) && !info.contains(e.target)) setAbout(false); });
 
     const body = h("div", "gsq-body"), stage = h("div", "gsq-stage"), frame = h("div", "gsq-frame"), panel = h("div", "gsq-panel");
     const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule; its atoms are the players" }, frame);
@@ -319,15 +323,16 @@
       build.result = { ...build.result, pending: false, failed: true };
       if (built()) { draw(); renderPanel(); }
     }
+    let workerUrl = null; // one script for every worker
     function startWorker() {
-      try { build.worker = new Worker(URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }))); } catch (err) { console.error(err); return false; }
+      try { workerUrl = workerUrl || URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" })); build.worker = new Worker(workerUrl); } catch (err) { console.error(err); return false; }
       build.worker.onerror = (err) => { console.error(err.message || err); failed(); };
       build.worker.onmessage = ({ data: d }) => {
         if (d.id !== build.run) return; // an earlier molecule's
         if (d.progress != null) { progressFill.style.width = `${Math.round(d.progress * 100)}%`; return; }
         build.busy = false; progress.hidden = true;
         build.result = { ...build.result, ...d, p: sig(d.logOdds), pending: false };
-        if (built()) { draw(); renderPanel(); }
+        if (built()) { draw(); renderPanel(); if (state.view === "explain") live.textContent += " Its interactions are ready."; }
       };
       return true;
     }
@@ -340,7 +345,7 @@
       build.timer = setTimeout(() => {
         if (build.busy) stopWorker();
         if (!build.worker && !startWorker()) return failed();
-        build.busy = true;
+        build.busy = true; build.t0 = performance.now();
         setTimeout(() => { if (build.busy && build.run === id && built()) progress.hidden = false; }, 350);
         build.worker.postMessage({ id, symbols: data.symbols, m: { atoms: m.atoms, bonds: m.bonds }, t: { gnn: t.gnn, baseline: t.baseline }, overall: OVERALL, perAtom: PER_ATOM });
       }, 120);
@@ -348,7 +353,11 @@
     // the positions of the ring, over the molecule, in every view: a + where a group can go (it opens
     // the wheel), and a × on the bond of a group that is there (it removes the group). Both stay off
     // the atoms, so that the atoms can still be hidden and pointed at
+    let slotKey = "";
     function slots() {
+      const key = `${build.slots.join()}|${build.sel}`;
+      if (key === slotKey && slotLayer.parentNode === plot && plot.lastChild === slotLayer) return; // nothing changed
+      slotKey = key;
       const focused = slotLayer.contains(document.activeElement) ? Number(document.activeElement.dataset.slot) : null;
       slotLayer.replaceChildren();
       const { s, pos } = scene.geom;
@@ -360,11 +369,13 @@
           const cx = x + Math.cos(a) * 0.62 * s, cy = y + Math.sin(a) * 0.62 * s;
           build.at[i] = [cx, cy];
           g.setAttribute("aria-expanded", String(build.sel === i));
+          svg("circle", { class: "gsq-slot-hit", cx, cy, r: 0.34 * s }, g); // room for a finger
           svg("circle", { cx, cy, r: 0.26 * s }, g);
           svg("line", { class: "gsq-plus", x1: cx - 0.12 * s, y1: cy, x2: cx + 0.12 * s, y2: cy }, g);
           svg("line", { class: "gsq-plus", x1: cx, y1: cy - 0.12 * s, x2: cx, y2: cy + 0.12 * s }, g);
         } else {
           const cx = (x + pos[next][0]) / 2, cy = (y + pos[next][1]) / 2, d = 0.07 * s; // the middle of the bond to the group
+          svg("circle", { class: "gsq-slot-hit", cx, cy, r: 0.3 * s }, g);
           svg("circle", { cx, cy, r: 0.17 * s }, g);
           svg("line", { class: "gsq-plus", x1: cx - d, y1: cy - d, x2: cx + d, y2: cy + d }, g);
           svg("line", { class: "gsq-plus", x1: cx - d, y1: cy + d, x2: cx + d, y2: cy - d }, g);
@@ -421,7 +432,8 @@
       if (refocus) slotLayer.children[i]?.focus({ preventScroll: true });
     }
     scrim.addEventListener("click", () => closeWheel(false));
-    window.addEventListener("resize", () => { if (build.sel != null) closeWheel(false); }); // the wheel would be off its position
+    let frameWidth = 0; // the wheel would be off its position when the frame changes width (not when a phone's address bar hides)
+    new ResizeObserver(() => { const w = Math.round(frame.clientWidth); if (w !== frameWidth) { frameWidth = w; if (build.sel != null) closeWheel(false); } }).observe(frame);
     wheel.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { e.preventDefault(); closeWheel(true); return; }
       const by = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
@@ -430,7 +442,8 @@
       const items = [...wheel.querySelectorAll(".gsq-wheel-item")], k = items.indexOf(document.activeElement);
       items[(Math.max(k, by > 0 ? -1 : 0) + by + items.length) % items.length].focus({ preventScroll: true });
     });
-    wheel.addEventListener("focusout", (e) => { if (e.relatedTarget && !wheel.contains(e.relatedTarget)) closeWheel(false); }); // the keyboard has left it
+    // the keyboard has left it: redraw once the focus has landed, so that it is not on a node replaced
+    wheel.addEventListener("focusout", (e) => { if (e.relatedTarget && !wheel.contains(e.relatedTarget) && build.sel != null) { hideWheel(); requestAnimationFrame(() => { draw(); renderPanel(); }); } });
 
     // -- pointing at atoms, and the keyboard ------------------------------------------------------
     function toggle(k) { if (state.masked.has(k)) state.masked.delete(k); else state.masked.add(k); state.hinted = true; draw(); renderPanel(); }
@@ -458,7 +471,7 @@
       const m = state.mol, e = ex();
       const building = built(); // the reader's own molecule: its positions and starts, in every view
       starts.hidden = !building; frame.classList.toggle("gsq-building", building);
-      if (!built() || !build.busy) progress.hidden = true;
+      progress.hidden = !(built() && build.busy && performance.now() - build.t0 > 350); // also back on the molecule while its job runs
       startButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(STARTS[k].slots.join() === build.slots.join())));
       if (building) slots(); else slotLayer.remove();
       if (building && !build.picked) hint.show(`${G.hovers() ? "Click" : "Tap"} a + to add a group`);
@@ -474,13 +487,15 @@
       const explained = state.view !== "predict";
       // the SI graph: a halo per atom, and the strongest interactions as hyperedges, all on one
       // scale (as si_graph_plot scales them by the largest value shown)
-      const own = explained && !e.pending && !e.failed ? singles(e, state.order) : {};
+      const ready = explained && !e.pending && !e.failed, own = ready ? singles(e, state.order) : {};
       let groups = [];
-      if (explained && state.order !== 1 && !e.pending && !e.failed) {
-        const all = groupsOf(e, state.order), limit = state.order === 2 ? 10 : state.order === "M" ? 4 : 6, top = Math.abs(all[0]?.v || 0);
-        groups = state.row ? [state.row] : state.focus != null ? all.filter((g) => g.atoms.includes(state.focus)).slice(0, 8) : all.filter((g) => Math.abs(g.v) >= 0.08 * top).slice(0, limit);
+      if (ready && state.order !== 1) {
+        // every group the list shows (its first 5), and more strong ones up to a limit
+        const all = groupsOf(e, state.order), limit = state.order === 2 ? 10 : 6, top = Math.abs(all[0]?.v || 0);
+        groups = state.row ? [state.row] : state.focus != null ? upTo(all.filter((g) => g.atoms.includes(state.focus)), 8) : upTo(all.filter((g, i) => i < 5 || Math.abs(g.v) >= 0.08 * top), limit);
       }
-      const largest = Math.max(1e-9, ...Object.values(own).map(Math.abs), ...groups.map((g) => Math.abs(g.v)));
+      // one scale for the order, whatever is shown (as si_graph_plot scales by every value plotted)
+      const largest = ready ? Math.max(1e-9, ...rowsOf(e, state.order).map(([, v]) => Math.abs(v))) : 1;
       const truthLabel = e.truth.length ? `the ${state.task.truthLabel}` : "";
       truthKey.hidden = !truthLabel; truthKey.lastChild.textContent = truthLabel; frame.classList.toggle("gsq-has-key", !!truthLabel);
       scene.update({
@@ -498,7 +513,7 @@
     function answer(m, t, e) {
       const n = state.view === "predict" ? state.masked.size : 0, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
       ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p });
-      const said = `${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
+      const said = `${m.name}. ${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
       if (live.textContent !== said) live.textContent = said;
       return p;
     }
@@ -508,8 +523,10 @@
       // the explanations' switch stays in the panel, so that its pill slides from one to the next
       if (kinds.node.parentNode !== panel) panel.prepend(kinds.node);
       kinds.node.hidden = state.view !== "explain";
+      const at = document.activeElement, had = panel.contains(at) && !kinds.node.contains(at) ? at.dataset.key ?? "" : undefined; // a row with the keyboard's focus keeps it
       for (const c of [...panel.children]) if (c !== kinds.node) c.remove();
       panel.append(content);
+      if (had !== undefined) { const row = content.querySelector(`[data-key="${had}"]`); if (row) row.focus({ preventScroll: true }); else { content.tabIndex = -1; content.focus({ preventScroll: true }); } } // or the panel, if the row is gone
       if (state.view === "explain") kinds.set(KINDS.findIndex((k) => k[0] === state.order));
     }
     const computing = () => (ex().failed ? h("p", "gsq-detail gsq-note", "Your browser could not compute the interactions here.") : h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…"));
@@ -525,19 +542,19 @@
       const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), list = h("ol", "gsq-rows");
       if (e.pending || e.failed) { box.append(computing()); return; }
       if (state.order === 1) {
-        detail.append("A halo is what an atom adds on its own.");
+        detail.append("A halo is an atom's share of the answer. Each interaction is split evenly among its atoms.");
         const own = singles(e, 1), rows = Object.keys(own).map((k) => ({ atoms: [Number(k)], v: own[k] })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
         const largest = Math.max(1e-9, Math.abs(rows[0]?.v || 0));
-        for (const g of rows.slice(0, 5)) list.append(G.row(m, g.atoms, g.v, largest, G.atomName(m, g.atoms[0])));
+        for (const g of upTo(rows, 5)) list.append(G.row(m, g.atoms, g.v, largest, G.atomName(m, g.atoms[0])));
       } else {
         const groups = groupsOf(e, state.order);
         if (state.focus != null) title.append(h("strong", "", G.atomName(m, state.focus)), " and its partners");
-        else detail.append(state.order === "M" ? "A band joins atoms by what they add that no smaller group explains." : "A halo is what an atom adds alone. A band joins atoms that add something only together.");
+        else detail.append(state.order === "M" ? "A band is what a group adds that no smaller group explains. Large ones often cancel." : "A halo is an atom's own share. A band is the share of atoms only together.");
         const rows = state.focus != null ? groups.filter((g) => g.atoms.includes(state.focus)) : groups;
         const largest = Math.max(1e-9, Math.abs(groups[0]?.v || 0));
-        for (const g of rows.slice(0, 5)) {
-          const li = G.row(m, g.atoms, g.v, largest, G.groupName(m, g.atoms));
-          li.tabIndex = 0; li.setAttribute("aria-label", `${G.groupName(m, g.atoms)}: ${signed(g.v)}`);
+        for (const g of upTo(rows, 5)) {
+          const li = G.row(m, g.atoms, g.v, largest, G.groupName(m, g.atoms)), who = g.atoms.map((k) => `${G.atomName(m, k).toLowerCase()} ${k + 1}`).join(", ");
+          li.tabIndex = 0; li.dataset.key = g.atoms.join(); li.setAttribute("aria-label", `${who[0].toUpperCase()}${who.slice(1)}: ${signed(g.v)}`);
           const on = () => { state.row = g; draw(); for (const o of list.children) o.classList.toggle("gsq-dim", o !== li); };
           const off = () => { state.row = null; draw(); for (const o of list.children) o.classList.remove("gsq-dim"); };
           li.addEventListener("pointerenter", (ev) => { if (ev.pointerType !== "touch") on(); });
