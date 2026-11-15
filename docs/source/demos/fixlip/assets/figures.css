@@ -5,7 +5,9 @@
 
 .fixlip-figure {
   clear: both;
-  margin: 2rem 0 2.25rem;
+  /* a figure is narrower than the text around it, and sits in the middle of the column */
+  max-width: var(--fixlip-figure-width, 38rem);
+  margin: 2rem auto 2.25rem;
   container-type: inline-size; /* the layout follows the figure's width, not the window's */
   -webkit-tap-highlight-color: transparent;
   --fixlip-ink: var(--color-foreground-primary, #1b1e27);
@@ -1017,7 +1019,8 @@ body[data-theme="dark"] .fixlip-figure {
 /* The paper's figure is drawn for a white page, so it keeps a white ground in both themes. */
 figure.fixlip-paper-figure {
   clear: both;
-  margin: 2rem 0 2.25rem;
+  max-width: var(--fixlip-figure-width, 38rem);
+  margin: 2rem auto 2.25rem;
 }
 
 figure.fixlip-paper-figure img {
@@ -1043,6 +1046,12 @@ figure.fixlip-paper-figure figcaption p {
 
 figure.fixlip-paper-figure figcaption strong {
   color: var(--color-foreground-primary, #1b1e27);
+}
+
+/* the number of a figure or a table, in front of its caption (shapiq_demos.py) */
+article[role="main"] .caption-number {
+  font-weight: 700;
+  color: var(--shapiq-amber-ink);
 }
 
 /* -- on paper ------------------------------------------------------------------------------------------ */

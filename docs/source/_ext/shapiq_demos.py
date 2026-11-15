@@ -52,6 +52,11 @@ It writes ``<figure class="<demo>-figure" data-figure="<name>" data-root="...">`
 stage, which is labeled with the alt text and shows it without JavaScript, and the caption. A page
 with such figures gets ``figures.css``, the demo's ``data.js``, ``figures-data.js`` (if the demo has
 one) and ``figures.js`` of the demo's assets. Outside HTML, only the caption is kept.
+
+On a page with such figures, the captions are numbered in the order of the page. The figures of
+the directive and the ``figure`` directives with a caption count as ``Figure 1``, ``Figure 2``,
+and so on, and the tables with a title as ``Table 1``, and so on. The other pages of the docs keep
+their captions as they are.
 """
 
 from __future__ import annotations
@@ -146,6 +151,9 @@ class FigureDirective(SphinxDirective):
         return [node]
 
 
+_CAPTIONED = (FigureNode, nodes.figure, nodes.table)  # what a page with figures numbers
+
+
 def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     root = relative_uri(page, f"_static/demos/{node['demo']}/")
@@ -193,6 +201,30 @@ def _depart_figure(self: HTML5Translator, node: FigureNode) -> None:  # noqa: AR
 
 def _keep_caption(self: nodes.NodeVisitor, node: FigureNode) -> None:
     """Outside HTML, a figure is its caption."""
+
+
+def _number_captions(app: Sphinx, doctree: nodes.document, docname: str) -> None:  # noqa: ARG001
+    """Number the captions of the figures and the tables of a page with a demo's figures."""
+    if next(iter(doctree.findall(FigureNode)), None) is None:
+        return
+    counts = {"Figure": 0, "Table": 0}
+    for node in list(doctree.findall(lambda n: isinstance(n, _CAPTIONED))):
+        kind = "Table" if isinstance(node, nodes.table) else "Figure"
+        # the caption is the title of a table, the caption of a figure, or the first paragraph
+        # of a demo's figure
+        holder = (
+            nodes.title
+            if kind == "Table"
+            else nodes.paragraph
+            if isinstance(node, FigureNode)
+            else nodes.caption
+        )
+        caption = next((child for child in node.children if isinstance(child, holder)), None)
+        if caption is None:
+            continue
+        counts[kind] += 1
+        number = nodes.inline("", f"{kind} {counts[kind]}. ", classes=["caption-number"])
+        caption.insert(0, number)
 
 
 def _add_assets(
@@ -257,11 +289,12 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     )
     app.add_directive("shapiq-demo", DemoDirective)
     app.add_directive("shapiq-demo-figure", FigureDirective)
+    app.connect("doctree-resolved", _number_captions)
     app.connect("html-page-context", _add_assets)
     app.connect("env-updated", _copy_assets)
     return {
         "version": "1.0",
-        "env_version": 5,  # pages are read again where what the extension writes to them changed
+        "env_version": 6,  # pages are read again where what the extension writes to them changed
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

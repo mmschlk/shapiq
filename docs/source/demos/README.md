@@ -65,6 +65,11 @@ the image–text pair chosen in the demo. Each of them has its own selector, and
 figures tell each other about a choice with the event `fixlip-demo-image` on the document.
 Builders other than HTML keep only the caption.
 
+On a page with such figures, the extension numbers the captions in the order of the page. The
+figures of the directive and the `figure` directives with a caption become Figure 1, Figure 2, and
+so on, and the tables with a title become Table 1, and so on. The figures are narrower than the
+text column and sit in its middle (`--fixlip-figure-width` in `figures.css`).
+
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).
 

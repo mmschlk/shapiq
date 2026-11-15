@@ -420,7 +420,7 @@
         columns(
           "fixlip-figure-three",
           panel("One score per token", pair(c, { tint: tintOf(ex, ex.order1) })),
-          panel("Cross-modal interactions only", pair(c, { links: strongest(ex, crossModal(ex)).slice(0, STRONGEST) })),
+          panel("Cross-modal only", pair(c, { links: strongest(ex, crossModal(ex)).slice(0, STRONGEST) })),
           panel("FIxLIP", pair(c, { tint: tintOf(ex, ex.first), links: strongest(ex).slice(0, STRONGEST) })),
         ),
       );
