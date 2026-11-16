@@ -1341,7 +1341,7 @@ article[role="main"] hr.docutils {
   margin: 2.25rem 0;
 }
 
---------------------------------------------------------------------- */
+/* -- the equations of the page ------------------------------------------------------------------------ */
 
 /* The number of an equation keeps its place at the right. On a small screen, a wide equation
    scrolls in its own box next to it, and not under it. */
