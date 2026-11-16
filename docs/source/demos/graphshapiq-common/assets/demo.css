@@ -445,6 +445,22 @@ body[data-theme="dark"] .gsq {
   line-height: 1.4;
 }
 
+/* whether the prediction is right: a check or a cross, in ink (red and blue mean raises and lowers) */
+.gsq .gsq-ask-right {
+  margin: 0.15rem 0 0;
+  color: var(--gsq-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.gsq .gsq-ask-right strong {
+  color: var(--gsq-ink);
+}
+
+.gsq .gsq-ask-right[hidden] {
+  display: none;
+}
+
 /* beside the answer, the card keeps its height from question to question: the texts' most lines */
 @container (min-width: 42.01rem) {
   .gsq .gsq-ask-text {

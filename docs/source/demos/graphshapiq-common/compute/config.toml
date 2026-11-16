@@ -26,6 +26,10 @@ yes = "indole"
 no = "no indole"
 dataset = "B-XAIC"
 truthLabel = "indole"
+# whether the GNN is right, under its answer: the molecule is one, is none, or is one without the
+# pattern (empty where the card says it already: an indole is its pattern)
+truthYes = ""
+truthNo = ""
 # B-XAIC's indole: a six-membered carbon ring fused to a five-membered ring with a nitrogen, with
 # aromatic, single or double ring bonds as in indole (this SMARTS agrees with B-XAIC's labels)
 pattern = "[#6]1:,=[#6]:,-[#6]:,=[#6]2:,-[#6](:,=[#6]1):,-[#6]:,=[#6]:,-[#7]2"
@@ -40,6 +44,9 @@ yes = "mutagenic"
 no = "not mutagenic"
 dataset = "Mutagenicity"
 truthLabel = "nitro group"
+truthYes = "The Ames test finds it mutagenic."
+truthNo = "The Ames test finds it not mutagenic."
+truthOther = "The Ames test finds it mutagenic, without a nitro group."
 # the nitro group, a known structural alert for Ames-test mutagens (Kazius et al., 2005)
 pattern = "[N+](=O)[O-]"
 
@@ -53,15 +60,22 @@ yes = "PAINS"
 no = "no PAINS"
 dataset = "B-XAIC"
 truthLabel = "catechol"
+truthYes = "It is a PAINS."
+truthNo = "It is no PAINS."
+truthOther = "It is a PAINS of another kind."
 # the catechol, the PAINS alert of the demos' molecules (B-XAIC outlines it with its ring)
 pattern = "c1([OH1])c([OH1])cccc1"
 
 # The explorer's molecules, in its order, each with the question it asks first (`task`). Every
 # molecule is explained for every task. At most 31 heavy atoms: the demos write coalitions as
 # bitmasks of 32-bit integers.
+# `ames`: the molecule's Ames test result, only where it is well established (the true answer to
+# Mutagenic, which no pattern decides). Indole and PAINS are decided by their SMARTS and by RDKit's
+# PAINS filters (pack.py).
 
 [[molecules]]
 id = "dinitrobenzene"
+ames = true  # Ames positive (NTP, Kazius et al.'s mutagens)
 task = "mutagenic"
 name = "1,3-Dinitrobenzene"
 short = "Dinitrobenzene"
@@ -114,6 +128,7 @@ takeaway = "No indole, but the GNN says yes. The nitrogens speak for it (+2.09 e
 
 [[molecules]]
 id = "caffeine"
+ames = false  # Ames negative (NTP)
 task = "indole"
 name = "Caffeine"
 blurb = "The stimulant of coffee and tea: two fused rings, with nitrogens in both."
@@ -124,6 +139,7 @@ takeaway = "Nothing here convinces the GNN: its atoms add only +1.66 to the mask
 
 [[molecules]]
 id = "aminofluorene"
+ames = true  # the Ames test's standard positive control
 task = "mutagenic"
 name = "2-Aminofluorene"
 short = "Aminofluorene"
@@ -135,6 +151,7 @@ takeaway = "No atom stands out (at most +0.45). The amine’s nitrogen lowers th
 
 [[molecules]]
 id = "aspirin"
+ames = false  # Ames negative (NTP)
 task = "mutagenic"
 name = "Aspirin"
 blurb = "A common painkiller: a clean negative for every question here."

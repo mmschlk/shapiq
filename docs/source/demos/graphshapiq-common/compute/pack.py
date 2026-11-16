@@ -44,6 +44,7 @@ import torch
 from molecules import GNN, SYMBOLS, LogOdds, to_graph
 from rdkit import Chem
 from rdkit.Chem import rdDepictor
+from rdkit.Chem.FilterCatalog import FilterCatalog, FilterCatalogParams
 from rdkit.Chem.rdMolDescriptors import CalcMolFormula
 
 from shapiq import Game
@@ -184,15 +185,39 @@ def pack_gnn(task: dict[str, Any], smiles: list[str], results: Path) -> dict[str
 def task_texts(task: dict[str, Any]) -> dict[str, Any]:
     """Return what the demos say of a task: its texts, and its pattern's drawing (``motif``)."""
     keys = ("id", "label", "question", "meaning", "yes", "no", "dataset", "truthLabel")
+    keys += ("truthYes", "truthNo")
+    other = {"truthOther": task["truthOther"]} if "truthOther" in task else {}
     drawing = depict({"smiles": task["motif"]})
     motif = {"atoms": drawing["atoms"], "bonds": drawing["bonds"]}
-    return {key: task[key] for key in keys} | {"motif": motif}
+    return {key: task[key] for key in keys} | other | {"motif": motif}
 
 
-def molecule_texts(molecule: dict[str, Any]) -> dict[str, Any]:
-    """Return what the explorer says of a molecule: its names and texts, and its first question."""
+def labels(molecule: dict[str, Any], tasks: list[dict[str, Any]]) -> dict[str, bool]:
+    """Return a molecule's true answers, where they are known.
+
+    Indole by its SMARTS, PAINS by RDKit's PAINS filters (Baell and Holloway, 2010), and mutagenic
+    by its Ames test (``ames`` in config.toml), if known.
+    """
+    mol = Chem.MolFromSmiles(molecule["smiles"])
+    params = FilterCatalogParams()
+    params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS)
+    truth: dict[str, bool] = {}
+    for task in tasks:
+        if task["id"] == "PAINS":
+            truth[task["id"]] = FilterCatalog(params).HasMatch(mol)
+        elif task["id"] == "mutagenic":
+            if "ames" in molecule:
+                truth[task["id"]] = bool(molecule["ames"])
+        else:
+            truth[task["id"]] = mol.HasSubstructMatch(Chem.MolFromSmarts(task["pattern"]))
+    return truth
+
+
+def molecule_texts(molecule: dict[str, Any], tasks: list[dict[str, Any]]) -> dict[str, Any]:
+    """Return what the explorer says of a molecule: texts, first question, true answers."""
     keys = ("id", "name", "short", "blurb", "task", "takeaway")
-    return {key: molecule[key] for key in keys if key in molecule}
+    texts = {key: molecule[key] for key in keys if key in molecule}
+    return texts | {"labels": labels(molecule, tasks)}
 
 
 def task_entry(task: dict[str, Any], results: Path, gnn: dict[str, Any] | None) -> dict[str, Any]:
@@ -276,7 +301,8 @@ def refresh_texts(config: dict[str, Any], demos: list[str]) -> None:
         return texts | {key: value for key, value in entry.items() if key not in old | set(texts)}
 
     task_keys = {"label", "question", "meaning", "yes", "no", "dataset", "truthLabel", "motif"}
-    molecule_keys = {"name", "short", "blurb", "task", "takeaway"}
+    task_keys |= {"truthYes", "truthNo", "truthOther"}
+    molecule_keys = {"name", "short", "blurb", "task", "takeaway", "labels"}
     if "explorer" not in demos:  # the figure of receptive fields has no texts of config.toml
         return
     data = read("explorer")
@@ -284,7 +310,7 @@ def refresh_texts(config: dict[str, Any], demos: list[str]) -> None:
         refreshed(entry, task_texts(tasks[entry["id"]]), task_keys) for entry in data["tasks"]
     ]
     data["molecules"] = [
-        refreshed(entry, molecule_texts(molecules[entry["id"]]), molecule_keys)
+        refreshed(entry, molecule_texts(molecules[entry["id"]], config["tasks"]), molecule_keys)
         for entry in data["molecules"]
     ]
     write("explorer", data)
@@ -306,7 +332,7 @@ def pack_explorer(config: dict[str, Any], results: Path) -> None:
     molecules = []
     explanations = {}
     for molecule in config["molecules"]:
-        molecules.append(molecule_texts(molecule) | depict(molecule))
+        molecules.append(molecule_texts(molecule, config["tasks"]) | depict(molecule))
         for task in config["tasks"]:
             key = f"{molecule['id']}/{task['id']}"
             explanations[key] = compact(explanation(results, molecule["id"], task["id"]))
