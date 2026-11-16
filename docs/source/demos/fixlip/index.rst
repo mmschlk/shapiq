@@ -21,6 +21,24 @@ from MS COCO. All explanations are computed with ``shapiq``.
 Summary
 -------
 
+FIxLIP :cite:p:`Baniecki.2025` explains the similarity that a vision–language encoder predicts for
+an image–text pair. It decomposes this prediction into *main effects* of single tokens and
+*interactions* between pairs of tokens, i.e. image patches and text tokens. The explanation is
+defined as the most faithful additive model of a cooperative game that masks tokens, which leads to
+the weighted Banzhaf interaction index.
+
+This page explains FIxLIP step by step on the five image–text pairs of the demo. It motivates why
+similarity calls for interactions, defines the game and the explanation, describes how it is
+computed, and evaluates it with three metrics. **For all five pairs, the second-order explanation
+is more faithful to the model than the first-order explanation derived from it.** This agrees with
+the experiments of the authors on 1,000 image–text pairs from MS COCO. Finally, we compare CLIP and
+SigLIP 2 and show how to explain an image–text pair with ``shapiq``.
+
+.. _fixlip-sec-introduction:
+
+Introduction
+------------
+
 Contrastive language–image pre-training (CLIP) :cite:p:`Radford.2021` revolutionized computer
 vision by learning data representations that perform well in many downstream tasks. Scaling the
 training to predict similarity between image and text, combined with continuous architectural
