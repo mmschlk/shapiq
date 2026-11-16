@@ -19,6 +19,8 @@ photo. They are written to ``../assets/figures-data.js`` under ``images``.
   and the least, for every size, which gives FIxLIP's insertion and deletion curves. The search
   for the subsets is the demo's greedy search for cliques.
 - ``cliques``: the similarity of the demo's cliques, shown alone.
+- ``embeddings``: the first values of the image embedding and of the text embedding of the whole
+  pair, both of unit length, and their dimension. Their dot product is the pair's similarity.
 
 Usage::
 
@@ -37,7 +39,15 @@ from typing import Any
 
 import numpy as np
 import torch
-from explain import Network, SimilarityGame, caption_tokens, greedy_cliques, load_photo, r2
+from explain import (
+    Network,
+    SimilarityGame,
+    caption_tokens,
+    greedy_cliques,
+    load_photo,
+    r2,
+    text_embeddings,
+)
 from pack import read_data, read_figures, write_figures
 from scipy.stats import spearmanr
 
@@ -48,6 +58,7 @@ MODEL = "siglip2"
 N_TEST = 512  # as explain.py
 N_CONTEXTS = 256  # the random masks that an interaction is averaged over
 INSERTED, DELETED = 10, 5  # the sizes of the two subsets that the page shows
+N_VALUES = 8  # the first values of an embedding that the page shows
 
 
 def explanation(data: dict[str, Any], photo: str) -> tuple[np.ndarray, np.ndarray]:
@@ -74,6 +85,25 @@ def as_masks(subsets: list[list[int]], n: int) -> np.ndarray:
     return masks
 
 
+def embeddings(
+    embedder: image_text.ImageTextTokenModel,
+    game: SimilarityGame,
+    caption: str,
+    n_patches: int,
+    n: int,
+) -> dict[str, Any]:
+    """Return the first values of the two embeddings of the whole pair, and their dimension."""
+    full = np.ones((1, n), dtype=bool)
+    image = embedder.image_embeddings(full[:, :n_patches])[0]
+    text = text_embeddings(game.network, caption, full[:, n_patches:])[0]
+    return {
+        "dimension": len(image),
+        "image": image[:N_VALUES].tolist(),
+        "text": text[:N_VALUES].tolist(),
+        "similarity": float(image @ text),
+    }
+
+
 def evaluate(photo: dict[str, Any], model: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     """Return the predictions of the model for the masks of one photo's figures."""
     results = HERE / "results"
@@ -93,6 +123,7 @@ def evaluate(photo: dict[str, Any], model: dict[str, Any], data: dict[str, Any])
     game = SimilarityGame(embedder, photo["caption"], n_patches, len(tokens))
     first, pairs = explanation(data, photo["id"])
     out: dict[str, Any] = {"empty": game.empty_value}
+    out["embeddings"] = embeddings(embedder, game, photo["caption"], n_patches, n)
 
     # the two objects, as players, and the word of the largest main effect
     objects = [

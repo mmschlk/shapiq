@@ -93,14 +93,17 @@ CLIP learns the two encoders jointly from image–text pairs with a contrastive 
 matching pairs together and pushes all other pairs of a batch apart. SigLIP replaces the softmax
 over the batch with a sigmoid loss on every pair, and SigLIP 2 extends its training recipe. The
 demo uses the ViT-B/32 variant of both models. CLIP splits an image of 224 × 224 pixels into 7 × 7
-patches, whereas SigLIP 2 splits an image of 256 × 256 pixels into 8 × 8 patches.
-:shapiq-figure:`encoders` shows the two encoders for the chosen pair.
+patches, whereas SigLIP 2 splits an image of 256 × 256 pixels into 8 × 8 patches. The embeddings
+have :math:`d = 512` dimensions for CLIP and :math:`d = 768` for SigLIP 2.
+:shapiq-figure:`encoders` shows the two encoders for the chosen pair, with the first values of the
+embeddings that SigLIP 2 computes.
 
 .. shapiq-demo-figure:: fixlip encoders
-   :alt: A photo, cut into 8 by 8 patches, goes through the vision encoder. Its text, cut into tokens, goes through the language encoder. The cosine similarity of the two embeddings is the prediction of the model.
+   :alt: A photo, cut into 8 by 8 patches, goes through the vision encoder. Its text, cut into tokens, goes through the language encoder. Each encoder returns an embedding of 768 values, of which the first four are shown. The cosine similarity of the two embeddings is the prediction of the model.
 
    **From an image–text pair to a similarity.** SigLIP 2 encodes the patches of the image and the
-   tokens of the text separately. The two embeddings meet only in the cosine similarity.
+   tokens of the text separately. The vectors show the first four of the 768 values of each
+   embedding, scaled to unit length. The two embeddings meet only in the cosine similarity.
 
 The two models predict very different numbers for the same pair. These numbers cannot be compared
 directly, because every model has its own scale. The demo therefore relates each prediction to 200

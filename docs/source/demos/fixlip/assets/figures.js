@@ -394,21 +394,25 @@
   const FIGURES = {
     // from an image–text pair to a similarity: both encoders, their embeddings, the cosine
     encoders(stage, c) {
-      const { ex } = c;
-      const embedding = (seed) => {
-        const next = noise(seed); // a sketch of a vector, the same for every pair
+      const { ex, fig } = c;
+      // the embedding as the model computed it (of unit length): its first values as a column
+      // vector, each on a ground that is the deeper the larger the value is
+      const SHOWN = 4;
+      const embedding = (values) => {
         const node = el("div", "fixlip-figure-embedding");
-        for (const _ of range(8)) {
-          const value = el("span");
-          value.style.opacity = (0.15 + 0.85 * next()).toFixed(2);
-          node.append(value);
+        const shown = values.slice(0, SHOWN);
+        const top = largest(shown);
+        for (const value of shown) {
+          const cell = el("span", "", fmt(value));
+          cell.style.setProperty("--fixlip-share", `${Math.round(8 + 42 * (Math.abs(value) / top))}%`);
+          node.append(cell);
         }
-        return node;
+        return add(node, el("span", "fixlip-figure-more", "\u22EE"));
       };
-      const row = (input, name, symbol, count, seed) => [
+      const row = (input, name, symbol, count, values) => [
         add(el("div", "fixlip-figure-input"), input, el("small", "", count)),
         add(el("div", "fixlip-figure-encoder"), el("span", "", name), add(el("small", "fixlip-figure-symbol"), el("i", "", "f"), el("sub", "", symbol))),
-        add(el("div", "fixlip-figure-vector"), embedding(seed), el("small", "", "embedding")),
+        add(el("div", "fixlip-figure-vector"), embedding(values), el("small", "", `embedding of ${fig.embeddings.dimension} values`)),
       ];
       const photo = pair(c, { lined: true, text: false });
       const text = textOf(ex);
@@ -418,8 +422,8 @@
         stage,
         add(
           el("div", "fixlip-figure-encoders"),
-          ...row(photo, "Vision encoder", "\u2110", `${ex.patches} patches`, "image"),
-          ...row(text, "Language encoder", "\u{1D4AF}", `${ex.words.length} tokens`, "text"),
+          ...row(photo, "Vision encoder", "\u2110", `${ex.patches} patches`, fig.embeddings.image),
+          ...row(text, "Language encoder", "\u{1D4AF}", `${ex.words.length} tokens`, fig.embeddings.text),
           el("div", "fixlip-figure-join"),
           result,
         ),
