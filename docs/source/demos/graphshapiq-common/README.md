@@ -291,3 +291,12 @@ A sixteenth pass named the questions as the field does: Mutagenic, Indole and PA
 "Damages DNA?", "Has an indole?" and "Fools lab tests?"). Each card's explainer says what the term
 means in one more sentence. On a phone the question row reads "Q", and it fits one row with the
 "i" down to 320 px. The explanations' switch takes the panel's width under the molecule.
+
+A seventeenth pass renamed the answer box "GNN prediction" and added a line under it, whether the
+GNN is right. The true answers (`labels` in `data.js`, by `pack.py`): indole by its SMARTS, PAINS by
+RDKit's PAINS filters, mutagenic by the Ames test (`ames` in `config.toml`, only where well
+established, so no line for serotonin, LSD, indigo and dopamine). Indigo is a PAINS of another
+kind (`ene_five_het_E`), and the GNN says yes (94%). For the reader's own molecule, PAINS is the
+catechol or RDKit's `anil_no_alk` (`anilNoAlk`, checked on all 154,245 molecules of the builder),
+and mutagenic has no line. The line goes while atoms are hidden. The maskings line and the band
+captions of k-SII and Möbius are gone, and a panel lists at most six rows (`ROWS`).

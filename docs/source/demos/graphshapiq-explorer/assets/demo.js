@@ -28,6 +28,7 @@
   // question's pattern first
   const TASK_ORDER = ["mutagenic", "indole", "PAINS"];
 
+  const ROWS = 6; // the most rows a panel of explanations lists
   const MAX_ATOMS = 15; // of a molecule the reader builds: at most 2^15 maskings
   const OVERALL = 24, PER_ATOM = 8; // the interactions of an order the worker sends: as compute/pack.py keeps
 
@@ -80,6 +81,14 @@
   // the atoms of a question's pattern in the molecule of `slots` (the ground truth the demos
   // outline, as the patterns of ../../graphshapiq-common/compute/config.toml find them): a catechol
   // is the ring with two neighbouring OH groups, a nitro group a nitrogen with its two oxygens
+  // the only PAINS besides the catechol that one can build (RDKit's anil_no_alk, checked against all
+  // 154,245 molecules of the builder): an NH2 across the ring from one other of these groups
+  function anilNoAlk(slots) {
+    const on = slots.flatMap((slot, i) => (slot === "none" ? [] : [i])), partner = ["OH", "NH2", "NO2", "CH3", "OMe"];
+    if (on.length !== 2 || on[1] - on[0] !== 3) return false;
+    const [a, b] = on.map((i) => slots[i]);
+    return (a === "NH2" && partner.includes(b)) || (b === "NH2" && partner.includes(a));
+  }
   function patternOf(task, slots) {
     const first = [], atoms = new Set();
     let next = 6;
@@ -490,9 +499,9 @@
       const ready = explained && !e.pending && !e.failed, own = ready ? singles(e, state.order) : {};
       let groups = [];
       if (ready && state.order !== 1) {
-        // every group the list shows (its first 5), and more strong ones up to a limit
+        // every group the list shows (its first ROWS), and more strong ones up to a limit
         const all = groupsOf(e, state.order), limit = state.order === 2 ? 10 : 6, top = Math.abs(all[0]?.v || 0);
-        groups = state.row ? [state.row] : state.focus != null ? upTo(all.filter((g) => g.atoms.includes(state.focus)), 8) : upTo(all.filter((g, i) => i < 5 || Math.abs(g.v) >= 0.08 * top), limit);
+        groups = state.row ? [state.row] : state.focus != null ? upTo(all.filter((g) => g.atoms.includes(state.focus)), 8) : upTo(all.filter((g, i) => i < ROWS || Math.abs(g.v) >= 0.08 * top), limit);
       }
       // one scale for the order, whatever is shown (as si_graph_plot scales by every value plotted)
       const largest = ready ? Math.max(1e-9, ...rowsOf(e, state.order).map(([, v]) => Math.abs(v))) : 1;
@@ -506,13 +515,20 @@
     }
 
     // -- the panel --------------------------------------------------------------------------------
-    function meta(m, t, e) {
-      return h("p", "gsq-meta", "Exact with ", h("strong", "", "GraphSHAP-IQ"), `, from ${e.budget.toLocaleString("en")} of ${(2 ** e.nAtoms).toLocaleString("en")} maskings`);
+    // the molecule's true answer, where it is known: from the data, and for the reader's own molecule
+    // the indole's pattern (PAINS needs all of RDKit's PAINS filters, mutagenic an Ames test)
+    function truthOf(m, t, e) {
+      if (!m.built) return m.labels?.[t.id] ?? null;
+      if (t.id === "PAINS") return e.truth.length > 0 || anilNoAlk(build.slots);
+      return t.id === "indole" ? e.truth.length > 0 : null;
     }
     // the GNN's answer, on the question's card: for the whole molecule, or without the atoms hidden
     function answer(m, t, e) {
       const n = state.view === "predict" ? state.masked.size : 0, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
-      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p });
+      // whether the GNN is right, for the whole molecule only
+      const has = e.truth.length > 0, truth = n ? null : truthOf(m, t, e);
+      const why = truth === null ? "" : truth ? (has || !t.truthOther ? t.truthYes : t.truthOther) : t.truthNo;
+      ask.set({ task: t, subject: m.name, has, p, truth, why });
       const said = `${m.name}. ${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
       if (live.textContent !== said) live.textContent = said;
       return p;
@@ -545,14 +561,13 @@
         detail.append("A halo is an atom's share of the answer. Each interaction is split evenly among its atoms.");
         const own = singles(e, 1), rows = Object.keys(own).map((k) => ({ atoms: [Number(k)], v: own[k] })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
         const largest = Math.max(1e-9, Math.abs(rows[0]?.v || 0));
-        for (const g of upTo(rows, 5)) list.append(G.row(m, g.atoms, g.v, largest, G.atomName(m, g.atoms[0])));
+        for (const g of rows.slice(0, ROWS)) list.append(G.row(m, g.atoms, g.v, largest, G.atomName(m, g.atoms[0])));
       } else {
         const groups = groupsOf(e, state.order);
         if (state.focus != null) title.append(h("strong", "", G.atomName(m, state.focus)), " and its partners");
-        else detail.append(state.order === "M" ? "A band is what a group adds that no smaller group explains. Large ones often cancel." : "A halo is an atom's own share. A band is the share of atoms only together.");
         const rows = state.focus != null ? groups.filter((g) => g.atoms.includes(state.focus)) : groups;
         const largest = Math.max(1e-9, Math.abs(groups[0]?.v || 0));
-        for (const g of upTo(rows, 5)) {
+        for (const g of rows.slice(0, ROWS)) {
           const li = G.row(m, g.atoms, g.v, largest, G.groupName(m, g.atoms)), who = g.atoms.map((k) => `${G.atomName(m, k).toLowerCase()} ${k + 1}`).join(", ");
           li.tabIndex = 0; li.dataset.key = g.atoms.join(); li.setAttribute("aria-label", `${who[0].toUpperCase()}${who.slice(1)}: ${signed(g.v)}`);
           const on = () => { state.row = g; draw(); for (const o of list.children) o.classList.toggle("gsq-dim", o !== li); };
@@ -564,7 +579,7 @@
         }
         if (!rows.length) list.append(h("li", "gsq-none", "No interactions of this atom here."));
       }
-      box.append(title.childNodes.length ? title : detail, list, legend(t, null), meta(m, t, e)); // the ground truth's key is in the frame
+      box.append(...[title, detail].filter((p) => p.childNodes.length), list, legend(t, null)); // the ground truth's key is in the frame
     }
 
     function update() {
