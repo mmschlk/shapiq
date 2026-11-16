@@ -185,11 +185,9 @@ def pack_gnn(task: dict[str, Any], smiles: list[str], results: Path) -> dict[str
 def task_texts(task: dict[str, Any]) -> dict[str, Any]:
     """Return what the demos say of a task: its texts, and its pattern's drawing (``motif``)."""
     keys = ("id", "label", "question", "meaning", "yes", "no", "dataset", "truthLabel")
-    keys += ("truthYes", "truthNo")
-    other = {"truthOther": task["truthOther"]} if "truthOther" in task else {}
     drawing = depict({"smiles": task["motif"]})
     motif = {"atoms": drawing["atoms"], "bonds": drawing["bonds"]}
-    return {key: task[key] for key in keys} | other | {"motif": motif}
+    return {key: task[key] for key in keys} | {"motif": motif}
 
 
 def labels(molecule: dict[str, Any], tasks: list[dict[str, Any]]) -> dict[str, bool]:
@@ -301,7 +299,7 @@ def refresh_texts(config: dict[str, Any], demos: list[str]) -> None:
         return texts | {key: value for key, value in entry.items() if key not in old | set(texts)}
 
     task_keys = {"label", "question", "meaning", "yes", "no", "dataset", "truthLabel", "motif"}
-    task_keys |= {"truthYes", "truthNo", "truthOther"}
+    task_keys |= {"truthYes", "truthNo", "truthOther"}  # texts of an earlier pass, dropped
     molecule_keys = {"name", "short", "blurb", "task", "takeaway", "labels"}
     if "explorer" not in demos:  # the figure of receptive fields has no texts of config.toml
         return
