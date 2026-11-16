@@ -329,3 +329,9 @@ answer small ("GNN 98% mutagenic ✓", `predKey`). The demo opens on Input.
 A twenty-second pass dropped hiding atoms from the view Input (and the faint ring of the whole
 molecule's answer). The reader changes a molecule only in *Build your own*, by adding and removing
 groups.
+
+A twenty-third pass fixed the receptive-field figure. Its layers' switch showed the wrong number in
+the pill (the pill's copies of the labels were sized as content boxes, the buttons as border boxes:
+`.gsq-opt` is now `box-sizing: border-box` everywhere). Its panel is built once and updated in place,
+so hovering an atom no longer fades the panel in again, and the bars glide. On a phone the row of
+molecules scrolls to the one shown.
