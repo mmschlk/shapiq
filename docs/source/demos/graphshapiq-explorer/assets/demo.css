@@ -729,24 +729,6 @@
   border-left: 0;
 }
 
-/* the GNN's answer for the whole molecule, faint on the scale while atoms are hidden */
-.gsq .gsq-scale-was {
-  position: absolute;
-  top: calc(0.5rem - 4px);
-  box-sizing: border-box;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--gsq-muted);
-  border-radius: 999px;
-  background: var(--gsq-sheet);
-  opacity: 0.6;
-  transform: translateX(-50%);
-}
-
-.gsq .gsq-scale-was[hidden] {
-  display: none;
-}
-
 /* the view Explanation: the GNN's answer in the frame's bottom right */
 .graphshapiq-explorer-demo .gsq-predkey {
   position: absolute;

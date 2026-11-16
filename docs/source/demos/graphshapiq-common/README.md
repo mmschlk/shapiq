@@ -325,3 +325,7 @@ the reader hides, with the whole molecule's answer as a faint ring on the scale.
 less than with all atoms" is gone. Above the molecule only the questions' switch stays. In the view
 Explanation, and in Input when the card is under the molecule, the frame's bottom right shows the
 answer small ("GNN 98% mutagenic ✓", `predKey`). The demo opens on Input.
+
+A twenty-second pass dropped hiding atoms from the view Input (and the faint ring of the whole
+molecule's answer). The reader changes a molecule only in *Build your own*, by adding and removing
+groups.

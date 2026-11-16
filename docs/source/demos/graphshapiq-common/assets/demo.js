@@ -363,16 +363,14 @@
   // `set({task, subject, has, p, note})` shows a question for a molecule (`subject`, its name),
   // which has the question's pattern or not, with the GNN's probability of yes `p` (`note`: what
   // the answer is for, if not for the whole molecule; `truth`: the molecule's true answer, true or
-  // false, or null where it is not known; `base`: the probability for the whole molecule, marked
-  // faintly on the scale while atoms are hidden). `card` is the card, which a demo may move.)
+  // false, or null where it is not known). `card` is the card, which a demo may move.
   function question(tasks, pick) {
     const choice = switcher("Question", tasks.map((t) => t.label), (k) => pick(tasks[k]));
     const picture = h("div", "gsq-ask-motif"), title = h("p", "gsq-ask-title"), meaning = h("p"), here = h("p", "gsq-ask-here");
     const number = h("span", "gsq-pred-value"), verdict = h("span", "gsq-verdict"), note = h("p", "gsq-ask-note"), right = h("span", "gsq-ask-right");
     const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark");
     scale.setAttribute("aria-hidden", "true");
-    const was = h("span", "gsq-scale-was"); was.hidden = true;
-    scale.append(fill, h("span", "gsq-scale-half"), was, mark);
+    scale.append(fill, h("span", "gsq-scale-half"), mark);
     const card = h("div", "gsq-ask-card", picture, h("div", "gsq-ask-text", title, meaning, here), h("div", "gsq-ask-answer", h("div", "gsq-ask-head", h("p", "gsq-barlab", "GNN prediction"), right), h("p", "gsq-pred-number", number, verdict), scale, note));
     const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", h("span", "gsq-long", "Question"), h("abbr", "gsq-short", "Q")), choice.node), card);
     let asked = null;
@@ -380,7 +378,7 @@
       node,
       card,
       buttons: choice.buttons,
-      set({ task, subject, has, p, note: about, truth = null, base = null }) {
+      set({ task, subject, has, p, note: about, truth = null }) {
         choice.set(tasks.indexOf(task));
         if (task !== asked) {
           asked = task;
@@ -392,7 +390,6 @@
         here.replaceChildren(h("strong", "", subject), has ? (itself ? ` is the ${name} itself. ` : ` contains ${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}. `) : ` contains no ${name}.`);
         number.textContent = percent(p); verdict.textContent = p >= 0.5 ? task.yes : task.no;
         fill.style.width = mark.style.left = `${p * 100}%`;
-        was.hidden = base === null; if (base !== null) was.style.left = `${base * 100}%`;
         note.textContent = about || "";
         // whether the prediction is right, where the true answer is known, on the label's line
         right.hidden = truth === null;

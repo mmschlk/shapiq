@@ -1,11 +1,10 @@
 // The GraphSHAP-IQ explorer (demos/graphshapiq-explorer/index.rst): eight molecules, three GNNs
 // (one per question), and every molecule explained for every question, exactly, with GraphSHAP-IQ.
 //
-// Over the molecule, the question in plain words (the library's `question`): what it asks, the
-// pattern that makes a yes, whether the molecule has it, and what the GNN answers. Under it, three
-// views: hide atoms (click atoms to hide them; the GNN runs in the page and answers again), the
-// atoms alone (their Shapley values, a ring around each atom), and the atoms together (k-SII of
-// orders 2 to 4 and the Möbius interactions: bands between two atoms, shapes around more). The
+// Two views of the molecule. Input: beside it the question's card (the library's `question`), what
+// it asks, the pattern that makes a yes, whether the molecule has it, and what the GNN answers.
+// Explanation: the Shapley values (a halo around each atom), the k-SII of orders 2 to 4 and the
+// Möbius interactions (hyperedges, as shapiq's si_graph_plot draws them). The
 // explanations are precomputed in data.js (../../graphshapiq-common/compute); the shared library
 // (../../graphshapiq-common/assets/demo.js, `ShapiqGraph`) draws and animates the molecule.
 //
@@ -199,7 +198,7 @@
     const hasPattern = (m) => (data.explanations[`${m.id}/${m.task}`].truth.length ? 0 : 1);
     const MOLS = data.molecules.slice().sort((a, b) => TASK_ORDER.indexOf(a.task) - TASK_ORDER.indexOf(b.task) || hasPattern(a) - hasPattern(b));
     const first = MOLS[0];
-    const state = { mol: first, task: taskById(first.task), view: "predict", order: 2, masked: new Set(), focus: null, pinned: false, row: null, hinted: false };
+    const state = { mol: first, task: taskById(first.task), view: "predict", order: 2, focus: null, pinned: false, row: null, hinted: false };
     // the reader's own molecule: the groups on the ring's positions, the position whose wheel is
     // open (`sel`) and where the positions are on the stage (`at`), the molecule they make, and its explanation (`result`: at first the GNN's answer only, `pending`)
     const build = { slots: STARTS[1].slots.slice(), task: taskById(STARTS[1].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, t0: 0, worker: null, busy: false, picked: false };
@@ -297,7 +296,7 @@
     function setView(id) { hideWheel(); state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); views.buttons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }
     function reset(newMolecule) {
       hideWheel();
-      state.masked = new Set(); state.focus = null; state.pinned = false; state.row = null;
+      state.focus = null; state.pinned = false; state.row = null;
       if (!orderSeq().includes(state.order)) state.order = 2;
       if (newMolecule) scene.setMolecule(state.mol);
       update();
@@ -460,22 +459,21 @@
     wheel.addEventListener("focusout", (e) => { if (e.relatedTarget && !wheel.contains(e.relatedTarget) && build.sel != null) { hideWheel(); requestAnimationFrame(() => { draw(); renderPanel(); }); } });
 
     // -- pointing at atoms, and the keyboard ------------------------------------------------------
-    function toggle(k) { if (state.masked.has(k)) state.masked.delete(k); else state.masked.add(k); state.hinted = true; draw(); renderPanel(); }
     function pin(k) { state.hinted = true; if (k < 0 || (state.pinned && state.focus === k)) { state.pinned = false; state.focus = null; } else { state.pinned = true; state.focus = k; state.row = null; } draw(); renderPanel(); }
     plot.addEventListener("mousedown", (e) => e.preventDefault()); // a click points; it does not move the keyboard's focus
     plot.addEventListener("pointermove", (e) => {
       if (e.pointerType === "touch") return;
       const k = scene.atomAt(e);
-      plot.style.cursor = k >= 0 && (state.view === "predict" || pointing()) ? "pointer" : "";
+      plot.style.cursor = k >= 0 && pointing() ? "pointer" : "";
       if (pointing() && !state.pinned && state.focus !== (k < 0 ? null : k)) { state.focus = k < 0 ? null : k; state.row = null; if (k >= 0) state.hinted = true; draw(); renderPanel(); }
     });
     plot.addEventListener("pointerleave", () => { if (pointing() && !state.pinned && state.focus != null) { state.focus = null; draw(); renderPanel(); } });
-    plot.addEventListener("click", (e) => { const k = scene.atomAt(e); if (state.view === "predict") { if (k >= 0) toggle(k); } else if (pointing()) pin(k); });
+    plot.addEventListener("click", (e) => { const k = scene.atomAt(e); if (pointing()) pin(k); });
     plot.addEventListener("keydown", (e) => {
       const k = Number(e.target.dataset?.k);
       if (Number.isNaN(k) || (e.key !== "Enter" && e.key !== " ")) return;
       e.preventDefault();
-      if (state.view === "predict") toggle(k); else if (pointing()) pin(k);
+      if (pointing()) pin(k);
     });
     plot.addEventListener("focusin", (e) => { const k = Number(e.target.dataset?.k); if (!Number.isNaN(k)) scene.keyFocus(k); });
     plot.addEventListener("focusout", (e) => { if (!plot.contains(e.relatedTarget)) scene.keyFocus(null); });
@@ -489,14 +487,13 @@
       startButtons.forEach((b, k) => b.setAttribute("aria-pressed", String(STARTS[k].slots.join() === build.slots.join())));
       if (building) slots(); else slotLayer.remove();
       if (building && !build.picked) hint.show(`${G.hovers() ? "Click" : "Tap"} a + to add a group`);
-      else if ((state.view === "explain" && !pointing()) || state.hinted || state.focus != null) hint.hide();
-      else hint.show(state.view === "predict" ? `${G.hovers() ? "Click" : "Tap"} an atom to hide it` : `${G.hovers() ? "Hover" : "Tap"} an atom`);
+      else if (!pointing() || state.hinted || state.focus != null) hint.hide();
+      else hint.show(`${G.hovers() ? "Hover" : "Tap"} an atom`);
       for (const hit of scene.hits()) {
         const k = Number(hit.dataset.k), name = G.atomName(m, k);
-        if (state.view === "explain" && !pointing()) { hit.removeAttribute("tabindex"); hit.removeAttribute("role"); hit.removeAttribute("aria-label"); hit.removeAttribute("aria-pressed"); continue; }
+        if (!pointing()) { hit.removeAttribute("tabindex"); hit.removeAttribute("role"); hit.removeAttribute("aria-label"); hit.removeAttribute("aria-pressed"); continue; }
         hit.setAttribute("tabindex", "0"); hit.setAttribute("role", "button");
-        if (state.view === "predict") { hit.setAttribute("aria-label", `${name} ${k + 1}, ${state.masked.has(k) ? "hidden" : "shown"}`); hit.setAttribute("aria-pressed", String(state.masked.has(k))); }
-        else { hit.setAttribute("aria-label", `Interactions of ${name.toLowerCase()} ${k + 1}`); hit.removeAttribute("aria-pressed"); }
+        hit.setAttribute("aria-label", `Interactions of ${name.toLowerCase()} ${k + 1}`);
       }
       const explained = state.view !== "predict";
       // the SI graph: a halo per atom, and the strongest interactions as hyperedges, all on one
@@ -514,7 +511,7 @@
       truthKey.hidden = !truthLabel; truthKey.lastChild.textContent = truthLabel; frame.classList.toggle("gsq-has-key", !!truthLabel);
       scene.update({
         rings: own, ringLargest: largest, groups, groupLargest: largest,
-        masked: explained ? new Set() : state.masked, focus: pointing() ? state.focus : null,
+        masked: new Set(), focus: pointing() ? state.focus : null,
         truth: e.truth, truthKey: `${m.id}/${state.task.id}/${built() ? build.slots.join() : ""}`, truthShown: true, dim: state.row ? new Set(state.row.atoms) : null,
       });
     }
@@ -527,18 +524,16 @@
       if (t.id === "PAINS") return e.truth.length > 0 || anilNoAlk(build.slots);
       return t.id === "indole" ? e.truth.length > 0 : null;
     }
-    // the GNN's answer, on the question's card: for the whole molecule, or without the atoms hidden
+    // the GNN's answer, on the question's card, and whether it is right
     function answer(m, t, e) {
-      const n = state.view === "predict" ? state.masked.size : 0, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
-      // whether the GNN is right, for the whole molecule only
-      const truth = n ? null : truthOf(m, t, e);
-      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p, truth, base: n ? sig(e.logOdds) : null });
+      const p = sig(e.logOdds), truth = truthOf(m, t, e);
+      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p, truth });
       frame.dataset.view = state.view;
       const [, num, word, mark] = predKey.children;
       num.textContent = percent(p); word.textContent = p >= 0.5 ? t.yes : t.no;
       mark.textContent = truth === null ? "" : (p >= 0.5) === truth ? "✓" : "✗";
       mark.title = truth === null ? "" : (p >= 0.5) === truth ? "Correct" : "Wrong";
-      const said = `${m.name}. ${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
+      const said = `${m.name}. ${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}.`;
       if (live.textContent !== said) live.textContent = said;
       return p;
     }
@@ -546,7 +541,7 @@
       const m = state.mol, t = state.task, e = ex(), content = h("div", "gsq-panel-in");
       answer(m, t, e);
       if (state.view === "predict") {
-        if (panel.contains(ask.card)) content.style.animation = "none"; // no fade on every atom hidden
+        if (panel.contains(ask.card)) content.style.animation = "none"; // no fade on a redraw of the same card
         content.append(ask.card);
       } else explanationPanel(content, m, t, e);
       // the explanations' switch stays in the panel, so that its pill slides from one to the next
