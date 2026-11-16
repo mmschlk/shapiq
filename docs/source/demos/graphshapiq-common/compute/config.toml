@@ -106,16 +106,6 @@ smiles = "NCCc1c[nH]c2ccc(O)cc12"
 takeaway = "The indole’s nitrogen leads the Shapley values (+4.75). Yet on its own it lowers the odds (−1.27): all it adds, it adds in pairs with the carbons of its rings."
 
 [[molecules]]
-id = "lsd"
-task = "indole"
-name = "LSD"
-blurb = "Lysergic acid diethylamide, first made by Albert Hofmann from an alkaloid of ergot."
-smiles = "CCN(CC)C(=O)[C@H]1CN(C)[C@@H]2Cc3c[nH]c4cccc(c34)C2=C1"
-# what the explorer says of it, for its own question; its numbers are those of the data:
-# check them after explain.py ran again
-takeaway = "Among 24 atoms, the GNN finds the indole: its nitrogen and its pairs with the ring’s carbons lead. At all orders, groups of nine atoms add and subtract more than 10 each, and cancel."
-
-[[molecules]]
 id = "indigo"
 task = "indole"
 rotate = 90  # lying, not standing
@@ -127,15 +117,14 @@ smiles = "O=C1/C(=C2/Nc3ccccc3C2=O)Nc2ccccc21"
 takeaway = "No indole, but the GNN says yes. The nitrogens speak for it (+2.09 each), the oxygens against (−1.38), most of all in pairs of an oxygen and a nitrogen (−3.18): not enough."
 
 [[molecules]]
-id = "caffeine"
-ames = false  # Ames negative (NTP)
+id = "benzimidazole"
 task = "indole"
-name = "Caffeine"
-blurb = "The stimulant of coffee and tea: two fused rings, with nitrogens in both."
-smiles = "Cn1c(=O)c2c(ncn2C)n(C)c1=O"
+name = "Benzimidazole"
+blurb = "An indole with a second nitrogen in its small ring. Its core is part of vitamin B12 and of drugs like omeprazole."
+smiles = "c1ccc2[nH]cnc2c1"
 # what the explorer says of it, for its own question; its numbers are those of the data:
-# check them after explain.py ran again
-takeaway = "Nothing here convinces the GNN: its atoms add only +1.66 to the masked molecule’s −6.32. At all orders, groups of nine and ten atoms pull both ways."
+# check them after explain.py ran again (computed by the explorer's worker, see the README)
+takeaway = "Each nitrogen alone looks like an indole's (+4.12 each in 2-SII). Together they say no (−3.35), and the GNN rightly answers no."
 
 [[molecules]]
 id = "aminofluorene"

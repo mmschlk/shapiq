@@ -8,7 +8,7 @@ graphs. This folder is not a page: it holds what they share, a library of code a
 
 | Demo | Folder | What a reader does | What they should learn |
 |---|---|---|---|
-| Explorer | `../graphshapiq-explorer` | Picks one of 8 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Input* (click atoms to mask them, the GNN reruns in the browser and answers again) and *Explanation*, with a switch of every explanation (Shapley values, 2-, 3- and 4-SII, Möbius) drawn as an SI graph. The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring, in every view: a + opens a wheel of the groups, a × on a group removes it. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
+| Explorer | `../graphshapiq-explorer` | Picks one of 7 molecules and one of 3 questions, and reads on the question's card what it asks and what the GNN answers. Then switches between *Input* (click atoms to mask them, the GNN reruns in the browser and answers again) and *Explanation*, with a switch of every explanation (Shapley values, 2-, 3- and 4-SII, Möbius) drawn as an SI graph. The ninth tile, *Build your own*, puts groups (OH, NH₂, NO₂, CH₃, Cl, OMe, COOH) on the 6 positions of a benzene ring, in every view: a + opens a wheel of the groups, a × on a group removes it. The browser then explains the molecule itself, exactly, with a progress bar. | Interactions show what the Shapley values hide. A nitro group's oxygens matter only with their nitrogen, and no atom of a catechol is a PAINS alone. The interactions are computed, not looked up: catechol is >99% PAINS, resorcinol 11%, hydroquinone 25%. Same atoms, other arrangement, so the GNN learned a pair. |
 | Exact (a figure on the explorer's page, under "Exact, and still feasible"; no page or card of its own) | `../graphshapiq-exact` | Picks a molecule (benzene, caffeine, nitropyrene, cholesterol) and an atom, and sees its receptive field pulse out bond by bond. Compares the maskings GraphSHAP-IQ needs at 1 to 4 layers with 2ⁿ. | Why GraphSHAP-IQ is exact *and* feasible. A node's output depends only on its receptive field, so cholesterol needs 129,664 maskings instead of 2²⁸ (2,070× fewer). |
 
 Each demo's `index.rst` is its page. For now a page holds its demos only: the write-up (what you
@@ -295,8 +295,16 @@ means in one more sentence. On a phone the question row reads "Q", and it fits o
 A seventeenth pass renamed the answer box "GNN prediction" and added a line under it, whether the
 GNN is right. The true answers (`labels` in `data.js`, by `pack.py`): indole by its SMARTS, PAINS by
 RDKit's PAINS filters, mutagenic by the Ames test (`ames` in `config.toml`, only where well
-established, so no line for serotonin, LSD, indigo and dopamine). Indigo is a PAINS of another
+established, so no line for serotonin, indigo and dopamine). Indigo is a PAINS of another
 kind (`ene_five_het_E`), and the GNN says yes (94%). For the reader's own molecule, PAINS is the
 catechol or RDKit's `anil_no_alk` (`anilNoAlk`, checked on all 154,245 molecules of the builder),
 and mutagenic has no line. The line goes while atoms are hidden. The maskings line and the band
 captions of k-SII and Möbius are gone, and a panel lists at most six rows (`ROWS`).
+
+An eighteenth pass changed the molecules after a review of their story. LSD went (it retold
+serotonin's story on 24 atoms, and its Möbius values cancel). Caffeine (still in the receptive-field
+figure) gave way to benzimidazole, an indole with a second nitrogen. Each nitrogen alone looks like
+an indole's (+4.12 in 2-SII), the pair says no (−3.35), and the GNN is right (3.5%). It is the
+set's only negative pair that explains a right no. Its explanations were computed by the
+explorer's worker under Node (it agrees with shapiq to 1.6e-03), not by explain.py. A full
+`pack.py` run after `explain.py` recomputes it with shapiq.
