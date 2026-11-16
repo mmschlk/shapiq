@@ -708,3 +708,74 @@
     gap: 0.2rem;
   }
 }
+
+/* the view Input: the question's card is the panel, the picture and text over the GNN's answer */
+.graphshapiq-explorer-demo .gsq-panel .gsq-ask-card {
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 0.9rem 1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.graphshapiq-explorer-demo .gsq-panel .gsq-ask-text {
+  min-height: 0;
+}
+
+.graphshapiq-explorer-demo .gsq-panel .gsq-ask-answer {
+  grid-column: 1 / -1;
+  padding: 0.9rem 0 0;
+  border-top: 1px solid var(--gsq-border);
+  border-left: 0;
+}
+
+/* the GNN's answer for the whole molecule, faint on the scale while atoms are hidden */
+.gsq .gsq-scale-was {
+  position: absolute;
+  top: calc(0.5rem - 4px);
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--gsq-muted);
+  border-radius: 999px;
+  background: var(--gsq-sheet);
+  opacity: 0.6;
+  transform: translateX(-50%);
+}
+
+.gsq .gsq-scale-was[hidden] {
+  display: none;
+}
+
+/* the view Explanation: the GNN's answer in the frame's bottom right */
+.graphshapiq-explorer-demo .gsq-predkey {
+  position: absolute;
+  z-index: 2;
+  right: 0.8rem;
+  bottom: 0.7rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--gsq-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+@container (min-width: 42.01rem) {
+  .graphshapiq-explorer-demo .gsq-frame[data-view="predict"] .gsq-predkey {
+    display: none;
+  }
+}
+
+.graphshapiq-explorer-demo .gsq-predkey-lab {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+
+.graphshapiq-explorer-demo .gsq-predkey strong,
+.graphshapiq-explorer-demo .gsq-predkey-mark {
+  color: var(--gsq-ink);
+  font-weight: 700;
+}
