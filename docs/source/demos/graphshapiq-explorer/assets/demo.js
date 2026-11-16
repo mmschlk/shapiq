@@ -199,7 +199,7 @@
     const hasPattern = (m) => (data.explanations[`${m.id}/${m.task}`].truth.length ? 0 : 1);
     const MOLS = data.molecules.slice().sort((a, b) => TASK_ORDER.indexOf(a.task) - TASK_ORDER.indexOf(b.task) || hasPattern(a) - hasPattern(b));
     const first = MOLS[0];
-    const state = { mol: first, task: taskById(first.task), view: "explain", order: 2, masked: new Set(), focus: null, pinned: false, row: null, hinted: false };
+    const state = { mol: first, task: taskById(first.task), view: "predict", order: 2, masked: new Set(), focus: null, pinned: false, row: null, hinted: false };
     // the reader's own molecule: the groups on the ring's positions, the position whose wheel is
     // open (`sel`) and where the positions are on the stage (`at`), the molecule they make, and its explanation (`result`: at first the GNN's answer only, `pending`)
     const build = { slots: STARTS[1].slots.slice(), task: taskById(STARTS[1].task), sel: null, at: [], note: "", mol: null, result: null, run: 0, timer: 0, t0: 0, worker: null, busy: false, picked: false };
@@ -252,6 +252,7 @@
       "<p>For a GNN these are computed <strong>exactly</strong>. With three layers, atoms more than six bonds apart never meet in the GNN. So for a larger molecule a fraction of all combinations suffices.</p>";
     const viewbar = h("div", "gsq-viewbar", views.node);
     ask.node.querySelector(".gsq-ask-pick").append(info, about);
+    ask.card.remove(); // the question's card is the panel of the view Input
     bar.append(mols.node, ask.node);
     const setAbout = (open) => { about.hidden = !open; info.setAttribute("aria-expanded", String(open)); };
     info.addEventListener("click", () => setAbout(about.hidden));
@@ -280,6 +281,10 @@
     // the key of the ground truth, in the frame's bottom left: a shaded patch, as the outline is
     const truthKey = h("p", "gsq-truthkey", h("i"), h("span"));
     truthKey.hidden = true; frame.append(truthKey);
+    // the GNN's answer, in the frame's bottom right: in the view Explanation, and in Input too when the
+    // card is under the molecule (a narrow demo; the CSS decides)
+    const predKey = h("p", "gsq-predkey", h("span", "gsq-predkey-lab", "GNN"), h("strong"), h("span"), h("span", "gsq-predkey-mark"));
+    predKey.setAttribute("aria-hidden", "true"); frame.append(predKey);
     const scrim = h("div", "gsq-scrim"), wheel = h("div", "gsq-wheel");
     scrim.hidden = wheel.hidden = true; wheel.tabIndex = -1; wheel.setAttribute("role", "group");
     frame.append(scrim, wheel);
@@ -526,14 +531,24 @@
     function answer(m, t, e) {
       const n = state.view === "predict" ? state.masked.size : 0, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
       // whether the GNN is right, for the whole molecule only
-      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p, truth: n ? null : truthOf(m, t, e) });
+      const truth = n ? null : truthOf(m, t, e);
+      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p, truth, base: n ? sig(e.logOdds) : null });
+      frame.dataset.view = state.view;
+      const [, num, word, mark] = predKey.children;
+      num.textContent = percent(p); word.textContent = p >= 0.5 ? t.yes : t.no;
+      mark.textContent = truth === null ? "" : (p >= 0.5) === truth ? "✓" : "✗";
+      mark.title = truth === null ? "" : (p >= 0.5) === truth ? "Correct" : "Wrong";
       const said = `${m.name}. ${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
       if (live.textContent !== said) live.textContent = said;
       return p;
     }
     function renderPanel() {
-      const m = state.mol, t = state.task, e = ex(), content = h("div", "gsq-panel-in"), p = answer(m, t, e);
-      if (state.view === "predict") maskingPanel(content, m, t, e, p); else explanationPanel(content, m, t, e);
+      const m = state.mol, t = state.task, e = ex(), content = h("div", "gsq-panel-in");
+      answer(m, t, e);
+      if (state.view === "predict") {
+        if (panel.contains(ask.card)) content.style.animation = "none"; // no fade on every atom hidden
+        content.append(ask.card);
+      } else explanationPanel(content, m, t, e);
       // the explanations' switch stays in the panel, so that its pill slides from one to the next
       if (kinds.node.parentNode !== panel) panel.prepend(kinds.node);
       kinds.node.hidden = state.view !== "explain";
@@ -544,14 +559,6 @@
       if (state.view === "explain") kinds.set(KINDS.findIndex((k) => k[0] === state.order));
     }
     const computing = () => (ex().failed ? h("p", "gsq-detail gsq-note", "Your browser could not compute the interactions here.") : h("p", "gsq-computing", h("span", "gsq-spin"), "Computing the exact interactions…"));
-    function maskingPanel(box, m, t, e, p) {
-      const n = state.masked.size, compare = h("p", "gsq-pred-compare");
-      if (n) {
-        const d = Math.round(p * 100) - Math.round(e.p * 100);
-        compare.append(h("strong", d >= 0 ? "gsq-up" : "gsq-down", `${Math.abs(d)} ${Math.abs(d) === 1 ? "point" : "points"} ${d >= 0 ? "more" : "less"}`), ` than with all atoms (${percent(e.p)})`);
-      } else compare.append(`${G.hovers() ? "Click" : "Tap"} atoms to hide them from the GNN.`);
-      box.append(compare);
-    }
     function explanationPanel(box, m, t, e) {
       const title = h("p", "gsq-title"), list = h("ol", "gsq-rows");
       if (e.pending || e.failed) { box.append(computing()); return; }

@@ -318,3 +318,10 @@ A twentieth pass shortened the questions' explainers to two lines on a desktop, 
 high as the text (6.5rem). The explanations' switch keeps its width, centred (up to 26rem when the
 panel is under the molecule), and the explanation picked stays when the reader picks another
 molecule.
+
+A twenty-first pass filled the panel of the view Input. The question's card (picture, question,
+explainer, the GNN's answer) is now that panel (`ask.card`), and the answer changes beside the atoms
+the reader hides, with the whole molecule's answer as a faint ring on the scale. The line "N points
+less than with all atoms" is gone. Above the molecule only the questions' switch stays. In the view
+Explanation, and in Input when the card is under the molecule, the frame's bottom right shows the
+answer small ("GNN 98% mutagenic ✓", `predKey`). The demo opens on Input.
