@@ -14,6 +14,7 @@
   --fixlip-muted: var(--shapiq-text-muted, #5b6275);
   --fixlip-line: var(--shapiq-border, #e2e6f3);
   --fixlip-raised: var(--shapiq-surface-raised, #f7f8fc);
+  --fixlip-type: 1; /* the small texts of a figure are larger by this on a narrow page */
   --fixlip-page: var(--color-background-primary, #ffffff);
   --fixlip-masked: #c9cdd8; /* a masked patch: the gray that the model sees */
   --fixlip-gray: #9299ab; /* the series that are not FIxLIP's */
@@ -125,7 +126,7 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure figcaption {
   margin-top: 0.7rem;
-  font-size: 0.88rem;
+  font-size: calc(0.88rem * var(--fixlip-type, 1));
   line-height: 1.5;
   color: var(--fixlip-muted);
 }
@@ -160,7 +161,7 @@ body[data-theme="dark"] .fixlip-figure {
 .fixlip-figure-shown {
   flex: 1;
   min-width: 0;
-  font-size: 0.8rem;
+  font-size: calc(0.8rem * var(--fixlip-type, 1));
   line-height: 1.3;
   color: var(--fixlip-muted);
 }
@@ -234,7 +235,7 @@ body[data-theme="dark"] .fixlip-figure {
 .fixlip-figure-hint {
   display: none;
   margin: 0;
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
   text-align: center;
   color: var(--fixlip-muted);
 }
@@ -287,9 +288,22 @@ body[data-theme="dark"] .fixlip-figure {
     display: block;
   }
 
+  /* the header keeps the room of a label of two lines, so that it has one height for all pairs */
   .fixlip-figure-bar {
     gap: 0.6rem;
+    min-height: calc(2 * 1.3 * 0.8rem * var(--fixlip-type, 1));
     margin-bottom: 0.6rem;
+  }
+
+  /* On a phone, the small texts of a figure are read at arm's length: labels, tokens, legends and
+     the texts of the charts are an eighth larger (figures.js gives the charts wider margins), and
+     the caption comes close to the text of the page. */
+  .fixlip-figure > * {
+    --fixlip-type: 1.12;
+  }
+
+  .fixlip-figure > figcaption {
+    --fixlip-type: 1.07;
   }
 }
 
@@ -371,7 +385,7 @@ body[data-theme="dark"] .fixlip-figure {
   justify-content: center;
   align-content: flex-start; /* the block keeps the height of the longest text (figures.js) */
   gap: 3px;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--fixlip-type, 1));
   line-height: 1.3;
 }
 
@@ -471,7 +485,7 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-title {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: calc(0.82rem * var(--fixlip-type, 1));
   font-weight: 650;
   line-height: 1.35;
   text-align: center;
@@ -488,7 +502,7 @@ body[data-theme="dark"] .fixlip-figure {
 }
 
 .fixlip-figure-reading span {
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
   color: var(--fixlip-muted);
 }
 
@@ -507,7 +521,7 @@ body[data-theme="dark"] .fixlip-figure {
   justify-content: center;
   gap: 0.3rem 1.1rem;
   margin: 0.6rem 0 0;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--fixlip-type, 1));
   color: var(--fixlip-muted);
 }
 
@@ -629,14 +643,14 @@ body[data-theme="dark"] .fixlip-figure {
 }
 
 .fixlip-figure-encoders small {
-  font-size: 0.72rem;
+  font-size: calc(0.72rem * var(--fixlip-type, 1));
   color: var(--fixlip-muted);
 }
 
 /* the encoders by their symbols, with the modality as a script letter */
 .fixlip-figure-encoders .fixlip-figure-symbol {
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Noto Sans Math", serif;
-  font-size: 0.88rem;
+  font-size: calc(0.88rem * var(--fixlip-type, 1));
   font-weight: 400;
 }
 
@@ -649,7 +663,7 @@ body[data-theme="dark"] .fixlip-figure {
   border: 1.5px solid var(--shapiq-amber);
   border-radius: var(--shapiq-radius-small, 8px);
   background: var(--shapiq-amber-soft);
-  font-size: 0.82rem;
+  font-size: calc(0.82rem * var(--fixlip-type, 1));
   font-weight: 650;
   line-height: 1.3;
   text-align: center;
@@ -700,7 +714,7 @@ body[data-theme="dark"] .fixlip-figure {
   display: grid;
   gap: 2px;
   padding: 4px 8px;
-  font-size: 0.72rem;
+  font-size: calc(0.72rem * var(--fixlip-type, 1));
   font-variant-numeric: tabular-nums;
   line-height: 1.35;
 }
@@ -761,7 +775,7 @@ body[data-theme="dark"] .fixlip-figure {
 }
 
 .fixlip-figure-similarity span {
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
   color: var(--fixlip-muted);
 }
 
@@ -787,11 +801,12 @@ body[data-theme="dark"] .fixlip-figure {
     grid-row: auto;
   }
 
-  /* both encoders are of one width */
+  /* both encoders are of one width, and each name stays on one line */
   .fixlip-figure-encoder {
     box-sizing: border-box;
     width: 100%;
-    max-width: 9.5rem;
+    padding-inline: 0.4rem;
+    white-space: nowrap;
   }
 
   .fixlip-figure-encoder::before,
@@ -886,7 +901,7 @@ body[data-theme="dark"] .fixlip-figure {
   align-items: center;
   gap: 0.45rem 0.7rem;
   margin-top: 0.3rem;
-  font-size: 0.8rem;
+  font-size: calc(0.8rem * var(--fixlip-type, 1));
 }
 
 .fixlip-figure-label {
@@ -948,12 +963,12 @@ body[data-theme="dark"] .fixlip-figure {
   justify-content: space-between;
   align-items: center;
   box-sizing: border-box;
-  min-height: 2.05rem; /* a row with a patch or a token is as high as a row without one */
+  min-height: calc(2.05rem * var(--fixlip-type, 1)); /* a row with a patch or a token is as high as a row without one */
   gap: 1rem;
   margin: 0;
   padding: 0.24rem 0;
   border-bottom: 1px solid var(--fixlip-line);
-  font-size: 0.84rem;
+  font-size: calc(0.84rem * var(--fixlip-type, 1));
   font-variant-numeric: tabular-nums;
 }
 
@@ -1025,7 +1040,7 @@ body[data-theme="dark"] .fixlip-figure {
 .fixlip-figure-count {
   grid-area: 2 / 2;
   margin: 0;
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
   line-height: 1.3;
   color: var(--fixlip-muted);
 }
@@ -1033,7 +1048,7 @@ body[data-theme="dark"] .fixlip-figure {
 .fixlip-figure-subset .fixlip-figure-tokens {
   grid-area: 3 / 2;
   justify-content: flex-start;
-  font-size: 0.68rem;
+  font-size: calc(0.68rem * var(--fixlip-type, 1));
 }
 
 @container (max-width: 34rem) {
@@ -1089,8 +1104,9 @@ body[data-theme="dark"] .fixlip-figure {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* wide enough for the four names on one line */
   .fixlip-figure-pointed > .fixlip-figure-panel:first-child {
-    width: min(100%, 15rem);
+    width: min(100%, 19rem);
     margin: 0 auto;
   }
 }
@@ -1133,7 +1149,7 @@ body[data-theme="dark"] .fixlip-figure {
   border-radius: 6px;
   background: var(--fixlip-page);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
-  font-size: 0.72rem;
+  font-size: calc(0.72rem * var(--fixlip-type, 1));
   line-height: 1.45;
   color: var(--fixlip-ink);
   pointer-events: none;
@@ -1306,7 +1322,7 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-chart text {
   fill: var(--fixlip-muted);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--fixlip-type, 1));
   font-variant-numeric: tabular-nums;
 }
 
@@ -1472,6 +1488,14 @@ figure.fixlip-paper-figure figcaption p {
 
 figure.fixlip-paper-figure figcaption strong {
   color: var(--color-foreground-primary, #1b1e27);
+}
+
+/* on a phone, the captions that are not in a drawn figure are as large as those that are */
+@media (max-width: 36rem) {
+  figure.fixlip-paper-figure figcaption,
+  article[role="main"] .table-wrapper table.docutils caption {
+    font-size: 0.94rem;
+  }
 }
 
 /* the number of a figure or a table, in front of its caption (shapiq_demos.py) */
@@ -1653,7 +1677,7 @@ article[role="main"] :is(p, li, td, figcaption) a.reference code {
   align-items: center;
   gap: 0.6rem;
   margin: 0.5rem 0 0;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--fixlip-type, 1));
   color: var(--fixlip-muted);
 }
 

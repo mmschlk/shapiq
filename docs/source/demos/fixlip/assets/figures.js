@@ -349,10 +349,15 @@
 
   // -- charts --------------------------------------------------------------------------------------
 
-  // A chart as wide as its place on the page, in pixels, with its plot inside the margins.
+  // A chart as wide as its place on the page, in pixels, with its plot inside the margins. Its
+  // height is a number, or a function of its margins and its width.
   function chart(parent, height, margins = {}) {
+    // where the texts of the figure are larger (figures.css, on a narrow page), so is their room
+    const type = parseFloat(getComputedStyle(parent).getPropertyValue("--fixlip-type")) || 1;
     const m = { left: 44, right: 12, top: 12, bottom: 30, ...margins };
-    const width = Math.max(200, Math.floor(parent.getBoundingClientRect().width));
+    for (const side of Object.keys(m)) m[side] = Math.round(m[side] * type);
+    const width = Math.max(120, Math.floor(parent.getBoundingClientRect().width));
+    if (typeof height === "function") height = height(m, width); // a height that follows the plot
     const svg = svgEl("svg", { class: "fixlip-figure-chart", width, height, viewBox: `0 0 ${width} ${height}` });
     parent.append(svg);
     const box = { x0: m.left, x1: width - m.right, y0: m.top, y1: height - m.bottom };
@@ -362,18 +367,18 @@
     const xAxis = (x, ticks, label, format = (t) => fmt(t, 1)) => {
       draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: box.y1, y2: box.y1 });
       for (const tick of ticks)
-        draw("text", { x: x(tick), y: box.y1 + 14, "text-anchor": "middle" }, format(tick));
+        draw("text", { x: x(tick), y: box.y1 + 14 * type, "text-anchor": "middle" }, format(tick));
       if (label) draw("text", { x: (box.x0 + box.x1) / 2, y: height - 2, "text-anchor": "middle" }, label);
     };
     const yAxis = (y, ticks, label, format = (t) => fmt(t, 1)) => {
       for (const tick of ticks) {
         draw("line", { class: "fixlip-figure-grid", x1: box.x0, x2: box.x1, y1: y(tick), y2: y(tick) });
-        draw("text", { x: box.x0 - 6, y: y(tick) + 4, "text-anchor": "end" }, format(tick));
+        draw("text", { x: box.x0 - 6, y: y(tick) + 4 * type, "text-anchor": "end" }, format(tick));
       }
       if (label)
         draw(
           "text",
-          { x: 11, y: (box.y0 + box.y1) / 2, "text-anchor": "middle", transform: `rotate(-90 11 ${(box.y0 + box.y1) / 2})` },
+          { x: 11 * type, y: (box.y0 + box.y1) / 2, "text-anchor": "middle", transform: `rotate(-90 ${11 * type} ${(box.y0 + box.y1) / 2})` },
           label,
         );
     };
@@ -389,7 +394,7 @@
         if (node.getBoundingClientRect().height > high + 1) node.style.paddingInline = "";
       }
     };
-    return { svg, width, height, box, draw, linear, xAxis, yAxis, path, inset };
+    return { svg, width, height, box, draw, linear, xAxis, yAxis, path, inset, type };
   }
   // whether a part lies at the right of another one, and not under it as on a narrow page
   const beside = (left, right) => right.getBoundingClientRect().left >= left.getBoundingClientRect().right;
@@ -747,9 +752,8 @@
         card.append(holder);
         card.plot = () => {
           // a square plot, since both of its axes are predictions on one scale
-          const margins = { left: 46, right: 10, top: 10, bottom: 34 };
-          const side = Math.floor(holder.getBoundingClientRect().width) - margins.left - margins.right;
-          const plot = chart(holder, side + margins.top + margins.bottom, margins);
+          const square = (m, width) => width - m.left - m.right + m.top + m.bottom;
+          const plot = chart(holder, square, { left: 46, right: 10, top: 10, bottom: 34 });
           const { draw, box } = plot;
           plot.inset(card.firstElementChild);
           const x = plot.linear(domain, [box.x0, box.x1]);
@@ -1190,7 +1194,7 @@
       draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: box.y1, y2: box.y1 });
       for (const budget of budgets) {
         const label = draw("text", { x: x(budget), y: box.y1 + 16, "text-anchor": "middle" }, "2");
-        label.append(svgEl("tspan", { dy: -5, "font-size": 9 }, String(budget)));
+        label.append(svgEl("tspan", { dy: -5 * plot.type, "font-size": 9 * plot.type }, String(budget)));
       }
       draw("text", { x: (box.x0 + box.x1) / 2, y: plot.height - 2, "text-anchor": "middle" }, "sampled masks");
       for (const [key, kind, label] of series) {
