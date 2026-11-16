@@ -593,8 +593,12 @@ The second metric evaluates whether the explanation finds the subsets of tokens 
 every size :math:`k`, it selects the subsets with the highest and the lowest value under the
 explanation, i.e. :math:`M_{\mathbf{e},\max,k} := \operatorname*{arg\,max}_{M: \vert M \vert = k}
 \hat\nu_\mathbf{e}(M)` and :math:`M_{\mathbf{e},\min,k} := \operatorname*{arg\,min}_{M: \vert M
-\vert = k} \hat\nu_\mathbf{e}(M)`, and evaluates the model on both. This gives an insertion curve
-and a deletion curve. The *AID* score is the area between them.
+\vert = k} \hat\nu_\mathbf{e}(M)`, and evaluates the model on both. The *insertion curve*
+:math:`\mathcal{C}_{\mathrm{insert}}(\mathbf{e}) := \{(k, \nu(M_{\mathbf{e},\max,k}))\}_k` inserts
+:math:`k` tokens into the empty input. The *deletion curve*
+:math:`\mathcal{C}_{\mathrm{delete}}(\mathbf{e}) := \{(k, \nu(M_{\mathbf{e},\min,n_\mathcal{I} +
+n_\mathcal{T} - k}))\}_k` deletes :math:`k` tokens from the full input, so that the tokens with the
+lowest value remain. The *AID* score is the area between the two curves.
 
 .. math::
    :label: fixlip-aid
@@ -603,25 +607,28 @@ and a deletion curve. The *AID* score is the area between them.
    \big(\nu(M_{\mathbf{e},\max,k}) - \nu(M_{\mathbf{e},\min,k})\big)
 
 It generalizes insertion and deletion curves :cite:p:`Hama.2023` to interactions. For first-order
-attributions, the subsets follow from ranking the tokens. With interactions, the best subset of
-size :math:`k + 1` does not have to contain the best subset of size :math:`k`.
+attributions, the subsets follow from ranking the tokens. The insertion curve then adds the tokens
+with the highest attribution first, and the deletion curve removes them first. With interactions,
+the best subset of size :math:`k + 1` does not have to contain the best subset of size :math:`k`.
+The subsets are therefore searched for every size.
 
 :shapiq-figure:`curves` shows both curves for the chosen pair, on the cosine scale of the demo. Its
-slider sets the size :math:`k` and shows the two subsets of this size. The figure reports
-:eq:`fixlip-aid` as an average over all sizes, normalized by the difference between the predictions
-for the full and the empty input. For all five pairs, the second-order explanation reaches a larger
-AID than its conversion to first order. It also finds five tokens whose removal lowers the
-similarity below the prediction for an empty input. Moreover, it finds subsets with a higher
-similarity than the full input.
+horizontal axis counts the tokens that are kept. The insertion curve is thus read from left to
+right, and the deletion curve from right to left. The slider sets the number of tokens kept and
+shows the subsets of both curves at this point. The figure reports :eq:`fixlip-aid` as an average
+over all sizes, normalized by the difference between the predictions for the full and the empty
+input. For all five pairs, the second-order explanation reaches a larger AID than its conversion to
+first order. It also finds five tokens whose removal lowers the similarity below the prediction for
+an empty input. Moreover, it finds subsets with a higher similarity than the full input.
 
 .. shapiq-demo-figure:: fixlip curves
-   :alt: Insertion and deletion curves for the pair. The curves of the second-order explanation enclose a larger area than those of its first-order conversion. A slider sets the number of tokens kept. Next to the chart, the subset of this size that the explanation values the most, with a high similarity, and the one it values the least, with a low similarity.
+   :alt: Insertion and deletion curves for the pair over the number of tokens kept. The curves of the second-order explanation enclose a larger area than those of its first-order conversion. A slider sets the number of tokens kept. Below the chart, the subset of the insertion curve at this point, with a high similarity, and the subset that the deletion curve leaves, with a low similarity.
 
-   **Insertion and deletion for the pair.** The prediction of SigLIP 2 for the subsets that the
-   explanation values the most and the least. Dotted lines are the subsets valued the least. The
-   slider sets the number of tokens kept. The two masks next to the chart are the subsets of this
-   size that the second-order explanation values the most and the least, which the dots mark on
-   its curves.
+   **Insertion and deletion for the pair.** The prediction of SigLIP 2 over the number of tokens
+   that are kept. Solid lines are insertion curves, which add the tokens valued the most from left
+   to right. Dotted lines are deletion curves, which remove them from right to left. The slider
+   sets the number of tokens kept. The two masks below the chart are the subsets of the
+   second-order explanation at this point, which the dots mark on its curves.
 
 :cite:t:`Baniecki.2025` report the same behavior on 1,000 pairs from MS COCO, as
 :shapiq-figure:`paper-curves` shows. Its upper plot overlays the methods that are ticked, so that

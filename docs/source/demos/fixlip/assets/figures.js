@@ -751,6 +751,7 @@
       const domain = [Math.floor(Math.min(...values) * 20) / 20, Math.ceil(Math.max(...values) * 20) / 20];
       const holder = el("div", "fixlip-figure-plot");
       const cards = el("div", "fixlip-figure-subsets");
+      const count = (k) => `${k} ${k === 1 ? "token" : "tokens"}`;
       const control = slider("tokens kept", [0, n], chosen(), (size) => {
         state.size = size;
         show();
@@ -760,8 +761,8 @@
         add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-amber"), `second order, AID ${fmt(aid("order2"), 2)}`),
         add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-gray"), `first order, AID ${fmt(aid("order1"), 2)}`),
       );
-      stage.append(columns("fixlip-figure-curves", add(el("div"), legend, holder, control), cards));
-      const plot = chart(holder, 316, { left: 46, right: 12, top: 10, bottom: 20 });
+      stage.append(add(el("div", "fixlip-figure-curves"), legend, holder, control, cards));
+      const plot = chart(holder, 290, { left: 46, right: 12, top: 10, bottom: 20 });
       const { draw, box } = plot;
       // the slider lies under the axis, so that its thumb (16 pixels wide) is under its size
       control.classList.add("fixlip-figure-under");
@@ -783,14 +784,17 @@
       const around = range(n + 1).filter((k) => Math.abs(k - middle) <= 10);
       const upper = Math.max(...around.map((k) => y(Math.min(lines["order1-max"][k], lines["order2-max"][k]))));
       const lower = Math.min(...around.map((k) => y(Math.max(lines["order1-min"][k], lines["order2-min"][k]))));
-      draw("text", { x: x(middle), y: upper + 17, "text-anchor": "middle" }, "subsets valued the most");
-      draw("text", { x: x(middle), y: lower - 9, "text-anchor": "middle" }, "subsets valued the least");
+      // the insertion curves are read from the left, where no token is kept, and the deletion
+      // curves from the right, where all tokens are kept
+      draw("text", { x: x(middle), y: upper + 17, "text-anchor": "middle" }, "insertion \u2192");
+      draw("text", { x: x(middle), y: lower - 9, "text-anchor": "middle" }, "\u2190 deletion");
       // the size that the slider sets: a line, a dot on both curves of the second-order
-      // explanation, and the two subsets of this size next to the chart
+      // explanation, and under the chart the two subsets of this size. The insertion keeps the
+      // tokens valued the most, and the deletion leaves the tokens valued the least
       const guide = draw("line", { class: "fixlip-figure-guide", y1: box.y0, y2: box.y1 });
       const kinds = [
-        ["order2-max", "most", "Valued the most"],
-        ["order2-min", "least", "Valued the least"],
+        ["order2-max", "most", "Insertion", (size) => `${count(size)} inserted`],
+        ["order2-min", "least", "Deletion", (size) => `${count(n - size)} deleted`],
       ];
       const dots = kinds.map(() => draw("circle", { class: "fixlip-figure-dot", r: 4.5 }));
       const show = () => {
@@ -798,10 +802,12 @@
         guide.setAttribute("x1", x(size));
         guide.setAttribute("x2", x(size));
         cards.replaceChildren(
-          ...kinds.map(([key, kind, title], k) => {
+          ...kinds.map(([key, kind, title, done], k) => {
             dots[k].setAttribute("cx", x(size));
             dots[k].setAttribute("cy", y(lines[key][size]));
-            return panel(title, reading("similarity", fmt(lines[key][size])), pair(c, { kept: new Set(subsets[kind][size]) }));
+            const card = panel(title, reading("similarity", fmt(lines[key][size])), el("p", "fixlip-figure-count", done(size)));
+            card.classList.add("fixlip-figure-subset");
+            return add(card, pair(c, { kept: new Set(subsets[kind][size]) }));
           }),
         );
         settle(cards);
@@ -1001,8 +1007,8 @@
         for (const method of shown) {
           const group = draw("g", { class: `fixlip-figure-series ${colorOf(method)}` });
           for (const [key, dashed, what] of [
-            ["insertion", "", "the subsets valued the most"],
-            ["deletion", " fixlip-figure-dashed", "the subsets valued the least"],
+            ["insertion", "", "insertion"],
+            ["deletion", " fixlip-figure-dashed", "deletion"],
           ]) {
             const line = curve(plot, x, y, method[key], { class: `fixlip-figure-line${dashed}` });
             line.append(svgEl("title", {}, `${method.name}, ${what}`));
@@ -1037,7 +1043,7 @@
               el("td", "", fmt(method.deletion[k], 2)),
             ),
           );
-          const head = add(el("tr"), el("th", "", `${percent(1 - k / steps)} of the tokens kept`), el("td", "", "most"), el("td", "", "least"));
+          const head = add(el("tr"), el("th", "", `${percent(1 - k / steps)} of the tokens kept`), el("td", "", "insertion"), el("td", "", "deletion"));
           tip.replaceChildren(add(el("table"), add(el("thead"), head), add(el("tbody"), ...rows)));
           tip.hidden = !shown.length;
           // next to the line, on the side with more room, and inside the plot
@@ -1096,8 +1102,8 @@
         panel("Insertion and deletion curves of the ticked methods", holder),
         add(
           el("p", "fixlip-figure-legend"),
-          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-solid"), "subsets valued the most"),
-          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-dashed"), "subsets valued the least"),
+          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-solid"), "insertion"),
+          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-dashed"), "deletion"),
         ),
         grid,
       );
