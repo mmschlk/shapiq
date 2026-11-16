@@ -223,7 +223,7 @@
         if (build.mol) { state.mol = build.mol; reset(true); } else rebuild();
         return;
       }
-      state.mol = MOLS[k]; state.task = taskById(state.mol.task); state.order = 2;
+      state.mol = MOLS[k]; state.task = taskById(state.mol.task); // the explanation picked stays
       reset(true);
     });
     {

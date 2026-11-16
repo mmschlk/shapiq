@@ -362,7 +362,7 @@ body[data-theme="dark"] .gsq {
 
 .gsq .gsq-ask-card {
   display: grid;
-  grid-template-columns: 6.25rem minmax(0, 1fr) 15rem;
+  grid-template-columns: 6.5rem minmax(0, 1fr) 15rem; /* the picture as high as the text beside it */
   gap: 0.9rem 1.25rem;
   align-items: start;
   padding: 0.95rem 1.1rem;

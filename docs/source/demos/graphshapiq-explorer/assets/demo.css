@@ -657,6 +657,8 @@
     display: flex;
     box-sizing: border-box;
     width: 100%;
+    max-width: 26rem; /* as wide as the molecule above it, at most */
+    margin-inline: auto;
   }
 
   .graphshapiq-explorer-demo .gsq-kinds .gsq-opt {
@@ -685,6 +687,10 @@
   .graphshapiq-explorer-demo .gsq-panel {
     display: flex;
     flex-direction: column;
+  }
+
+  .graphshapiq-explorer-demo .gsq-kinds {
+    align-self: center;
   }
 
   .graphshapiq-explorer-demo .gsq-panel-in {

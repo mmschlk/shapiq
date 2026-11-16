@@ -313,3 +313,8 @@ A nineteenth pass made the mark the same for every question, "âœ“ Correct" or "â
 label's line (the reasons of the seventeenth pass are gone), so the answer is no taller than the
 card's text. A panel lists up to seven rows, the Shapley caption is gone too, and beside the
 molecule the key of the colors sits at the bottom, level with the frame's.
+
+A twentieth pass shortened the questions' explainers to two lines on a desktop, with the picture as
+high as the text (6.5rem). The explanations' switch keeps its width, centred (up to 26rem when the
+panel is under the molecule), and the explanation picked stays when the reader picks another
+molecule.
