@@ -84,7 +84,37 @@ body[data-theme="dark"] .fixlip-figure {
 .fixlip-figure-layer {
   grid-area: 1 / 1;
   min-width: 0;
-  background: var(--fixlip-page);
+}
+
+/* From one pair to the next (figures.js, morph): a part of the drawing before that is the same in
+   the new one is hidden at once, a part that changes fades out before its successor fades in, and
+   a photo fades in over the one before. */
+.fixlip-figure-gone {
+  visibility: hidden;
+}
+
+.fixlip-figure-out {
+  animation: fixlip-figure-out 140ms ease-out both;
+}
+
+.fixlip-figure-in {
+  animation: fixlip-figure-in 220ms ease-out 140ms both;
+}
+
+.fixlip-figure-cross {
+  animation: fixlip-figure-in 360ms ease both;
+}
+
+@keyframes fixlip-figure-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fixlip-figure-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .fixlip-figure-missing {
@@ -1247,7 +1277,7 @@ figure.fixlip-paper-figure figcaption strong {
 /* the number of a figure or a table, in front of its caption (shapiq_demos.py) */
 article[role="main"] .caption-number {
   font-weight: 700;
-  color: var(--shapiq-amber-ink);
+  color: var(--shapiq-amber);
 }
 
 /* -- the tables of the page ---------------------------------------------------------------------------- */
@@ -1353,9 +1383,19 @@ article[role="main"] div.math:has(> .eqno) {
 }
 
 article[role="main"] div.math > span.eqno {
-  position: static;
+  position: relative;
+  inset: auto;
   flex: none;
   transform: none;
+}
+
+/* the link to an equation shows up in the gap left of its number, so that nothing moves */
+article[role="main"] div.math > span.eqno > .headerlink {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  margin: 0 0.15rem 0 0;
+  translate: 0 -50%;
 }
 
 article[role="main"] div.math > mjx-container {
@@ -1402,13 +1442,62 @@ article[role="main"] :is(p, li, td, figcaption) a.reference code {
   color: var(--fixlip-muted);
 }
 
+/* The slider is drawn here and not by the browser, which darkens its own while it is pressed. */
 .fixlip-figure-slider input {
+  --fixlip-at: calc(8px + var(--fixlip-part, 0) * (100% - 16px)); /* the middle of the thumb */
   flex: 1;
   min-width: 0;
   height: 1.75rem; /* a target for a finger */
   margin: 0;
-  accent-color: var(--shapiq-amber);
+  background: none;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fixlip-figure-slider input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber) var(--fixlip-at),
+    var(--fixlip-line) var(--fixlip-at)
+  );
+}
+
+.fixlip-figure-slider input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber) var(--fixlip-at),
+    var(--fixlip-line) var(--fixlip-at)
+  );
+}
+
+.fixlip-figure-slider input::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fixlip-figure-slider input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber);
+}
+
+.fixlip-figure-slider input:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--shapiq-amber);
+  outline-offset: 2px;
 }
 
 .fixlip-figure-slider output {

@@ -739,58 +739,81 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   display: none;
 }
 
-/* the clique's size: a control that stands out above its graph */
+/* the clique's size: a slider above its graph, as in the figures of the write-up */
 .fixlip-demo-size {
-  display: inline-flex;
+  display: flex;
   flex: none;
-  align-self: center;
   align-items: center;
-  gap: 0.25rem;
-  padding: 3px;
-  border: 1px solid var(--shapiq-border);
-  border-radius: 999px;
-  background: var(--shapiq-surface-raised);
+  align-self: center;
+  gap: 0.75rem;
+  width: min(100%, 19rem);
+  min-height: var(--fixlip-control);
 }
 
 .fixlip-demo-size[hidden] {
   display: none;
 }
 
-.fixlip-demo-step {
-  width: calc(var(--fixlip-control) - 8px);
-  height: calc(var(--fixlip-control) - 8px);
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--fixlip-ink);
-  color: var(--fixlip-sheet);
-  font: inherit;
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
+/* The slider is drawn here and not by the browser, which darkens its own while it is pressed. */
+.fixlip-demo-size input {
+  --fixlip-at: calc(8px + var(--fixlip-part, 0) * (100% - 16px)); /* the middle of the thumb */
+  flex: 1;
+  min-width: 0;
+  height: 1.75rem; /* a target for a finger */
+  margin: 0;
+  background: none;
   cursor: pointer;
-  transition:
-    opacity var(--fixlip-duration) var(--fixlip-ease),
-    transform 120ms var(--fixlip-ease);
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.fixlip-demo-step:active:not([aria-disabled="true"]) {
-  transform: scale(0.96);
+.fixlip-demo-size input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber, #f5a300) var(--fixlip-at),
+    var(--shapiq-border, #e2e6f3) var(--fixlip-at)
+  );
 }
 
-.fixlip-demo-step:focus-visible {
-  outline: 2px solid var(--fixlip-ink);
+.fixlip-demo-size input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber, #f5a300) var(--fixlip-at),
+    var(--shapiq-border, #e2e6f3) var(--fixlip-at)
+  );
+}
+
+.fixlip-demo-size input::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber, #f5a300);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fixlip-demo-size input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber, #f5a300);
+}
+
+.fixlip-demo-size input:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--shapiq-amber, #f5a300);
   outline-offset: 2px;
 }
 
-.fixlip-demo-step[aria-disabled="true"] {
-  opacity: 0.25;
-  cursor: default;
-}
-
 .fixlip-demo-size-label {
-  min-width: 5.5rem;
-  text-align: center;
+  min-width: 5.2rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-foreground-primary);

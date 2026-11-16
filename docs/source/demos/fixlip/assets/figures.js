@@ -76,14 +76,19 @@
     const input = el("input");
     Object.assign(input, { type: "range", min, max, step: 1, value });
     const output = el("output", "", String(value));
+    // the part of the track left of the thumb, which the style sheet fills
+    const fill = () => input.style.setProperty("--fixlip-part", (input.value - min) / (max - min || 1));
     node.set = (now) => {
       input.value = now;
       output.textContent = String(now);
+      fill();
     };
     input.addEventListener("input", () => {
       output.textContent = input.value;
+      fill();
       onInput(Number(input.value));
     });
+    fill();
     for (const type of ["touchstart", "touchmove"])
       node.addEventListener(type, (event) => event.stopPropagation(), { passive: true });
     return add(node, el("span", "", text), input, output);
@@ -1292,13 +1297,55 @@
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
   }
 
+  // From one drawing of a figure to the next, part by part. A part that is the same in both stays as
+  // it is, so nothing that is still flickers. A photo fades in over the one before. The dot of a chart
+  // moves to its new place. Every other part fades out before the part in its place fades in, so
+  // two texts are never seen in one place.
+  const OUT = 140; // milliseconds for the parts that leave, then IN for the parts that come
+  const IN = 220;
+  const MANY = 48; // more parts than this change as one
+  function morph(last, layer) {
+    const ownText = (node) => [...node.childNodes].some((child) => child.nodeType === 3 && child.data.trim());
+    const isPhoto = (node) => node.classList.contains("fixlip-figure-photo");
+    const isDot = (node) => node.localName === "circle" && node.classList.contains("fixlip-figure-dot");
+    // the marks of a part of the old layer (a) and of the new one (b)
+    const walk = (a, b) => {
+      if (a.isEqualNode(b)) return [[a, "gone"]];
+      if (isPhoto(a) && isPhoto(b)) return [[b, "cross"]];
+      if (isDot(a) && isDot(b)) {
+        const by = ["cx", "cy"].map((at) => Number(a.getAttribute(at)) - Number(b.getAttribute(at)));
+        return [[a, "gone"], [b, "slide", by]];
+      }
+      // the same element with other content: its parts one by one. Otherwise it changes as a whole,
+      // and so does an element with many parts that change, such as the points of a scatter plot
+      const alike = a.cloneNode(false).isEqualNode(b.cloneNode(false));
+      if (alike && b.children.length && a.children.length === b.children.length && !ownText(a) && !ownText(b)) {
+        const marks = [...b.children].flatMap((child, k) => walk(a.children[k], child));
+        if (marks.filter(([, name]) => name === "in").length <= MANY) return marks;
+      }
+      return [[a, "out"], [b, "in"]];
+    };
+    const same = last.children.length === layer.children.length;
+    const marks = same ? [...layer.children].flatMap((child, k) => walk(last.children[k], child)) : walk(last, layer);
+    for (const [node, name, by] of marks) {
+      if (name === "slide") {
+        const frames = [{ transform: `translate(${by[0]}px, ${by[1]}px)` }, { transform: "none" }];
+        node.animate(frames, { duration: OUT + IN, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" });
+      } else node.classList.add(`fixlip-figure-${name}`);
+    }
+    return () => {
+      for (const [node, name] of marks) node.classList.remove(`fixlip-figure-${name}`);
+    };
+  }
+
   // A figure is drawn into a layer of its stage. With `fade`, the layer of the pair before stays
-  // until the new one is ready, and the two fade into each other. Both lie in one cell of the
+  // under the new one until the new one has taken its place (morph). Both lie in one cell of the
   // stage, and the texts keep their height, so nothing around the figure moves.
   function render(frame, fade = false) {
     const { stage, name } = frame;
     const draw = FIGURES[name];
     if (!draw) return;
+    frame.finish?.(); // a change that is still under way ends here
     const before = [...stage.children];
     const layer = el("div", "fixlip-figure-layer");
     stage.append(layer);
@@ -1318,25 +1365,43 @@
       });
     }
     frame.figure.classList.add("fixlip-figure-ready");
-    const from = frame.entering ? `translateX(${frame.entering * 32}px)` : "none";
+    const entering = frame.entering;
     frame.entering = 0;
-    if (!fade || !before.length || reducedMotion()) {
-      for (const node of before) node.remove();
-      return;
-    }
-    // the new layer fades in over the last one, which stays as it is until it is covered. An older
-    // layer that is still on the page is gone at once
     const last = before.pop();
     for (const node of before) node.remove();
+    if (!fade || !last || reducedMotion()) {
+      last?.remove();
+      return;
+    }
+    // after a swipe, the new pair comes in from the side that the finger came from
+    if (entering) {
+      last.remove();
+      layer.animate([{ opacity: 0, transform: `translateX(${entering * 32}px)` }, { opacity: 1, transform: "none" }], { duration: OUT + IN, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" });
+      return;
+    }
+    // the new layer waits, unseen, until its photos can be painted
     last.inert = true;
-    layer.style.opacity = "0";
+    layer.style.visibility = "hidden";
+    let clean = null;
+    let timer = 0;
+    frame.finish = () => {
+      frame.finish = null;
+      clearTimeout(timer);
+      last.remove();
+      layer.style.visibility = "";
+      clean?.();
+      for (const animation of layer.getAnimations({ subtree: true })) animation.cancel();
+    };
+    const finish = frame.finish;
     const photos = [...layer.querySelectorAll("img")].map((photo) => photo.decode().catch(() => {}));
     const patience = new Promise((resolve) => setTimeout(resolve, 300));
     Promise.race([Promise.all(photos), patience]).then(() => {
-      if (!layer.isConnected) return;
-      layer.style.opacity = "";
-      const fading = layer.animate([{ opacity: 0, transform: from }, { opacity: 1, transform: "none" }], { duration: 260, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" });
-      fading.finished.then(() => last.remove(), () => last.remove());
+      if (frame.finish !== finish) return; // ended in the meantime
+      last.inert = false; // not a difference between the two drawings
+      clean = morph(last, layer);
+      last.inert = true;
+      layer.style.visibility = "";
+      timer = setTimeout(finish, OUT + IN + 40);
     });
   }
 

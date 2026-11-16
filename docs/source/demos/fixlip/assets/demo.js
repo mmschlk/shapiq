@@ -240,14 +240,12 @@
     graph.setAttribute("aria-hidden", "true"); // the panel's text and the photo say the same
     const links = document.createElementNS(SVG, "svg");
     links.setAttribute("class", "fixlip-demo-links");
-    const sizer = el("div", "fixlip-demo-size");
-    const smaller = el("button", "fixlip-demo-step", "−");
-    const larger = el("button", "fixlip-demo-step", "+");
+    const sizer = el("label", "fixlip-demo-size");
+    const sizeInput = el("input");
+    Object.assign(sizeInput, { type: "range", step: 1 });
+    sizeInput.setAttribute("aria-label", "Players in the clique");
     const sizeLabel = el("span", "fixlip-demo-size-label");
-    smaller.type = larger.type = "button";
-    smaller.setAttribute("aria-label", "Fewer players in the clique");
-    larger.setAttribute("aria-label", "More players in the clique");
-    sizer.append(smaller, sizeLabel, larger);
+    sizer.append(sizeInput, sizeLabel);
     const legend = el("p", "fixlip-demo-legend");
     for (const [color, meaning] of [["red", "raises the similarity"], ["blue", "lowers it"]]) {
       const key = el("span", "fixlip-demo-key");
@@ -382,12 +380,7 @@
     };
     for (const group of [views, models]) new ResizeObserver(movePills).observe(group);
 
-    const step = (button, by) =>
-      button.addEventListener("click", () => {
-        if (button.getAttribute("aria-disabled") !== "true") setSize(state.size + by);
-      });
-    step(smaller, -1);
-    step(larger, 1);
+    sizeInput.addEventListener("input", () => setSize(Number(sizeInput.value)));
 
     // -- the players of the current photo and model --------------------------------------------
     let ex = null; // the explanation: tokens, main effects, interactions, cliques
@@ -815,8 +808,10 @@
       graph.hidden = false;
       list.hidden = true;
       sizeLabel.textContent = `${state.size} players`;
-      smaller.setAttribute("aria-disabled", String(state.size <= sizes[0]));
-      larger.setAttribute("aria-disabled", String(state.size >= sizes[1]));
+      Object.assign(sizeInput, { min: sizes[0], max: sizes[1], value: state.size });
+      // the part of the track left of the thumb, which the style sheet fills
+      const part = (state.size - sizes[0]) / (sizes[1] - sizes[0] || 1);
+      sizeInput.style.setProperty("--fixlip-part", part);
       drawEdges(cliquePairs(clique));
       drawGraph(clique);
       return `Clique of ${clique.length} players, ${clique.map(name).join(", ")}, that add ${signed(value)} together.`;
