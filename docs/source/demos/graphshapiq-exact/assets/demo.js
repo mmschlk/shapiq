@@ -50,6 +50,10 @@
       });
       pulse();
       renderPanel();
+      // the molecule's tile in sight, where the row scrolls (phones): cholesterol, the first shown, is last
+      const tile = mols.buttons[molecules.indexOf(m)].getBoundingClientRect(), row = mols.node.getBoundingClientRect(), pad = parseFloat(getComputedStyle(mols.node).paddingLeft) || 0;
+      if (tile.left < row.left + pad) mols.node.scrollLeft += tile.left - row.left - pad;
+      else if (tile.right > row.right - pad) mols.node.scrollLeft += tile.right - row.right + pad;
     }
     function pulse() {
       timers.forEach(clearTimeout); timers = [];
@@ -66,7 +70,7 @@
         if (still) light(); else timers.push(setTimeout(light, hop * 170));
       }
     }
-    function setFocus(k) { if (k < 0 || k === state.focus) return; state.focus = k; hint.hide(); pulse(); renderPanel(); }
+    function setFocus(k) { if (k < 0 || k === state.focus) return; state.focus = k; hint.hide(); pulse(); renderField(); }
     plot.addEventListener("mousedown", (e) => e.preventDefault());
     plot.addEventListener("pointermove", (e) => { if (e.pointerType === "touch") return; const k = atomAt(e); plot.style.cursor = k >= 0 ? "pointer" : ""; setFocus(k); });
     plot.addEventListener("click", (e) => setFocus(atomAt(e)));
@@ -81,38 +85,39 @@
     }
 
     // -- the panel: all maskings against GraphSHAP-IQ's, counted up ---------------------------------
+    // It is built once and updated in place. So hovering does not fade it in again, and the bars glide.
+    const title = h("p", "gsq-ctitle"), allLabel = h("span", "gsq-statlab"), punch = h("p", "gsq-punch"), line = h("p", "gsq-fieldline");
+    const allValue = h("span", "gsq-bignum gsq-muted"), oursValue = h("span", "gsq-bignum gsq-accent");
+    const bars = h("div", "gsq-logbars");
+    bars.setAttribute("aria-hidden", "true");
+    const barRow = (label) => { const fill = h("i"), count = h("span", "gsq-logn"), node = h("div", "gsq-logrow", h("span", "gsq-loglab", label), h("div", "gsq-logbar", fill), count); bars.append(node); return { node, fill, count }; };
+    const allBar = barRow("All maskings"), layerBars = LAYERS.map((LL) => barRow(`${LL} ${LL === 1 ? "layer" : "layers"}`));
+    const setBar = (bar, count, all, cls, on) => { bar.fill.className = cls; bar.fill.style.width = `${Math.max(2, (Math.log10(Math.max(2, count)) / Math.log10(all)) * 100)}%`; bar.count.textContent = fmt(count); bar.node.classList.toggle("gsq-on", on); };
+    panel.append(h("div", "gsq-panel-in", title, h("div", "gsq-stat", h("div", "gsq-statrow", allLabel, allValue), h("div", "gsq-statrow", h("span", "gsq-statlab", "GraphSHAP-IQ evaluates"), oursValue)), bars, h("p", "gsq-barnote", "Logarithmic scale"), punch, line));
     let frames = [];
-    function countUp(node, to) {
+    function countUp(node, to) { // from what is on screen
       const from = Number(node.dataset.v || 0), t0 = performance.now(), dur = reducedMotion() ? 0 : 520;
       const step = (now) => { const p = dur ? Math.min(1, (now - t0) / dur) : 1, v = Math.round(from + (to - from) * (1 - (1 - p) ** 3)); node.textContent = fmt(v); node.dataset.v = v; if (p < 1) frames.push(requestAnimationFrame(step)); };
       frames.push(requestAnimationFrame(step));
     }
-    const shown = { all: null, ours: null };
+    function renderField() {
+      line.replaceChildren();
+      if (state.focus != null) line.append("This atom can interact with ", h("strong", "", `${partnersOf(state.focus)} of the other ${state.mol.n - 1} atoms`), `, up to ${2 * state.layers} bonds away.`);
+    }
     function renderPanel() {
       frames.forEach(cancelAnimationFrame); frames = [];
       const m = state.mol, L = state.layers, n = m.n, all = 2 ** n, ours = m.budgets[L], factor = all / ours;
-      const box = h("div", "gsq-panel-in");
-      box.append(h("p", "gsq-ctitle", "With ", h("strong", "", `${L} ${L === 1 ? "layer" : "layers"}`), `, an atom reaches ${L} ${L === 1 ? "bond" : "bonds"} far.`));
-      const allValue = h("span", "gsq-bignum gsq-muted"), oursValue = h("span", "gsq-bignum gsq-accent");
-      allValue.dataset.v = shown.all?.dataset.v ?? 0; oursValue.dataset.v = shown.ours?.dataset.v ?? 0; // count on from what is on screen
-      box.append(h("div", "gsq-stat", h("div", "gsq-statrow", h("span", "gsq-statlab", `All maskings, 2${sup(n)}`), allValue), h("div", "gsq-statrow", h("span", "gsq-statlab", "GraphSHAP-IQ evaluates"), oursValue)));
-      const bars = h("div", "gsq-logbars");
-      bars.setAttribute("aria-hidden", "true");
-      const barRow = (label, count, cls) => { const r = h("div", `gsq-logrow${cls.includes("gsq-soft") ? "" : " gsq-on"}`), track = h("div", "gsq-logbar"), fill = h("i", cls); fill.style.width = `${Math.max(2, (Math.log10(Math.max(2, count)) / Math.log10(all)) * 100)}%`; track.append(fill); r.append(h("span", "gsq-loglab", label), track, h("span", "gsq-logn", fmt(count))); return r; };
-      bars.append(barRow("All maskings", all, "gsq-all"));
-      for (const LL of LAYERS) bars.append(barRow(`${LL} ${LL === 1 ? "layer" : "layers"}`, m.budgets[LL], LL === L ? "gsq-accent" : "gsq-accent gsq-soft"));
-      box.append(bars, h("p", "gsq-barnote", "Logarithmic scale"));
+      title.replaceChildren("With ", h("strong", "", `${L} ${L === 1 ? "layer" : "layers"}`), `, an atom reaches ${L} ${L === 1 ? "bond" : "bonds"} far.`);
+      allLabel.textContent = `All maskings, 2${sup(n)}`;
+      setBar(allBar, all, all, "gsq-all", true);
+      LAYERS.forEach((LL, k) => setBar(layerBars[k], m.budgets[LL], all, LL === L ? "gsq-accent" : "gsq-accent gsq-soft", LL === L));
       if (factor > 1.05) {
         const fewer = factor >= 10 ? `${fmt(Math.round(factor))}× fewer` : `${factor.toFixed(1)}× fewer`;
-        box.append(h("p", "gsq-punch", h("strong", "gsq-accent", fewer), " evaluations, and still ", h("strong", "", "exact"), "."));
-      } else box.append(h("p", "gsq-punch", "Here every masking is needed. The larger the molecule, the more GraphSHAP-IQ saves."));
-      const line = h("p", "gsq-fieldline");
-      if (state.focus != null) line.append("This atom can interact with ", h("strong", "", `${partnersOf(state.focus)} of the other ${n - 1} atoms`), `, up to ${2 * L} bonds away.`);
-      box.append(line);
-      panel.replaceChildren(box);
+        punch.replaceChildren(h("strong", "gsq-accent", fewer), " evaluations, and still ", h("strong", "", "exact"), ".");
+      } else punch.replaceChildren("Here every masking is needed. The larger the molecule, the more GraphSHAP-IQ saves.");
+      renderField();
       countUp(allValue, all);
       countUp(oursValue, ours);
-      shown.all = allValue; shown.ours = oursValue;
       depth.set(LAYERS.indexOf(L));
       mols.set(molecules.indexOf(m));
       caption.replaceChildren(h("strong", "", m.name));
