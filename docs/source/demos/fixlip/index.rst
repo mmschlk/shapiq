@@ -12,21 +12,26 @@ from MS COCO. All explanations are computed with ``shapiq``.
    :fallback: images/hero_siglip2.png
    :alt: A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
 
-The rest of this page explains the demo step by step. We first motivate the problem, describe the
-encoders, and argue why their similarity predictions can only be explained with interactions. We
-then review related work and introduce the FIxLIP game, the explanation, and the views of the demo.
-Finally, we describe how FIxLIP is computed and evaluated, compare the two models, and show how to
-compute it with ``shapiq``.
+The rest of this page explains the demo step by step. :ref:`Section 1 <fixlip-sec-introduction>`
+motivates the problem. :ref:`Section 2 <fixlip-sec-background>` describes the encoders, argues why
+their similarity predictions can only be explained with interactions, and reviews related work.
+:ref:`Section 3 <fixlip-sec-method>` introduces the FIxLIP game, the explanation, and the views of
+the demo. :ref:`Section 4 <fixlip-sec-computation>` describes how FIxLIP is computed, and
+:ref:`Section 5 <fixlip-sec-evaluation>` how it is evaluated. :ref:`Section 6 <fixlip-sec-models>`
+compares the two models, :ref:`Section 7 <fixlip-sec-limitations>` names limitations, and
+:ref:`Section 8 <fixlip-sec-code>` shows how to compute FIxLIP with ``shapiq``.
 
 **The figures follow the demo.** They show the image–text pair that is chosen in the demo, and
-each figure has its own selector to change the pair for the whole page. Below each figure, a short
-note reads off its numbers for the chosen pair. Where a figure reports predictions of a model,
-these are predictions of SigLIP 2. The figures with results of :cite:t:`Baniecki.2025` do not change
-with the pair. Two of the five pairs are also examples of the authors, who explain the pair with
-the elephant and the pair with the sign *juice theory* for CLIP in their appendix.
+each figure has its own selector to change the pair for the whole page. Where a figure reports
+predictions of a model, these are predictions of SigLIP 2. The figures with results of
+:cite:t:`Baniecki.2025` do not change with the pair. Two of the five pairs are also examples of the
+authors, who explain the pair with the elephant and the pair with the sign *juice theory* for CLIP
+in their appendix. The notation follows :cite:t:`Baniecki.2025`.
 
-Why explain similarity?
------------------------
+.. _fixlip-sec-introduction:
+
+1 Why explain similarity?
+-------------------------
 
 Contrastive language–image pre-training (CLIP) :cite:p:`Radford.2021` revolutionized computer
 vision by learning data representations that perform well in many downstream tasks. Scaling the
@@ -49,19 +54,34 @@ resulting explanation assigns *attribution scores* to each token and *interactio
 pair of tokens in an image–text pair. It thus shows **which words go with which parts of an
 image**.
 
-Vision–language encoders in a nutshell
---------------------------------------
+.. _fixlip-sec-background:
 
-A vision–language encoder :math:`f` consists of two encoders. The *vision encoder* :math:`f_I`
-splits an image :math:`x_I` into patches and maps them to one embedding vector. The *language
-encoder* :math:`f_T` splits a text :math:`x_T` into tokens and maps them to an embedding vector of
-the same dimension. The model then predicts how well the image and the text match as the *cosine
+2 Background
+------------
+
+This section describes the encoders, argues why their similarity predictions call for interactions,
+and reviews how related work explains them.
+
+.. _fixlip-sec-encoders:
+
+2.1 Vision–language encoders in a nutshell
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A vision–language encoder :math:`f` consists of a *vision encoder* :math:`f_\mathcal{I}` and a
+*language encoder* :math:`f_\mathcal{T}`. The vision encoder splits an image :math:`x_\mathcal{I}`
+into :math:`n_\mathcal{I}` patches and maps them to an embedding vector of dimension :math:`d`. The
+language encoder splits a text :math:`x_\mathcal{T}` into :math:`n_\mathcal{T}` tokens and maps
+them to an embedding vector of the same dimension. For an image–text pair :math:`(x_\mathcal{I},
+x_\mathcal{T})`, the model then predicts how well the image and the text match as the *cosine
 similarity* of the two embeddings.
 
 .. math::
+   :label: fixlip-vle
 
-   f(x_I, x_T) = \cos\big(f_I(x_I), f_T(x_T)\big)
-   = \frac{f_I(x_I) \cdot f_T(x_T)}{\lVert f_I(x_I) \rVert \, \lVert f_T(x_T) \rVert}
+   f(x_\mathcal{I},x_\mathcal{T})
+   := \cos\!\big(f_\mathcal{I}(x_\mathcal{I}),f_\mathcal{T}(x_\mathcal{T})\big)
+   = \frac{f_\mathcal{I}(x_\mathcal{I}) \cdot f_\mathcal{T}(x_\mathcal{T})}
+   {\Vert f_\mathcal{I}(x_\mathcal{I}) \Vert \cdot \Vert f_\mathcal{T}(x_\mathcal{T}) \Vert}
 
 CLIP learns the two encoders jointly from image–text pairs with a contrastive loss, which pulls
 matching pairs together and pushes all other pairs of a batch apart. SigLIP replaces the softmax
@@ -93,14 +113,16 @@ well.
 The demo shows this prediction as *No explanation*. A single number tells how similar the model
 finds the pair, but not why.
 
-Why interactions are the natural language of similarity
--------------------------------------------------------
+.. _fixlip-sec-interactions:
+
+2.2 Why interactions are the natural language of similarity
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Explanations of a classifier usually attribute a score to the parts of one input. A similarity
 prediction is different, because it is a property of an image–text pair. The following three
 observations show why its explanation has to include interactions.
 
-**Neither modality has a similarity on its own.** The dot product in the equation above multiplies
+**Neither modality has a similarity on its own.** The dot product in :eq:`fixlip-vle` multiplies
 the coordinates of the image embedding with those of the text embedding. What an image patch
 contributes to the prediction therefore depends on the text it is compared with, and vice versa.
 The first row of :shapiq-figure:`masks` illustrates this. With the image alone or the text alone,
@@ -123,25 +145,17 @@ part.
 
 **Saliency maps cannot say which words go with which parts of an image.** A first-order attribution
 assigns one score to each token. It can highlight an object in the image and the words of the text.
-However, it cannot tell which of the words the model matched with the object.
-:shapiq-figure:`regions` answers this with the model itself. For two objects of the image, it shows
-the prediction for the region of one object and the words that name one of them, with everything
-else masked. Typically, a region scores highest with the words that name its object, and swapping
-the words lowers the similarity. Four of the five pairs show this pattern in both rows. Only an
-interaction between an image patch and a text token can express such a relation.
-
-.. shapiq-demo-figure:: fixlip regions
-   :alt: A matrix of four similarities. Its rows are two regions of the image, each showing one object. Its columns are the words that name the two objects. For most pairs, the similarity is highest where a region meets the words that name its object.
-
-   **Which words go with which regions.** The prediction of SigLIP 2 for one region of the image
-   and one part of the text, with everything else masked. The regions were chosen by hand.
+However, it cannot tell which of the words the model matched with the object. Only an interaction
+between an image patch and a text token can express such a relation.
 
 This argument is not specific to CLIP, since any model that scores an image–text pair has to relate
 tokens across the two modalities. It also agrees with the user studies of :cite:t:`Liang.2023`, in
 which visualizing second-order attributions was necessary for understanding multimodal models.
 
-Related work and its shortcomings
----------------------------------
+.. _fixlip-sec-related:
+
+2.3 Related work and its shortcomings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Most explanation methods for vision–language encoders compute first-order attributions and
 visualize them as saliency maps. This includes *gradient-based* methods such as Grad-ECLIP
@@ -193,47 +207,76 @@ one input, and :shapiq-figure:`methods` summarizes them.
      - One score per token and per pair of tokens
      - Many model evaluations, and restricted to the second order.
 
+.. _fixlip-sec-method:
+
+3 Explaining similarity with FIxLIP
+-----------------------------------
+
 FIxLIP formalizes the problem with game theory. Its explanation covers main effects, cross-modal
 interactions, and intra-modal interactions. Moreover, it is model-agnostic, since it only needs the
 predictions for masked inputs.
 
-The FIxLIP game
----------------
+.. _fixlip-sec-game:
 
-FIxLIP views the input tokens as players of a cooperative game. Let :math:`N_I` and :math:`N_T`
-denote the sets of image patches and text tokens. For SigLIP 2 and the pairs of the demo, these are
-64 image patches and 10 to 19 text tokens, e.g. :math:`n = 74` players for the first pair. A *mask*
-:math:`M \subseteq N_I \cup N_T` selects the tokens that the model receives. The *game* assigns to
-each mask the similarity that the model predicts for the masked image–text pair.
+3.1 The FIxLIP game
+~~~~~~~~~~~~~~~~~~~
+
+FIxLIP views the input tokens as players of a cooperative game. We index the image patches with
+:math:`N_\mathcal{I} := \{1, \dots, n_\mathcal{I}\}` and the text tokens with :math:`N_\mathcal{T}
+:= \{n_\mathcal{I} + 1, \dots, n_\mathcal{I} + n_\mathcal{T}\}`. For SigLIP 2 and the pairs of the
+demo, these are :math:`n_\mathcal{I} = 64` image patches and between 10 and 19 text tokens, e.g. 74
+players for the first pair. A *mask* :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}` selects
+the tokens that the model receives. All other tokens are replaced with a baseline. For inputs
+:math:`x, b` and a subset :math:`M_o \subseteq N` of the indices :math:`N \in \{N_\mathcal{I},
+N_\mathcal{T}\}` of one modality, the *masking operator* is defined as
 
 .. math::
+   :label: fixlip-masking
 
-   \nu(M) = f\big(x_I \oplus_{M \cap N_I} b_I, \; x_T \oplus_{M \cap N_T} b_T\big)
+   x \oplus_{M_o} b := \begin{cases}
+   x_i, & \text{if } i \in M_o, \\
+   b_i, & \text{if } i \in N \setminus M_o.
+   \end{cases}
 
-Here, :math:`\oplus` keeps the tokens in :math:`M` and replaces all others with a baseline
-:math:`b_I` or :math:`b_T`. For the image, a masked patch is set to 0 after normalization, which
-propagates no signal forward. The figures show it as a gray patch. For the text, a masked token is
-excluded through the attention mask of the encoder, while special tokens and padding are always
-kept.
+For an image–text pair :math:`(x_\mathcal{I}, x_\mathcal{T})` and a baseline :math:`(b_\mathcal{I},
+b_\mathcal{T})`, the *FIxLIP game* :math:`\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}} \to \mathbb{R}`
+assigns to each mask the similarity that the model predicts for the masked image–text pair.
+
+.. math::
+   :label: fixlip-game
+
+   \nu(M) := f\big(x_\mathcal{I} \oplus_{M \cap N_\mathcal{I}} b_\mathcal{I}, \,
+   x_\mathcal{T} \oplus_{M \cap N_\mathcal{T}} b_\mathcal{T}\big)
+
+For the image, a masked patch is set to 0 after normalization, which propagates no signal forward.
+The figures show it as a gray patch. For the text, a masked token is excluded through the attention
+mask of the encoder, while special tokens and padding are always kept.
 
 :shapiq-figure:`masks` showed eight of these masks. For example, removing an object from the image
 lowers the similarity for all five pairs, although the text still names the object. With
-:math:`2^n` masks, the game cannot be inspected directly. An explanation has to summarize it.
+:math:`2^{n_\mathcal{I} + n_\mathcal{T}}` masks, the game cannot be inspected directly. An
+explanation has to summarize it.
 
-:cite:t:`Baniecki.2025` explain the logit-scaled similarity :math:`C \cdot f(x_I, x_T)`, where
-the learnt constant :math:`C` is about 100 for CLIP and about 112 for SigLIP 2. The demo explains
-the cosine similarity itself, so its values are smaller by this factor.
+:cite:t:`Baniecki.2025` explain the logit-scaled similarity :math:`C \cdot f(x_\mathcal{I},
+x_\mathcal{T})`, where the learnt constant :math:`C` is about 100 for CLIP and about 112 for SigLIP
+2. The demo explains the cosine similarity itself, so its values are smaller by this factor.
 
-The FIxLIP explanation
-----------------------
+.. _fixlip-sec-explanation:
 
-A FIxLIP explanation :math:`e` assigns a constant :math:`e_0`, a *main effect* :math:`e_i` to each
-token, and an *interaction* :math:`e_{ij}` to each pair of tokens. Together, they approximate the
-game with a simple additive model.
+3.2 The FIxLIP explanation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A FIxLIP explanation :math:`\mathbf{e}` assigns a constant :math:`\mathbf{e}_0`, a *main effect*
+:math:`\mathbf{e}_i` to each token :math:`i \in N_\mathcal{I} \cup N_\mathcal{T}`, and an
+*interaction* :math:`\mathbf{e}_{\{i,j\}}` to each pair of tokens. Together, they approximate the
+game :math:`\nu(M) \approx \hat\nu_\mathbf{e}(M)` with a simple additive model.
 
 .. math::
+   :label: fixlip-additive
 
-   \hat{\nu}_e(M) = e_0 + \sum_{i \in M} e_i + \sum_{\{i,j\} \subseteq M} e_{ij}
+   \hat\nu_{\mathbf{e}}(M) := \mathbf{e}_{0} + \sum_{i \in M} \mathbf{e}_{i}
+   + \sum_{\{i,j\} \subseteq M: i \neq j} \mathbf{e}_{\{i,j\}}
+   \quad \text{for all masks } M \subseteq N_\mathcal{I} \cup N_\mathcal{T}
 
 An interaction is *cross-modal* if it links an image patch with a text token. It is *intra-modal*
 if it links two image patches or two text tokens. The explanation can be viewed as a complete graph
@@ -243,54 +286,68 @@ patches *regions* and the text tokens *words*, and both together *players*.
 **What an interaction measures.** A positive interaction means that two tokens raise the similarity
 more together than the sum of their individual effects. :shapiq-figure:`interaction` measures this
 directly on the model, for the strongest interaction of the explanation between an image patch and
-a word. We
-sample 256 random masks of all other tokens, in which each token is kept with probability 0.5, and
-add the patch, the word, or both. What both add beyond the sum of their individual effects is their
-interaction. The second panel pairs the same patch with the word that has the largest main effect.
-Here, both together add just about the sum of their individual effects, so their interaction is
-close to zero. For all five pairs, the interaction measured on the model agrees with the estimate
-of the explanation up to 0.002.
+a word. We sample 256 random masks of all other tokens, in which each token is kept with
+probability 0.5, and add the patch, the word, or both. What both add beyond the sum of their
+individual effects is their interaction. The second panel pairs the same patch with the word that
+has the largest main effect. Here, both together add just about the sum of their individual
+effects, so their interaction is close to zero. The last bar of each panel shows the estimate of
+the explanation. For all five pairs, it agrees with the interaction measured on the model up to
+0.002.
 
 .. shapiq-demo-figure:: fixlip interaction
-   :alt: Two bar charts. Each shows how much adding a patch, adding a word and adding both change the similarity on average, and the interaction, which is what both add beyond the sum of the two. The interaction is large in the first chart and close to zero in the second.
+   :alt: Two bar charts. Each shows how much adding a patch, adding a word and adding both change the similarity on average, the interaction, which is what both add beyond the sum of the two, and the estimate of this interaction in the explanation. The interaction is large in the first chart and close to zero in the second.
 
    **An interaction measured on the model.** The average change of the prediction of SigLIP 2 when
    tokens are added to 256 random masks. The interaction is the change for both together minus the
-   changes for the patch and for the word.
+   changes for the patch and for the word. The FIxLIP estimate is the interaction of the two tokens
+   in the explanation.
 
 **Reading the explanation.** The demo shows the whole explanation as *Full explanation*, and
 :shapiq-figure:`explanation` shows it for the chosen pair. **Red** marks what raises the similarity
 and **blue** marks what lowers it. Typically, the words that name the objects have the largest main
 effects, and the strongest interactions link these words with patches of their objects. The main
 effects of the image patches are small in comparison. For SigLIP 2 and all five pairs, their sum
-stays below 0.03 in absolute value, while the cross-modal interactions sum to about 0.1. Thus,
-**the image contributes to the similarity almost exclusively through interactions with the text**.
+stays below 0.03 in absolute value, while the cross-modal interactions sum to about 0.1. The list
+of the figure gives both sums for the chosen pair. Thus, **the image contributes to the similarity
+almost exclusively through interactions with the text**.
 
 .. shapiq-demo-figure:: fixlip explanation
-   :alt: The photo and its tokens. Tints mark the main effects, and lines link the pairs of tokens with the strongest interactions. A list gives the strongest main effects and the strongest interactions with their values.
+   :alt: The photo and its tokens. Tints mark the main effects, and lines link the pairs of tokens with the strongest interactions. A list gives the strongest main effects and the strongest interactions with their values, the sum of the main effects of all patches, and the sum of all cross-modal interactions.
 
    **The explanation of the pair for SigLIP 2.** Tints show the main effects and lines show the 12
    strongest interactions, as in the demo. **Red** raises the similarity and **blue** lowers it.
-   Lines under the text are interactions between two text tokens.
+   Lines under the text are interactions between two text tokens. The list also sums the main
+   effects of all patches and all cross-modal interactions.
 
 Two properties of the explanation are worth keeping in mind. First, a main effect is a coefficient
-of the additive model and not the effect of a token alone. The note below the figure compares the
-largest main effect with how much this word changes the prediction when all other tokens are
-masked. The two numbers differ for every pair. The main effect absorbs what the word contributes
-together with many patches of its object at once, which no single pair can express. Second, the
-terms of the explanation do not have to add up to the prediction for the full input. FIxLIP
-optimizes how well the additive model predicts all masks, which the section on computation makes
-precise.
+of the additive model :eq:`fixlip-additive` and not the effect of a token alone. For the pair with
+the elephant, the word *elephant* has the largest main effect with +0.064. With all other tokens
+masked, however, this word changes the prediction of SigLIP 2 by only +0.002. The two numbers
+differ for every pair. The main effect absorbs what the word contributes together with many patches
+of its object at once, which no single pair can express. Second, the terms of the explanation do
+not have to add up to the prediction for the full input. FIxLIP optimizes how well the additive
+model predicts all masks, which :ref:`Section 4.1 <fixlip-sec-faithfulness>` makes precise.
 
 **First-order conversion.** A second-order explanation can always be simplified into a first-order
-one. The attribution of a token is then its main effect plus :math:`p` times the sum of its
-interactions, i.e. one half of this sum in the demo. :cite:t:`Baniecki.2025` show that these
-attributions are the weighted Banzhaf values of the additive model. They can be visualized as a
+one. For a token :math:`i \in N_\mathcal{I} \cup N_\mathcal{T}`, the first-order attribution is
+given by
+
+.. math::
+   :label: fixlip-first-order
+
+   \mathbf{e}_i + p \sum_{j \in N_\mathcal{I} \cup N_\mathcal{T}: j \neq i} \mathbf{e}_{\{i,j\}}
+
+Here, :math:`p \in (0, 1)` is the parameter of FIxLIP that :ref:`Section 4.1
+<fixlip-sec-faithfulness>` introduces. In the demo, the attribution of a token is its main effect
+plus one half of the sum of its interactions. :cite:t:`Baniecki.2025` show that these attributions
+are the weighted Banzhaf values of :math:`\hat\nu_\mathbf{e}`. They can be visualized as a
 traditional saliency map. However, the conversion keeps only the sum of the interactions of a token
 and no longer says with which tokens it interacts.
 
-Conditioning on a token
------------------------
+.. _fixlip-sec-conditioning:
+
+3.3 Conditioning on a token
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A complete graph with more than 70 nodes is hard to read as a whole. A token can therefore be
 selected for *conditioning*, which shows only its interactions with all other tokens as a heatmap.
@@ -310,14 +367,17 @@ the pair with the elephant, the words *elephant* and *small* interact negatively
 positively for CLIP. :cite:t:`Baniecki.2025` report the same positive interaction for CLIP on this
 pair.
 
-Cliques of tokens
------------------
+.. _fixlip-sec-cliques:
+
+3.4 Cliques of tokens
+~~~~~~~~~~~~~~~~~~~~~
 
 The explanation also allows searching for the subsets of tokens that raise the similarity the most.
 In the graph view, such a subset is a clique. Its value is the sum of the main effects and
-interactions of its tokens. Finding the best clique of a given size by brute force is infeasible.
-Instead, FIxLIP uses a greedy search that starts from each token and repeatedly adds the token that
-raises the value the most.
+interactions of its tokens, i.e. :math:`\hat\nu_\mathbf{e}(M) - \mathbf{e}_0` for a clique
+:math:`M`. Finding the best clique of a given size by brute force is infeasible. Instead, FIxLIP
+uses a greedy search that starts from each token and repeatedly adds the token that raises the
+value the most.
 
 The demo opens with this view, called *Clique*, and the buttons − and + change the size of the
 clique. :shapiq-figure:`cliques` shows the cliques of the chosen pair, with a slider for their
@@ -331,29 +391,52 @@ them. Larger cliques add neighboring patches and further words.
    framed. The value is the sum of their main effects and interactions. The gain is the prediction
    of SigLIP 2 for the clique alone minus its prediction for an empty input.
 
-The value of a clique is computed from the explanation and not from the model. The figure
-therefore also reports what SigLIP 2 itself predicts for each clique alone, as a gain over an empty
-input. For all five pairs and all sizes, this gain is smaller than the value. For two pairs, the
-clique of two even consists of two words. Without any image patch, the model then predicts less
-than for an empty input. The explanation thus overestimates small cliques, which we revisit in the
-evaluation.
+The value of a clique is computed from the explanation and not from the model. The figure therefore
+also reports what SigLIP 2 itself predicts for each clique alone, as a gain over an empty input.
+For all five pairs and all sizes, this gain is smaller than the value. For two pairs, the clique of
+two even consists of two words. Without any image patch, the model then predicts less than for an
+empty input. The explanation thus overestimates small cliques, which we revisit in :ref:`Section
+5.1 <fixlip-sec-correlation>`.
 
-How FIxLIP is computed
-----------------------
+.. _fixlip-sec-computation:
 
-**Faithfulness.** A natural requirement is that the explanation predicts the game well. FIxLIP
-measures the squared error over all masks and weights each mask according to its size.
+4 How FIxLIP is computed
+------------------------
+
+The FIxLIP explanation is defined as the most faithful additive model of the game. This section
+defines this notion of faithfulness and describes how the explanation is estimated from sampled
+masks.
+
+.. _fixlip-sec-faithfulness:
+
+4.1 Faithfulness
+~~~~~~~~~~~~~~~~
+
+A natural requirement is that the explanation predicts the game well. FIxLIP measures the squared
+error :math:`\big(\nu(M) - \hat\nu_\mathbf{e}(M)\big)^2` over all masks and weights each mask
+according to its size. For :math:`p \in (0, 1)`, the *p-faithfulness* is defined as
 
 .. math::
+   :label: fixlip-faithfulness
 
-   F_p(\nu, \hat{\nu}_e) = \sum_{M \subseteq N_I \cup N_T} p^{|M|} (1 - p)^{n - |M|}
-   \big(\nu(M) - \hat{\nu}_e(M)\big)^2
+   \mathfrak{F}_p(\nu,\hat\nu) := \sum_{M \subseteq N_\mathcal{I} \cup N_\mathcal{T}}
+   p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert M \vert}
+   \big(\nu(M) - \hat\nu(M)\big)^2
 
-The weight is the probability of the mask when every token is kept independently with probability
-:math:`p`. The FIxLIP explanation is the minimizer of :math:`F_p`, and its interactions are the
-*weighted Banzhaf interactions* :cite:p:`Marichal.2011`. For :math:`p = 0.5`, all masks have equal
-weight. FIxLIP then recovers the faithful Banzhaf interaction index :cite:p:`Tsai.2022`, which has
-a known analytical solution :cite:p:`Hammer.1992`.
+The weight :math:`\mathbb{P}_p(M) := p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert
+M \vert}` is the probability of the mask when every token is kept independently with probability
+:math:`p`. The *FIxLIP-p* explanation is the most faithful approximation of the game with respect
+to :math:`\mathfrak{F}_p`.
+
+.. math::
+   :label: fixlip-explanation
+
+   \mathbf{e}^{\text{FIxLIP-}p}
+   := \operatorname*{arg\,min}_{\mathbf{e}} \, \mathfrak{F}_p(\nu,\hat\nu_\mathbf{e})
+
+Its interactions are the *weighted Banzhaf interactions* :cite:p:`Marichal.2011`. For :math:`p =
+0.5`, all masks have equal weight. FIxLIP then recovers the faithful Banzhaf interaction index
+:cite:p:`Tsai.2022`, which has a known analytical solution :cite:p:`Hammer.1992`.
 
 **Masking with a purpose.** The parameter :math:`p` addresses a known problem of removal-based
 explanations :cite:p:`Hase.2021`. Inputs with many masked tokens are out-of-distribution, i.e.
@@ -371,24 +454,54 @@ the largest main effect from all others.
    predictions of SigLIP 2 for 512 random masks. The dashed lines mark the empty and the full
    input.
 
-**Sampling masks.** Evaluating all masks is infeasible. Instead, the *model-agnostic estimator*
-samples masks, evaluates the model on them, and solves a least-squares problem. For
-:math:`p = 0.5`, it reduces to Faith-Banzhaf :cite:p:`Tsai.2022`, a variant of KernelSHAP
-:cite:p:`Lundberg.2017`. Each sampled mask costs one pass of both encoders.
+.. _fixlip-sec-sampling:
+
+4.2 Sampling masks
+~~~~~~~~~~~~~~~~~~
+
+Evaluating all :math:`2^{n_\mathcal{I} + n_\mathcal{T}}` masks is infeasible. Instead, the
+*model-agnostic estimator* samples masks :math:`M^{(1)}, \dots, M^{(m)}` independently from
+:math:`\mathbb{P}_p` and evaluates the model on them. It then minimizes the following estimate of
+:math:`\mathfrak{F}_p`, which is a least-squares problem.
+
+.. math::
+   :label: fixlip-model-agnostic
+
+   \hat{\mathfrak{F}}^{(m)}_p(\nu,\hat\nu_\mathbf{e}) := \frac{1}{m} \sum_{\ell=1}^m
+   \big(\nu(M^{(\ell)}) - \hat\nu_\mathbf{e}(M^{(\ell)})\big)^2
+
+For :math:`p = 0.5`, this estimator reduces to Faith-Banzhaf :cite:p:`Tsai.2022`, a variant of
+KernelSHAP :cite:p:`Lundberg.2017`. Each sampled mask costs one pass of both encoders.
 
 **Cross-modal sampling.** FIxLIP exploits that the two encoders process their inputs independently.
-Since every token is kept independently, it can sample :math:`m_I` masks of the image and
-:math:`m_T` masks of the text separately. Each masked image and each masked text is encoded once,
-and the similarities of all :math:`m_I \cdot m_T` combinations follow from cheap dot products. For
-example, six masked images and six masked texts cost twelve passes of an encoder and give 36
-predictions. This is also a reason to prefer weighted Banzhaf interactions over Shapley
-interactions, for which it is unknown if the weights factor into one distribution per modality.
-:cite:t:`Baniecki.2025` show that the resulting estimate of :math:`F_p` is unbiased. Its variance
-is at most of the same order as for the model-agnostic estimator with
-:math:`m \approx m_I \approx m_T` masks, and at least the variance of the model-agnostic estimator
-with :math:`m_I \cdot m_T` independent masks.
+Since every token is kept independently, it can sample :math:`m_\mathcal{I}` masks
+:math:`M_\mathcal{I}^{(1)}, \dots, M_\mathcal{I}^{(m_\mathcal{I})}` of the image and
+:math:`m_\mathcal{T}` masks :math:`M_\mathcal{T}^{(1)}, \dots, M_\mathcal{T}^{(m_\mathcal{T})}` of
+the text separately. The *cross-modal estimator* minimizes the squared error over all combinations
+of the two.
 
-Empirically, this *cross-modal estimator* speeds up model inference by over 20× and the whole
+.. math::
+   :label: fixlip-cross-modal
+
+   \hat{\mathfrak{F}}_p^{(m_\mathcal{I},m_\mathcal{T})}(\nu,\hat\nu_\mathbf{e}) :=
+   \frac{1}{m_\mathcal{I} \cdot m_\mathcal{T}}
+   \sum_{\ell_\mathcal{I}=1}^{m_\mathcal{I}} \sum_{\ell_\mathcal{T}=1}^{m_\mathcal{T}}
+   \big(\nu(M_\mathcal{I}^{(\ell_\mathcal{I})} \cup M_\mathcal{T}^{(\ell_\mathcal{T})})
+   - \hat\nu_\mathbf{e}(M_\mathcal{I}^{(\ell_\mathcal{I})}
+   \cup M_\mathcal{T}^{(\ell_\mathcal{T})})\big)^2
+
+Each masked image and each masked text is encoded once, and the similarities of all
+:math:`m_\mathcal{I} \cdot m_\mathcal{T}` combinations follow from cheap dot products. For example,
+six masked images and six masked texts cost twelve passes of an encoder and give 36 predictions.
+This is also a reason to prefer weighted Banzhaf interactions over Shapley interactions, for which
+it is unknown if the weights factor into one distribution per modality. :cite:t:`Baniecki.2025`
+show that :math:`\hat{\mathfrak{F}}_p^{(m_\mathcal{I},m_\mathcal{T})}` is an unbiased estimate of
+:math:`\mathfrak{F}_p`. Its variance is at most of the same order as for the model-agnostic
+estimator with :math:`m \approx m_\mathcal{I} \approx m_\mathcal{T}` masks, and at least the
+variance of the model-agnostic estimator with :math:`m_\mathcal{I} \cdot m_\mathcal{T}` independent
+masks.
+
+Empirically, the cross-modal estimator speeds up model inference by over 20× and the whole
 explanation pipeline by about 5×. :shapiq-figure:`paper-runtime` shows the runtime that the
 authors measure for both estimators. In their experiments, FIxLIP with weighted Banzhaf
 interactions uses the cross-modal estimator with a budget of :math:`2^{21}` masks, whereas FIxLIP
@@ -406,23 +519,44 @@ with Shapley interactions uses the model-agnostic estimator with :math:`2^{17}` 
 attributions and then restrict the interactions to the most important tokens or to cross-modal
 pairs.
 
-**In the demo.** The demo computes FIxLIP for :math:`p = 0.5` with a different estimator, which
-needs fewer model evaluations. :class:`~shapiq.approximator.ProxySHAP` :cite:p:`Thies.2026` fits a
-gradient-boosted tree model to 10,000 sampled masks. It then computes the faithful Banzhaf
-interactions of this tree model up to order 2 exactly. The explanation therefore targets the same
-index as the cross-modal estimator, but it inherits the approximation error of the tree model.
+.. _fixlip-sec-demo-estimator:
 
-How faithful is the explanation?
---------------------------------
+4.3 The estimator of the demo
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The demo computes FIxLIP for :math:`p = 0.5` with a different estimator, which needs fewer model
+evaluations. :class:`~shapiq.approximator.ProxySHAP` :cite:p:`Thies.2026` fits a gradient-boosted
+tree model to 10,000 sampled masks. It then computes the faithful Banzhaf interactions of this tree
+model up to order 2 exactly. The explanation therefore targets the same index as the cross-modal
+estimator, but it inherits the approximation error of the tree model.
+
+.. _fixlip-sec-evaluation:
+
+5 How faithful is the explanation?
+----------------------------------
 
 :cite:t:`Baniecki.2025` derive three evaluation metrics that also apply to second-order
 explanations. We illustrate each metric on inputs of the demo and show the results of the authors
 next to it.
 
-**Faithfulness correlation.** The first metric samples new masks and compares the predictions of
-the explanation with those of the model. The *p-faithfulness correlation* is their Spearman rank
-correlation. It relies on ranks, since methods like saliency maps do not estimate the similarity
-itself. For game-theoretic explanations, the :math:`R^2` coefficient applies as well.
+.. _fixlip-sec-correlation:
+
+5.1 Faithfulness correlation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The first metric samples new masks and compares the predictions of the explanation with those of
+the model. The *p-faithfulness correlation* is their Spearman rank correlation over :math:`m` masks
+sampled from :math:`\mathbb{P}_p`.
+
+.. math::
+   :label: fixlip-correlation
+
+   \mu_{\mathrm{corr}}(\mathbf{e};p) :=
+   \underset{M^{(1)},\dots,M^{(m)} \overset{\mathrm{iid}}{\sim} \mathbb{P}_p}
+   {\mathrm{correlation}}\big(\nu(M^{(i)}),\hat\nu_\mathbf{e}(M^{(i)})\big)
+
+It relies on ranks, since methods like saliency maps do not estimate the similarity itself. For
+game-theoretic explanations, the :math:`R^2` coefficient applies as well.
 :shapiq-figure:`faithfulness` shows 512 held-out masks for the chosen pair. For all five pairs, the
 second-order explanation predicts them better than its conversion to first order.
 
@@ -432,12 +566,12 @@ second-order explanation predicts them better than its conversion to first order
    **Predicting the model on held-out masks.** Each dot is one of 512 random masks with
    :math:`p = 0.5`. The constant of the explanation is refit on these masks.
 
-The demo reports this :math:`R^2` for every explanation, with the constant :math:`e_0` refit on the
-held-out masks. It ranges from 0.74 to 0.96 across the five pairs and the two models. Note that the
-explanation is optimized for :math:`p = 0.5`, i.e. for masks that keep about half of the tokens. On
-sparser masks sampled with :math:`p = 0.3`, its :math:`R^2` drops for every pair. A small clique is
-an even sparser mask, since it keeps only a few of the tokens. This is why the value of a small
-clique differs from the prediction of the model for the clique alone.
+The demo reports this :math:`R^2` for every explanation, with the constant :math:`\mathbf{e}_0`
+refit on the held-out masks. It ranges from 0.74 to 0.96 across the five pairs and the two models.
+Note that the explanation is optimized for :math:`p = 0.5`, i.e. for masks that keep about half of
+the tokens. On sparser masks sampled with :math:`p = 0.3`, its :math:`R^2` drops for every pair. A
+small clique is an even sparser mask, since it keeps only a few of the tokens. This is why the
+value of a small clique differs from the prediction of the model for the clique alone.
 
 In the evaluation of :cite:t:`Baniecki.2025`, FIxLIP with the matching :math:`p` is the most
 faithful method for CLIP, as :shapiq-figure:`paper-faithfulness` shows. This evaluation uses the
@@ -461,20 +595,35 @@ predicts masks sampled with :math:`p = 0.3` much better than vice versa. The dem
    of :math:`p`. Values below 0 are cut off at the axis. Redrawn from the data of Figure 4 of
    :cite:t:`Baniecki.2025`.
 
-**Insertion and deletion.** The second metric evaluates whether the explanation finds the subsets
-of tokens that matter. For every size :math:`k`, it selects the subsets with the highest and the
-lowest value under the explanation and evaluates the model on both. This gives an insertion curve
-and a deletion curve. The area between them is the *AID* score, which generalizes insertion and
-deletion curves :cite:p:`Hama.2023` to interactions. For first-order attributions, the subsets
-follow from ranking the tokens. With interactions, the best subset of size :math:`k + 1` does not
-have to contain the best subset of size :math:`k`.
+.. _fixlip-sec-aid:
+
+5.2 Insertion and deletion
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The second metric evaluates whether the explanation finds the subsets of tokens that matter. For
+every size :math:`k`, it selects the subsets with the highest and the lowest value under the
+explanation, i.e. :math:`M_{\mathbf{e},\max,k} := \operatorname*{arg\,max}_{M: \vert M \vert = k}
+\hat\nu_\mathbf{e}(M)` and :math:`M_{\mathbf{e},\min,k} := \operatorname*{arg\,min}_{M: \vert M
+\vert = k} \hat\nu_\mathbf{e}(M)`, and evaluates the model on both. This gives an insertion curve
+and a deletion curve. The *AID* score is the area between them.
+
+.. math::
+   :label: fixlip-aid
+
+   \mu_{\mathrm{AID}}(\mathbf{e}) := \sum_{k=1}^{n_\mathcal{I}+n_\mathcal{T}}
+   \big(\nu(M_{\mathbf{e},\max,k}) - \nu(M_{\mathbf{e},\min,k})\big)
+
+It generalizes insertion and deletion curves :cite:p:`Hama.2023` to interactions. For first-order
+attributions, the subsets follow from ranking the tokens. With interactions, the best subset of
+size :math:`k + 1` does not have to contain the best subset of size :math:`k`.
 
 :shapiq-figure:`curves` shows both curves for the chosen pair, on the cosine scale of the demo. Its
-slider sets the size :math:`k` and shows the two subsets of this size. The AID is normalized by the
-difference between the predictions for the full and the empty input. For all five pairs, the
-second-order explanation reaches a larger AID than its conversion to first order. It also finds
-five tokens whose removal lowers the similarity below the prediction for an empty input. Moreover,
-it finds subsets with a higher similarity than the full input.
+slider sets the size :math:`k` and shows the two subsets of this size. The figure reports
+:eq:`fixlip-aid` as an average over all sizes, normalized by the difference between the predictions
+for the full and the empty input. For all five pairs, the second-order explanation reaches a larger
+AID than its conversion to first order. It also finds five tokens whose removal lowers the
+similarity below the prediction for an empty input. Moreover, it finds subsets with a higher
+similarity than the full input.
 
 .. shapiq-demo-figure:: fixlip curves
    :alt: Insertion and deletion curves for the pair. The curves of the second-order explanation enclose a larger area than those of its first-order conversion. A slider sets the number of tokens kept. Next to the chart, the subset of this size that the explanation values the most, with a high similarity, and the one it values the least, with a low similarity.
@@ -502,15 +651,35 @@ half are deleted.
    its standard deviation. Redrawn from the data of Figure 3 of :cite:t:`Baniecki.2025`, who draw
    the curves in the other direction.
 
-**Pointing game.** The third metric is a sanity check with a designed ground truth. Four images
-from ImageNet-1k :cite:p:`Deng.2009` are combined into one, and the text names up to four of their
-classes. The *pointing game recognition* measures which share of the absolute cross-modal
-interactions is correct. A positive interaction is correct if it links a class name with the
-patches of its object. A negative interaction is correct if it links a class name with the patches
-of another object. A random baseline scores 0.25. The left panel of :shapiq-figure:`pointing` plays
-this game for SigLIP 2 on four photos of the demo, explained as in the demo. For this input, 0.92
-of the absolute interactions are correct, which is in line with the 0.89 that
-:cite:t:`Baniecki.2025` report for SigLIP 2 with four objects.
+.. _fixlip-sec-pointing:
+
+5.3 Pointing game
+~~~~~~~~~~~~~~~~~
+
+The third metric is a sanity check with a designed ground truth. Four images from ImageNet-1k
+:cite:p:`Deng.2009` are combined into one, and the text names up to four of their classes. The
+*pointing game recognition* (PGR) measures which share of the absolute cross-modal interactions is
+correct.
+
+.. math::
+   :label: fixlip-pgr
+
+   \mu_{\mathrm{PGR}}(\mathbf{e};N_\mathcal{T}) := \frac
+   {\sum_{k \in N_\mathcal{T}} \big(\Vert \mathbf{e}_{\mathrm{in},k,>0} \Vert_1
+   + \Vert \mathbf{e}_{\mathrm{out},k,<0} \Vert_1\big)}
+   {\sum_{k \in N_\mathcal{T}} \big(\Vert \mathbf{e}_{\mathrm{in},k} \Vert_1
+   + \Vert \mathbf{e}_{\mathrm{out},k} \Vert_1\big)} \in [0, 1]
+
+Here, :math:`\mathbf{e}_{\mathrm{in},k}` and :math:`\mathbf{e}_{\mathrm{out},k}` denote the
+interactions that belong and do not belong to object :math:`k`, i.e. a class name with the patches
+of its image. The indices :math:`>0` and :math:`<0` select the positive and the negative
+interactions, and :math:`\Vert \mathbf{e} \Vert_1 := \sum_{i,j} \vert \mathbf{e}_{\{i,j\}} \vert`.
+In other words, a positive interaction is correct if it links a class name with the patches of its
+object. A negative interaction is correct if it links a class name with the patches of another
+object. A random baseline scores 0.25. The left panel of :shapiq-figure:`pointing` plays this game
+for SigLIP 2 on four photos of the demo, explained as in the demo. For this input, 0.92 of the
+absolute interactions are correct, which is in line with the 0.89 that :cite:t:`Baniecki.2025`
+report for SigLIP 2 with four objects.
 
 .. shapiq-demo-figure:: fixlip pointing
    :alt: Left, four photos of the demo in one image, an elephant, a giraffe, a pineapple and a clock tower, with the text 'elephant giraffe pineapple clock'. The patches are tinted by their interaction with one of the four names, which can be chosen. Right, the reported pointing game recognition of CLIP for one to four objects. First-order methods fall from between 0.61 and 0.70 for one object to between 0.28 and 0.37 for four objects. exCLIP reaches 0.92 and FIxLIP 0.83 for four objects.
@@ -527,8 +696,10 @@ reach 0.28 and Shapley values reach 0.37. In contrast, the two second-order meth
 with 0.83 for FIxLIP and 0.92 for exCLIP. exCLIP scores higher for two or more objects, which the
 authors attribute to its specialization in cross-modal interactions.
 
-Comparing CLIP and SigLIP 2
----------------------------
+.. _fixlip-sec-models:
+
+6 Comparing CLIP and SigLIP 2
+-----------------------------
 
 FIxLIP can compare different encoders, since it treats them as black boxes. In the demo, switch
 between *SigLIP 2* and *CLIP* for the same image–text pair. The cliques of the two models often
@@ -548,24 +719,30 @@ recognition of about 0.90 for one to four objects, while the explanations of CLI
 general, the authors find that smaller models such as ViT-B/32 can be explained more faithfully
 than larger ones.
 
-Limitations
------------
+.. _fixlip-sec-limitations:
+
+7 Limitations
+-------------
 
 FIxLIP explanations are restricted to the second order. Interactions between three or more tokens
 are only captured as far as main effects and pairs can absorb them, as for the largest main effect
-above. :cite:t:`Baniecki.2025` themselves point to a possible third-order interaction in one of
-their examples. Moreover, the greedy search is not guaranteed to find the best subset. The
-explanations also depend on the masking baseline, and sparse masks remain out-of-distribution
-inputs for the model. In the experiments of the authors, the faithfulness of the explanations drops
-when the number of input tokens increases. How useful the visualizations are for humans is left to
-future user studies. Finally, the explanations of the demo are approximated from 10,000 masks for
-each pair, so their :math:`R^2` on held-out masks shows how far each of them can be trusted.
+in :ref:`Section 3.2 <fixlip-sec-explanation>`. :cite:t:`Baniecki.2025` themselves point to a
+possible third-order interaction in one of their examples. Moreover, the greedy search is not
+guaranteed to find the best subset. The explanations also depend on the masking baseline, and
+sparse masks remain out-of-distribution inputs for the model. In the experiments of the authors,
+the faithfulness of the explanations drops when the number of input tokens increases. How useful
+the visualizations are for humans is left to future user studies. Finally, the explanations of the
+demo are approximated from 10,000 masks for each pair, so their :math:`R^2` on held-out masks shows
+how far each of them can be trusted.
 
-Explain it yourself
--------------------
+.. _fixlip-sec-code:
+
+8 Explain it yourself
+---------------------
 
 The FIxLIP game can be implemented with ``shapiq`` and ``transformers`` in about 40 lines. The
-following game masks the image patches and text tokens of CLIP as described above.
+following game masks the image patches and text tokens of CLIP as described in :ref:`Section 3.1
+<fixlip-sec-game>`.
 
 .. code-block:: python
 

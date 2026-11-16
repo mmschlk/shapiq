@@ -61,14 +61,6 @@
   const rich = (text) =>
     text.split("*").map((part, k) => (k % 2 ? el("em", "", part) : document.createTextNode(part)));
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // the share of a model's matching pairs that score below a similarity (as demo.js)
-  const share = (value, quantiles) => {
-    const k = quantiles.findIndex((q) => q > value);
-    if (k === 0) return 0;
-    if (k < 0) return 1;
-    const [low, high] = [quantiles[k - 1], quantiles[k]];
-    return (k - 1 + (value - low) / (high - low)) / (quantiles.length - 1);
-  };
   // a small generator of numbers that look random, the same for the same seed
   const noise = (seed) => {
     let state = [...seed].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7);
@@ -118,6 +110,8 @@
       const patches = e.grid * e.grid;
       explanations.set(key, {
         ...e,
+        image,
+        model,
         n,
         patches,
         at,
@@ -181,9 +175,6 @@
     if (k < ex.patches) return `the patch in row ${Math.floor(k / ex.grid) + 1}, column ${(k % ex.grid) + 1}`;
     return isWord(ex, k) ? `*${ex.words[k - ex.patches]}*` : `the token “${ex.words[k - ex.patches]}”`;
   };
-  // a list in words: "a", "a and b", "a, b, and c"
-  const listed = (items) =>
-    items.length < 3 ? items.join(" and ") : `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
   // a small cut of the photo that shows one patch
   const thumbOf = (c, ex, k) => {
     const thumb = el("span", "fixlip-figure-thumb");
@@ -201,6 +192,54 @@
     return pairs.sort((x, y) => Math.abs(y.value) - Math.abs(x.value));
   };
   const crossModal = (ex) => (i, j) => i < ex.patches && j >= ex.patches;
+
+  // -- the tokens of a text ---------------------------------------------------------------------------
+
+  // a token: it takes the room of its bold form (figures.css), so that a frame moves no other token
+  const chip = (word) => {
+    const node = el("span", "fixlip-figure-token", word);
+    node.dataset.word = word;
+    return node;
+  };
+  // the tokens of a text into their block: a punctuation mark stays on the line of the token before it
+  const fill = (block, ex, dress = (node) => node) => {
+    const groups = [];
+    ex.words.forEach((word, k) => {
+      const node = dress(chip(word), ex.patches + k);
+      if (groups.length && !isWord(ex, ex.patches + k)) groups.at(-1).push(node);
+      else groups.push([node]);
+    });
+    for (const group of groups) block.append(group.length > 1 ? add(el("span", "fixlip-figure-glued"), ...group) : group[0]);
+    return block;
+  };
+  // The block of a text is as high as the block of the longest text of the demo at this width, so
+  // that a figure keeps its height when the pair changes. Once the block is on the page.
+  const heights = new Map();
+  const reserve = (block, ex) => {
+    if (!block.isConnected || !ex.model) return;
+    const width = Math.round(block.getBoundingClientRect().width);
+    const style = getComputedStyle(block);
+    const key = [ex.model, width, style.fontSize, style.rowGap].join("|");
+    if (width && !heights.has(key)) {
+      const probe = block.cloneNode(false);
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", left: "0", top: "0", width: `${width}px`, minHeight: "0" });
+      block.after(probe);
+      let high = 0;
+      for (const image of data.images) {
+        if (!data.explanations[`${image.id}/${ex.model}`]) continue;
+        probe.replaceChildren();
+        high = Math.max(high, fill(probe, explanationOf(image.id, ex.model)).getBoundingClientRect().height);
+      }
+      probe.remove();
+      heights.set(key, Math.ceil(high));
+    }
+    if (heights.has(key)) block.style.minHeight = `${heights.get(key)}px`;
+  };
+  const textOf = (ex, dress) => {
+    const block = fill(el("div", "fixlip-figure-tokens"), ex, dress);
+    block.reserve = () => reserve(block, ex);
+    return block;
+  };
 
   // -- a photo with its patches and the tokens of its text ------------------------------------------
 
@@ -232,15 +271,12 @@
     };
     for (const k of range(ex.patches)) cells.append(dress(el("span", "fixlip-figure-cell"), k));
     add(node, add(photo, picture, cells));
-    if (text) {
-      const tokens = el("div", "fixlip-figure-tokens");
-      ex.words.forEach((word, k) => tokens.append(dress(el("span", "fixlip-figure-token", word), ex.patches + k)));
-      node.append(tokens);
-    }
+    if (text) node.append(textOf(ex, dress));
+    // room for the arcs between two tokens, also where a pair has none, so that the height stays
+    if (links) node.classList.add("fixlip-figure-arcs");
     if (links?.length) {
       const edges = svgEl("svg", { class: "fixlip-figure-edges", "aria-hidden": "true" });
       node.append(edges);
-      if (links.some(({ i, j }) => i >= ex.patches && j >= ex.patches)) node.classList.add("fixlip-figure-arcs");
       // once the figure is on the page: between the centers of patches and the tops of tokens, and
       // as an arc under two tokens
       node.drawLinks = () => {
@@ -282,8 +318,11 @@
     }
     return node;
   }
-  const drawLinks = (stage) => {
-    for (const node of stage.querySelectorAll(".fixlip-figure-pair")) node.drawLinks?.();
+  // once a figure, or a part that was drawn again, is on the page: the room of its texts, then the
+  // lines of its interactions
+  const settle = (root) => {
+    for (const block of root.querySelectorAll(".fixlip-figure-tokens")) block.reserve?.();
+    for (const node of root.querySelectorAll(".fixlip-figure-pair")) node.drawLinks?.();
   };
   // tints of main effects or attributions: the patches and the tokens on scales of their own
   const tintOf = (ex, values, strength = 0.8) => {
@@ -300,14 +339,6 @@
   const reading = (label, value, className = "") => {
     const node = el("p", `fixlip-figure-reading ${className}`.trim());
     return add(node, el("span", "", label), el("strong", "", value));
-  };
-  // a cell filled with amber by its value between the lowest and the highest: on the strong fills,
-  // the text is dark in both themes
-  const leveled = (cell, value, low, high) => {
-    const level = (value - low) / Math.max(1e-9, high - low);
-    cell.style.setProperty("--fixlip-level", level.toFixed(3));
-    if (level > 0.45) cell.classList.add("fixlip-figure-bright");
-    return cell;
   };
   const columns = (className, ...panels) => add(el("div", `fixlip-figure-columns ${className}`.trim()), ...panels);
 
@@ -371,25 +402,23 @@
       };
       const row = (input, name, symbol, count, seed) => [
         add(el("div", "fixlip-figure-input"), input, el("small", "", count)),
-        add(el("div", "fixlip-figure-encoder"), el("span", "", name), add(el("small"), el("i", "", "f"), el("sub", "", symbol))),
+        add(el("div", "fixlip-figure-encoder"), el("span", "", name), add(el("small", "fixlip-figure-symbol"), el("i", "", "f"), el("sub", "", symbol))),
         add(el("div", "fixlip-figure-vector"), embedding(seed), el("small", "", "embedding")),
       ];
       const photo = pair(c, { lined: true, text: false });
-      const text = el("div", "fixlip-figure-tokens");
-      for (const word of ex.words) text.append(el("span", "fixlip-figure-token", word));
+      const text = textOf(ex);
       const result = el("div", "fixlip-figure-similarity");
       add(result, el("span", "", "cosine similarity"), el("strong", "", fmt(ex.similarity)));
       add(
         stage,
         add(
           el("div", "fixlip-figure-encoders"),
-          ...row(photo, "Vision encoder", "I", `${ex.patches} patches`, "image"),
-          ...row(text, "Language encoder", "T", `${ex.words.length} tokens`, "text"),
+          ...row(photo, "Vision encoder", "\u2110", `${ex.patches} patches`, "image"),
+          ...row(text, "Language encoder", "\u{1D4AF}", `${ex.words.length} tokens`, "text"),
           el("div", "fixlip-figure-join"),
           result,
         ),
       );
-      return "";
     },
 
     // every model has its own scale: the similarities of matching and of unrelated pairs
@@ -406,7 +435,6 @@
       for (const tick of ticksOf(domain[0], domain[1], 0.1))
         draw("line", { class: "fixlip-figure-grid", x1: x(tick), x2: x(tick), y1: box.y0 - 8, y2: box.y1 });
       plot.xAxis(x, ticksOf(domain[0], domain[1], 0.1), "cosine similarity");
-      const shares = [];
       models.forEach((m, row) => {
         const y = box.y0 + lane * row + lane / 2;
         draw("text", { class: "fixlip-figure-strong", x: 0, y: y - 5 }, m.label);
@@ -423,7 +451,6 @@
         const dot = draw("circle", { class: "fixlip-figure-dot", cx: x(value), cy: y, r: 5.5 });
         dot.append(svgEl("title", {}, `${m.label}, this pair ${fmt(value)}`));
         draw("text", { class: "fixlip-figure-strong", x: x(value), y: y + 21, "text-anchor": "middle" }, fmt(value));
-        shares.push([m.label, share(value, m.norms.matching)]);
       });
       stage.append(
         add(
@@ -433,13 +460,6 @@
           add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-round"), "this pair"),
         ),
       );
-      return shares
-        .map(([label, below], k) =>
-          k === 0
-            ? `For ${label}, this pair scores higher than ${below < 0.995 ? percent(below) : "all"} of the matching pairs.`
-            : `For ${label}, it scores higher than ${below < 0.995 ? percent(below) : "all of them"}.`,
-        )
-        .join(" ");
     },
 
     // the model on masked inputs: one modality alone, the image without an object, random masks
@@ -451,7 +471,7 @@
       const [one, two] = fig.objects;
       const without = (thing) => all.filter((k) => !thing.patches.includes(k));
       const card = (label, players, value) =>
-        panel(label, pair(c, { kept: new Set(players) }), reading("similarity", fmt(value)));
+        panel(label, reading("similarity", fmt(value)), pair(c, { kept: new Set(players) }));
       add(
         stage,
         columns(
@@ -466,43 +486,6 @@
           card("A sparser mask", fig.examples["0.3"].players, fig.examples["0.3"].value),
         ),
       );
-      const full = fig.presets.full;
-      const moves = (value) => `${value < full ? "lowers" : "raises"} it to ${fmt(value)}`;
-      return `With the image alone, ${c.model.label} predicts ${fmt(fig.presets.image)}, and with the text alone ${fmt(fig.presets.text)}. An empty input scores ${fmt(fig.presets.empty)}. Only both modalities together reach ${fmt(full)}. Removing the ${one.name} from the image ${moves(fig.presets["no-one"])}, and removing the ${two.name} ${moves(fig.presets["no-two"])}.`;
-    },
-
-    // which words go with which regions: the prediction for one region and one part of the text
-    regions(stage, c) {
-      const { ex, fig } = c;
-      const [one, two] = fig.objects;
-      const values = [
-        [fig.presets["one-one"], fig.presets["one-two"]],
-        [fig.presets["two-one"], fig.presets["two-two"]],
-      ];
-      const [low, high] = [Math.min(...values.flat()), Math.max(...values.flat())];
-      const table = el("div", "fixlip-figure-matrix");
-      const wordsOf = (thing) => {
-        const node = el("div", "fixlip-figure-tokens");
-        for (const k of thing.words) node.append(el("span", "fixlip-figure-token", ex.words[k - ex.patches]));
-        return node;
-      };
-      add(table, el("span"), wordsOf(one), wordsOf(two));
-      [one, two].forEach((thing, row) => {
-        const head = add(el("div", "fixlip-figure-region"), pair(c, { kept: new Set(thing.patches), text: false }));
-        head.append(el("small", "", thing.name));
-        table.append(head);
-        values[row].forEach((value) => {
-          table.append(leveled(el("div", "fixlip-figure-value", fmt(value)), value, low, high));
-        });
-      });
-      stage.append(table);
-      const words = (thing) => `*${thing.words.map((k) => ex.words[k - ex.patches]).join(" ")}*`;
-      const matched = [values[0][0] > values[0][1], values[1][1] > values[1][0]];
-      if (matched.every(Boolean))
-        return `The region of the ${one.name} goes with ${words(one)}, and the region of the ${two.name} goes with ${words(two)}. Swapping the words lowers the similarity in both rows.`;
-      // the pattern does not hold in a row: say so, with the numbers of that row
-      const [thing, other, row] = matched[0] ? [two, one, [values[1][1], values[1][0]]] : [one, two, values[0]];
-      return `For this pair, the pattern holds only for the region of the ${other.name}. The region of the ${thing.name} scores ${fmt(row[0])} with ${words(thing)} and ${fmt(row[1])} with ${words(other)}.`;
     },
 
     // an interaction measured on the model: a patch and a word, alone and together
@@ -512,13 +495,14 @@
         const [patch, word, both] = [t.patch - t.neither, t.word - t.neither, t.both - t.neither];
         return { ...t, patch, word, both, measured: both - patch - word };
       });
-      const top = largest(measured.flatMap((t) => [t.patch, t.word, t.both, t.measured]));
-      const low = Math.min(0, ...measured.flatMap((t) => [t.patch, t.word, t.both, t.measured]));
+      const all = measured.flatMap((t) => [t.patch, t.word, t.both, t.measured, t.interaction]);
+      const top = largest(all);
+      const low = Math.min(0, ...all);
       const zero = (-low / (top - low)) * 100;
       const panels = measured.map((t) => {
         const [i, j] = t.players;
         const thumb = thumbOf(c, ex, i);
-        const title = add(el("span", "fixlip-figure-players"), thumb, el("span", "", "and"), el("span", "fixlip-figure-token", ex.words[j - ex.patches]));
+        const title = add(el("span", "fixlip-figure-players"), thumb, el("span", "", "and"), chip(ex.words[j - ex.patches]));
         const bars = el("div", "fixlip-figure-bars");
         const bar = (label, value, kind) => {
           const track = el("span", "fixlip-figure-track");
@@ -534,30 +518,28 @@
         bar("Word added", t.word, "gray");
         bar("Both added", t.both, "ink");
         bar("Interaction", t.measured, "sign");
+        bar("FIxLIP estimate", t.interaction, "sign");
         return panel(title, bars);
       });
       stage.append(columns("fixlip-figure-two", ...panels));
-      const [first, second] = measured;
-      const word = (t) => `*${ex.words[t.players[1] - ex.patches]}*`;
-      return `Added to a random mask, the patch changes the similarity by ${signed(first.patch)} on average and the word ${word(first)} by ${signed(first.word)}. Both together change it by ${signed(first.both)}. The difference of ${signed(first.measured)} is their interaction, which the explanation estimates as ${signed(first.interaction)}. With the word ${word(second)}, the same patch has an interaction of ${signed(second.measured)}.`;
     },
 
     // the explanation: main effects as tints, the strongest interactions as lines, and a list
     explanation(stage, c) {
-      const { ex, fig } = c;
+      const { ex } = c;
       const picture = pair(c, { tint: tintOf(ex, ex.first), links: strongest(ex).slice(0, STRONGEST) });
       const list = el("div", "fixlip-figure-list");
       // a player in the list: a word in italics, a punctuation mark as a token, a patch as a cut
-      const chip = (k) => {
+      const shown = (k) => {
         if (k < ex.patches) return thumbOf(c, ex, k);
-        return isWord(ex, k) ? el("em", "", ex.words[k - ex.patches]) : el("span", "fixlip-figure-token", ex.words[k - ex.patches]);
+        return isWord(ex, k) ? el("em", "", ex.words[k - ex.patches]) : chip(ex.words[k - ex.patches]);
       };
+      const line = (names, value) =>
+        add(el("p"), names, el("strong", value >= 0 ? "fixlip-figure-up" : "fixlip-figure-down", signed(value)));
       const row = (players, value) => {
-        const line = el("p");
         const names = el("span", "fixlip-figure-names");
-        players.forEach((k, at) => names.append(...(at ? [" and ", chip(k)] : [chip(k)])));
-        add(line, names, el("strong", value >= 0 ? "fixlip-figure-up" : "fixlip-figure-down", signed(value)));
-        return line;
+        players.forEach((k, at) => names.append(...(at ? [" and ", shown(k)] : [shown(k)])));
+        return line(names, value);
       };
       const mains = range(ex.n).sort((a, b) => Math.abs(ex.first[b]) - Math.abs(ex.first[a]));
       add(list, el("p", "fixlip-figure-title", "Strongest main effects"), ...mains.slice(0, 4).map((k) => row([k], ex.first[k])));
@@ -568,12 +550,14 @@
           .slice(0, 6)
           .map(({ i, j, value }) => row([i, j], value)),
       );
+      // what the page says about every pair: the patches matter through their interactions
+      add(
+        list,
+        el("p", "fixlip-figure-title", "Sums"),
+        line(el("span", "fixlip-figure-names", `main effects of the ${ex.patches} patches`), sum(ex.first.slice(0, ex.patches))),
+        line(el("span", "fixlip-figure-names", "cross-modal interactions"), sum(strongest(ex, crossModal(ex)).map((p) => p.value))),
+      );
       stage.append(columns("fixlip-figure-explained", picture, list));
-      const word = fig.word;
-      const patchSum = sum(ex.first.slice(0, ex.patches));
-      const crossSum = sum(strongest(ex, crossModal(ex)).map((p) => p.value));
-      const alone = fig.presets.word - fig.presets.empty;
-      return `The word ${nameOf(ex, word)} has the largest main effect with ${signed(ex.first[word])}. With all other tokens masked, this word changes the prediction of the model by ${signed(alone)}. The main effects of all ${ex.patches} patches sum to ${signed(patchSum)}, while the cross-modal interactions sum to ${signed(crossSum)}.`;
     },
 
     // conditioning on a token: every player tinted by its interaction with the framed one
@@ -581,25 +565,12 @@
       const { ex, fig } = c;
       const [patch, word] = fig.together[0].players;
       const other = fig.together[1].players[1];
-      // the strongest partner of a player, punctuation marks aside
-      const named = (k) => k < ex.patches || isWord(ex, k);
-      const best = (k) => strongest(ex, (i, j) => (i === k && named(j)) || (j === k && named(i)))[0];
       const panels = [other, word, patch].map((k) => {
         const top = largest(range(ex.n).map((j) => ex.at(k, j)));
         const title = k >= ex.patches ? `Conditioned on *${ex.words[k - ex.patches]}*` : "Conditioned on a patch";
         return panel(title, pair(c, { tint: (j) => (j === k ? null : rgba(ex.at(k, j), top)), framed: new Set([k]) }));
       });
       stage.append(columns("fixlip-figure-three", ...panels));
-      const partner = (k) => {
-        const { i, j, value } = best(k);
-        return `${nameOf(ex, i === k ? j : i)} (${signed(value)})`;
-      };
-      const [first, second] = [best(other), best(word)];
-      if (first.i === second.i && first.j === second.j) {
-        // the two framed words are each other's strongest partner
-        return `The words ${nameOf(ex, other)} and ${nameOf(ex, word)} interact the most with each other (${signed(first.value)}).`;
-      }
-      return `The word ${nameOf(ex, other)} interacts the most with ${partner(other)}. The word ${nameOf(ex, word)} interacts the most with ${partner(word)}.`;
     },
 
     // a clique of the size that the slider sets, and for every size its value in the explanation
@@ -633,25 +604,25 @@
       const all = sizes.flatMap((size) => [value(size), gain(size)]);
       const step = stepOf(Math.min(0, ...all), Math.max(...all));
       const domain = [Math.floor(Math.min(0, ...all) / step) * step, Math.ceil(Math.max(...all) / step) * step];
-      const plot = chart(holder, 230, { left: 42, right: 12, top: 10, bottom: 34 });
+      const plot = chart(holder, 230, { left: 58, right: 12, top: 10, bottom: 34 });
       const { draw, box } = plot;
       const x = plot.linear([sizes[0], sizes.at(-1)], [box.x0 + 10, box.x1 - 10]);
       const y = plot.linear(domain, [box.y1, box.y0]);
-      plot.yAxis(y, ticksOf(domain[0], domain[1], step), "", (t) => fmt(t, 2));
+      plot.yAxis(y, ticksOf(domain[0], domain[1], step), "change in similarity", (t) => fmt(t, 2));
       plot.xAxis(x, sizes, "tokens in the clique", (t) => String(t));
       if (domain[0] < 0) draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: y(0), y2: y(0) });
       const guide = draw("line", { class: "fixlip-figure-guide", y1: box.y0, y2: box.y1 });
       plot.path(sizes.map((size) => [x(size), y(gain(size))]), { class: "fixlip-figure-line fixlip-figure-ink" });
       plot.path(sizes.map((size) => [x(size), y(value(size))]), { class: "fixlip-figure-line fixlip-figure-amber" });
       const dots = [gain, value].map(() => draw("circle", { class: "fixlip-figure-dot", r: 4.5 }));
-      // the clique of the size chosen: after the first time, its lines are drawn here
+      // the clique of the size chosen: after the first time, it is settled here
       const show = (again) => {
         const size = chosen();
         const inside = new Set(ex.cliques[size][0]);
         const picture = pair(c, { members: inside, links: strongest(ex, (i, j) => inside.has(i) && inside.has(j)) });
         title.textContent = `Clique of ${size}`;
         shown.replaceChildren(picture);
-        if (again) picture.drawLinks?.();
+        if (again) settle(shown);
         readings.replaceChildren(
           reading("value", signed(value(size))),
           reading("gain on the model", signed(gain(size))),
@@ -664,11 +635,6 @@
         });
       };
       show(false);
-      const [small, big] = [sizes[0], sizes.at(-1)];
-      const gained = (size, who) =>
-        gain(size) >= 0 ? `${who} gains ${signed(gain(size))} over an empty input` : `${who} predicts ${fmt(-gain(size))} less than for an empty input`;
-      const members = listed(ex.cliques[small][0].map((k) => nameOf(ex, k)));
-      return `The clique of ${small} consists of ${members}. Its value is ${signed(value(small))}, while ${gained(small, c.model.label)} for it alone. The clique of ${big} has a value of ${signed(value(big))}, while ${gained(big, "the model")}.`;
     },
 
     // the parameter p decides which masks matter: a random mask and the predictions for 512 of them
@@ -689,14 +655,16 @@
       });
       const tallest = Math.max(...counts.flat().map(([a, b]) => a + b));
       const panels = ps.map((p, at) => {
-        const card = panel(`p = ${p}`, pair(c, { kept: new Set(fig.examples[p].players) }));
+        const card = panel(`*p* = ${p}`, pair(c, { kept: new Set(fig.examples[p].players) }));
         const holder = el("div", "fixlip-figure-plot");
         card.append(holder);
         card.plot = () => {
-          const plot = chart(holder, 150, { left: 12, right: 12, top: 8, bottom: 30 });
+          const plot = chart(holder, 164, { left: 46, right: 8, top: 8, bottom: 34 });
           const { draw, box } = plot;
           const x = plot.linear(domain, [box.x0, box.x1]);
           const y = plot.linear([0, tallest], [box.y1, box.y0]);
+          const count = [20, 50, 100, 200].find((size) => tallest / size <= 4) ?? 500;
+          plot.yAxis(y, ticksOf(0, tallest, count), "number of masks", (t) => String(t));
           const width = (box.x1 - box.x0) / bins;
           counts[at].forEach(([without, withWord], bin) => {
             const left = box.x0 + bin * width;
@@ -707,15 +675,13 @@
           for (const mark of [fig.empty, fig.presets.full])
             draw("line", { class: "fixlip-figure-mark", x1: x(mark), x2: x(mark), y1: box.y0, y2: box.y1 });
           const step = Math.max(0.05, stepOf(domain[0], domain[1]));
-          plot.xAxis(x, ticksOf(domain[0], domain[1], step), at === 1 ? "similarity of a random mask" : "", (t) => fmt(t, 2));
+          plot.xAxis(x, ticksOf(domain[0], domain[1], step), "cosine similarity", (t) => fmt(t, 2));
         };
         return card;
       });
       stage.append(columns("fixlip-figure-three", ...panels));
       for (const card of panels) card.plot();
       const word = nameOf(ex, fig.word);
-      const half = fig.holdout["0.5"];
-      const split = (flag) => mean(half.value.filter((_, k) => half.kept[k] === flag));
       stage.append(
         add(
           el("p", "fixlip-figure-legend"),
@@ -724,7 +690,6 @@
           add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-dashed"), "no tokens and all tokens"),
         ),
       );
-      return `The average prediction rises from ${fmt(mean(fig.holdout["0.3"].value))} for p = 0.3 to ${fmt(mean(fig.holdout["0.7"].value))} for p = 0.7. For p = 0.5, the masks that keep the word ${word} score ${fmt(split("1"))} on average, and all others ${fmt(split("0"))}.`;
     },
 
     // predicting the model on held-out masks: the first-order conversion and the explanation
@@ -758,7 +723,6 @@
       });
       stage.append(columns("fixlip-figure-two", ...panels));
       for (const card of panels) card.plot();
-      return `For this pair, the second-order explanation reaches an R² of ${fmt(half.r2.order2, 2)}, and its conversion to first order reaches ${fmt(half.r2.order1, 2)}. On sparser masks sampled with p = 0.3, the R² of the explanation is ${fmt(fig.holdout["0.3"].r2.order2, 2)}.`;
     },
 
     // insertion and deletion: the model's prediction for the subsets valued the most and the least
@@ -778,7 +742,6 @@
       // full input (1), on average over all sizes
       const aid = (order) =>
         mean(lines[`${order}-max`].map((value, k) => value - lines[`${order}-min`][k])) / (fig.presets.full - fig.empty);
-      const deleted = n - fig.subsets.deleted.length;
       const values = Object.values(lines).flat();
       const domain = [Math.floor(Math.min(...values) * 20) / 20, Math.ceil(Math.max(...values) * 20) / 20];
       const holder = el("div", "fixlip-figure-plot");
@@ -833,9 +796,10 @@
           ...kinds.map(([key, kind, title], k) => {
             dots[k].setAttribute("cx", x(size));
             dots[k].setAttribute("cy", y(lines[key][size]));
-            return panel(title, pair(c, { kept: new Set(subsets[kind][size]) }), reading("similarity", fmt(lines[key][size])));
+            return panel(title, reading("similarity", fmt(lines[key][size])), pair(c, { kept: new Set(subsets[kind][size]) }));
           }),
         );
+        settle(cards);
       };
       show();
       // with a mouse, a press or a drag on the chart sets the size too
@@ -855,31 +819,18 @@
       plot.svg.addEventListener("pointermove", (event) => {
         if (event.pointerType !== "touch" && event.buttons & 1) pick(event);
       });
-      return `The AID is ${fmt(aid("order2"), 2)} for the second-order explanation and ${fmt(aid("order1"), 2)} for its conversion to first order. The second-order explanation finds ${deleted} tokens whose removal lowers the similarity from ${fmt(fig.presets.full)} to ${fmt(lines["order2-min"][n - deleted])}. The slider shows them at ${n - deleted} tokens kept.`;
     },
 
     // the same pair explained for two models: their cliques of six tokens
     models(stage, c) {
       const size = "6";
       const models = data.models.filter((m) => data.explanations[`${c.id}/${m.id}`]?.cliques[size]);
-      const parts = [];
       const panels = [...models].reverse().map((m) => {
         const ex = explanationOf(c.id, m.id);
         const inside = new Set(ex.cliques[size][0]);
-        const patches = [...inside].filter((k) => k < ex.patches).length;
-        const tokens = [...inside].filter((k) => k >= ex.patches);
-        const words = tokens.filter((k) => isWord(ex, k)).map((k) => ex.words[k - ex.patches]);
-        const marks = tokens.length - words.length;
-        const contents = [
-          patches ? `${patches} image ${patches === 1 ? "patch" : "patches"}` : "no image patch",
-          ...(words.length ? [`the ${words.length === 1 ? "word" : "words"} *${words.join(" ")}*`] : []),
-          ...(marks ? [`${marks} punctuation ${marks === 1 ? "mark" : "marks"}`] : []),
-        ];
-        parts.push(`For ${m.label}, the clique of six contains ${listed(contents)}.`);
         return panel(m.label, pair(c, { ex, members: inside, links: strongest(ex, (i, j) => inside.has(i) && inside.has(j)) }));
       });
       stage.append(columns("fixlip-figure-two fixlip-figure-narrow", ...panels));
-      return parts.join(" ");
     },
 
     // -- the figures that do not follow the image ----------------------------------------------------
@@ -926,6 +877,7 @@
         readings.replaceChildren(
           reading("with its photo", signed(inside)),
           reading("with the other photos", signed(sum(values) - inside)),
+          reading("recognition over all names", fmt(game.recognition, 2)),
         );
       };
       show();
@@ -937,11 +889,11 @@
           panel("Pointing game recognition for CLIP", holder),
         ),
       );
-      const plot = chart(holder, 260, { left: 40, right: 138, top: 10, bottom: 34 });
+      const plot = chart(holder, 260, { left: 52, right: 138, top: 10, bottom: 34 });
       const { draw, box: area } = plot;
       const x = plot.linear([1, 4], [area.x0 + 8, area.x1 - 4]);
       const y = plot.linear([0, 1], [area.y1, area.y0]);
-      plot.yAxis(y, [0, 0.25, 0.5, 0.75, 1], "", (t) => fmt(t, 2));
+      plot.yAxis(y, [0, 0.25, 0.5, 0.75, 1], "pointing game recognition", (t) => fmt(t, 2));
       plot.xAxis(x, [1, 2, 3, 4], "class names in the text", (t) => String(t));
       draw("line", { class: "fixlip-figure-mark", x1: area.x0, x2: area.x1, y1: y(0.25), y2: y(0.25) });
       draw("text", { x: area.x0 + 6, y: y(0.25) + 14 }, "random");
@@ -962,25 +914,23 @@
         });
         if (label) draw("text", { class: kind === "amber" ? "fixlip-figure-strong" : "", x: area.x1 + 4, y: y(scores[3]) + 4 }, `${label} ${fmt(scores[3], 2)}`);
       }
-      const model = data.models.find((m) => m.id === game.model)?.label ?? game.model;
-      return `For this image and text, ${fmt(game.recognition, 2)} of the absolute interactions between names and patches are correct in the explanation of ${model}. A name below the image shows its interactions.`;
     },
 
     // the paper's faithfulness of every method, as box plots
     "paper-faithfulness"(stage) {
-      const draw = (key, title, matching) => {
+      const draw = (key, title, label, matching) => {
         const { methods } = extra.paper[key];
         const card = panel(title);
         const holder = el("div", "fixlip-figure-plot");
         card.append(holder);
         stage.append(card);
         const lane = 24;
-        const plot = chart(holder, 10 + lane * methods.length + 32, { left: 112, right: 14, top: 10, bottom: 32 });
+        const plot = chart(holder, 10 + lane * methods.length + 36, { left: 112, right: 14, top: 10, bottom: 36 });
         const { box } = plot;
         const x = plot.linear([0, 1], [box.x0, box.x1]);
         for (const tick of [0, 0.2, 0.4, 0.6, 0.8, 1])
           plot.draw("line", { class: "fixlip-figure-grid", x1: x(tick), x2: x(tick), y1: box.y0, y2: box.y1 });
-        plot.xAxis(x, [0, 0.2, 0.4, 0.6, 0.8, 1]);
+        plot.xAxis(x, [0, 0.2, 0.4, 0.6, 0.8, 1], label);
         methods.forEach((method, row) => {
           const y = box.y0 + lane * row + lane / 2;
           const ours = method.name.startsWith("FIxLIP");
@@ -1000,9 +950,8 @@
           if (method.median === null) plot.draw("text", { x: box.x0 + 6, y: y - 5 }, "median below 0");
         });
       };
-      draw("correlation", "*p*-faithfulness correlation for *p* = 0.7", "FIxLIP (p = 0.7)");
-      draw("r2", "R² for *p* = 0.5", "FIxLIP (p = 0.5)");
-      return "";
+      draw("correlation", "*p*-faithfulness correlation for *p* = 0.7", "rank correlation", "FIxLIP (p = 0.7)");
+      draw("r2", "R² for *p* = 0.5", "R²", "FIxLIP (p = 0.5)");
     },
 
     // the paper's insertion and deletion curves: one plot that overlays the ticked methods, and one
@@ -1033,11 +982,11 @@
       const compare = () => {
         holder.replaceChildren(tip);
         tip.hidden = true;
-        const plot = chart(holder, 250, { left: 38, right: 10, top: 10, bottom: 36 });
+        const plot = chart(holder, 250, { left: 52, right: 10, top: 10, bottom: 36 });
         const { box, draw } = plot;
         const x = plot.linear([steps, 0], [box.x0, box.x1]);
         const y = plot.linear(span, [box.y1, box.y0]);
-        plot.yAxis(y, [-0.5, 0, 0.5, 1], "", (t) => fmt(t, 1));
+        plot.yAxis(y, [-0.5, 0, 0.5, 1], "normalized prediction", (t) => fmt(t, 1));
         draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: y(0), y2: y(0) });
         for (const share of [0, 0.25, 0.5, 0.75, 1])
           draw("text", { x: x(steps * (1 - share)), y: box.y1 + 14, "text-anchor": share === 0 ? "start" : share === 1 ? "end" : "middle" }, percent(share));
@@ -1164,7 +1113,6 @@
         curve(plot, x, y, method.insertion, { class: "fixlip-figure-line" });
         curve(plot, x, y, method.deletion, { class: "fixlip-figure-line fixlip-figure-dashed" });
       }
-      return "";
     },
 
     // the paper's runtime of the two estimators against the number of sampled masks
@@ -1221,19 +1169,15 @@
           add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-dashed"), "model inference only"),
         ),
       );
-      return "";
     },
   };
 
-  // -- the frame of a figure: its selector, its stage, its note, and its dots ------------------------
+  // -- the frame of a figure: its selector, its stage, and its dots ----------------------------------
 
   const frames = figures.map((figure) => {
     const name = figure.dataset.figure;
     const stage = figure.querySelector(".fixlip-figure-stage");
-    const note = el("p", "fixlip-figure-note");
-    note.setAttribute("aria-live", "polite");
-    stage.after(note);
-    return { figure, name, stage, note, follows: !STATIC.has(name), width: -1, buttons: [], dots: [], state: {} };
+    return { figure, name, stage, follows: !STATIC.has(name), width: -1, buttons: [], dots: [], state: {} };
   });
 
   const hints = []; // the hints at the swipe that are on the page
@@ -1348,22 +1292,24 @@
     stage.addEventListener("touchcancel", (event) => endSwipe(event, true));
   }
 
-  function render(frame) {
-    const { stage, note, name } = frame;
+  // A figure is drawn into a layer of its stage. With `fade`, the layer of the pair before stays
+  // until the new one is ready, and the two fade into each other. Both lie in one cell of the
+  // stage, and the texts keep their height, so nothing around the figure moves.
+  function render(frame, fade = false) {
+    const { stage, name } = frame;
     const draw = FIGURES[name];
     if (!draw) return;
-    stage.replaceChildren();
+    const before = [...stage.children];
+    const layer = el("div", "fixlip-figure-layer");
+    stage.append(layer);
     const c = frame.follows ? contextOf(current) : null;
-    let text = "";
     try {
-      text = draw(stage, c, frame.state) ?? "";
-      drawLinks(stage);
+      draw(layer, c, frame.state);
+      settle(layer);
     } catch (error) {
       console.error(`The figure "${name}" could not be drawn:`, error);
-      stage.replaceChildren(el("p", "fixlip-figure-missing", stage.getAttribute("aria-label") ?? ""));
+      layer.replaceChildren(el("p", "fixlip-figure-missing", stage.getAttribute("aria-label") ?? ""));
     }
-    note.replaceChildren(...rich(text));
-    note.hidden = !text;
     if (frame.follows) {
       frame.label.textContent = c.image.title ?? "";
       data.images.forEach((image, k) => {
@@ -1372,6 +1318,26 @@
       });
     }
     frame.figure.classList.add("fixlip-figure-ready");
+    const from = frame.entering ? `translateX(${frame.entering * 32}px)` : "none";
+    frame.entering = 0;
+    if (!fade || !before.length || reducedMotion()) {
+      for (const node of before) node.remove();
+      return;
+    }
+    // the new layer fades in over the last one, which stays as it is until it is covered. An older
+    // layer that is still on the page is gone at once
+    const last = before.pop();
+    for (const node of before) node.remove();
+    last.inert = true;
+    layer.style.opacity = "0";
+    const photos = [...layer.querySelectorAll("img")].map((photo) => photo.decode().catch(() => {}));
+    const patience = new Promise((resolve) => setTimeout(resolve, 300));
+    Promise.race([Promise.all(photos), patience]).then(() => {
+      if (!layer.isConnected) return;
+      layer.style.opacity = "";
+      const fading = layer.animate([{ opacity: 0, transform: from }, { opacity: 1, transform: "none" }], { duration: 260, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" });
+      fading.finished.then(() => last.remove(), () => last.remove());
+    });
   }
 
   function start() {
@@ -1398,14 +1364,7 @@
       if (!image || image === current || !extra.images[image]) return;
       current = image;
       const before = source?.getBoundingClientRect().top;
-      for (const frame of frames) {
-        if (!frame.follows) continue;
-        render(frame);
-        if (reducedMotion()) continue;
-        const from = frame.entering ? `translateX(${frame.entering * 32}px)` : "none";
-        frame.entering = 0;
-        frame.stage.animate([{ opacity: 0.2, transform: from }, { opacity: 1, transform: "none" }], { duration: 260, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" });
-      }
+      for (const frame of frames) if (frame.follows) render(frame, true);
       if (source) window.scrollBy(0, source.getBoundingClientRect().top - before);
     });
   }

@@ -116,10 +116,6 @@ def evaluate(photo: dict[str, Any], model: dict[str, Any], data: dict[str, Any])
         "image": image,
         "text": text,
         "word": [word],
-        "one-one": one["patches"] + one["words"],
-        "one-two": one["patches"] + two["words"],
-        "two-one": two["patches"] + one["words"],
-        "two-two": two["patches"] + two["words"],
         "no-one": [i for i in image if i not in one["patches"]] + text,
         "no-two": [i for i in image if i not in two["patches"]] + text,
     }
