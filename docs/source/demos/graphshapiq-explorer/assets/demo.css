@@ -670,3 +670,35 @@
 .graphshapiq-explorer-demo .gsq-panel-in:focus {
   outline: none;
 }
+
+/* the key of the colors, under the rows */
+.graphshapiq-explorer-demo .gsq-panel-in > .gsq-legend {
+  margin-top: 0.7rem;
+}
+
+/* beside the molecule, the key of the colors sits at the bottom, level with the frame's */
+@container (min-width: 42.01rem) {
+  .graphshapiq-explorer-demo .gsq-body {
+    align-items: stretch;
+  }
+
+  .graphshapiq-explorer-demo .gsq-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .graphshapiq-explorer-demo .gsq-panel-in {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .graphshapiq-explorer-demo .gsq-panel-in > .gsq-legend {
+    margin: auto 0 0;
+    padding-top: 0.5rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-rows {
+    gap: 0.2rem;
+  }
+}

@@ -445,16 +445,24 @@ body[data-theme="dark"] .gsq {
   line-height: 1.4;
 }
 
-/* whether the prediction is right: a check or a cross, in ink (red and blue mean raises and lowers) */
-.gsq .gsq-ask-right {
-  margin: 0.15rem 0 0;
-  color: var(--gsq-muted);
-  font-size: 0.85rem;
-  line-height: 1.4;
+/* whether the prediction is right, on the label's line: a check or a cross, in ink (red and blue
+   mean raises and lowers) */
+.gsq .gsq-ask-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
 }
 
-.gsq .gsq-ask-right strong {
+.gsq .gsq-ask-head .gsq-barlab {
+  margin: 0;
+}
+
+.gsq .gsq-ask-right {
   color: var(--gsq-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .gsq .gsq-ask-right[hidden] {

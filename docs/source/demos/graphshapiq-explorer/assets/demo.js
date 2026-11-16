@@ -28,7 +28,7 @@
   // question's pattern first
   const TASK_ORDER = ["mutagenic", "indole", "PAINS"];
 
-  const ROWS = 6; // the most rows a panel of explanations lists
+  const ROWS = 7; // the most rows a panel of explanations lists
   const MAX_ATOMS = 15; // of a molecule the reader builds: at most 2^15 maskings
   const OVERALL = 24, PER_ATOM = 8; // the interactions of an order the worker sends: as compute/pack.py keeps
 
@@ -526,9 +526,7 @@
     function answer(m, t, e) {
       const n = state.view === "predict" ? state.masked.size : 0, p = sig(n ? G.predict(data.symbols, m, t, state.masked) : e.logOdds);
       // whether the GNN is right, for the whole molecule only
-      const has = e.truth.length > 0, truth = n ? null : truthOf(m, t, e);
-      const why = truth === null ? "" : truth ? (has || !t.truthOther ? t.truthYes : t.truthOther) : t.truthNo;
-      ask.set({ task: t, subject: m.name, has, p, truth, why });
+      ask.set({ task: t, subject: m.name, has: e.truth.length > 0, p, truth: n ? null : truthOf(m, t, e) });
       const said = `${m.name}. ${t.question} The GNN answers ${percent(p)}, ${p >= 0.5 ? t.yes : t.no}${n ? `, with ${n} ${n === 1 ? "atom" : "atoms"} hidden` : ""}.`;
       if (live.textContent !== said) live.textContent = said;
       return p;
@@ -555,10 +553,9 @@
       box.append(compare);
     }
     function explanationPanel(box, m, t, e) {
-      const title = h("p", "gsq-title"), detail = h("p", "gsq-detail"), list = h("ol", "gsq-rows");
+      const title = h("p", "gsq-title"), list = h("ol", "gsq-rows");
       if (e.pending || e.failed) { box.append(computing()); return; }
       if (state.order === 1) {
-        detail.append("A halo is an atom's share of the answer. Each interaction is split evenly among its atoms.");
         const own = singles(e, 1), rows = Object.keys(own).map((k) => ({ atoms: [Number(k)], v: own[k] })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
         const largest = Math.max(1e-9, Math.abs(rows[0]?.v || 0));
         for (const g of rows.slice(0, ROWS)) list.append(G.row(m, g.atoms, g.v, largest, G.atomName(m, g.atoms[0])));
@@ -579,7 +576,7 @@
         }
         if (!rows.length) list.append(h("li", "gsq-none", "No interactions of this atom here."));
       }
-      box.append(...[title, detail].filter((p) => p.childNodes.length), list, legend(t, null)); // the ground truth's key is in the frame
+      box.append(...(title.childNodes.length ? [title] : []), list, legend(t, null)); // the ground truth's key is in the frame
     }
 
     function update() {

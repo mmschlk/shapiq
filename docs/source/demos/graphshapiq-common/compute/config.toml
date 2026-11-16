@@ -26,10 +26,6 @@ yes = "indole"
 no = "no indole"
 dataset = "B-XAIC"
 truthLabel = "indole"
-# whether the GNN is right, under its answer: the molecule is one, is none, or is one without the
-# pattern (empty where the card says it already: an indole is its pattern)
-truthYes = ""
-truthNo = ""
 # B-XAIC's indole: a six-membered carbon ring fused to a five-membered ring with a nitrogen, with
 # aromatic, single or double ring bonds as in indole (this SMARTS agrees with B-XAIC's labels)
 pattern = "[#6]1:,=[#6]:,-[#6]:,=[#6]2:,-[#6](:,=[#6]1):,-[#6]:,=[#6]:,-[#7]2"
@@ -44,9 +40,6 @@ yes = "mutagenic"
 no = "not mutagenic"
 dataset = "Mutagenicity"
 truthLabel = "nitro group"
-truthYes = "The Ames test finds it mutagenic."
-truthNo = "The Ames test finds it not mutagenic."
-truthOther = "The Ames test finds it mutagenic, without a nitro group."
 # the nitro group, a known structural alert for Ames-test mutagens (Kazius et al., 2005)
 pattern = "[N+](=O)[O-]"
 
@@ -60,9 +53,6 @@ yes = "PAINS"
 no = "no PAINS"
 dataset = "B-XAIC"
 truthLabel = "catechol"
-truthYes = "It is a PAINS."
-truthNo = "It is no PAINS."
-truthOther = "It is a PAINS of another kind."
 # the catechol, the PAINS alert of the demos' molecules (B-XAIC outlines it with its ring)
 pattern = "c1([OH1])c([OH1])cccc1"
 

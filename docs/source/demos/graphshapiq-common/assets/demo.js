@@ -363,21 +363,21 @@
   // `set({task, subject, has, p, note})` shows a question for a molecule (`subject`, its name),
   // which has the question's pattern or not, with the GNN's probability of yes `p` (`note`: what
   // the answer is for, if not for the whole molecule; `truth`: the molecule's true answer, true or
-  // false, and `why` the reason in a few words, or `truth` null where it is not known)
+  // false, or null where it is not known)
   function question(tasks, pick) {
     const choice = switcher("Question", tasks.map((t) => t.label), (k) => pick(tasks[k]));
     const picture = h("div", "gsq-ask-motif"), title = h("p", "gsq-ask-title"), meaning = h("p"), here = h("p", "gsq-ask-here");
-    const number = h("span", "gsq-pred-value"), verdict = h("span", "gsq-verdict"), note = h("p", "gsq-ask-note"), right = h("p", "gsq-ask-right");
+    const number = h("span", "gsq-pred-value"), verdict = h("span", "gsq-verdict"), note = h("p", "gsq-ask-note"), right = h("span", "gsq-ask-right");
     const scale = h("div", "gsq-scale"), fill = h("span", "gsq-scale-fill"), mark = h("span", "gsq-scale-mark");
     scale.setAttribute("aria-hidden", "true");
     scale.append(fill, h("span", "gsq-scale-half"), mark);
-    const card = h("div", "gsq-ask-card", picture, h("div", "gsq-ask-text", title, meaning, here), h("div", "gsq-ask-answer", h("p", "gsq-barlab", "GNN prediction"), h("p", "gsq-pred-number", number, verdict), scale, right, note));
+    const card = h("div", "gsq-ask-card", picture, h("div", "gsq-ask-text", title, meaning, here), h("div", "gsq-ask-answer", h("div", "gsq-ask-head", h("p", "gsq-barlab", "GNN prediction"), right), h("p", "gsq-pred-number", number, verdict), scale, note));
     const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", h("span", "gsq-long", "Question"), h("abbr", "gsq-short", "Q")), choice.node), card);
     let asked = null;
     return {
       node,
       buttons: choice.buttons,
-      set({ task, subject, has, p, note: about, truth = null, why = "" }) {
+      set({ task, subject, has, p, note: about, truth = null }) {
         choice.set(tasks.indexOf(task));
         if (task !== asked) {
           asked = task;
@@ -390,13 +390,9 @@
         number.textContent = percent(p); verdict.textContent = p >= 0.5 ? task.yes : task.no;
         fill.style.width = mark.style.left = `${p * 100}%`;
         note.textContent = about || "";
-        // whether the prediction is right, where the true answer is known
+        // whether the prediction is right, where the true answer is known, on the label's line
         right.hidden = truth === null;
-        if (truth !== null) {
-          const ok = (p >= 0.5) === truth;
-          right.className = `gsq-ask-right ${ok ? "gsq-ok" : "gsq-wrong"}`;
-          right.replaceChildren(h("strong", "", ok ? "✓ Correct. " : "✗ Wrong. "), why);
-        }
+        if (truth !== null) right.textContent = (p >= 0.5) === truth ? "✓ Correct" : "✗ Wrong";
       },
     };
   }

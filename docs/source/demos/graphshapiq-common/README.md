@@ -308,3 +308,8 @@ an indole's (+4.12 in 2-SII), the pair says no (−3.35), and the GNN is right (
 set's only negative pair that explains a right no. Its explanations were computed by the
 explorer's worker under Node (it agrees with shapiq to 1.6e-03), not by explain.py. A full
 `pack.py` run after `explain.py` recomputes it with shapiq.
+
+A nineteenth pass made the mark the same for every question, "✓ Correct" or "✗ Wrong" on the
+label's line (the reasons of the seventeenth pass are gone), so the answer is no taller than the
+card's text. A panel lists up to seven rows, the Shapley caption is gone too, and beside the
+molecule the key of the colors sits at the bottom, level with the frame's.
