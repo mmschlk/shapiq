@@ -158,9 +158,21 @@ body[data-theme="dark"] .fixlip-figure {
 }
 
 .fixlip-figure-shown {
+  flex: 1;
   min-width: 0;
   font-size: 0.8rem;
+  line-height: 1.3;
   color: var(--fixlip-muted);
+}
+
+/* the photo of the pair, shown where the thumbnails are not */
+.fixlip-figure .fixlip-figure-shown-photo {
+  display: none;
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 7px;
+  object-fit: cover;
 }
 
 .fixlip-figure-photos {
@@ -271,9 +283,13 @@ body[data-theme="dark"] .fixlip-figure {
     }
   }
 
+  .fixlip-figure .fixlip-figure-shown-photo {
+    display: block;
+  }
+
   .fixlip-figure-bar {
-    min-height: 0;
-    margin-bottom: 0.5rem;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
   }
 }
 
@@ -553,25 +569,63 @@ body[data-theme="dark"] .fixlip-figure {
 
 /* -- from an image–text pair to a similarity ------------------------------------------------------ */
 
+/* Each branch lies in two rows of one height, with a row of room between the branches. The bracket
+   of the similarity starts in the second row of the upper branch and ends in the first row of the
+   lower one, so it runs from the middle of one branch to the middle of the other. */
 .fixlip-figure-encoders {
   display: grid;
   grid-template-columns: minmax(0, 11rem) auto auto auto auto;
+  grid-template-rows: auto auto 2.6rem auto auto;
   justify-content: center;
   align-items: center;
-  gap: 1.5rem 2rem;
-  padding-bottom: 1.4rem; /* the label of the lower embedding hangs under its row */
+  gap: 0 2rem;
+  padding-bottom: 2.2rem; /* the labels of the lower branch hang under its rows */
 }
 
+.fixlip-figure-encoders > :nth-child(-n + 3) {
+  grid-row: 1 / span 2;
+}
+
+.fixlip-figure-encoders > :nth-child(n + 4) {
+  grid-row: 4 / span 2;
+}
+
+/* An input lies in the middle of its branch, on the line of the arrows. Its label hangs under it
+   and is no part of the height. The room of the longest text is kept around the text (figures.js). */
 .fixlip-figure-input {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
   gap: 0.35rem;
   min-width: 0;
 }
 
-.fixlip-figure-input .fixlip-figure-pair {
+.fixlip-figure-held {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.fixlip-figure-held > .fixlip-figure-pair {
   width: min(100%, 8.5rem);
+}
+
+.fixlip-figure-held > .fixlip-figure-tokens {
+  align-self: stretch;
+  align-content: center;
+}
+
+.fixlip-figure-held > small {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .fixlip-figure-encoders small {
@@ -613,11 +667,11 @@ body[data-theme="dark"] .fixlip-figure {
 }
 
 .fixlip-figure-encoder::before {
-  right: calc(100% + 0.45rem);
+  right: calc(100% + 0.6rem);
 }
 
 .fixlip-figure-encoder::after {
-  left: calc(100% + 0.45rem);
+  left: calc(100% + 0.6rem);
 }
 
 .fixlip-figure-vector {
@@ -687,20 +741,20 @@ body[data-theme="dark"] .fixlip-figure {
 }
 
 /* both embeddings meet in the similarity */
-.fixlip-figure-join {
+.fixlip-figure-encoders > .fixlip-figure-join {
   grid-column: 4;
-  grid-row: 1 / span 2;
+  grid-row: 2 / span 3;
   align-self: stretch;
   width: 0.8rem;
-  margin: 4.2rem -1rem 3.2rem -1.2rem;
+  margin: 0 -1rem 0 -1.2rem;
   border: 1.5px solid var(--fixlip-line);
   border-left: 0;
   border-radius: 0 10px 10px 0;
 }
 
-.fixlip-figure-similarity {
+.fixlip-figure-encoders > .fixlip-figure-similarity {
   grid-column: 5;
-  grid-row: 1 / span 2;
+  grid-row: 2 / span 3;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -723,9 +777,21 @@ body[data-theme="dark"] .fixlip-figure {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: auto auto auto;
     grid-auto-flow: column;
+    align-items: start;
     justify-items: center;
     gap: 1.9rem 1rem;
     padding-bottom: 0;
+  }
+
+  .fixlip-figure-encoders > :nth-child(n) {
+    grid-row: auto;
+  }
+
+  /* both encoders are of one width */
+  .fixlip-figure-encoder {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 9.5rem;
   }
 
   .fixlip-figure-encoder::before,
@@ -738,32 +804,57 @@ body[data-theme="dark"] .fixlip-figure {
 
   .fixlip-figure-encoder::before {
     top: auto;
-    bottom: calc(100% + 0.15rem);
+    bottom: calc(100% + 0.4rem);
   }
 
   .fixlip-figure-encoder::after {
-    top: calc(100% + 0.15rem);
+    top: calc(100% + 0.4rem);
   }
 
   .fixlip-figure-vector small {
     position: static;
   }
 
-  .fixlip-figure-join {
-    display: none;
+  /* the labels of both inputs share a line, and the shorter input lies in the middle over its label */
+  .fixlip-figure-input {
+    align-self: stretch;
+    justify-content: space-between;
   }
 
-  .fixlip-figure-similarity {
+  .fixlip-figure-held {
+    display: contents;
+  }
+
+  .fixlip-figure-held > :first-child {
+    margin-block: auto;
+  }
+
+  .fixlip-figure-held > small {
+    position: static;
+  }
+
+  /* the bracket runs from the middle of one branch to the middle of the other */
+  .fixlip-figure-encoders > .fixlip-figure-join {
     grid-column: 1 / -1;
     grid-row: 4;
+    justify-self: stretch;
+    width: auto;
+    height: 0.8rem;
+    margin: -0.9rem calc(25% - 0.25rem) 0;
+    border: 1.5px solid var(--fixlip-line);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .fixlip-figure-encoders > .fixlip-figure-similarity {
+    grid-column: 1 / -1;
+    grid-row: 5;
     flex-direction: row;
     align-items: baseline;
     justify-self: stretch;
     justify-content: center;
     gap: 0.6rem;
-    margin-top: -0.6rem;
-    padding-top: 0.6rem;
-    border-top: 1.5px solid var(--fixlip-line);
+    margin-top: -1.5rem;
   }
 }
 
@@ -848,7 +939,7 @@ body[data-theme="dark"] .fixlip-figure {
 
 .fixlip-figure-explained {
   grid-template-columns: minmax(0, 19rem) minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 1.75rem;
 }
 
@@ -1006,10 +1097,25 @@ body[data-theme="dark"] .fixlip-figure {
 
 /* -- the plots of the paper -------------------------------------------------------------------------- */
 
+/* four small plots in a row, and a last row that is not full lies in the middle */
 .fixlip-figure-multiples {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr));
+  --fixlip-row: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.6rem;
+}
+
+.fixlip-figure-multiples > * {
+  box-sizing: border-box;
+  flex: none;
+  width: calc((100% - (var(--fixlip-row) - 1) * 0.6rem) / var(--fixlip-row));
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-multiples {
+    --fixlip-row: 2;
+  }
 }
 
 /* the plot that overlays the ticked methods, and what it reads off under the pointer */
@@ -1336,9 +1442,20 @@ figure.fixlip-paper-figure img {
   display: block;
   box-sizing: border-box;
   width: 100%;
+  background: #ffffff;
+}
+
+/* on a dark page, the white ground is a card with an edge around the figure */
+body[data-theme="dark"] figure.fixlip-paper-figure img {
   padding: 0.6rem;
   border-radius: 10px;
-  background: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) figure.fixlip-paper-figure img {
+    padding: 0.6rem;
+    border-radius: 10px;
+  }
 }
 
 figure.fixlip-paper-figure figcaption {
@@ -1366,9 +1483,10 @@ article[role="main"] .caption-number {
 /* -- the tables of the page ---------------------------------------------------------------------------- */
 
 /* as the figures: narrower than the text, with a caption in their style */
-article[role="main"] .table-wrapper {
+article[role="main"] .table-wrapper.container {
   max-width: var(--fixlip-figure-width, 38rem);
   margin: 2rem auto 2.25rem;
+  padding-inline: 0; /* the table is as wide as a figure */
 }
 
 article[role="main"] .table-wrapper table.docutils {
@@ -1386,8 +1504,18 @@ article[role="main"] .table-wrapper table.docutils caption {
   color: var(--shapiq-text-muted, #5b6275);
 }
 
+/* the lead of the caption, as in the captions of the figures */
+article[role="main"] .table-wrapper table.docutils caption strong {
+  color: var(--color-foreground-primary, #1b1e27);
+}
+
 article[role="main"] .table-wrapper table.docutils th {
   text-align: left;
+}
+
+/* the cells of a row start on one line */
+article[role="main"] .table-wrapper table.docutils td {
+  vertical-align: top;
 }
 
 /* -- the demo on this page ----------------------------------------------------------------------------- */
@@ -1420,6 +1548,10 @@ article[role="main"] .table-wrapper table.docutils th {
   .fixlip-figure-photos,
   .fixlip-figure-dots {
     display: none;
+  }
+
+  .fixlip-figure .fixlip-figure-shown-photo {
+    display: block;
   }
 }
 
@@ -1596,22 +1728,42 @@ article[role="main"] :is(p, li, td, figcaption) a.reference code {
 .fixlip-figure-under {
   display: grid;
   grid-template-columns: 1fr auto auto 1fr;
+  align-items: baseline;
   gap: 0 0.5rem;
   margin-top: 0;
 }
 
+/* the track ends where the axis ends, under the middle of the thumb at its first and last place */
 .fixlip-figure-under input {
+  --fixlip-track: linear-gradient(
+      to right,
+      var(--shapiq-amber) calc(var(--fixlip-part, 0) * 100%),
+      var(--fixlip-line) 0
+    )
+    8px 0 / calc(100% - 16px) 100% no-repeat;
   grid-area: 1 / 1 / 2 / -1;
   margin: 0 var(--fixlip-right, 0) 0 var(--fixlip-left, 0);
+}
+
+.fixlip-figure-under input::-webkit-slider-runnable-track {
+  border-radius: 0;
+  background: var(--fixlip-track);
+}
+
+.fixlip-figure-under input::-moz-range-track {
+  border-radius: 0;
+  background: var(--fixlip-track);
 }
 
 .fixlip-figure-under span {
   grid-area: 2 / 2;
 }
 
+/* the value keeps the room of two digits, so that its label stays in place */
 .fixlip-figure-under output {
   grid-area: 2 / 3;
-  min-width: 0;
+  min-width: 2ch;
+  text-align: left;
 }
 
 /* a clique of the size that the slider sets, next to the chart of all sizes */
@@ -1621,14 +1773,27 @@ article[role="main"] :is(p, li, td, figcaption) a.reference code {
   gap: 1.75rem;
 }
 
+/* the legend is as high as the title over the photo, so that the plot starts where the photo starts */
 .fixlip-figure-sized .fixlip-figure-legend {
   margin: 0;
+  line-height: 1.42;
 }
 
+/* readings under each other: their labels end on one line, and their values start on one */
 .fixlip-figure-readings {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.15rem 0.4rem;
+}
+
+.fixlip-figure-readings .fixlip-figure-reading {
+  display: contents;
+}
+
+.fixlip-figure-readings span {
+  justify-self: end;
 }
 
 @container (max-width: 34rem) {
@@ -1639,5 +1804,16 @@ article[role="main"] :is(p, li, td, figcaption) a.reference code {
   .fixlip-figure-sized > .fixlip-figure-panel:first-child {
     width: min(100%, 17rem);
     margin: 0 auto;
+  }
+}
+
+/* on a narrow page, parts that lie under each other have one distance in all figures */
+@container (max-width: 34rem) {
+  .fixlip-figure-two:not(.fixlip-figure-narrow),
+  .fixlip-figure-three,
+  .fixlip-figure-sized,
+  .fixlip-figure-pointed,
+  .fixlip-figure-explained {
+    row-gap: 1.6rem;
   }
 }

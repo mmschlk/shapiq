@@ -194,7 +194,8 @@ one input, and :shapiq-figure:`methods` summarizes them.
    exCLIP, and by FIxLIP. In this example, the text token *ant* is the most important for the
    prediction. Reproduced from Figure 2 of :cite:t:`Baniecki.2025`.
 
-.. list-table:: Families of explanation methods for vision–language encoders.
+.. list-table:: **Families of explanation methods.** What each family explains for a
+   vision–language encoder, and where it falls short.
    :name: methods
    :header-rows: 1
    :widths: 30 26 44
@@ -389,13 +390,13 @@ interactions of its tokens, i.e. :math:`\hat\nu_\mathbf{e}(M) - \mathbf{e}_0` fo
 uses a greedy search that starts from each token and repeatedly adds the token that raises the
 value the most.
 
-The demo opens with this view, called *Clique*, and the buttons − and + change the size of the
-clique. :shapiq-figure:`cliques` shows the cliques of the chosen pair, with a slider for their
-size. Typically, a small clique consists of words that name the objects and of patches that show
-them. Larger cliques add neighboring patches and further words.
+The demo opens with this view, called *Clique*, and its slider changes the size of the clique.
+:shapiq-figure:`cliques` shows the cliques of the chosen pair, with a slider of its own. Typically,
+a small clique consists of words that name the objects and of patches that show them. Larger
+cliques add neighboring patches and further words.
 
 .. shapiq-demo-figure:: fixlip cliques
-   :alt: Left, the photo and its tokens with the clique of six tokens. The tokens of the clique are framed, and lines show the interactions between them. A slider sets the size of the clique from 2 to 10. Right, a line chart of the value of the clique in the explanation and of the gain measured on the model for every size. The value lies above the gain.
+   :alt: Left, the photo and its tokens with the clique of six tokens. The tokens of the clique are framed, and lines show the interactions between them. Right, a line chart of the value of the clique in the explanation and of the gain measured on the model for every size. The value lies above the gain. A slider under the chart sets the size of the clique from 2 to 10.
 
    **Cliques of the pair for SigLIP 2.** The slider sets the size of the clique, whose tokens are
    framed. The value is the sum of their main effects and interactions. The gain is the prediction
@@ -741,16 +742,23 @@ than larger ones.
 Limitations
 -----------
 
-FIxLIP explanations are restricted to the second order. Interactions between three or more tokens
-are only captured as far as main effects and pairs can absorb them, as for the largest main effect
-in :ref:`the section on the explanation <fixlip-sec-explanation>`. :cite:t:`Baniecki.2025`
-themselves point to a possible third-order interaction in one of their examples. Moreover, the
-greedy search is not guaranteed to find the best subset. The explanations also depend on the
-masking baseline, and sparse masks remain out-of-distribution inputs for the model. In the
-experiments of the authors, the faithfulness of the explanations drops when the number of input
-tokens increases. How useful the visualizations are for humans is left to future user studies.
-Finally, the explanations of the demo are approximated from 10,000 masks for each pair, so their
-:math:`R^2` on held-out masks shows how far each of them can be trusted.
+- **Second order only.** Interactions between three or more tokens are not explained. Main effects
+  and pairs absorb them as far as they can. For the pair with the elephant, the main effect of
+  *elephant* is +0.064, while the word alone changes the prediction by only +0.002.
+  :cite:t:`Baniecki.2025` themselves point to a possible third-order interaction in one of their
+  examples.
+- **Greedy cliques.** The search for cliques is greedy and is not guaranteed to find the best
+  subset.
+- **Masked inputs.** The explanation depends on the masking baseline, and sparse masks remain
+  out-of-distribution inputs for the model. For every pair of the demo, the :math:`R^2` drops on
+  masks sampled with :math:`p = 0.3`.
+- **Many tokens.** In the experiments of the authors, the faithfulness of the explanations drops
+  when the number of input tokens increases.
+- **Approximation.** The explanations of the demo are approximated from 10,000 masks for each
+  pair. Their :math:`R^2` on held-out masks, between 0.74 and 0.96, shows how far each of them can
+  be trusted.
+- **Human evaluation.** How useful the visualizations are for humans is left to future user
+  studies.
 
 .. _fixlip-sec-code:
 

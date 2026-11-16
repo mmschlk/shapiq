@@ -379,8 +379,20 @@
     };
     const path = (points, attributes) =>
       draw("path", { d: points.map(([x, y], k) => `${k ? "L" : "M"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" "), fill: "none", ...attributes });
-    return { svg, width, height, box, draw, linear, xAxis, yAxis, path };
+    // A legend, a title or a reading of the chart lies over the middle of its plot, and not of the
+    // drawing with its margins. Where this would break its line, it stays where it is.
+    const inset = (...nodes) => {
+      for (const node of nodes) {
+        node.style.paddingInline = "";
+        const high = node.getBoundingClientRect().height;
+        node.style.paddingInline = `${m.left}px ${m.right}px`;
+        if (node.getBoundingClientRect().height > high + 1) node.style.paddingInline = "";
+      }
+    };
+    return { svg, width, height, box, draw, linear, xAxis, yAxis, path, inset };
   }
+  // whether a part lies at the right of another one, and not under it as on a narrow page
+  const beside = (left, right) => right.getBoundingClientRect().left >= left.getBoundingClientRect().right;
   // a step that gives a handful of ticks for a range
   const stepOf = (low, high) => [0.02, 0.05, 0.1, 0.2, 0.5].find((step) => (high - low) / step <= 6) ?? 1;
   const ticksOf = (low, high, step) => {
@@ -409,13 +421,24 @@
         }
         return add(node, el("span", "fixlip-figure-more", "\u22EE"));
       };
+      // an input with its label under it. The label is no part of the height that the arrows and the
+      // embeddings are centered on (figures.css)
       const row = (input, name, symbol, count, values) => [
-        add(el("div", "fixlip-figure-input"), input, el("small", "", count)),
+        add(el("div", "fixlip-figure-input"), add(el("div", "fixlip-figure-held"), input, el("small", "", count))),
         add(el("div", "fixlip-figure-encoder"), el("span", "", name), add(el("small", "fixlip-figure-symbol"), el("i", "", "f"), el("sub", "", symbol))),
         add(el("div", "fixlip-figure-vector"), embedding(values), el("small", "", `embedding of ${fig.embeddings.dimension} values`)),
       ];
       const photo = pair(c, { lined: true, text: false });
       const text = textOf(ex);
+      // the room of the longest text is kept around the text and its label, with the text in its middle
+      const room = text.reserve;
+      text.reserve = () => {
+        room();
+        // on a narrow page the label lies under the block of the text, which keeps the room itself
+        if (getComputedStyle(text.nextElementSibling).position !== "absolute") return;
+        text.closest(".fixlip-figure-input").style.minHeight = text.style.minHeight;
+        text.style.minHeight = "";
+      };
       const result = el("div", "fixlip-figure-similarity");
       add(result, el("span", "", "cosine similarity"), el("strong", "", fmt(ex.similarity)));
       add(
@@ -461,14 +484,14 @@
         dot.append(svgEl("title", {}, `${m.label}, this pair ${fmt(value)}`));
         draw("text", { class: "fixlip-figure-strong", x: x(value), y: y + 21, "text-anchor": "middle" }, fmt(value));
       });
-      stage.append(
-        add(
-          el("p", "fixlip-figure-legend"),
-          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-amber"), "matching pairs"),
-          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-gray"), "unrelated pairs"),
-          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-round"), "this pair"),
-        ),
+      const legend = add(
+        el("p", "fixlip-figure-legend"),
+        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-amber"), "matching pairs"),
+        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-gray"), "unrelated pairs"),
+        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-round"), "this pair"),
       );
+      stage.append(legend);
+      plot.inset(legend);
     },
 
     // the model on masked inputs: one modality alone, the image without an object, random masks
@@ -594,31 +617,39 @@
       const shown = el("div", "fixlip-figure-clique");
       const readings = el("div", "fixlip-figure-readings");
       const holder = el("div", "fixlip-figure-plot");
-      const control = slider("size", [sizes[0], sizes.at(-1)], chosen(), (size) => {
+      const control = slider("tokens in the clique", [sizes[0], sizes.at(-1)], chosen(), (size) => {
         state.size = size;
         show(true);
       });
+      // the legend names both lines as the readings under the plot do
       const legend = add(
         el("p", "fixlip-figure-legend"),
-        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-amber"), "value in the explanation"),
+        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-amber"), "value"),
         add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-ink"), "gain on the model"),
       );
       stage.append(
         columns(
           "fixlip-figure-sized",
-          add(el("div", "fixlip-figure-panel"), title, shown, control),
-          add(el("div", "fixlip-figure-panel"), legend, holder, readings),
+          add(el("div", "fixlip-figure-panel"), title, shown),
+          add(el("div", "fixlip-figure-panel"), legend, add(el("div"), holder, control), readings),
         ),
       );
       const all = sizes.flatMap((size) => [value(size), gain(size)]);
       const step = stepOf(Math.min(0, ...all), Math.max(...all));
       const domain = [Math.floor(Math.min(0, ...all) / step) * step, Math.ceil(Math.max(...all) / step) * step];
-      const plot = chart(holder, 230, { left: 58, right: 12, top: 10, bottom: 34 });
+      // next to the photo, the plot is as high as the photo
+      const high = beside(shown, holder) ? Math.round(shown.getBoundingClientRect().width) : 220;
+      const plot = chart(holder, high + 20, { left: 58, right: 12, top: 0, bottom: 20 });
       const { draw, box } = plot;
+      plot.inset(legend, readings);
       const x = plot.linear([sizes[0], sizes.at(-1)], [box.x0 + 10, box.x1 - 10]);
       const y = plot.linear(domain, [box.y1, box.y0]);
+      // the slider lies under the axis, so that its thumb (16 pixels wide) is under its size
+      control.classList.add("fixlip-figure-under");
+      control.style.setProperty("--fixlip-left", `${x(sizes[0]) - 8}px`);
+      control.style.setProperty("--fixlip-right", `${plot.width - x(sizes.at(-1)) - 8}px`);
       plot.yAxis(y, ticksOf(domain[0], domain[1], step), "change in similarity", (t) => fmt(t, 2));
-      plot.xAxis(x, sizes, "tokens in the clique", (t) => String(t));
+      plot.xAxis(x, sizes, "", (t) => String(t));
       if (domain[0] < 0) draw("line", { class: "fixlip-figure-axis", x1: box.x0, x2: box.x1, y1: y(0), y2: y(0) });
       const guide = draw("line", { class: "fixlip-figure-guide", y1: box.y0, y2: box.y1 });
       plot.path(sizes.map((size) => [x(size), y(gain(size))]), { class: "fixlip-figure-line fixlip-figure-ink" });
@@ -715,9 +746,12 @@
         const holder = el("div", "fixlip-figure-plot");
         card.append(holder);
         card.plot = () => {
-          const side = Math.min(300, Math.floor(holder.getBoundingClientRect().width));
-          const plot = chart(holder, side, { left: 46, right: 10, top: 10, bottom: 34 });
+          // a square plot, since both of its axes are predictions on one scale
+          const margins = { left: 46, right: 10, top: 10, bottom: 34 };
+          const side = Math.floor(holder.getBoundingClientRect().width) - margins.left - margins.right;
+          const plot = chart(holder, side + margins.top + margins.bottom, margins);
           const { draw, box } = plot;
+          plot.inset(card.firstElementChild);
           const x = plot.linear(domain, [box.x0, box.x1]);
           const y = plot.linear(domain, [box.y1, box.y0]);
           const ticks = ticksOf(domain[0], domain[1], Math.max(0.05, stepOf(domain[0], domain[1])));
@@ -768,6 +802,7 @@
       stage.append(add(el("div", "fixlip-figure-curves"), legend, holder, control, cards));
       const plot = chart(holder, 290, { left: 46, right: 12, top: 10, bottom: 20 });
       const { draw, box } = plot;
+      plot.inset(legend);
       // the slider lies under the axis, so that its thumb (16 pixels wide) is under its size
       control.classList.add("fixlip-figure-under");
       control.style.setProperty("--fixlip-left", `${box.x0 - 8}px`);
@@ -869,6 +904,7 @@
       const buttons = game.names.map((name, k) => {
         const button = el("button", "fixlip-figure-token fixlip-figure-name", name);
         button.type = "button";
+        button.dataset.word = name; // the room of its bold form (figures.css)
         button.addEventListener("click", () => {
           state.name = k;
           show();
@@ -904,7 +940,9 @@
           panel("Pointing game recognition for CLIP", holder),
         ),
       );
-      const plot = chart(holder, 260, { left: 52, right: 138, top: 10, bottom: 34 });
+      // next to the photo, the plot is as high as the photo
+      const high = beside(mosaic, holder) ? Math.round(mosaic.getBoundingClientRect().width) : 240;
+      const plot = chart(holder, high + 34, { left: 52, right: 138, top: 0, bottom: 34 });
       const { draw, box: area } = plot;
       const x = plot.linear([1, 4], [area.x0 + 8, area.x1 - 4]);
       const y = plot.linear([0, 1], [area.y1, area.y0]);
@@ -999,6 +1037,7 @@
         tip.hidden = true;
         const plot = chart(holder, 250, { left: 52, right: 10, top: 10, bottom: 36 });
         const { box, draw } = plot;
+        if (holder.isConnected) plot.inset(holder.previousElementSibling, holder.parentNode.nextElementSibling);
         const x = plot.linear([steps, 0], [box.x0, box.x1]);
         const y = plot.linear(span, [box.y1, box.y0]);
         plot.yAxis(y, [-0.5, 0, 0.5, 1], "normalized prediction", (t) => fmt(t, 1));
@@ -1177,13 +1216,13 @@
           draw("text", { class: "fixlip-figure-strong", x: at + (shift < 0 ? -4 : 4), y: (from + to) / 2 + 4, "text-anchor": anchor }, `${times}×`);
         }
       }
-      stage.append(
-        add(
-          el("p", "fixlip-figure-legend"),
-          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-solid"), "the whole explanation"),
-          add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-dashed"), "model inference only"),
-        ),
+      const legend = add(
+        el("p", "fixlip-figure-legend"),
+        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-solid"), "the whole explanation"),
+        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-dashed"), "model inference only"),
       );
+      stage.append(legend);
+      plot.inset(legend);
     },
   };
 
@@ -1205,6 +1244,9 @@
   function buildSelector(frame) {
     const bar = el("div", "fixlip-figure-bar");
     const label = el("span", "fixlip-figure-shown");
+    // the photo of the pair, where the thumbnails are not shown (a narrow page, and in print)
+    const shown = el("img", "fixlip-figure-shown-photo");
+    shown.alt = "";
     const photos = el("div", "fixlip-figure-photos");
     photos.setAttribute("role", "group");
     photos.setAttribute("aria-label", "Image–text pair of the figures");
@@ -1230,7 +1272,7 @@
       dots.append(dot);
       frame.dots.push(dot);
     }
-    add(bar, label, photos);
+    add(bar, shown, label, photos);
     frame.stage.before(bar);
     frame.stage.after(dots);
     if (!hints.length) {
@@ -1240,6 +1282,7 @@
       hints.push(hint);
     }
     frame.label = label;
+    frame.shown = shown;
     swipeable(frame);
   }
 
@@ -1369,6 +1412,7 @@
     }
     if (frame.follows) {
       frame.label.textContent = c.image.title ?? "";
+      if (!frame.shown.src.endsWith(c.url)) frame.shown.src = c.url;
       data.images.forEach((image, k) => {
         frame.buttons[k].setAttribute("aria-pressed", String(image.id === current));
         frame.dots[k].setAttribute("aria-pressed", String(image.id === current));
