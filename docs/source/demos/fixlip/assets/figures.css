@@ -1310,7 +1310,38 @@ article[role="main"] .table-wrapper table.docutils th {
   }
 }
 
-/* -- the equations of the page ------------------------------------------------------------------------ */
+/* -- the summary of the page ---------------------------------------------------------------------------- */
+
+/* The summary is set like the abstract of a paper: in a box of its own, in the amber of the docs. */
+article[role="main"] section.fixlip-summary {
+  margin: 2rem 0 2.5rem;
+  padding: 1.1rem 1.4rem 0.6rem;
+  border: 1.5px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius, 12px);
+  background: var(--shapiq-amber-soft);
+  font-size: 0.95em;
+}
+
+article[role="main"] section.fixlip-summary > h2 {
+  margin: 0 0 0.6rem;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--shapiq-amber-ink);
+}
+
+article[role="main"] section.fixlip-summary > p {
+  margin: 0 0 0.75rem;
+}
+
+/* the divider between the demo and the write-up */
+article[role="main"] hr.docutils {
+  margin: 2.25rem 0;
+}
+
+--------------------------------------------------------------------- */
 
 /* The number of an equation keeps its place at the right. On a small screen, a wide equation
    scrolls in its own box next to it, and not under it. */
