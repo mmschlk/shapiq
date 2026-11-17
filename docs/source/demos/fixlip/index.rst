@@ -241,14 +241,14 @@ pair.
    }}_{\class{fixlip-braced}{\text{masked text}}}}
    \big)
 
-For the image, a masked patch is set to 0 after normalization, which propagates no signal forward.
-The figures show it as a gray patch. For the text, a masked token is excluded through the attention
-mask of the encoder, while special tokens and padding are always kept.
-
-:shapiq-figure:`removal` shows four of these masks. For example, removing an object from the image
-lowers the similarity for all five examples, although the text still names the object. With
-:math:`2^{n_\mathcal{I} + n_\mathcal{T}}` masks, the game cannot be inspected directly. An
-explanation has to *summarize* it.
+There is no unique way to remove a token from the input of a model, so the baseline is a choice
+:cite:p:`Covert.2021`. Practically, in this demo, a masked image patch is set to 0 after
+normalization, which propagates no signal forward. The figures show it as a gray patch. A masked
+text token is excluded through the attention mask of the encoder, while special tokens and padding
+are always kept. :shapiq-figure:`removal` shows four of these masks. For example, removing an object
+from the image lowers the similarity for all five examples, although the text still names the
+object. With :math:`2^{n_\mathcal{I} + n_\mathcal{T}}` masks, the game cannot be inspected
+directly. An explanation has to *summarize* it.
 
 .. shapiq-demo-figure:: fixlip removal
    :alt: Four masked versions of the example with the similarity that SigLIP 2 predicts. The image without one object, the image without another object, and two random masks, of which the second keeps fewer tokens.
