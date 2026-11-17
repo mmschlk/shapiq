@@ -228,7 +228,7 @@
     {
       MOLS.forEach((m, k) => { if (k && m.task !== MOLS[k - 1].task) mols.buttons[k].classList.add("gsq-mol-next"); });
       const tile = mols.buttons[MOLS.length], icon = tile.querySelector("svg"), [x, y] = G.geom(own, 78, 21).pos[6];
-      tile.classList.add("gsq-mol-own");
+      tile.classList.add("gsq-mol-own"); mols.dots[MOLS.length].classList.add("gsq-dot-own");
       svg("circle", { class: "gsq-plus-ping", cx: x, cy: y, r: 14 }, icon);
       svg("circle", { class: "gsq-plus-o", cx: x, cy: y, r: 14 }, icon);
       svg("line", { x1: x - 6.5, y1: y, x2: x + 6.5, y2: y }, icon); svg("line", { x1: x, y1: y - 6.5, x2: x, y2: y + 6.5 }, icon);
@@ -242,23 +242,31 @@
     const ask = G.question(data.tasks, (t) => { state.task = t; if (built()) compute(); reset(false); });
     const info = h("button", "gsq-info", "i");
     info.type = "button"; info.setAttribute("aria-label", "What does the demo show?"); info.setAttribute("aria-expanded", "false");
-    const about = h("div", "gsq-about"); about.hidden = true;
-    about.innerHTML =
+    // the note opens under the bar, in the flow, as on the FIxLIP page: inert while closed
+    const about = h("div", "gsq-about"); about.id = `gsq-about-${Math.random().toString(36).slice(2, 8)}`;
+    about.inert = true; about.setAttribute("aria-hidden", "true");
+    info.setAttribute("aria-controls", about.id);
+    about.innerHTML = '<div class="gsq-about-clip"><div class="gsq-about-card">' +
       '<button class="gsq-about-close" type="button" aria-label="Close">×</button>' +
       "<p><strong>What does the demo show?</strong></p>" +
       "<p>A <strong>graph neural network</strong> (GNN) reads a molecule as a graph: atoms, linked by bonds. In each of its three layers, every atom gathers what its neighbours know. At the end, the GNN sums its atoms and answers one yes/no question, each question with a GNN of its own.</p>" +
       "<p>To explain an answer, <code>shapiq</code> hides atoms in many combinations and watches the answer change. The atoms are the <strong>players</strong>: what each adds alone, and what groups add only together, their <strong>interactions</strong>.</p>" +
-      "<p>For a GNN these are computed <strong>exactly</strong>. With three layers, atoms more than six bonds apart never meet in the GNN. So for a larger molecule a fraction of all combinations suffices.</p>";
+      "<p>For a GNN these are computed <strong>exactly</strong>. With three layers, atoms more than six bonds apart never meet in the GNN. So for a larger molecule a fraction of all combinations suffices.</p></div></div>";
     const viewbar = h("div", "gsq-viewbar", views.node);
-    ask.node.querySelector(".gsq-ask-pick").append(info, about);
+    ask.node.querySelector(".gsq-ask-pick").append(info);
     ask.card.remove(); // the question's card is the panel of the view Input
     bar.append(mols.node, ask.node);
-    const setAbout = (open) => { about.hidden = !open; info.setAttribute("aria-expanded", String(open)); };
-    info.addEventListener("click", () => setAbout(about.hidden));
-    about.querySelector(".gsq-about-close").addEventListener("click", () => { setAbout(false); info.focus(); });
-    about.addEventListener("focusout", (e) => { if (!about.contains(e.relatedTarget) && e.relatedTarget !== info) setAbout(false); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !about.hidden) { setAbout(false); info.focus(); } });
-    document.addEventListener("pointerdown", (e) => { if (!about.hidden && !about.contains(e.target) && !info.contains(e.target)) setAbout(false); });
+    // it closes with the "i", its ×, or Escape while the focus is in it or on the "i"
+    const isOpen = () => about.classList.contains("gsq-about-open");
+    const setAbout = (open) => {
+      about.classList.toggle("gsq-about-open", open); about.inert = !open; about.setAttribute("aria-hidden", String(!open));
+      info.setAttribute("aria-expanded", String(open));
+    };
+    info.addEventListener("click", () => setAbout(!isOpen()));
+    about.querySelector(".gsq-about-close").addEventListener("click", () => { setAbout(false); info.focus({ preventScroll: true }); });
+    root.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && isOpen() && (about.contains(e.target) || e.target === info)) { setAbout(false); info.focus({ preventScroll: true }); }
+    });
 
     const body = h("div", "gsq-body"), stage = h("div", "gsq-stage"), frame = h("div", "gsq-frame"), panel = h("div", "gsq-panel");
     const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule; its atoms are the players" }, frame);
@@ -290,7 +298,7 @@
     stage.append(frame);
     const live = h("p", "gsq-sr"); live.setAttribute("aria-live", "polite");
     body.append(stage, panel);
-    root.append(bar, body, live);
+    root.append(bar, about, body, live);
     const scene = G.createScene(plot);
 
     function setView(id) { hideWheel(); state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); views.buttons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }

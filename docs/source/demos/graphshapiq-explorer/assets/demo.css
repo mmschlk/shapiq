@@ -17,9 +17,23 @@
 /* -- the reader's own molecule ("Build your own") ----------------------------------------------- */
 
 /* nine molecules in a row, over the demo's whole width, their names in full */
+.graphshapiq-explorer-demo .gsq-picker,
 .graphshapiq-explorer-demo .gsq-mols {
   width: 100%;
+}
+
+.graphshapiq-explorer-demo .gsq-mols {
   gap: 0.15rem;
+}
+
+/* the dot of the reader's own molecule in amber */
+.graphshapiq-explorer-demo .gsq-dot-own::before {
+  background: var(--gsq-build);
+  opacity: 0.8;
+}
+
+.graphshapiq-explorer-demo .gsq-dot-own[aria-pressed="true"]::before {
+  background: var(--gsq-build-strong);
 }
 
 .graphshapiq-explorer-demo .gsq-mol {
@@ -61,8 +75,8 @@
   top: -2px;
   right: calc(100% + 2px);
   bottom: -2px;
-  width: 4rem;
-  background: linear-gradient(to right, transparent, var(--gsq-sheet) calc(100% - 0.75rem));
+  width: 5.5rem;
+  background: linear-gradient(to right, transparent, var(--gsq-sheet) calc(100% - 0.6rem));
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -204,14 +218,8 @@
   }
 
   .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
-    padding: 0 0.45rem;
-    font-size: 0.72rem;
+    padding: 0 0.5rem;
   }
-
-  .graphshapiq-explorer-demo .gsq-kinds .gsq-opt {
-    font-size: 0.76rem;
-  }
-
 }
 
 @container (max-width: 20.5rem) {
@@ -230,15 +238,13 @@
   }
 
   .graphshapiq-explorer-demo .gsq-viewbar .gsq-opt {
-    padding: 0 0.3rem;
-    font-size: 0.66rem;
+    padding: 0 0.4rem;
+    font-size: 0.76rem;
   }
 
   .graphshapiq-explorer-demo .gsq-kinds .gsq-opt {
-    font-size: 0.72rem;
+    padding: 0 0.45rem;
   }
-
-
 }
 
 /* the positions of the ring: a + where a group can go, the group where one is */
@@ -760,4 +766,23 @@
 .graphshapiq-explorer-demo .gsq-predkey-mark {
   color: var(--gsq-ink);
   font-weight: 700;
+}
+
+/* on a narrow phone, the key of the ground truth and the GNN's answer still fit side by side */
+@container (max-width: 23.5rem) {
+  .graphshapiq-explorer-demo .gsq-truthkey {
+    left: 0.55rem;
+    gap: 0.3rem;
+    font-size: 0.74rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-truthkey i {
+    width: 1.1rem;
+  }
+
+  .graphshapiq-explorer-demo .gsq-predkey {
+    right: 0.55rem;
+    gap: 0.28rem;
+    font-size: 0.74rem;
+  }
 }

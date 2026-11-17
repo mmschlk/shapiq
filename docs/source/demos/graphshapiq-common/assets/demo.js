@@ -340,6 +340,16 @@
       b.addEventListener("click", () => pick(k)); node.append(b);
       return b;
     });
+    // where the row scrolls (phones), dots under it, one for each molecule, the one shown dark (as
+    // the FIxLIP page's figures): they show that there are more, and a tap on one shows it
+    const dots = h("div", "gsq-dots");
+    dots.setAttribute("role", "group"); dots.setAttribute("aria-label", label);
+    const dotButtons = molecules.map((m, k) => {
+      const d = h("button", "gsq-dot"); d.type = "button"; d.setAttribute("aria-label", m.name);
+      d.addEventListener("click", () => pick(k)); dots.append(d);
+      return d;
+    });
+    const box = h("div", "gsq-picker", node, dots);
     // where the row scrolls (phones), its edges fade, so that one sees there is more: on the side
     // that can scroll on. A tile pinned at the end (the explorer's own molecule) draws the fade
     // before it itself (`gsq-more-right`), and nothing shows past it
@@ -348,6 +358,7 @@
       const left = max > 1 && node.scrollLeft > 1, right = max > 1 && node.scrollLeft < max - 1;
       const pinned = buttons.find((b) => getComputedStyle(b).position === "sticky");
       node.classList.toggle("gsq-more-left", left); node.classList.toggle("gsq-more-right", right);
+      dots.hidden = max <= 12; // a row that scrolls a few pixels needs no dots
       if (max <= 1) { node.style.maskImage = node.style.webkitMaskImage = ""; return; }
       const tail = pinned ? Math.max(0, Math.floor(node.getBoundingClientRect().right - pinned.getBoundingClientRect().right)) : 0;
       const end = pinned ? `#000 calc(100% - ${tail}px), transparent calc(100% - ${tail}px)` : `#000 calc(100% - ${right ? W : 0}px), transparent 100%`;
@@ -355,7 +366,25 @@
     };
     node.addEventListener("scroll", fade, { passive: true });
     new ResizeObserver(fade).observe(node);
-    return { node, buttons, set(k) { buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); fade(); } };
+    // the molecule shown in sight, past the fades: at once the first time, then gliding
+    let shown = -1;
+    const reveal = (k) => {
+      const b = buttons[k], max = node.scrollWidth - node.clientWidth;
+      if (!b || max <= 1 || getComputedStyle(b).position === "sticky") return;
+      const row = node.getBoundingClientRect(), at = b.getBoundingClientRect(), W = 40;
+      const end = Math.max(W, parseFloat(getComputedStyle(node).scrollPaddingInlineEnd) || 0);
+      const by = at.left < row.left + W ? at.left - row.left - W : at.right > row.right - end ? at.right - row.right + end : 0;
+      if (by) node.scrollTo({ left: node.scrollLeft + by, behavior: shown < 0 || reducedMotion() ? "auto" : "smooth" });
+    };
+    return {
+      node: box, row: node, buttons, dots: dotButtons,
+      set(k) {
+        buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k)));
+        dotButtons.forEach((d, i) => d.setAttribute("aria-pressed", String(i === k)));
+        fade();
+        if (k !== shown) { reveal(k); shown = k; }
+      },
+    };
   }
   // The question, in plain words. A switch of the questions, and under it a card of the one asked:
   // the question in full, what its term means and the pattern that makes a yes (drawn), whether the

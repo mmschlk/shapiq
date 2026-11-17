@@ -340,3 +340,11 @@ A twenty-fourth pass took the docs' amber of the FIxLIP page (`--shapiq-amber` #
 `--shapiq-amber-ink` #8c5800 and #ffc24d in dark, from `tokens.css` on the FIxLIP branch, with these
 values as fallbacks here). `--gsq-build` and `--gsq-build-text` follow it, and the selected amber
 is mixed from it. Red and blue were the same already.
+
+A twenty-fifth pass compared the demos with the FIxLIP page. The score's chip and fill are amber
+(`--gsq-lavender` now takes `--shapiq-amber`). The "i" is as tall as a switch, and its note opens
+under the bar in the page's flow, with the FIxLIP page's growing rows. It closes with the "i", its
+× or Escape (only while the focus is in the note or on the "i"), not on a click elsewhere, and is
+inert while closed. Hover is gated by `(hover: hover)`, so it does not stick after a tap. On a phone
+the switches keep their size and lose padding. Where the row of molecules scrolls, dots under it
+(as the FIxLIP figures' dots) show the molecule shown and pick one, and both edges fade.
