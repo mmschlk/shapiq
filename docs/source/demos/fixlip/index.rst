@@ -198,23 +198,48 @@ one input.
 Explaining Similarity with FIxLIP
 ---------------------------------
 
-FIxLIP formalizes the problem with game theory. Its explanation covers main effects, cross-modal
-interactions, and intra-modal interactions. Moreover, it is model-agnostic, since it only needs the
-predictions for masked inputs.
+FIxLIP formalizes the problem with game theory. It views the input tokens as players of a
+cooperative game. We index the image patches with :math:`N_\mathcal{I} := \{1, \dots,
+n_\mathcal{I}\}` and the text tokens with :math:`N_\mathcal{T} := \{n_\mathcal{I} + 1, \dots,
+n_\mathcal{I} + n_\mathcal{T}\}`. For SigLIP 2 and the examples of the demo, these are
+:math:`n_\mathcal{I} = 64` image patches and between 10 and 19 text tokens, e.g. 74 players for the
+first example (the elephant image). On these tokens, FIxLIP explains the similarity with the main
+effects of single tokens and with the interactions of pairs of tokens, both cross-modal and
+intra-modal.
+
+.. shapiq-definition:: Explanation
+   :name: fixlip-def-explanation
+
+   An explanation :math:`\mathbf{e} \in \mathbb{R}^{\vert \mathcal{B} \vert}` assigns a constant
+   :math:`\mathbf{e}_0`, a *main effect* :math:`\mathbf{e}_i \in \mathbb{R}` to each token, and an
+   *interaction* :math:`\mathbf{e}_{\{i,j\}} \in \mathbb{R}` to each pair of tokens, for an
+   explanation basis
+
+   .. math::
+
+      \mathcal{B} :=
+      \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
+      \{0\}
+      }}_{\class{fixlip-braced}{\text{constant}}}}
+      \cup\;
+      \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
+      \{i: i \in N_\mathcal{I} \cup N_\mathcal{T}\}
+      }}_{\class{fixlip-braced}{\text{individual tokens}}}}
+      \;\cup\;
+      \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
+      \{\{i,j\}: i,j \in N_\mathcal{I} \cup N_\mathcal{T}, i \neq j\}
+      }}_{\class{fixlip-braced}{\text{pairs of tokens}}}}
 
 .. _fixlip-sec-game:
 
 The Vision–Language Game
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-FIxLIP views the input tokens as players of a cooperative game. We index the image patches with
-:math:`N_\mathcal{I} := \{1, \dots, n_\mathcal{I}\}` and the text tokens with :math:`N_\mathcal{T}
-:= \{n_\mathcal{I} + 1, \dots, n_\mathcal{I} + n_\mathcal{T}\}`. For SigLIP 2 and the examples of
-the demo, these are :math:`n_\mathcal{I} = 64` image patches and between 10 and 19 text tokens, e.g.
-74 players for the first example (the elephant image). A *mask* :math:`M \subseteq N_\mathcal{I}
-\cup N_\mathcal{T}` selects the tokens that the model receives. All other tokens are replaced with a
-baseline. For inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of the indices :math:`N \in
-\{N_\mathcal{I}, N_\mathcal{T}\}` of one modality, the *masking operator* is defined as
+FIxLIP is model-agnostic, since it only needs the predictions of the model for masked inputs. A
+*mask* :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}` selects the tokens that the model
+receives. All other tokens are replaced with a baseline. For inputs :math:`x, b` and a subset
+:math:`M_o \subseteq N` of the indices :math:`N \in \{N_\mathcal{I}, N_\mathcal{T}\}` of one
+modality, the *masking operator* is defined as
 
 .. math::
    :label: fixlip-masking
@@ -256,15 +281,9 @@ directly. An explanation has to *summarize* it.
    **Four masks of the game.** The prediction of SigLIP 2 for the example without one of its
    objects and for two random masks. Gray patches and crossed-out text tokens are masked.
 
-.. _fixlip-sec-explanation:
-
-The FIxLIP Explanation
-~~~~~~~~~~~~~~~~~~~~~~
-
-A FIxLIP explanation :math:`\mathbf{e}` assigns a constant :math:`\mathbf{e}_0`, a *main effect*
-:math:`\mathbf{e}_i` to each token :math:`i \in N_\mathcal{I} \cup N_\mathcal{T}`, and an
-*interaction* :math:`\mathbf{e}_{\{i,j\}}` to each pair of tokens. Together, they approximate the
-game :math:`\nu(M) \approx \hat\nu_\mathbf{e}(M)` with a simple additive model.
+FIxLIP summarizes the game with an explanation :math:`\mathbf{e}` in the sense of
+:shapiq-statement:`fixlip-def-explanation`. Its terms approximate the game :math:`\nu(M) \approx
+\hat\nu_\mathbf{e}(M)` with a simple additive model.
 
 .. math::
    :label: fixlip-additive
@@ -277,6 +296,11 @@ An interaction is *cross-modal* if it links an image patch with a text token. It
 if it links two image patches or two text tokens. The explanation can be viewed as a complete graph
 with the tokens as weighted nodes and the interactions as weighted edges. The demo calls the image
 patches *regions* and the text tokens *words*, and both together *features*.
+
+.. _fixlip-sec-explanation:
+
+Interpreting the FIxLIP Explanation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **What an interaction measures.** A positive interaction means that two tokens raise the similarity
 more together than the sum of their individual effects. :shapiq-figure:`interaction` measures this

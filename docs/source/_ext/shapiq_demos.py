@@ -61,6 +61,20 @@ its number, as a link. Its target is the name of a demo's figure, or the ``:name
 or a table::
 
     :shapiq-figure:`masks` shows eight masks.
+
+The ``shapiq-definition`` directive sets a central definition in a box of its own. Its argument is
+the name of the definition, its content the statement, and its ``:name:`` what refers to it::
+
+    .. shapiq-definition:: Explanation
+       :name: fixlip-def-explanation
+
+       An explanation assigns ...
+
+The definitions of a page are numbered in its order, as ``Definition 1 (Explanation)``, and so on,
+and the title of a box links to it. The role ``shapiq-statement`` refers to a definition by its
+number, as a link. Its target is the ``:name:`` of the box::
+
+    :shapiq-statement:`fixlip-def-explanation` covers main effects and interactions.
 """
 
 from __future__ import annotations
@@ -88,6 +102,8 @@ _ASSETS = ("demo.js", "demo.css")  # the files that every demo's assets folder h
 _DATA = "data.js"  # the demo's data, which its script loads, if it has any
 _FIGURES = ("figures.js", "figures.css")  # the files of a demo with figures on a page
 _FIGURES_DATA = "figures-data.js"  # what the figures show beyond the demo's data, if anything
+_STATEMENTS = ("definition",)  # the kinds of statements that get a box, as ``shapiq-<kind>``
+_STATEMENT = "shapiq-statement"  # the class of a box and the name of the role that refers to one
 
 
 class DemoNode(nodes.General, nodes.Element):
@@ -158,8 +174,31 @@ class FigureDirective(SphinxDirective):
         return [node]
 
 
+class StatementDirective(SphinxDirective):
+    """Set a statement in a box: ``.. shapiq-definition:: <name>``, with the statement."""
+
+    required_arguments = 1
+    final_argument_whitespace = True
+    has_content = True
+    option_spec: ClassVar[dict[str, Any]] = {
+        "name": directives.unchanged,  # what the role and ``:ref:`` refer to
+    }
+
+    def run(self) -> list[nodes.Node]:
+        """Return the box with its title, which is numbered when the page is written."""
+        kind = self.name.removeprefix("shapiq-")
+        node = nodes.container(classes=[_STATEMENT, f"{_STATEMENT}-{kind}"], statement=kind)
+        name, messages = self.state.inline_text(self.arguments[0], self.lineno)
+        title = nodes.paragraph("", "", classes=[f"{_STATEMENT}-title"])
+        title += nodes.inline("", "", nodes.Text("("), *name, nodes.Text(")"))
+        node += title
+        self.state.nested_parse(self.content, self.content_offset, node)
+        self.add_name(node)
+        return [node, *messages]
+
+
 class FigureReference(nodes.Inline, nodes.Element):
-    """A reference to a numbered figure or table of the page, resolved when the page is written."""
+    """A reference to a numbered figure, table or statement, resolved when the page is written."""
 
 
 _CAPTIONED = (FigureNode, nodes.figure, nodes.table)  # what a page with figures numbers
@@ -223,13 +262,13 @@ def _figure_role(
     options: dict[str, Any] | None = None,  # noqa: ARG001
     content: list[str] | None = None,  # noqa: ARG001
 ) -> tuple[list[nodes.Node], list[nodes.system_message]]:
-    """Refer to a figure or a table of the page by its number: ``:shapiq-figure:`<name>```."""
+    """Refer to a numbered part of the page: ``:shapiq-figure:`<name>```, or a statement."""
     return [FigureReference(rawtext, target=text.strip())], []
 
 
 def _number_captions(app: Sphinx, doctree: nodes.document, docname: str) -> None:
-    """Number the captions of a page with a demo's figures, and link the references to them."""
-    labels: dict[str, tuple[str, str]] = {}  # the name of a figure or a table: its number and id
+    """Number the captions and the statements of a page, and link the references to them."""
+    labels: dict[str, tuple[str, str]] = {}  # the name of a numbered part: its number and id
     if next(iter(doctree.findall(FigureNode)), None) is not None:
         counts = {"Figure": 0, "Table": 0}
         for node in list(doctree.findall(lambda n: isinstance(n, _CAPTIONED))):
@@ -252,11 +291,27 @@ def _number_captions(app: Sphinx, doctree: nodes.document, docname: str) -> None
             names = [node["figure"]] if isinstance(node, FigureNode) else node["names"]
             for name in names:
                 labels[name] = (label, node["ids"][0] if node["ids"] else "")
+    counts = dict.fromkeys(_STATEMENTS, 0)
+    for node in list(doctree.findall(nodes.container)):
+        if (kind := node.get("statement")) not in counts:
+            continue
+        counts[kind] += 1
+        label = f"{kind.capitalize()} {counts[kind]}"
+        target = node["ids"][0] if node["ids"] else ""
+        title = node.children[0]
+        title.insert(0, [nodes.strong("", label), nodes.Text(" ")])
+        if target and app.builder.format == "html":
+            link = (
+                f'<a class="headerlink" href="#{escape(target)}" title="Link to this {kind}">¶</a>'
+            )
+            title += nodes.raw("", link, format="html")
+        for name in node["names"]:
+            labels[name] = (label, target)
     for reference in list(doctree.findall(FigureReference)):
         label, target = labels.get(reference["target"], ("", ""))
         if not label:
             logger.warning(
-                "no numbered figure or table %r on this page",
+                "no numbered figure, table or statement %r on this page",
                 reference["target"],
                 location=(docname, reference.line),
             )
@@ -308,7 +363,7 @@ def _copy_assets(app: Sphinx, env: object) -> None:  # noqa: ARG001
 
 
 def setup(app: Sphinx) -> ExtensionMetadata:
-    """Register the directive, its node and the assets."""
+    """Register the directives, their nodes and roles, and the assets."""
     skip = (_skip_demo, None)
     app.add_node(
         DemoNode,
@@ -331,12 +386,15 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     app.add_directive("shapiq-demo-figure", FigureDirective)
     app.add_node(FigureReference)
     app.add_role("shapiq-figure", _figure_role)
+    for kind in _STATEMENTS:
+        app.add_directive(f"shapiq-{kind}", StatementDirective)
+    app.add_role(_STATEMENT, _figure_role)
     app.connect("doctree-resolved", _number_captions)
     app.connect("html-page-context", _add_assets)
     app.connect("env-updated", _copy_assets)
     return {
         "version": "1.0",
-        "env_version": 7,  # pages are read again where what the extension writes to them changed
+        "env_version": 8,  # pages are read again where what the extension writes to them changed
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }
