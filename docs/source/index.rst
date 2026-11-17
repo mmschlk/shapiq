@@ -372,6 +372,7 @@ If you enjoy using ``shapiq``, please consider citing our NeurIPS paper :cite:p:
    :caption: User Guide
 
    demos/index
+   talks/index
    examples
    timeline
 

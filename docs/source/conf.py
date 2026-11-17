@@ -91,6 +91,12 @@ extensions.append("shapiq_timeline")
 # a page and adds its stylesheet and script there; see ``demos/README.md``.
 extensions.append("shapiq_demos")
 
+# -- Talks (talks/) --------------------------------------------------------------------------------
+# One folder per talk: its page of slides, which is also a slide deck, and its assets (copied to
+# ``_static/talks/<name>/``). The ``shapiq-slide`` directive of ``_ext/shapiq_talks.py`` makes a
+# slide and adds ``_static/css/talk.css`` and ``_static/js/talk.js`` to the page; see talks/README.md.
+extensions.append("shapiq_talks")
+
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
 # One gallery per group of examples (``examples/<group>``), each with its own page; the landing
 # page ``examples.rst`` links them. Groups may have subsections (subfolders with a header).
@@ -250,6 +256,8 @@ exclude_patterns = [
     "demos/*/README.md",
     "demos/*/assets",
     "demos/*/compute",
+    "talks/README.md",
+    "talks/*/assets",
 ]
 bibtex_bibfiles = ["references.bib"]
 

@@ -1,0 +1,508 @@
+/* Talks (talks/, _ext/shapiq_talks.py): a page of slides, read as a handout or presented as a deck.
+   On the page, the slides follow each other in the article. Presented, talk.js moves them into
+   .shapiq-deck, which fills the window, and shows one at a time. The colors are Furo's and the
+   tokens of tokens.css, so both follow the theme of the docs. */
+
+/* ---- on the page ------------------------------------------------------------------------- */
+
+.shapiq-talk-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 1.25rem 0 2rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface-raised);
+}
+
+.shapiq-talk-bar p {
+  margin: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.9rem;
+}
+
+.shapiq-talk-present {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--shapiq-amber);
+  color: #1b1e27;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--shapiq-duration) var(--shapiq-ease), box-shadow var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-talk-present:hover {
+  box-shadow: var(--shapiq-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.shapiq-talk-present svg {
+  width: 0.8em;
+  height: 0.8em;
+  fill: currentColor;
+}
+
+kbd.shapiq-talk-key {
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--shapiq-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--shapiq-surface);
+  font-size: 0.85em;
+}
+
+article .shapiq-slide {
+  position: relative;
+  margin: 0 0 2.5rem;
+  padding-top: 2.4rem;
+  border-top: 1px solid var(--shapiq-border);
+}
+
+/* the slide's number and a button to present from it */
+article .shapiq-slide::before {
+  content: "Slide " attr(data-number);
+  position: absolute;
+  top: 0.7rem;
+  left: 0;
+  color: var(--shapiq-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shapiq-slide-here {
+  position: absolute;
+  top: 0.45rem;
+  right: 0;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--shapiq-text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+article .shapiq-slide:hover .shapiq-slide-here,
+.shapiq-slide-here:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .shapiq-slide-here {
+    opacity: 1;
+  }
+}
+
+.shapiq-deck .shapiq-slide-here {
+  display: none;
+}
+
+article .shapiq-slide-title {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+article .shapiq-slide--title .shapiq-slide-title {
+  font-size: 2rem;
+}
+
+.shapiq-slide-notes {
+  margin: 1.5rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--shapiq-amber);
+  border-radius: 0 var(--shapiq-radius-small) var(--shapiq-radius-small) 0;
+  background: var(--shapiq-amber-soft);
+  font-size: 0.9rem;
+}
+
+.shapiq-slide-notes::before {
+  content: "Notes";
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--shapiq-amber-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shapiq-slide-notes > :first-child {
+  margin-top: 0;
+}
+
+.shapiq-slide-notes > :last-child {
+  margin-bottom: 0;
+}
+
+/* ---- the parts that every slide may use ---------------------------------------------------- */
+
+.shapiq-slide-body > :first-child {
+  margin-top: 0;
+}
+
+.shapiq-slide-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* the subtitle and the speaker of the title slide */
+.shapiq-talk-subtitle {
+  margin: 0.4em 0 0;
+  color: var(--shapiq-text-muted);
+  font-size: 1.25em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.shapiq-talk-speaker {
+  margin: 2.2em 0 0;
+  line-height: 1.45;
+}
+
+.shapiq-talk-speaker strong {
+  font-size: 1.1em;
+}
+
+/* a large statement, the one sentence a slide says */
+.shapiq-talk-statement {
+  max-width: 34em;
+  font-size: 1.35em;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.shapiq-talk-statement em,
+.shapiq-talk-statement strong {
+  color: var(--shapiq-amber-ink);
+  font-style: normal;
+}
+
+/* questions and the explanations that answer them, as rows */
+.shapiq-talk-answers table.docutils {
+  width: 100%;
+  border: 0;
+  box-shadow: none;
+  border-collapse: collapse;
+}
+
+.shapiq-talk-answers table.docutils th,
+.shapiq-talk-answers table.docutils td {
+  padding: 0.55em 0.8em 0.55em 0;
+  border: 0;
+  border-bottom: 1px solid var(--shapiq-border);
+  background: none;
+  text-align: left;
+  vertical-align: top;
+}
+
+.shapiq-talk-answers table.docutils th {
+  color: var(--shapiq-text-muted);
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shapiq-talk-answers table.docutils td:first-child {
+  width: 45%;
+}
+
+.shapiq-talk-draft {
+  display: inline-block;
+  margin-top: 1em;
+  padding: 0.15em 0.6em;
+  border: 1px dashed var(--shapiq-amber);
+  border-radius: 999px;
+  color: var(--shapiq-amber-ink);
+  font-size: 0.75em;
+}
+
+/* a part that shows from a step on (.shapiq-from-<k>): on the page always, in the deck from its step */
+.shapiq-deck .shapiq-slide [class*="shapiq-from-"] {
+  transition: opacity 320ms var(--shapiq-ease), transform 320ms var(--shapiq-ease);
+}
+
+.shapiq-deck .shapiq-slide [class*="shapiq-from-"].shapiq-later {
+  opacity: 0;
+  transform: translateY(0.4em);
+  pointer-events: none;
+}
+
+/* ---- presented ------------------------------------------------------------------------------ */
+
+html.shapiq-presenting,
+html.shapiq-presenting body {
+  overflow: hidden;
+}
+
+/* the rest of the docs stays where it is, out of sight */
+html.shapiq-presenting body > :not(.shapiq-deck) {
+  visibility: hidden;
+}
+
+.shapiq-deck {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--color-background-primary);
+  color: var(--color-foreground-primary);
+  /* the size of text on a slide follows the size of the window, from a phone to a projector */
+  font-size: clamp(15px, 1.15vw + 1.05vh, 36px);
+  line-height: 1.45;
+}
+
+.shapiq-deck:focus {
+  outline: none;
+}
+
+.shapiq-deck .shapiq-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 6.5vh max(6vw, 1.5rem) 9vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 280ms var(--shapiq-ease), visibility 0s linear 280ms;
+}
+
+.shapiq-deck .shapiq-slide.shapiq-current {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 280ms var(--shapiq-ease), visibility 0s;
+}
+
+.shapiq-deck .shapiq-slide-title {
+  position: relative;
+  margin: 0 0 1.1em;
+  padding-top: 0.55em;
+  font-size: 1.75em;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+/* a short amber line above every title */
+.shapiq-deck .shapiq-slide-title::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2.2em;
+  height: 0.16em;
+  border-radius: 999px;
+  background: var(--shapiq-amber);
+}
+
+.shapiq-deck .shapiq-slide-body {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+.shapiq-deck .shapiq-slide-notes {
+  display: none;
+}
+
+.shapiq-deck .shapiq-slide-body p,
+.shapiq-deck .shapiq-slide-body li {
+  max-width: 40em;
+}
+
+/* the title slide and a divider: large and in the middle of the height */
+.shapiq-deck .shapiq-slide--title,
+.shapiq-deck .shapiq-slide--section {
+  justify-content: center;
+}
+
+.shapiq-deck .shapiq-slide--title .shapiq-slide-body,
+.shapiq-deck .shapiq-slide--section .shapiq-slide-body {
+  flex: 0 0 auto;
+}
+
+.shapiq-deck .shapiq-slide--title .shapiq-slide-title {
+  max-width: 18em;
+  margin-bottom: 0.25em;
+  font-size: 2.8em;
+  line-height: 1.08;
+}
+
+.shapiq-deck .shapiq-slide--section .shapiq-slide-title {
+  max-width: 16em;
+  font-size: 2.6em;
+}
+
+/* a demo or a figure that needs the full width: a smaller title, the content up to 72rem wide */
+.shapiq-deck .shapiq-slide--wide .shapiq-slide-title {
+  margin-bottom: 0.6em;
+  font-size: 1.3em;
+}
+
+.shapiq-deck .shapiq-slide--wide .shapiq-slide-body {
+  justify-content: center;
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  /* the demos keep the size of the docs' text */
+  font-size: 1rem;
+}
+
+.shapiq-deck .shapiq-slide--wide .shapiq-slide-title {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+/* the corner: where the talk is, and the buttons to move through it */
+.shapiq-deck-bar {
+  position: absolute;
+  right: max(1.5vw, 0.75rem);
+  bottom: max(1.5vh, 0.6rem);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  color: var(--shapiq-text-muted);
+  font-size: 14px;
+  opacity: 0.35;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease), background var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-deck-bar:hover,
+.shapiq-deck-bar:focus-within,
+.shapiq-deck.shapiq-pointer-moved .shapiq-deck-bar {
+  background: var(--shapiq-surface-raised);
+  box-shadow: var(--shapiq-shadow);
+  opacity: 1;
+}
+
+.shapiq-deck-bar button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  place-items: center;
+}
+
+.shapiq-deck-bar button:hover {
+  background: var(--shapiq-amber-soft);
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-deck-bar button[aria-pressed="true"] {
+  color: var(--shapiq-amber-ink);
+}
+
+.shapiq-deck-bar svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.shapiq-deck-count {
+  min-width: 3.6em;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* how far the talk is: a thin amber line at the bottom */
+.shapiq-deck-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+}
+
+.shapiq-deck-progress span {
+  display: block;
+  height: 100%;
+  background: var(--shapiq-amber);
+  transform-origin: left;
+  transition: transform 280ms var(--shapiq-ease);
+}
+
+/* the notes on the presenter's screen (key N) */
+.shapiq-deck-notes {
+  position: absolute;
+  bottom: calc(max(1.5vh, 0.6rem) + 2.8rem);
+  right: max(1.5vw, 0.75rem);
+  z-index: 3;
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: 45vh;
+  padding: 0.9rem 1.1rem;
+  overflow: auto;
+  border: 1px solid var(--shapiq-border);
+  border-left: 3px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+  box-shadow: var(--shapiq-shadow-hover);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.shapiq-deck-notes[hidden] {
+  display: none;
+}
+
+.shapiq-deck-notes > :first-child {
+  margin-top: 0;
+}
+
+.shapiq-deck-notes > :last-child {
+  margin-bottom: 0;
+}
+
+.shapiq-deck-notes-empty {
+  color: var(--shapiq-text-muted);
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shapiq-deck .shapiq-slide,
+  .shapiq-deck .shapiq-slide.shapiq-current,
+  .shapiq-deck .shapiq-slide [class*="shapiq-from-"] {
+    transition: none;
+  }
+}
+
+@media print {
+  .shapiq-talk-bar,
+  .shapiq-slide-here {
+    display: none;
+  }
+
+  article .shapiq-slide {
+    break-inside: avoid;
+  }
+}

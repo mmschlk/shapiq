@@ -1,0 +1,347 @@
+/* The figures of the talk "One Explanation Does Not Fit All" (figures.js). Red raises a
+   prediction and blue lowers it, as everywhere in shapiq. */
+
+.shapiq-talk-figure {
+  --talk-pos: var(--shapiq-red);
+  --talk-neg: var(--shapiq-blue);
+  --talk-ink: var(--color-foreground-primary);
+  --talk-muted: var(--shapiq-text-muted);
+  --talk-line: var(--shapiq-border);
+  width: 100%;
+}
+
+/* the parts of a later step keep their room and fade in */
+.shapiq-talk-figure [class*="talk-from-"] {
+  transition: opacity 320ms var(--shapiq-ease);
+}
+
+.shapiq-talk-figure .talk-later {
+  opacity: 0;
+}
+
+.shapiq-talk-figure svg text {
+  fill: var(--talk-ink);
+  font-family: inherit;
+}
+
+.talk-axis {
+  stroke: var(--talk-line);
+  stroke-width: 1.5;
+}
+
+.talk-tick {
+  fill: var(--talk-muted) !important;
+  font-size: 11px;
+}
+
+.talk-value {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.talk-muted {
+  fill: var(--talk-muted) !important;
+}
+
+.talk-node {
+  fill: #fff !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.talk-pos {
+  fill: var(--talk-pos);
+}
+
+.talk-neg {
+  fill: var(--talk-neg);
+}
+
+.talk-zero {
+  fill: var(--shapiq-lavender);
+}
+
+.talk-pos-line {
+  stroke: var(--talk-pos);
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.talk-neg-line {
+  stroke: var(--talk-neg);
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.talk-none-line {
+  stroke: var(--talk-line);
+  stroke-dasharray: 3 5;
+  stroke-width: 2;
+}
+
+/* ---- three models, one explanation ---------------------------------------------------------- */
+
+.talk-same {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* the cards share their rows, so that their parts line up when a formula takes two lines */
+  grid-template-rows: repeat(5, auto);
+  gap: clamp(0.6rem, 1.6vw, 1.5rem);
+  font-size: 15px;
+}
+
+.talk-same-card {
+  display: grid;
+  grid-row: span 5;
+  grid-template-rows: subgrid;
+  gap: 0.9em;
+  padding: 1em 1.1em 1.1em;
+  border: 1px solid var(--talk-line);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface-raised);
+}
+
+.talk-same-head {
+  min-height: 3.1em;
+}
+
+.talk-same-model {
+  color: var(--talk-muted);
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.talk-same-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2em 0.6em;
+}
+
+.talk-same-name strong {
+  font-size: 1.15em;
+}
+
+.talk-same-name span {
+  color: var(--talk-muted);
+  font-family: var(--font-stack--monospace);
+  font-size: 0.85em;
+}
+
+.talk-same-label {
+  margin-bottom: 0.3em;
+  color: var(--talk-muted);
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.talk-same-bars,
+.talk-same-graph {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.talk-same-game {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35em;
+}
+
+.talk-same-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.35em 0.2em;
+  border-radius: var(--shapiq-radius-small);
+  background: color-mix(in srgb, var(--shapiq-amber) calc(var(--level) * 55%), var(--shapiq-surface));
+  border: 1px solid var(--talk-line);
+}
+
+.talk-same-cell span {
+  color: var(--talk-muted);
+  font-size: 0.75em;
+  white-space: nowrap;
+}
+
+.talk-same-cell strong {
+  font-size: 1.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+.talk-same-says {
+  align-self: end;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .talk-same {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+}
+
+/* ---- the unified framework ------------------------------------------------------------------ */
+
+.talk-frame {
+  font-size: 15px;
+}
+
+/* on a slide, the figures grow with the window */
+.shapiq-deck .talk-same,
+.shapiq-deck .talk-frame {
+  font-size: clamp(14px, 0.75vw + 0.75vh, 26px);
+}
+
+.talk-frame-types {
+  display: inline-flex;
+  margin: 0 0 1em;
+  padding: 0.2em;
+  border: 1px solid var(--talk-line);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+}
+
+.talk-frame-types button {
+  padding: 0.35em 1em;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--talk-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--shapiq-duration) var(--shapiq-ease), color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.talk-frame-types button[aria-checked="true"] {
+  background: var(--shapiq-amber);
+  color: #1b1e27;
+}
+
+.talk-frame-grid {
+  display: grid;
+  grid-template-columns: minmax(8em, 0.9fr) repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--talk-line);
+  border-radius: var(--shapiq-radius);
+  overflow: hidden;
+}
+
+.talk-frame-grid > div {
+  padding: 0.7em 0.8em;
+  border-top: 1px solid var(--talk-line);
+  border-left: 1px solid var(--talk-line);
+}
+
+.talk-frame-grid > div:nth-child(-n + 4) {
+  border-top: 0;
+}
+
+.talk-frame-grid > div:nth-child(4n + 1) {
+  border-left: 0;
+}
+
+.talk-frame-col,
+.talk-frame-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  background: var(--shapiq-surface-raised);
+}
+
+.talk-frame-col span,
+.talk-frame-row span {
+  color: var(--talk-muted);
+  font-size: 0.8em;
+  line-height: 1.3;
+}
+
+.talk-frame-row span {
+  min-height: 2.6em;
+}
+
+.talk-frame-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.35em;
+  min-height: 4.6em;
+}
+
+.talk-chip {
+  padding: 0.2em 0.65em;
+  border: 1px solid color-mix(in srgb, var(--shapiq-amber) 55%, transparent);
+  border-radius: 999px;
+  background: var(--shapiq-amber-soft);
+  font-size: 0.85em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.talk-swap {
+  transition: opacity 160ms var(--shapiq-ease);
+}
+
+.talk-frame-cell,
+.talk-frame-row .talk-swap {
+  transition: opacity 160ms var(--shapiq-ease);
+}
+
+.talk-out {
+  opacity: 0;
+}
+
+.talk-frame-grid > .talk-frame-corner {
+  position: relative;
+  min-height: 3.6em;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.5px), var(--talk-line) 50%, transparent calc(50% + 0.5px)),
+    var(--shapiq-surface-raised);
+  color: var(--talk-muted);
+  font-size: 0.78em;
+  line-height: 1.25;
+}
+
+.talk-frame-corner span {
+  position: absolute;
+}
+
+.talk-frame-corner span:first-child {
+  top: 0.7em;
+  right: 0.8em;
+  text-align: right;
+}
+
+.talk-frame-corner span:last-child {
+  bottom: 0.7em;
+  left: 0.8em;
+}
+
+@media (max-width: 720px) {
+  .talk-frame-grid {
+    grid-template-columns: 6.5em repeat(3, minmax(0, 1fr));
+    font-size: 0.85em;
+  }
+
+  .talk-frame-col span {
+    display: none;
+  }
+
+  .talk-chip {
+    white-space: normal;
+  }
+}
+
+.talk-feature {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.talk-zero + .talk-node {
+  fill: #1b1e27 !important;
+}
