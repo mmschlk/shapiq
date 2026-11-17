@@ -1474,54 +1474,8 @@ body[data-theme="dark"] .fixlip-figure {
   stroke-width: 2;
 }
 
-/* -- a figure copied from the paper -------------------------------------------------------------------- */
-
-/* The paper's figure is drawn for a white page, so it keeps a white ground in both themes. */
-figure.fixlip-paper-figure {
-  clear: both;
-  max-width: var(--fixlip-figure-width, 38rem);
-  margin: 2rem auto 2.25rem;
-}
-
-figure.fixlip-paper-figure img {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  background: #ffffff;
-}
-
-/* on a dark page, the white ground is a card with an edge around the figure */
-body[data-theme="dark"] figure.fixlip-paper-figure img {
-  padding: 0.6rem;
-  border-radius: 10px;
-}
-
-@media (prefers-color-scheme: dark) {
-  body:not([data-theme="light"]) figure.fixlip-paper-figure img {
-    padding: 0.6rem;
-    border-radius: 10px;
-  }
-}
-
-figure.fixlip-paper-figure figcaption {
-  margin-top: 0.7rem;
-  font-size: 0.88rem;
-  line-height: 1.5;
-  text-align: left;
-  color: var(--shapiq-text-muted, #5b6275);
-}
-
-figure.fixlip-paper-figure figcaption p {
-  margin: 0;
-}
-
-figure.fixlip-paper-figure figcaption strong {
-  color: var(--color-foreground-primary, #1b1e27);
-}
-
-/* on a phone, the captions that are not in a drawn figure are as large as those that are */
+/* on a phone, the captions of the tables are as large as those of the figures */
 @media (max-width: 36rem) {
-  figure.fixlip-paper-figure figcaption,
   article[role="main"] .table-wrapper table.docutils caption {
     font-size: 0.94rem;
   }

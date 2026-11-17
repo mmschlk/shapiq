@@ -7,11 +7,12 @@
 // a slider of their own, which keeps its place when the figure is drawn again.
 //
 // The figures read the demo's explanations (data.js) and the predictions of SigLIP 2 for the masks
-// they show (figures-data.js, by ../compute/evaluate.py). Four figures do not follow the image:
-// the sketch of the pointing game and the three plots of the paper, which are drawn again from the
-// data of the paper's figures (../compute/paper.py). A figure is drawn at the width it has on the
-// page, so its text keeps its size on a phone, and its colors are those of figures.css, so it
-// follows the theme. Without JavaScript, a figure shows its description.
+// they show (figures-data.js, by ../compute/evaluate.py), and the comparison of the methods reads
+// the explanations of CLIP by the paper's baselines (../compute/baselines.py). Four figures do not
+// follow the image: the sketch of the pointing game and the three plots of the paper, which are
+// drawn again from the data of the paper's figures (../compute/paper.py). A figure is drawn at the
+// width it has on the page, so its text keeps its size on a phone, and its colors are those of
+// figures.css, so it follows the theme. Without JavaScript, a figure shows its description.
 (() => {
   const figures = [...document.querySelectorAll("figure.fixlip-figure")];
   if (!figures.length) return;
@@ -918,6 +919,26 @@
         return panel(m.label, pair(c, { ex, members: inside, links: strongest(ex, (i, j) => inside.has(i) && inside.has(j)) }));
       });
       stage.append(columns("fixlip-figure-two fixlip-figure-narrow", ...panels));
+    },
+
+    // The methods of the paper's comparison on the pair, for CLIP: GAME and Grad-ECLIP tint the
+    // patches and the tokens, exCLIP draws its strongest interactions between a patch and a token,
+    // and FIxLIP shows its main effects and its strongest interactions, as the explanation figure
+    // does. Both drawings of interactions keep the same number of lines, scaled to their strongest.
+    methods(stage, c) {
+      const ex = explanationOf(c.id, "clip");
+      const shown = extra.baselines.images[c.id];
+      const first = (method) => tintOf(ex, [...shown[method].patches, ...shown[method].tokens]);
+      const cross = shown.exclip.flatMap((row, i) => row.map((value, t) => ({ i, j: ex.patches + t, value })));
+      cross.sort((x, y) => Math.abs(y.value) - Math.abs(x.value));
+      // every panel keeps the room of the arcs under the tokens, so that the four are equally high
+      const panels = [
+        ["GAME", { tint: first("game"), links: [] }],
+        ["Grad-ECLIP", { tint: first("gradeclip"), links: [] }],
+        ["exCLIP", { links: cross.slice(0, STRONGEST) }],
+        ["FIxLIP", { tint: tintOf(ex, ex.first), links: strongest(ex).slice(0, STRONGEST) }],
+      ].map(([title, options]) => panel(title, pair(c, { ex, ...options })));
+      stage.append(columns("fixlip-figure-four", ...panels));
     },
 
     // -- the figures that do not follow the image ----------------------------------------------------

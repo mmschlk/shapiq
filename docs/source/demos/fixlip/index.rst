@@ -186,18 +186,15 @@ interactions, based on Integrated Hessians :cite:p:`Janizek.2021`. It omits the 
 single tokens and the *intra-modal* interactions, e.g. between two words. Its explanation is thus a
 bipartite graph without weights on its nodes. As a likely consequence of these missing terms, exCLIP
 fails to recover the subsets of tokens that matter most for the prediction, as :ref:`the insertion
-and deletion curves <fixlip-sec-aid>` show. :shapiq-figure:`paper-methods` compares the methods on
+and deletion curves <fixlip-sec-aid>` show. :shapiq-figure:`methods` compares the methods on
 one input.
 
-.. figure:: figures/paper-methods.webp
-   :name: paper-methods
-   :alt: The explanations of GAME, Grad-ECLIP, exCLIP and FIxLIP for a photo of a dog next to a yellow hydrant and the text 'black dog next to a yellow hydrant'. GAME and Grad-ECLIP tint image patches and text tokens. exCLIP draws lines between patches and tokens. FIxLIP shows both.
-   :width: 100%
-   :figclass: fixlip-paper-figure
+.. shapiq-demo-figure:: fixlip methods
+   :alt: The explanations of GAME, Grad-ECLIP, exCLIP and FIxLIP for CLIP on the chosen example. GAME and Grad-ECLIP tint image patches and text tokens. exCLIP draws lines between patches and tokens. FIxLIP tints patches and tokens and draws lines between them.
 
-   **The methods on one input.** Explanations of CLIP (ViT-B/32) by two first-order methods, by
-   exCLIP, and by FIxLIP. In this example, the text token *ant* is the most important for the
-   prediction.
+   **The methods on one input.** Explanations of CLIP (ViT-B/32) by the first-order methods GAME
+   and Grad-ECLIP, by exCLIP, and by FIxLIP. The first-order methods tint each token by its
+   importance. exCLIP and FIxLIP show their 12 strongest interactions.
 
 .. _fixlip-sec-method:
 
@@ -918,12 +915,13 @@ Citation
 
 This page is based on *Explaining Similarity in Vision–Language Encoders with Weighted Banzhaf
 Interactions* :cite:p:`Baniecki.2025`, the work that introduces FIxLIP. The definitions, the
-evaluation metrics and the results on MS COCO are taken from it. This includes
-:shapiq-figure:`paper-methods` and the data of :shapiq-figure:`paper-runtime`,
-:shapiq-figure:`paper-faithfulness`, :shapiq-figure:`paper-curves` and of the scores in
-:shapiq-figure:`pointing`, which are redrawn here. The curves of :shapiq-figure:`paper-curves` run
-from no tokens to all tokens, which is the reverse of the original figure. Everything shown for the
-five examples is computed for this page with ``shapiq``.
+evaluation metrics and the results on MS COCO are taken from it. This includes the data of
+:shapiq-figure:`paper-runtime`, :shapiq-figure:`paper-faithfulness`, :shapiq-figure:`paper-curves`
+and of the scores in :shapiq-figure:`pointing`, which are redrawn here. The curves of
+:shapiq-figure:`paper-curves` run from no tokens to all tokens, which is the reverse of the original
+figure. Everything shown for the five examples is computed for this page with ``shapiq``. GAME,
+Grad-ECLIP and exCLIP in :shapiq-figure:`methods` are computed with their settings in the original
+code of FIxLIP.
 
 FIxLIP is joint work with authors of ``shapiq``, and its original code is available at
 `github.com/hbaniecki/fixlip <https://github.com/hbaniecki/fixlip>`__. If you use FIxLIP in your
