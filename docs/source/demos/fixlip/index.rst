@@ -46,19 +46,18 @@ improvements such as SigLIP :cite:p:`Zhai.2023` and SigLIP 2 :cite:p:`Tschannen.
 increasing the size of datasets, leads to the development of powerful *vision–language encoders*.
 These rather opaque encoders become the backbone components in large vision–language models capable
 of actual conversation and reasoning. They are increasingly applied in high-stakes decision-making,
-like in the case of medical imaging :cite:p:`Zhao.2025`.
+like in the case of medical imaging :cite:p:`Ikezogwo.2023,Zhao.2025` and remote sensing
+:cite:p:`Liu.2024`.
 
 One way of validating similarity predictions at inference time is explaining the encoders with
 *saliency maps* :cite:p:`Chefer.2021,Zhao.2024`. However, these first-order importance scores are
 limited by their unimodal view of the model's output. **Vision–language encoders cannot be
 faithfully explained without taking into account the cross-modal interactions between image–text
-pairs** :cite:p:`Liang.2023`.
-
-FIxLIP :cite:p:`Baniecki.2025` addresses this limitation from a game-theoretic perspective. Input
-tokens, i.e. image patches and text tokens, form coalitions of players in a *cooperative game*. The
-resulting explanation assigns *attribution scores* to each token and *interaction scores* to each
-pair of tokens in an image–text pair. It thus shows **which words go with which parts of an
-image**.
+pairs** :cite:p:`Liang.2023`. **FIxLIP** :cite:p:`Baniecki.2025` addresses this limitation from a
+game-theoretic perspective. Input tokens, i.e. image patches and text tokens, form coalitions of
+players in a *cooperative game*. The resulting explanation assigns *attribution scores* to each
+token and *interaction scores* to each pair of tokens in an image–text pair. It thus shows **which
+words go with which parts of an image**.
 
 .. _fixlip-sec-background:
 
@@ -73,13 +72,14 @@ and reviews how related work explains them.
 Vision–Language Encoders in a Nutshell
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A vision–language encoder :math:`f` consists of a *vision encoder* :math:`f_\mathcal{I}` and a
-*language encoder* :math:`f_\mathcal{T}`. The vision encoder splits an image :math:`x_\mathcal{I}`
-into :math:`n_\mathcal{I}` patches and maps them to an embedding vector of dimension :math:`d`. The
-language encoder splits a text :math:`x_\mathcal{T}` into :math:`n_\mathcal{T}` tokens and maps
-them to an embedding vector of the same dimension. For an image–text pair :math:`(x_\mathcal{I},
-x_\mathcal{T})`, the model then predicts how well the image and the text match as the *cosine
-similarity* of the two embeddings.
+A vision–language encoder :math:`f: \mathbb{R}^{n_\mathcal{I}} \times \mathbb{R}^{n_\mathcal{T}}
+\to [-1, 1]` maps an image–text pair to a similarity score, as illustrated in
+:shapiq-figure:`encoders` for SigLIP 2. It consists of a *vision encoder* :math:`f_\mathcal{I}:
+\mathbb{R}^{n_\mathcal{I}} \to \mathbb{R}^{d}` with :math:`n_\mathcal{I}` image patches and a
+*language encoder* :math:`f_\mathcal{T}: \mathbb{R}^{n_\mathcal{T}} \to \mathbb{R}^{d}` with
+:math:`n_\mathcal{T}` text tokens. Each encoder maps its input to an *embedding* vector of dimension
+:math:`d`. For an image–text pair :math:`(x_\mathcal{I}, x_\mathcal{T})`, the model then predicts
+how well the image and the text *match* as the *cosine similarity* of the two embeddings.
 
 .. math::
    :label: fixlip-vle
@@ -89,29 +89,31 @@ similarity* of the two embeddings.
    = \frac{f_\mathcal{I}(x_\mathcal{I}) \cdot f_\mathcal{T}(x_\mathcal{T})}
    {\Vert f_\mathcal{I}(x_\mathcal{I}) \Vert \cdot \Vert f_\mathcal{T}(x_\mathcal{T}) \Vert}
 
-CLIP learns the two encoders jointly from image–text pairs with a contrastive loss, which pulls
-matching pairs together and pushes all other pairs of a batch apart. SigLIP replaces the softmax
-over the batch with a sigmoid loss on every pair, and SigLIP 2 extends its training recipe. The
-demo uses the ViT-B/32 variant of both models. CLIP splits an image of 224 × 224 pixels into 7 × 7
-patches, whereas SigLIP 2 splits an image of 256 × 256 pixels into 8 × 8 patches. The embeddings
-have :math:`d = 512` dimensions for CLIP and :math:`d = 768` for SigLIP 2.
-:shapiq-figure:`encoders` shows the two encoders for the chosen pair, with the first values of the
-embeddings that SigLIP 2 computes.
+Vision–language encoders are trained on large collections of image–text pairs from the web. The
+training *aligns* the two encoders. The embeddings of an image and of its own text then point in a
+similar direction, whereas those of unrelated pairs do not. CLIP :cite:p:`Radford.2021`, SigLIP
+:cite:p:`Zhai.2023` and SigLIP 2 :cite:p:`Tschannen.2025` are instances of this idea, which differ
+mainly in their training objective. CLIP contrasts each matching pair with all other pairs of a
+batch. SigLIP instead decides for every pair independently whether it matches, and SigLIP 2 extends
+this recipe with further objectives. The demo uses the ViT-B/32 variant of CLIP and SigLIP 2, which
+split an image into 7 × 7 and 8 × 8 patches, respectively.
 
 .. shapiq-demo-figure:: fixlip encoders
    :alt: A photo, cut into 8 by 8 patches, goes through the vision encoder. Its text, cut into tokens, goes through the language encoder. Each encoder returns an embedding of 768 values, of which the first four are shown. The cosine similarity of the two embeddings is the prediction of the model.
 
-   **From an image–text pair to a similarity.** SigLIP 2 encodes the patches of the image and the
-   tokens of the text separately. The vectors show the first four of the 768 values of each
-   embedding, scaled to unit length. The two embeddings meet only in the cosine similarity.
+   **From an image–text pair to a similarity.** CLIP and SigLIP 2 encode the patches of the image
+   and the tokens of the text separately. The cosine similarity of the two embedding vectors is the
+   prediction of the model.
 
-The two models predict very different numbers for the same pair. These numbers cannot be compared
-directly, because every model has its own scale. The demo therefore relates each prediction to 200
-images from MS COCO :cite:p:`Lin.2014`. Each image is paired with its own caption, which gives 200
-matching pairs, and with the captions of all other images, which gives 39,800 unrelated pairs. All
-five pairs of the demo score at least as high as a typical matching pair for both models, as
-:shapiq-figure:`scale` shows. In other words, both models find that each text describes its image
-well.
+Two models can predict very different similarity scores for the same image–text pair. These
+scores cannot be compared directly, because every model has its own scale. A score is therefore
+best read *relative* to a reference set of image–text pairs. In such a set, each image forms a
+*matching pair* with its own caption and an *unrelated pair* with the caption of any other image. A
+score in the range of the matching pairs and above the unrelated pairs tells that the model finds
+the text to describe the image well. :shapiq-figure:`scale` shows these ranges for 200 images from
+MS COCO :cite:p:`Lin.2014`, where all five pairs of the demo score at least as high as a typical
+matching pair for both models. A single number tells how similar the model finds the pair, but not
+why.
 
 .. shapiq-demo-figure:: fixlip scale
    :alt: For SigLIP 2, matching pairs have similarities around 0.15 and unrelated pairs around minus 0.03. For CLIP, matching pairs are around 0.31 and unrelated pairs around 0.15. A dot marks the chosen pair on the scale of each model.
@@ -119,25 +121,18 @@ well.
    **Every model has its own scale.** Thick bars cover the middle half of the pairs and thin lines
    cover the middle 90%. Gaps mark the medians and dots mark the chosen pair.
 
-The demo shows this prediction as *No explanation*. A single number tells how similar the model
-finds the pair, but not why.
-
 .. _fixlip-sec-interactions:
 
 Interactions Are the Natural Language of Similarity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Explanations of a classifier usually attribute a score to the parts of one input. A similarity
-prediction is different, because it is a property of an image–text pair. The following three
-observations show why its explanation has to include interactions.
-
-**Neither modality has a similarity on its own.** The dot product in :eq:`fixlip-vle` multiplies
-the coordinates of the image embedding with those of the text embedding. What an image patch
-contributes to the prediction therefore depends on the text it is compared with, and vice versa.
-The first row of :shapiq-figure:`masks` illustrates this. With the image alone or the text alone,
-the prediction of SigLIP 2 stays close to its prediction for an empty input, in which all patches
-and all text tokens are masked. Often it is even lower. Only both modalities together reach the
-similarity of the pair.
+prediction is *different*, because it is a property of an image–text pair. Consider what happens
+when one half of the pair is missing. The first row of :shapiq-figure:`masks` shows the prediction
+of SigLIP 2 with the image alone and with the text alone. In both cases, it stays close to the
+prediction for an empty input, in which all patches and all text tokens are masked. Often it is
+even lower. Only both modalities together reach the similarity of the pair. Neither modality has a
+similarity on its own.
 
 .. shapiq-demo-figure:: fixlip masks
    :alt: Eight masked versions of the pair with the similarity that SigLIP 2 predicts. In the first row, all tokens, no tokens, the image only and the text only. The similarity is high only with all tokens. In the second row, the image without one object, the image without another object, and two random masks.
@@ -145,21 +140,23 @@ similarity of the pair.
    **The model on masked inputs.** The prediction of SigLIP 2 for eight masked versions of the
    pair. Gray patches and crossed-out text tokens are masked.
 
-**A similarity without cross-modal interactions would be useless.** Assume that the prediction were
-the sum of one score for the image and one score for the text. The best text would then be the same
-for every image, and the best image the same for every text. Retrieval and zero-shot classification
-work only because the prediction is more than such a sum. Thus, what makes a vision–language
-encoder useful is contained in its cross-modal interactions, of which FIxLIP explains the pairwise
-part.
+This behavior follows from how the prediction is computed. The dot product in :eq:`fixlip-vle`
+multiplies the coordinates of the image embedding with those of the text embedding. What an image
+patch contributes to the prediction therefore *depends* on the text it is compared with, and vice
+versa. This dependence is also what makes the model useful. If the prediction were the sum of one
+score for the image and one score for the text, the best text would be the same for every image,
+and the best image the same for every text. Retrieval and zero-shot classification work only
+because the prediction is more than such a sum. Everything beyond the sum is an *interaction*
+between the two modalities.
 
-**Saliency maps cannot say which words go with which parts of an image.** A first-order attribution
-assigns one score to each token. It can highlight an object in the image and the words of the text.
-However, it cannot tell which of the words the model matched with the object. Only an interaction
-between an image patch and a text token can express such a relation.
-
-This argument is not specific to CLIP, since any model that scores an image–text pair has to relate
-tokens across the two modalities. It also agrees with the user studies of :cite:t:`Liang.2023`, in
-which visualizing second-order attributions was necessary for understanding multimodal models.
+An explanation that assigns one score to each token misses exactly this part. A saliency map can
+highlight an object in the image and the words of the text. However, it cannot tell *which* of the
+words the model matched with the object. Only an interaction between an image patch and a text
+token can express such a relation. **A faithful explanation of similarity thus has to include
+cross-modal interactions**, of which FIxLIP explains the pairwise part. This conclusion is not
+specific to CLIP, since any model that scores an image–text pair has to relate tokens across the
+two modalities. It also agrees with the user studies of :cite:t:`Liang.2023`, in which visualizing
+second-order attributions was necessary for understanding multimodal models.
 
 .. _fixlip-sec-related:
 
@@ -171,10 +168,10 @@ visualize them as saliency maps. This includes *gradient-based* methods such as 
 :cite:p:`Zhao.2024`, *attention-based* methods such as GAME :cite:p:`Chefer.2021`, and
 *information-based* methods :cite:p:`Wang.2023b,Zhu.2025`. Shapley and Banzhaf values offer a
 game-theoretic alternative, which MM-SHAP :cite:p:`Parcalabescu.2023` aggregates to measure how
-much each modality contributes. All of these attributions are of first order, i.e. one score per
+much each modality contributes. All of these attributions are of *first order*, i.e. one score per
 token. Thus, they cannot disentangle which words relate to which image regions.
 
-A second line of work approximates second-order attributions. :cite:t:`Joukovsky.2023` approximate
+A second line of work approximates *second-order* attributions. :cite:t:`Joukovsky.2023` approximate
 the interactions with bilinear models, which :cite:t:`Sammani.2024` apply to image–image encoders.
 In concurrent work to FIxLIP, exCLIP :cite:p:`Moeller.2025` approximates only the cross-modal
 interactions, based on Integrated Hessians :cite:p:`Janizek.2021`. It omits the *main effects* of
@@ -265,7 +262,7 @@ mask of the encoder, while special tokens and padding are always kept.
 :shapiq-figure:`masks` showed eight of these masks. For example, removing an object from the image
 lowers the similarity for all five pairs, although the text still names the object. With
 :math:`2^{n_\mathcal{I} + n_\mathcal{T}}` masks, the game cannot be inspected directly. An
-explanation has to summarize it.
+explanation has to *summarize* it.
 
 :cite:t:`Baniecki.2025` explain the logit-scaled similarity :math:`C \cdot f(x_\mathcal{I},
 x_\mathcal{T})`, where the learnt constant :math:`C` is about 100 for CLIP and about 112 for SigLIP
@@ -291,7 +288,7 @@ game :math:`\nu(M) \approx \hat\nu_\mathbf{e}(M)` with a simple additive model.
 An interaction is *cross-modal* if it links an image patch with a text token. It is *intra-modal*
 if it links two image patches or two text tokens. The explanation can be viewed as a complete graph
 with the tokens as weighted nodes and the interactions as weighted edges. The demo calls the image
-patches *regions* and the text tokens *words*, and both together *players*.
+patches *regions* and the text tokens *words*, and both together *features*.
 
 **What an interaction measures.** A positive interaction means that two tokens raise the similarity
 more together than the sum of their individual effects. :shapiq-figure:`interaction` measures this
@@ -384,7 +381,7 @@ Cliques of Tokens
 ~~~~~~~~~~~~~~~~~
 
 The explanation also allows searching for the subsets of tokens that raise the similarity the most.
-In the graph view, such a subset is a clique. Its value is the sum of the main effects and
+In the graph view, such a subset is a *clique*. Its value is the sum of the main effects and
 interactions of its tokens, i.e. :math:`\hat\nu_\mathbf{e}(M) - \mathbf{e}_0` for a clique
 :math:`M`. Finding the best clique of a given size by brute force is infeasible. Instead, FIxLIP
 uses a greedy search that starts from each token and repeatedly adds the token that raises the
@@ -406,7 +403,7 @@ The value of a clique is computed from the explanation and not from the model. T
 also reports what SigLIP 2 itself predicts for each clique alone, as a gain over an empty input.
 For all five pairs and all sizes, this gain is smaller than the value. For two pairs, the clique of
 two even consists of two words. Without any image patch, the model then predicts less than for an
-empty input. The explanation thus overestimates small cliques, which we revisit in :ref:`the
+empty input. The explanation thus *overestimates* small cliques, which we revisit in :ref:`the
 evaluation <fixlip-sec-correlation>`.
 
 .. _fixlip-sec-computation:
@@ -450,7 +447,7 @@ Its interactions are the *weighted Banzhaf interactions* :cite:p:`Marichal.2011`
 :cite:p:`Tsai.2022`, which has a known analytical solution :cite:p:`Hammer.1992`.
 
 **Masking with a purpose.** The parameter :math:`p` addresses a known problem of removal-based
-explanations :cite:p:`Hase.2021`. Inputs with many masked tokens are out-of-distribution, i.e.
+explanations :cite:p:`Hase.2021`. Inputs with many masked tokens are *out-of-distribution*, i.e.
 images become unrecognizable and texts become ambiguous. A larger :math:`p` prioritizes masks that
 keep most tokens and thus stay closer to real inputs, whereas a smaller :math:`p` prioritizes
 sparse masks. :shapiq-figure:`masking` shows the effect for the chosen pair. At :math:`p = 0.3`,

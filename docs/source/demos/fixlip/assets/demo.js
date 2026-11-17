@@ -181,10 +181,10 @@
       "but were never told where in a photo a giraffe is. That is why, in the photo of the giraffe " +
       "at the pond, they also see one in the dead tree behind it.</p>" +
       "<p>To explain a prediction, <code>shapiq</code> hides patches and words in many combinations " +
-      "and watches how the similarity changes. The patches and words are the <strong>players</strong>. " +
-      "The explanation gives each player a <strong>main effect</strong> and each pair of players an " +
+      "and watches how the similarity changes. The patches and words are the <strong>features</strong>. " +
+      "The explanation gives each feature a <strong>main effect</strong> and each pair of features an " +
       "<strong>interaction</strong>, which is what the two add together beyond their main effects. " +
-      "A <strong>clique</strong> is a group of players that raise " +
+      "A <strong>clique</strong> is a group of features that raise " +
       "the similarity the most together.</p>";
     const close = el("button", "fixlip-demo-about-close", "×");
     close.type = "button";
@@ -243,7 +243,7 @@
     const sizer = el("label", "fixlip-demo-size");
     const sizeInput = el("input");
     Object.assign(sizeInput, { type: "range", step: 1 });
-    sizeInput.setAttribute("aria-label", "Players in the clique");
+    sizeInput.setAttribute("aria-label", "Features in the clique");
     const sizeLabel = el("span", "fixlip-demo-size-label");
     sizer.append(sizeInput, sizeLabel);
     const legend = el("p", "fixlip-demo-legend");
@@ -255,7 +255,7 @@
     const meta = el("p", "fixlip-demo-meta");
     const live = el("p", "fixlip-demo-live");
     live.setAttribute("aria-live", "polite");
-    // without an explanation: only the model's prediction, and the photo's credit
+    // without an explanation: only the model's prediction
     const prediction = el("div", "fixlip-demo-prediction");
     const predictionMain = el("div", "fixlip-demo-prediction-main");
     const predictionModel = el("p", "fixlip-demo-prediction-model");
@@ -273,7 +273,8 @@
     scale.append(scaleUnrelated, scaleMatching, scaleMark, ...scaleLabels);
     const predictionCompare = el("p", "fixlip-demo-prediction-compare");
     const predictionWhy = el("p", "fixlip-demo-prediction-why");
-    const predictionCredit = el("p", "fixlip-demo-meta");
+    // the photo's credit, small and faint under the whole demo
+    const credit = el("p", "fixlip-demo-credit");
     const toView = (view, label) => {
       const button = el("button", "fixlip-demo-link", label);
       button.type = "button";
@@ -292,11 +293,11 @@
       predictionWhy,
     );
     predictionWhy.append("But why? See the ", toView("clique", "clique"), " or the ", toView("full", "full explanation"), ".");
-    prediction.append(predictionMain, predictionCredit);
+    prediction.append(predictionMain);
     slot.append(sizer, graph, list);
     panel.append(title, detail, slot, legend, meta, prediction, live);
     body.append(stage, panel);
-    root.append(bar, about, body);
+    root.append(bar, about, body, credit);
 
     // another photo: the demo shows it, and tells the page, whose figures follow the photo
     // (figures.js); a figure that chooses a photo tells the demo the same way
@@ -474,11 +475,11 @@
           show(again ? null : player, true);
         });
       });
-      meta.replaceChildren(...metaText(image, model, ex));
+      meta.replaceChildren(...metaText(ex));
       predictionModel.textContent = `${model.label} (${model.detail}) predicts`;
       predictionValue.textContent = ex.similarity.toFixed(2);
       setScale(model.norms, ex.similarity);
-      predictionCredit.replaceChildren(...creditText(image));
+      credit.replaceChildren(...creditText(image));
       setInteractive();
       placeExcerpt();
       show(null, true);
@@ -492,9 +493,8 @@
       ", cropped.",
     ];
     // under the explanation, as on the orders demo's card: a bar by its fit (R^2 on held-out
-    // coalitions) with a word for it, what it was explained with, the model's similarity, and the
-    // photo's credit, a line each
-    const metaText = (image, model, e) => {
+    // coalitions) with a word for it, and what it was explained with, a line each
+    const metaText = (e) => {
       const line = (className, ...content) => {
         const node = el("span", `fixlip-demo-meta-line ${className}`);
         node.append(...content);
@@ -511,14 +511,6 @@
         lines.push(fit);
       }
       lines.push(line("fixlip-demo-method", "Explained with ", el("strong", "", data.method.split(" from ")[0]), ", estimated"));
-      lines.push(
-        line(
-          "fixlip-demo-model",
-          `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}` +
-            (model.norms ? `, ${verdict(e.similarity, model.norms)}` : ""),
-        ),
-      );
-      lines.push(line("fixlip-demo-credit", ...creditText(image)));
       return lines;
     };
     // the word for the similarity, its place on the scale (the middle 90% of unrelated pairs and of
@@ -615,7 +607,7 @@
       inner.style.transform = `translateY(${Math.round(middle - (top + bottom) / 2)}px)`;
     }
 
-    // the caption, the model's line, and the credit keep the room of the longest of all photos and
+    // the caption, the lines under the explanation, and the credit keep the room of the longest of all photos and
     // models, so that switching between them moves nothing
     function reserveRoom() {
       const all = Object.entries(data.explanations).map(([key, e]) => {
@@ -623,8 +615,8 @@
         return [data.images.find((x) => x.id === image), data.models.find((x) => x.id === model), e];
       });
       reserveCaption(all);
-      reserve(meta, all.map(([image, model, e]) => metaText(image, model, e)));
-      reserve(predictionCredit, data.images.map(creditText));
+      reserve(meta, all.map(([, , e]) => metaText(e)));
+      reserve(credit, data.images.map(creditText));
     }
 
     // the caption's room: its tallest lines of tokens, of all photos and models, and half a line of
@@ -753,7 +745,6 @@
       setShift();
       root.classList.toggle("fixlip-demo-full", view === "full");
       root.classList.toggle("fixlip-demo-none", view === "none");
-      reserve(predictionCredit, data.images.map(creditText)); // laid out only now on small screens
       setInteractive();
       show(null, true);
     }
@@ -796,7 +787,7 @@
         button.style.removeProperty("color");
       });
       const regions = clique.filter((k) => k < regionCount).length;
-      title.replaceChildren(el("strong", "", "Clique"), " the players that raise the similarity most together");
+      title.replaceChildren(el("strong", "", "Clique:"), " the features that raise the similarity most together");
       const tokens = clique.length - regions;
       detail.replaceChildren(
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
@@ -807,14 +798,14 @@
       sizer.hidden = false;
       graph.hidden = false;
       list.hidden = true;
-      sizeLabel.textContent = `${state.size} players`;
+      sizeLabel.textContent = `${state.size} features`;
       Object.assign(sizeInput, { min: sizes[0], max: sizes[1], value: state.size });
       // the part of the track left of the thumb, which the style sheet fills
       const part = (state.size - sizes[0]) / (sizes[1] - sizes[0] || 1);
       sizeInput.style.setProperty("--fixlip-part", part);
       drawEdges(cliquePairs(clique));
       drawGraph(clique);
-      return `Clique of ${clique.length} players, ${clique.map(name).join(", ")}, that add ${signed(value)} together.`;
+      return `Clique of ${clique.length} features, ${clique.map(name).join(", ")}, that add ${signed(value)} together.`;
     }
 
     // the full explanation: every player tinted by its main effect, the strongest
@@ -829,7 +820,7 @@
         button.style.setProperty("--fixlip-tint", color);
         button.classList.toggle("fixlip-demo-strong", alpha > 0.55);
       });
-      title.replaceChildren(el("strong", "", "Full explanation"), " every main effect and the strongest interactions");
+      title.replaceChildren(el("strong", "", "Full explanation:"), " every main effect and the strongest interactions");
       detail.textContent =
         "Each region and word is colored by its main effect. " +
         `Lines link the ${STRONGEST} strongest interactions. The list shows the strongest image–text pairs.`;
@@ -878,7 +869,7 @@
       detail.replaceChildren(
         "Its main effect is ",
         valued(ex.first[player]),
-        ". Together with each player below, it adds more (red) or less (blue) than their main effects.",
+        ". Together with each feature below, it adds more (red) or less (blue) than their main effects.",
       );
       sizer.hidden = true;
       graph.hidden = true;

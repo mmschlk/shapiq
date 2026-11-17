@@ -133,22 +133,25 @@ body[data-theme="dark"] .fixlip-demo {
 
 .fixlip-demo-switches {
   display: flex;
+  flex: 1 1 auto; /* the whole row, so that the "i" reaches its right end */
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
 
-/* the "i" that tells what the models are, and its note */
+/* the "i" that tells what the models are, and its note: as high as a switch, at the bar's right */
 .fixlip-demo-info {
-  width: 1.75rem;
-  height: 1.75rem;
+  box-sizing: border-box;
+  width: var(--fixlip-control);
+  height: var(--fixlip-control);
+  margin-left: auto;
   padding: 0;
   border: 1px solid var(--shapiq-border);
   border-radius: 999px;
   background: var(--shapiq-surface-raised);
   color: var(--color-foreground-secondary);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-style: italic;
   font-weight: 700;
   line-height: 1;
@@ -1002,8 +1005,8 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   color: var(--shapiq-text-muted);
 }
 
-/* under the explanation, a line each, as on the orders demo's card: its fit, what it was explained
-   with, the model's similarity, the photo's credit */
+/* under the explanation, a line each, as on the orders demo's card: its fit, and what it was
+   explained with */
 .fixlip-demo-meta-line {
   display: block;
 }
@@ -1046,6 +1049,30 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 .fixlip-demo-method strong {
   color: var(--fixlip-ink);
   font-weight: 600;
+}
+
+/* the photo's credit, small and faint, in the middle under the demo */
+.fixlip-demo-credit {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--shapiq-text-muted);
+  opacity: 0.75;
+}
+
+/* its links faint too, whatever the page gives the demo's links */
+.fixlip-demo .fixlip-demo-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-shadow: none;
+}
+
+.fixlip-demo .fixlip-demo-credit a:hover {
+  color: var(--fixlip-ink);
+  text-decoration-thickness: 1px;
 }
 
 /* the invitation over the photo, as the orders demo's over its layers: tap a region or a word, or
@@ -1206,10 +1233,6 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 
   .fixlip-demo-none .fixlip-demo-panel > :not(.fixlip-demo-prediction, .fixlip-demo-live) {
     display: none;
-  }
-
-  .fixlip-demo-prediction .fixlip-demo-meta {
-    margin-top: 1rem;
   }
 }
 

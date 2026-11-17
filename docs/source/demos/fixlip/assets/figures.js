@@ -467,11 +467,13 @@
       // one axis for all pairs of the demo, so that it stays in place when the pair changes
       const pairs = Object.values(data.explanations).map((explanation) => explanation.similarity);
       const all = [...models.flatMap((m) => [...m.norms.matching, ...m.norms.unrelated]), ...pairs];
-      const domain = [Math.floor(Math.min(...all) * 10) / 10, Math.ceil((Math.max(...all) + 0.02) * 10) / 10];
-      const x = plot.linear(domain, [box.x0, box.x1]);
-      for (const tick of ticksOf(domain[0], domain[1], 0.1))
+      const ends = [Math.floor(Math.min(...all) * 10) / 10, Math.ceil((Math.max(...all) + 0.02) * 10) / 10];
+      const ticks = ticksOf(ends[0], ends[1], 0.1);
+      // the axis reaches a little beyond its outer ticks, so that no gridline lies on its ends
+      const x = plot.linear([ends[0] - 0.03, ends[1] + 0.03], [box.x0, box.x1]);
+      for (const tick of ticks)
         draw("line", { class: "fixlip-figure-grid", x1: x(tick), x2: x(tick), y1: box.y0 - 8, y2: box.y1 });
-      plot.xAxis(x, ticksOf(domain[0], domain[1], 0.1), "cosine similarity");
+      plot.xAxis(x, ticks, "cosine similarity");
       models.forEach((m, row) => {
         const y = box.y0 + lane * row + lane / 2;
         draw("text", { class: "fixlip-figure-strong", x: 0, y: y - 5 }, m.label);
