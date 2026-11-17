@@ -139,6 +139,22 @@ body[data-theme="dark"] .fixlip-figure {
   color: var(--fixlip-ink);
 }
 
+/* where a caption says on which side a panel lies: the roles fixlip-wide and fixlip-narrow hold the
+   word for panels side by side and the word for stacked panels, and one of the two is shown */
+.fixlip-figure figcaption .fixlip-narrow {
+  display: none;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure figcaption .fixlip-wide {
+    display: none;
+  }
+
+  .fixlip-figure figcaption .fixlip-narrow {
+    display: inline;
+  }
+}
+
 /* a symbol inside the bold lead of a caption, in italics (the role fixlip-lead of the page) */
 .fixlip-figure figcaption .fixlip-lead {
   font-weight: bold;

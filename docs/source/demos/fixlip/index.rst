@@ -1,6 +1,8 @@
 .. role:: fixlip-red
 .. role:: fixlip-blue
 .. role:: fixlip-lead
+.. role:: fixlip-wide
+.. role:: fixlip-narrow
 
 Explaining Similarity in Vision-Language Encoders
 =================================================
@@ -388,10 +390,12 @@ explanation. For all five examples, it agrees with the interaction measured on t
 .. shapiq-demo-figure:: fixlip interaction
    :alt: Two bar charts. Each shows how much adding a patch, adding a word and adding both change the similarity on average, the interaction, which is what both add beyond the sum of the two, and the estimate of this interaction in the explanation. The interaction is large in the first chart and close to zero in the second.
 
-   **An interaction measured on the model.** The average change of the prediction of SigLIP 2 when
-   tokens are added to 256 random masks. The interaction is the change for both together minus the
-   changes for the patch and for the word. The FIxLIP estimate is the interaction of the two tokens
-   in the explanation.
+   **An interaction measured on the model.** The average change of the prediction of SigLIP 2
+   when tokens are added to 256 random masks. The patch and the word with the strongest
+   interaction (:fixlip-wide:`left`\ :fixlip-narrow:`top`) and the same patch with the word
+   that has the largest main effect (:fixlip-wide:`right`\ :fixlip-narrow:`bottom`). The
+   interaction is the change for both together minus the changes for the patch and for the word.
+   The FIxLIP estimate is the interaction of the two tokens in the explanation.
 
 **Reading the explanation.** :shapiq-figure:`explanation` shows the whole explanation for the chosen
 example. :fixlip-red:`Red` marks what raises the similarity and :fixlip-blue:`blue` marks what
@@ -639,11 +643,11 @@ sampled with :math:`p = 0.3` much better than vice versa :cite:p:`Baniecki.2025`
 .. shapiq-demo-figure:: fixlip paper-faithfulness
    :alt: Box plots of the p-faithfulness correlation for p equal to 0.7 and of R squared for p equal to 0.5. FIxLIP with the matching p has the highest median and the narrowest box in both. GAME, Grad-ECLIP and exCLIP have median correlations between 0.40 and 0.51.
 
-   **Faithfulness of the methods.** The distribution of both metrics over 1,000 image–text pairs
-   for CLIP (ViT-B/32). Boxes cover the middle half of the pairs and gaps mark the medians. FIxLIP
-   is shown with Shapley interactions (SI) and with weighted Banzhaf interactions for three values
-   of :math:`p`. Values below 0 are cut off at the axis. Redrawn from the data of Figure 4 of
-   :cite:t:`Baniecki.2025`.
+   **Faithfulness of the methods.** The distribution of the :math:`p`-faithfulness correlation (top)
+   and of :math:`R^2` (bottom) over 1,000 image–text pairs for CLIP (ViT-B/32). Boxes cover the
+   middle half of the pairs and gaps mark the medians. FIxLIP is shown with Shapley interactions
+   (SI) and with weighted Banzhaf interactions for three values of :math:`p`. Values below 0 are cut
+   off at the axis. Redrawn from the data of Figure 4 of :cite:t:`Baniecki.2025`.
 
 .. _fixlip-sec-aid:
 
@@ -726,7 +730,7 @@ of its image. The indices :math:`>0` and :math:`<0` select the positive and the 
 interactions, and :math:`\Vert \mathbf{e} \Vert_1 := \sum_{i,j} \vert \mathbf{e}_{\{i,j\}} \vert`.
 In other words, a positive interaction is correct if it links a class name with the patches of its
 object. A negative interaction is correct if it links a class name with the patches of another
-object. A random baseline scores 0.25. The left panel of :shapiq-figure:`pointing` plays this game
+object. A random baseline scores 0.25. The first panel of :shapiq-figure:`pointing` plays this game
 for SigLIP 2 on four photos of the demo. For this input, 0.92 of the absolute interactions are
 correct, which is in line with the 0.89 reported for SigLIP 2 with four objects
 :cite:p:`Baniecki.2025`.
@@ -734,13 +738,14 @@ correct, which is in line with the 0.89 reported for SigLIP 2 with four objects
 .. shapiq-demo-figure:: fixlip pointing
    :alt: Left, four photos of the demo in one image, an elephant, a giraffe, a pineapple and a clock tower, with the text 'elephant giraffe pineapple clock'. The patches are tinted by their interaction with one of the four names, which can be chosen. Right, the reported pointing game recognition of CLIP for one to four objects. First-order methods fall from between 0.61 and 0.70 for one object to between 0.28 and 0.37 for four objects. exCLIP reaches 0.92 and FIxLIP 0.83 for four objects.
 
-   **The pointing game.** The left panel shows a pointing game on four photos of the demo. The
-   patches are tinted by their interaction with the framed name in the explanation of SigLIP 2.
-   :fixlip-red:`Red` raises the similarity and :fixlip-blue:`blue` lowers it. The right panel shows
-   Table 1 of :cite:t:`Baniecki.2025` for CLIP (ViT-B/32), where FIxLIP uses :math:`p = 0.5`. Each
-   score is an average over 500 inputs.
+   **The pointing game.** A pointing game on four photos of the demo
+   (:fixlip-wide:`left`\ :fixlip-narrow:`top`) and the scores of the methods for CLIP
+   (:fixlip-wide:`right`\ :fixlip-narrow:`bottom`). The patches are tinted by their interaction
+   with the framed name in the explanation of SigLIP 2. :fixlip-red:`Red` raises the similarity and
+   :fixlip-blue:`blue` lowers it. The scores are from Table 1 of :cite:t:`Baniecki.2025` for CLIP
+   (ViT-B/32), where FIxLIP uses :math:`p = 0.5`. Each score is an average over 500 inputs.
 
-The right panel shows the results of a larger evaluation for CLIP. First-order methods fail to
+The second panel shows the results of a larger evaluation for CLIP. First-order methods fail to
 distinguish between several objects and approach the random baseline. With four objects, Grad-ECLIP
 and GAME reach 0.28 and Shapley values reach 0.37. In contrast, the two second-order methods pass
 the check with 0.83 for FIxLIP and 0.92 for exCLIP. exCLIP scores higher for two or more objects,
