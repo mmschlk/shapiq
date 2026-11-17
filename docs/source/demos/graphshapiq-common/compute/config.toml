@@ -1,0 +1,166 @@
+# The GraphSHAP-IQ demos (the explorer, and the figure of receptive fields on the explorer's page,
+# exact): their tasks (one GNN each), their molecules, and the texts they show.
+#
+# train.py trains a GNN per task, explain.py explains every molecule for every task, and pack.py
+# writes their data, ../../graphshapiq-<demo>/assets/data.js.
+
+# the highest order of the k-SII the explorer shows (order 1: the Shapley values); beyond it, it
+# shows the Möbius interactions of all orders
+orders = 4
+
+# The tasks: a question about a molecule, the dataset its GNN learned to answer it from, and the
+# pattern its labels were made from (a SMARTS; its atoms are the ground truth the demos outline).
+#
+# What a reader gets to know of a question, in plain words (the demos' question card): `label` is
+# its name on the switch, `question` the question in full, `meaning` what its term means and when
+# the answer is yes, and `motif` the smallest molecule with the pattern (a SMILES), which the card
+# draws. `truthLabel` names the pattern ("This molecule contains a nitro group").
+
+[[tasks]]
+id = "indole"
+label = "Indole"
+question = "Does this molecule contain an indole?"
+meaning = "Two fused rings (pictured). The smaller one holds a nitrogen, as in serotonin."
+motif = "c1ccc2[nH]ccc2c1"
+yes = "indole"
+no = "no indole"
+dataset = "B-XAIC"
+truthLabel = "indole"
+# B-XAIC's indole: a six-membered carbon ring fused to a five-membered ring with a nitrogen, with
+# aromatic, single or double ring bonds as in indole (this SMARTS agrees with B-XAIC's labels)
+pattern = "[#6]1:,=[#6]:,-[#6]:,=[#6]2:,-[#6](:,=[#6]1):,-[#6]:,=[#6]:,-[#7]2"
+
+[[tasks]]
+id = "mutagenic"
+label = "Mutagenic"
+question = "Is this molecule mutagenic?"
+meaning = "It changes DNA and so causes mutations. A warning sign is a nitro group (pictured)."
+motif = "C[N+](=O)[O-]"
+yes = "mutagenic"
+no = "not mutagenic"
+dataset = "Mutagenicity"
+truthLabel = "nitro group"
+# the nitro group, a known structural alert for Ames-test mutagens (Kazius et al., 2005)
+pattern = "[N+](=O)[O-]"
+
+[[tasks]]
+id = "PAINS"
+label = "PAINS"
+question = "Is this molecule a PAINS?"
+meaning = "It fakes hits in the tests that screen for drugs. One kind is a catechol (pictured)."
+motif = "Oc1ccccc1O"
+yes = "PAINS"
+no = "no PAINS"
+dataset = "B-XAIC"
+truthLabel = "catechol"
+# the catechol, the PAINS alert of the demos' molecules (B-XAIC outlines it with its ring)
+pattern = "c1([OH1])c([OH1])cccc1"
+
+# The explorer's molecules, in its order, each with the question it asks first (`task`). Every
+# molecule is explained for every task. At most 31 heavy atoms: the demos write coalitions as
+# bitmasks of 32-bit integers.
+# `ames`: the molecule's Ames test result, only where it is well established (the true answer to
+# Mutagenic, which no pattern decides). Indole and PAINS are decided by their SMARTS and by RDKit's
+# PAINS filters (pack.py).
+
+[[molecules]]
+id = "dinitrobenzene"
+ames = true  # Ames positive (NTP, Kazius et al.'s mutagens)
+task = "mutagenic"
+name = "1,3-Dinitrobenzene"
+short = "Dinitrobenzene"
+blurb = "Two nitro groups on a benzene ring, a classic Ames-test mutagen."
+smiles = "c1cc(cc(c1)[N+](=O)[O-])[N+](=O)[O-]"
+# what the explorer says of it, for its own question; its numbers are those of the data:
+# check them after explain.py ran again
+takeaway = "Alone, the Shapley values credit the two nitrogens (+1.86 each) and all but ignore the oxygens (+0.07). Together shows why: an oxygen on its own lowers the odds (−0.70), with its nitrogen it raises them (+1.83)."
+
+[[molecules]]
+id = "dopamine"
+task = "PAINS"
+name = "Dopamine"
+blurb = "A neurotransmitter of reward and movement. Its two neighbouring OH groups make a catechol."
+smiles = "NCCc1ccc(O)c(O)c1"
+# what the explorer says of it, for its own question; its numbers are those of the data:
+# check them after explain.py ran again
+takeaway = "Every atom of the catechol lowers the odds on its own and raises them in pairs: no atom makes a catechol alone."
+
+[[molecules]]
+id = "serotonin"
+task = "indole"
+name = "Serotonin"
+blurb = "A neurotransmitter of mood, sleep and appetite, which the body builds from tryptophan."
+smiles = "NCCc1c[nH]c2ccc(O)cc12"
+# what the explorer says of it, for its own question; its numbers are those of the data:
+# check them after explain.py ran again
+takeaway = "The indole’s nitrogen leads the Shapley values (+4.75). Yet on its own it lowers the odds (−1.27): all it adds, it adds in pairs with the carbons of its rings."
+
+[[molecules]]
+id = "indigo"
+task = "indole"
+rotate = 90  # lying, not standing
+name = "Indigo"
+blurb = "The dye of blue jeans. Indole is named after it, yet indigo is no indole: its five-membered rings are not aromatic."
+smiles = "O=C1/C(=C2/Nc3ccccc3C2=O)Nc2ccccc21"
+# what the explorer says of it, for its own question; its numbers are those of the data:
+# check them after explain.py ran again
+takeaway = "No indole, but the GNN says yes. The nitrogens speak for it (+2.09 each), the oxygens against (−1.38), most of all in pairs of an oxygen and a nitrogen (−3.18): not enough."
+
+[[molecules]]
+id = "benzimidazole"
+task = "indole"
+name = "Benzimidazole"
+blurb = "An indole with a second nitrogen in its small ring. Its core is part of vitamin B12 and of drugs like omeprazole."
+smiles = "c1ccc2[nH]cnc2c1"
+# what the explorer says of it, for its own question; its numbers are those of the data:
+# check them after explain.py ran again (computed by the explorer's worker, see the README)
+takeaway = "Each nitrogen alone looks like an indole's (+4.12 each in 2-SII). Together they say no (−3.35), and the GNN rightly answers no."
+
+[[molecules]]
+id = "aminofluorene"
+ames = true  # the Ames test's standard positive control
+task = "mutagenic"
+name = "2-Aminofluorene"
+short = "Aminofluorene"
+blurb = "An aromatic amine on a fused ring system, a standard positive control of the Ames test."
+smiles = "Nc1ccc2c(c1)Cc1ccccc12"
+# what the explorer says of it, for its own question; its numbers are those of the data:
+# check them after explain.py ran again
+takeaway = "No atom stands out (at most +0.45). The amine’s nitrogen lowers the odds on its own (−0.51) and raises them with the carbon next to it (+0.49)."
+
+[[molecules]]
+id = "aspirin"
+ames = false  # Ames negative (NTP)
+task = "mutagenic"
+name = "Aspirin"
+blurb = "A common painkiller: a clean negative for every question here."
+smiles = "CC(=O)Oc1ccccc1C(=O)O"
+# what the explorer says of it, for its own question; its numbers are those of the data:
+# check them after explain.py ran again
+takeaway = "The four oxygens speak against, each on its own; the pairs are weak (at most 0.31). Here, the Shapley values tell the story already."
+
+# The figure of receptive fields (exact), on the explorer's page: molecules of growing size, whose numbers of maskings GraphSHAP-IQ needs for GNNs
+# of 1 to 4 layers it compares with all 2^n maskings (no GNN is evaluated).
+[[exact_demo]]
+id = "benzene"
+name = "Benzene"
+blurb = "A flat ring of six carbons."
+smiles = "c1ccccc1"
+
+[[exact_demo]]
+id = "caffeine"
+name = "Caffeine"
+blurb = "The stimulant of coffee and tea."
+smiles = "Cn1c(=O)c2c(ncn2C)n(C)c1=O"
+
+[[exact_demo]]
+id = "nitropyrene"
+name = "1-Nitropyrene"
+blurb = "Four fused aromatic rings and a nitro group, found in diesel exhaust."
+smiles = "[O-][N+](=O)c1ccc2ccc3cccc4ccc1c2c34"
+
+[[exact_demo]]
+id = "cholesterol"
+name = "Cholesterol"
+blurb = "The steroid of cell membranes: 28 heavy atoms."
+smiles = "CC(C)CCCC(C)C1CCC2C1(CCC3C2CC=C4C3(CCC(C4)O)C)C"

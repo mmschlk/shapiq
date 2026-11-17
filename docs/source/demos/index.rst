@@ -35,7 +35,19 @@ takes too long or needs too large a model to run with the docs, and it shows wha
       interaction, from the Shapley values to the full decomposition, which adds up to the model:
       a molecule, houses, TabPFN and SigLIP 2, the figure built up step by step.
 
+   .. grid-item-card:: GraphSHAP-IQ: which atoms act together?
+      :link: graphshapiq-explorer/index
+      :link-type: doc
+      :img-top: /_static/images/hero_graphshapiq_explorer_demo.png
+      :img-alt: The GraphSHAP-IQ explorer: 1,3-dinitrobenzene, each nitrogen joined to its oxygens by red bands, beside the strongest pairs of atoms.
+
+      Three graph neural networks, eight molecules, every molecule explained for every question:
+      Shapley values, interactions of up to four atoms, and the Möbius interactions of all orders,
+      exactly, with GraphSHAP-IQ, and why that does not take 2ⁿ evaluations. Build a molecule of
+      your own, and your browser explains it while you watch.
+
 .. toctree::
    :hidden:
 
    fixlip/index
+   graphshapiq-explorer/index
