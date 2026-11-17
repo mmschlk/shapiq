@@ -787,7 +787,7 @@
         button.style.removeProperty("color");
       });
       const regions = clique.filter((k) => k < regionCount).length;
-      title.replaceChildren(el("strong", "", "Clique:"), " the features that raise the similarity most together");
+      title.replaceChildren(el("strong", "", "Clique:"), " features that raise the similarity most together");
       const tokens = clique.length - regions;
       detail.replaceChildren(
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +

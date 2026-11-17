@@ -428,10 +428,30 @@
       };
       // an input with its label under it. The label is no part of the height that the arrows and the
       // embeddings are centered on (figures.css)
-      const row = (input, name, symbol, count, values) => [
-        add(el("div", "fixlip-figure-input"), add(el("div", "fixlip-figure-held"), input, el("small", "", count))),
-        add(el("div", "fixlip-figure-encoder"), el("span", "", name), add(el("small", "fixlip-figure-symbol"), el("i", "", "f"), el("sub", "", symbol))),
-        add(el("div", "fixlip-figure-vector"), embedding(values), el("small", "", `embedding of ${fig.embeddings.dimension} values`)),
+      // the notation of the text with the numbers of the pair: the input x of n tokens, the encoder
+      // by its signature, and the embedding f(x)
+      const of = (letter, modality) => [el("i", "", letter), el("sub", "", modality)];
+      const math = (...parts) => add(el("span", "fixlip-figure-symbol"), ...parts.flat());
+      const space = (dimension) => ["\u211D", el("sup", "", String(dimension))];
+      const row = (input, name, modality, count, unit, values) => [
+        add(
+          el("div", "fixlip-figure-input"),
+          add(
+            el("div", "fixlip-figure-held"),
+            input,
+            add(el("small"), math(of("x", modality)), " with ", math(of("n", modality)), ` = ${count} ${unit}`),
+          ),
+        ),
+        add(
+          el("div", "fixlip-figure-encoder"),
+          el("span", "", name),
+          add(el("small"), math(of("f", modality), " : ", space(count), " \u2192 ", space(fig.embeddings.dimension))),
+        ),
+        add(
+          el("div", "fixlip-figure-vector"),
+          embedding(values),
+          add(el("small"), "embedding ", math(of("f", modality), "(", of("x", modality), ")")),
+        ),
       ];
       const photo = pair(c, { lined: true, text: false });
       const text = textOf(ex);
@@ -445,13 +465,17 @@
         text.style.minHeight = "";
       };
       const result = el("div", "fixlip-figure-similarity");
-      add(result, el("span", "", "cosine similarity"), el("strong", "", fmt(ex.similarity)));
+      add(
+        result,
+        add(el("span"), "cosine similarity ", math(el("i", "", "f"), "(", of("x", "\u2110"), ", ", of("x", "\u{1D4AF}"), ")")),
+        el("strong", "", fmt(ex.similarity)),
+      );
       add(
         stage,
         add(
           el("div", "fixlip-figure-encoders"),
-          ...row(photo, "Vision encoder", "\u2110", `${ex.patches} patches`, fig.embeddings.image),
-          ...row(text, "Language encoder", "\u{1D4AF}", `${ex.words.length} tokens`, fig.embeddings.text),
+          ...row(photo, "Vision encoder", "\u2110", ex.patches, "patches", fig.embeddings.image),
+          ...row(text, "Language encoder", "\u{1D4AF}", ex.words.length, "tokens", fig.embeddings.text),
           el("div", "fixlip-figure-join"),
           result,
         ),
@@ -467,10 +491,10 @@
       // one axis for all pairs of the demo, so that it stays in place when the pair changes
       const pairs = Object.values(data.explanations).map((explanation) => explanation.similarity);
       const all = [...models.flatMap((m) => [...m.norms.matching, ...m.norms.unrelated]), ...pairs];
-      const ends = [Math.floor(Math.min(...all) * 10) / 10, Math.ceil((Math.max(...all) + 0.02) * 10) / 10];
-      const ticks = ticksOf(ends[0], ends[1], 0.1);
-      // the axis reaches a little beyond its outer ticks, so that no gridline lies on its ends
-      const x = plot.linear([ends[0] - 0.03, ends[1] + 0.03], [box.x0, box.x1]);
+      // the axis ends a little inside the tenths around the data, so that no gridline lies on its ends
+      const domain = [Math.floor(Math.min(...all) * 10) / 10 + 0.02, Math.ceil((Math.max(...all) + 0.02) * 10) / 10 - 0.02];
+      const ticks = ticksOf(domain[0], domain[1], 0.1);
+      const x = plot.linear(domain, [box.x0, box.x1]);
       for (const tick of ticks)
         draw("line", { class: "fixlip-figure-grid", x1: x(tick), x2: x(tick), y1: box.y0 - 8, y2: box.y1 });
       plot.xAxis(x, ticks, "cosine similarity");

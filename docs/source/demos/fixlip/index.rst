@@ -1,5 +1,5 @@
-FIxLIP: Explaining Similarity in Vision-Language Encoders
-=========================================================
+Explaining Similarity in Vision-Language Encoders
+=================================================
 
 .. rst-class:: shapiq-examples-lead
 
@@ -56,8 +56,8 @@ faithfully explained without taking into account the cross-modal interactions be
 pairs** :cite:p:`Liang.2023`. **FIxLIP** :cite:p:`Baniecki.2025` addresses this limitation from a
 game-theoretic perspective. Input tokens, i.e. image patches and text tokens, form coalitions of
 players in a *cooperative game*. The resulting explanation assigns *attribution scores* to each
-token and *interaction scores* to each pair of tokens in an image–text pair. It thus shows **which
-words go with which parts of an image**.
+token and *interaction scores* to each pair of tokens in an image–text pair. FIxLIP thus shows not
+only how similar a model finds an image and a text, but also **what the model sees as similar**.
 
 .. _fixlip-sec-background:
 
@@ -74,7 +74,7 @@ Vision–Language Encoders in a Nutshell
 
 A vision–language encoder :math:`f: \mathbb{R}^{n_\mathcal{I}} \times \mathbb{R}^{n_\mathcal{T}}
 \to [-1, 1]` maps an image–text pair to a similarity score, as illustrated in
-:shapiq-figure:`encoders` for SigLIP 2. It consists of a *vision encoder* :math:`f_\mathcal{I}:
+:shapiq-figure:`encoders`. It consists of a *vision encoder* :math:`f_\mathcal{I}:
 \mathbb{R}^{n_\mathcal{I}} \to \mathbb{R}^{d}` with :math:`n_\mathcal{I}` image patches and a
 *language encoder* :math:`f_\mathcal{T}: \mathbb{R}^{n_\mathcal{T}} \to \mathbb{R}^{d}` with
 :math:`n_\mathcal{T}` text tokens. Each encoder maps its input to an *embedding* vector of dimension
@@ -112,7 +112,7 @@ best read *relative* to a reference set of image–text pairs. In such a set, ea
 score in the range of the matching pairs and above the unrelated pairs tells that the model finds
 the text to describe the image well. :shapiq-figure:`scale` shows these ranges for 200 images from
 MS COCO :cite:p:`Lin.2014`, where all five pairs of the demo score at least as high as a typical
-matching pair for both models. A single number tells how similar the model finds the pair, but not
+matching pair for both models. A single score tells how similar the model finds the pair, but not
 why.
 
 .. shapiq-demo-figure:: fixlip scale
@@ -127,12 +127,13 @@ Interactions Are the Natural Language of Similarity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Explanations of a classifier usually attribute a score to the parts of one input. A similarity
-prediction is *different*, because it is a property of an image–text pair. Consider what happens
-when one half of the pair is missing. The first row of :shapiq-figure:`masks` shows the prediction
-of SigLIP 2 with the image alone and with the text alone. In both cases, it stays close to the
-prediction for an empty input, in which all patches and all text tokens are masked. Often it is
-even lower. Only both modalities together reach the similarity of the pair. Neither modality has a
-similarity on its own.
+prediction is *different*, because it is a property of an image–text pair. :cite:t:`Liang.2023`
+argue that such multimodal models cannot be understood without their cross-modal interactions. To
+see why, consider what happens when one half of the pair is missing. The first row of
+:shapiq-figure:`masks` shows the prediction of SigLIP 2 with the image alone and with the text
+alone. In both cases, it stays close to the prediction for an empty input, in which all patches and
+all text tokens are masked. Often it is even lower. Only both modalities together reach the
+similarity of the pair. Neither modality has a similarity on its own.
 
 .. shapiq-demo-figure:: fixlip masks
    :alt: Eight masked versions of the pair with the similarity that SigLIP 2 predicts. In the first row, all tokens, no tokens, the image only and the text only. The similarity is high only with all tokens. In the second row, the image without one object, the image without another object, and two random masks.
@@ -189,7 +190,7 @@ one input, and :shapiq-figure:`methods` summarizes them.
 
    **The methods on one input.** Explanations of CLIP (ViT-B/32) by two first-order methods, by
    exCLIP, and by FIxLIP. In this example, the text token *ant* is the most important for the
-   prediction. Reproduced from Figure 2 of :cite:t:`Baniecki.2025`.
+   prediction.
 
 .. list-table:: **Families of explanation methods.** What each family explains for a
    vision–language encoder, and where it falls short.

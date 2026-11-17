@@ -647,11 +647,23 @@ body[data-theme="dark"] .fixlip-figure {
   color: var(--fixlip-muted);
 }
 
-/* the encoders by their symbols, with the modality as a script letter */
+/* the notation of the text in the figure, with the modality as a script letter */
 .fixlip-figure-encoders .fixlip-figure-symbol {
   font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Noto Sans Math", serif;
-  font-size: calc(0.88rem * var(--fixlip-type, 1));
+  font-size: 1.15em;
   font-weight: 400;
+  white-space: nowrap;
+}
+
+.fixlip-figure-encoders .fixlip-figure-symbol :is(sub, sup) {
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+/* under an embedding and beside the bracket, the symbol has a line of its own */
+.fixlip-figure-vector small .fixlip-figure-symbol,
+.fixlip-figure-similarity span .fixlip-figure-symbol {
+  display: block;
 }
 
 .fixlip-figure-encoder {
@@ -859,6 +871,10 @@ body[data-theme="dark"] .fixlip-figure {
     border: 1.5px solid var(--fixlip-line);
     border-top: 0;
     border-radius: 0 0 10px 10px;
+  }
+
+  .fixlip-figure-similarity span .fixlip-figure-symbol {
+    display: inline;
   }
 
   .fixlip-figure-encoders > .fixlip-figure-similarity {
