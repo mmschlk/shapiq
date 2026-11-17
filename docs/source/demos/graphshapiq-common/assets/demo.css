@@ -26,18 +26,19 @@
   --gsq-blue-text: #1565c0;
   --gsq-violet: #6a57cd; /* shapiq's violet: receptive fields and faithfulness */
   --gsq-violet-text: #5b47c4;
-  /* amber: what the reader builds and what GraphSHAP-IQ evaluates */
-  --gsq-build: #f59e0b;
-  --gsq-build-text: #a8500a;
+  /* amber, the docs' color (tokens.css, as the FIxLIP page): what the reader builds and what
+     GraphSHAP-IQ evaluates, its ink for text */
+  --gsq-build: var(--shapiq-amber, #f5a300);
+  --gsq-build-text: var(--shapiq-amber-ink, #8c5800);
   --gsq-build-ink: #1b1e27; /* on amber */
-  --gsq-build-strong: #c98500; /* a darker, yellow amber, for what is selected: white reads on it (3.1:1) */
+  --gsq-build-strong: color-mix(in srgb, var(--gsq-build) 82%, #000); /* a darker amber, for what is selected: white reads on it */
 }
 
 body[data-theme="dark"] .gsq {
   --gsq-red-text: #ff3d74;
   --gsq-blue-text: #4ba3f0;
   --gsq-violet-text: #a597ff;
-  --gsq-build-text: #fbbf24;
+  --gsq-build-text: var(--shapiq-amber-ink, #ffc24d);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -45,7 +46,7 @@ body[data-theme="dark"] .gsq {
     --gsq-red-text: #ff3d74;
     --gsq-blue-text: #4ba3f0;
     --gsq-violet-text: #a597ff;
-    --gsq-build-text: #fbbf24;
+    --gsq-build-text: var(--shapiq-amber-ink, #ffc24d);
   }
 }
 
