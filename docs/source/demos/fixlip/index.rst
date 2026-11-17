@@ -348,16 +348,16 @@ explanation. FIxLIP chooses the explanation with the smallest error.
       := \operatorname*{arg\,min}_{\mathbf{e}} \, \mathfrak{F}_p(\nu,\hat\nu_\mathbf{e})
 
 Its interactions are the *weighted Banzhaf interactions* :cite:p:`Marichal.2011`. For :math:`p =
-0.5`, all masks have equal weight. FIxLIP then recovers the faithful Banzhaf interaction index
-:cite:p:`Tsai.2022`, which has a known analytical solution :cite:p:`Hammer.1992`.
+0.5`, FIxLIP recovers the faithful Banzhaf interaction index :cite:p:`Tsai.2022`, which has a known
+analytical solution :cite:p:`Hammer.1992`.
 
 **Masking with a purpose.** The parameter :math:`p` addresses a known problem of removal-based
 explanations :cite:p:`Hase.2021`. Inputs with many masked tokens are *out-of-distribution*, i.e.
 images become unrecognizable and texts become ambiguous. A larger :math:`p` prioritizes masks that
 keep most tokens and thus stay closer to real inputs, whereas a smaller :math:`p` prioritizes sparse
-masks. :shapiq-figure:`masking` shows the effect for the chosen example. At :math:`p = 0.3`, many
-masks fall back to the similarity of an empty input. At :math:`p = 0.7`, the predictions move
-towards the similarity of the full input.
+masks. For :math:`p = 0.5`, all masks have equal weight. :shapiq-figure:`masking` shows the effect
+for the chosen example. At :math:`p = 0.3`, many masks fall back to the similarity of an empty
+input. At :math:`p = 0.7`, the predictions move towards the similarity of the full input.
 
 .. shapiq-demo-figure:: fixlip masking
    :alt: Three columns for p equal to 0.3, 0.5 and 0.7. Each shows one random mask and a histogram of the similarity of 512 random masks. The histogram moves from the similarity of no tokens towards the similarity of all tokens as p grows. Masks that keep the word with the largest main effect have higher similarities.
