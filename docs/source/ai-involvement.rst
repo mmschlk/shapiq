@@ -19,10 +19,10 @@ where to look closer.
 The Levels
 ----------
 
-Six levels describe a part. They answer two questions. Who wrote the part, a person or AI? And how
-closely did a person check what AI wrote? At levels 0 to 2 a person wrote the part, alone or
-together with AI. At levels 3 to 5 AI wrote it, and the levels differ in how closely a person
-checked it.
+Each part has two inputs, what a person did and what AI did. Neither is a judgment. A person may
+have written the part, reviewed every line, only checked the result, or done nothing. AI may have
+written the part, drafted pieces of it, only fixed its wording, or done nothing. The two inputs
+together give one of six levels, from *Handmade* to *Autopilot*.
 
 .. shapiq-ai-levels::
 
@@ -34,16 +34,18 @@ the part names the source.
 Reading the Line
 ----------------
 
-The line runs along the whole page. Its position and its color give the level. Level 0 is a mint
-green on the far left. Level 5 is a soft coral next to the text. The faint shade under the line
-grows with the level, so a part written mostly by AI carries more color. Where the level changes,
-the line curves into another lane. A part inside a section, such as a figure or a definition, can
-have its own level. The line then swings out and back for the length of the part.
+The line runs along the whole page. Its place is the balance of the two inputs. It runs on the
+far left where a person did everything, in the middle where a person and AI did as much, and next
+to the text where AI did everything. Its color follows its place, and the faint shade under it grows
+towards the text. Where a part changes, the line curves into its new place. A part inside a section,
+such as a figure or a definition, can have its own place. The line then swings out and back for the
+length of the part.
 
 A small tag sticks to the top of the line while the page scrolls. It names the level of the part
 being read. Pointing at the line shows a dot on it and tints the part on the page. A click opens a
-card with the details of the part, and a click on the tag opens a card for the whole page, with the
-share of the page at each level. Each card lists the following.
+card with the details of the part and both of its inputs. A click on the tag opens a card for the
+whole page, with the share of the page at each level. A card can also hide the line, and the tag
+then shows it again. Each card lists the following.
 
 .. list-table::
    :header-rows: 1

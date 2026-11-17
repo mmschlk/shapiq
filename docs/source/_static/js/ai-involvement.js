@@ -1,8 +1,8 @@
-/* The AI involvement of a page: a thin line beside the text. In the view with one line, its lane
-   is the level, from 0 (a person wrote it without AI) on the left to 5 (AI wrote it and no person
-   checked it) next to the text. In the view with two lines, one line shows what a person did and
-   the other what AI did, each drifting away from a common center as it does more. The line curves
-   where a part changes. Pointing at it shows a dot on it and tints the part on the page, a click
+/* The AI involvement of a page: one thin line beside the text. Its place comes from two inputs of
+   each part, what a person did and what AI did (0 to 3 each): the more AI did and the less a
+   person did, the further right the line runs, towards the text. A part that a person wrote alone
+   sits on the far left, one that AI wrote without a person on the far right, and one where both
+   did as much sits in the middle. The line curves where a part changes. Pointing at it shows a dot on it and tints the part on the page, a click
    shows what is known about the part, and the tag at the top names the level of the part being
    read. A reader can switch the line off. A page with ``mixer = true`` gets a panel above its
    title to try colors and views. The data is the JSON that _ext/shapiq_ai_involvement.py writes. */
@@ -35,11 +35,8 @@
 
   // what the mixer sets, and what a page without the mixer shows
   var DEFAULTS = {
-    view: "one", // "one" line of levels, or "two" lines, human and AI
     palette: "spectrum", // "spectrum" of hues, or "mono", one hue in shades
     hue: 265, // the hue of "mono"
-    humanHue: 38, // the hues of the two lines
-    aiHue: 265,
     saturation: 0.85,
     lightness: 0.6,
     glow: 3, // the blur of the halo, in px
@@ -108,26 +105,19 @@
       + Math.round(100 * Math.max(0, Math.min(1, l))) + "%)";
   }
 
-  // the color of a level in the view with one line
-  function colorOf(level) {
+  // the color at a place t of the line, from 0 (a person alone) to 1 (AI alone)
+  function colorAt(t) {
     var l = settings.lightness + (dark() ? 0.08 : 0);
     if (settings.palette === "mono") {
-      var t = level / top;
       return hsl(settings.hue, settings.saturation * (0.3 + 0.7 * t), l + (1 - t) * 0.22 * (dark() ? -0.6 : 1));
     }
-    return hsl(SPECTRUM[level] != null ? SPECTRUM[level] : 0, settings.saturation, l);
+    return hsl(SPECTRUM[0] + (SPECTRUM[SPECTRUM.length - 1] - SPECTRUM[0]) * t, settings.saturation, l);
   }
 
-  function axisColor(axis) {
-    return hsl(axis === "human" ? settings.humanHue : settings.aiHue, settings.saturation,
-      settings.lightness + (dark() ? 0.08 : 0));
-  }
-
-  // the color that stands for a part on the page, the tag and the card
-  function partColor(part) {
-    if (settings.view !== "two") return colorOf(part.level);
-    return aiOf(part) > humanOf(part) ? axisColor("ai") : axisColor("human");
-  }
+  // the place of a part, from its two inputs
+  function placeOf(part) { return (aiOf(part) - humanOf(part) + axisTop) / (2 * axisTop); }
+  function colorOf(level) { return colorAt(placeOf({ level: level })); }
+  function partColor(part) { return colorAt(placeOf(part)); }
 
   // -- the widget --------------------------------------------------------------------------------
 
@@ -279,20 +269,10 @@
       || segments[segments.length - 1];
   }
 
-  // the lines of the view: where each part sits, its color, and where its shade starts
+  // the line: where each part sits, its color, and where its shade starts
   function views(width) {
-    if (settings.view === "two") {
-      var center = width / 2;
-      var step = (width / 2 - PAD) / axisTop;
-      return [
-        { name: "human", base: center, x: function (part) { return center - humanOf(part) * step; },
-          color: function () { return axisColor("human"); } },
-        { name: "ai", base: center, x: function (part) { return center + aiOf(part) * step; },
-          color: function () { return axisColor("ai"); } },
-      ];
-    }
-    return [{ name: "level", base: 0, x: function (part) { return PAD + part.level * GAP; },
-      color: function (part) { return colorOf(part.level); } }];
+    return [{ name: "line", base: 0, x: function (part) { return PAD + placeOf(part) * (width - 2 * PAD); },
+      color: partColor }];
   }
 
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
@@ -313,12 +293,10 @@
     clear(defs);
     clear(tracksGroup);
     clear(dots);
-    if (settings.view === "two") {
-      lanes.appendChild(el("svg:line", { class: "center", x1: width / 2, x2: width / 2, y1: HEAD, y2: height }));
-    } else {
-      for (var level = 0; level <= top; level++) {
-        lanes.appendChild(el("svg:line", { x1: PAD + level * GAP, x2: PAD + level * GAP, y1: HEAD, y2: height }));
-      }
+    // a lane for each balance of the two inputs, the middle one where both did as much
+    for (var k = 0; k <= 2 * axisTop; k++) {
+      var x = PAD + k * (width - 2 * PAD) / (2 * axisTop);
+      lanes.appendChild(el("svg:line", { class: k === axisTop ? "center" : "", x1: x, x2: x, y1: HEAD, y2: height }));
     }
     tracks = views(width).map(function (view, index) {
       var list = shape(segments, view.x);
@@ -333,7 +311,7 @@
         });
       });
       // the shade, stronger away from where the line starts
-      var far = view.name === "human" ? 0 : width;
+      var far = width;
       var across = el("svg:linearGradient", { id: id + "-across", gradientUnits: "userSpaceOnUse", x1: view.base, y1: 0, x2: far, y2: 0 });
       across.appendChild(el("svg:stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0.02 }));
       across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": settings.shade }));
@@ -439,7 +417,7 @@
     var y = window.innerHeight * 0.33 - article.getBoundingClientRect().top;
     var segment = segmentAt(Math.max(HEAD, y));
     var part = segment.item.part;
-    var key = part.level + "|" + settings.view + "|" + partColor(part);
+    var key = part.level + "|" + partColor(part);
     if (current === key) return;
     current = key;
     labelText.textContent = byLevel[part.level].name;
@@ -475,7 +453,7 @@
       var bar = el("span", { class: "track" });
       var fillBar = el("span", { class: "bar" });
       fillBar.style.width = (100 * axis[1] / axisTop) + "%";
-      fillBar.style.background = settings.view === "two" ? axisColor(axis[3]) : "var(--color-foreground-muted)";
+      fillBar.style.background = partColor(part);
       bar.appendChild(fillBar);
       line.appendChild(bar);
       var step = axis[2][axis[1]];
@@ -662,11 +640,8 @@
     var hue = function (v) { return Math.round(v) + "°"; };
     var px = function (v) { return String(Math.round(v * 100) / 100) + " px"; };
     var pct = function (v) { return Math.round(100 * v) + "%"; };
-    choice("view", "View", [["one", "One line, six levels"], ["two", "Two lines, person and AI"]]);
     choice("palette", "Palette", [["spectrum", "Spectrum"], ["mono", "One hue"]]);
     slider("hue", "Hue", 0, 360, 1, hue);
-    slider("humanHue", "Person hue", 0, 360, 1, hue);
-    slider("aiHue", "AI hue", 0, 360, 1, hue);
     slider("saturation", "Intensity", 0, 1, 0.01, pct);
     slider("lightness", "Lightness", 0.3, 0.85, 0.01, pct);
     slider("glow", "Glow", 0, 10, 0.5, px);
@@ -674,12 +649,8 @@
     slider("shade", "Shade", 0, 0.8, 0.01, pct);
     slider("curve", "Curve", 0, 300, 5, px);
     function sync() {
-      var two = settings.view === "two";
-      inputs.palette.field.hidden = two;
-      inputs.hue.field.hidden = two || settings.palette !== "mono";
-      inputs.humanHue.field.hidden = !two;
-      inputs.aiHue.field.hidden = !two;
-      ["hue", "humanHue", "aiHue"].forEach(function (key) {
+      inputs.hue.field.hidden = settings.palette !== "mono";
+      ["hue"].forEach(function (key) {
         inputs[key].node.style.setProperty("--swatch", hsl(settings[key], settings.saturation, settings.lightness));
       });
     }

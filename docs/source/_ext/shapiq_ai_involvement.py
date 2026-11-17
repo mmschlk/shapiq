@@ -199,19 +199,20 @@ def _skip(self: nodes.NodeVisitor, node: nodes.Node) -> None:  # noqa: ARG001
     raise nodes.SkipNode
 
 
-def _glyph(level: int, top: int) -> str:
-    """Return the line at a level as a small SVG: faint lanes, the shade and the line in its lane."""
-    gap, height = 4, 22
-    width = gap * top + 3
-    lanes = "".join(
-        f'<line class="lane" x1="{1.5 + i * gap}" x2="{1.5 + i * gap}" y1="0" y2="{height}"/>'
-        for i in range(top + 1)
+def _glyph(level: int, place: float, lanes: int) -> str:
+    """Return the line at a place (0 to 1) as a small SVG: faint lanes, the shade and the line."""
+    width, height = 23, 22
+    step = (width - 3) / (lanes - 1)
+    drawn = "".join(
+        f'<line class="lane" x1="{1.5 + i * step:.2f}" x2="{1.5 + i * step:.2f}" y1="0" y2="{height}"/>'
+        for i in range(lanes)
     )
-    x = 1.5 + level * gap
+    x = 1.5 + place * (width - 3)
+    # the color of the line's palette "spectrum" at this place (_static/js/ai-involvement.js)
     return (
         f'<svg class="shapiq-ai-glyph" data-level="{level}" width="{width}" height="{height}"'
-        f' aria-hidden="true">{lanes}<rect class="shade" x="0" y="0" width="{x}" height="{height}"'
-        f' fill="currentColor"/><line class="line" x1="{x}" x2="{x}" y1="0" y2="{height}"'
+        f' style="color: hsl({160 - 152 * place:.0f} 85% 60%)" aria-hidden="true">{drawn}<rect class="shade" x="0" y="0" width="{x:.2f}" height="{height}"'
+        f' fill="currentColor"/><line class="line" x1="{x:.2f}" x2="{x:.2f}" y1="0" y2="{height}"'
         f' stroke="currentColor"/></svg>'
     )
 
@@ -222,28 +223,37 @@ class LevelsDirective(SphinxDirective):
     option_spec: ClassVar[dict[str, Any]] = {}
 
     def run(self) -> list[nodes.Node]:
-        """Return a table of the levels: the line, the number and name, what it means."""
+        """Return a table of the levels: the line, the name, the two inputs, what it means."""
         self.env.note_dependency(str(Path(self.env.srcdir) / _LEVELS))
-        levels = _levels(self.env.srcdir)
-        top = levels[-1]["level"]
+        scale = _scale(self.env.srcdir)
+        levels = scale["levels"]
+        top = max(len(scale["human"]), len(scale["ai"]), 2) - 1
+        human = {step["step"]: step["name"] for step in scale["human"]}
+        ai = {step["step"]: step["name"] for step in scale["ai"]}
         table = nodes.table(classes=["shapiq-ai-levels"])
-        group = nodes.tgroup(cols=3)
+        group = nodes.tgroup(cols=5)
         table += group
-        for width in (1, 3, 12):
+        for width in (1, 3, 2, 2, 10):
             group += nodes.colspec(colwidth=width)
         head = nodes.thead()
         row = nodes.row()
-        for title in ("", "Level", "What it means"):
+        for title in ("", "Level", "Person", "AI", "What it means"):
             row += nodes.entry("", nodes.paragraph("", title))
         head += row
         group += head
         body = nodes.tbody()
         for level in levels:
             row = nodes.row()
-            row += nodes.entry("", LevelGlyphNode(level=level["level"], top=top))
+            h, a = level.get("human", 0), level.get("ai", 0)
+            place = (a - h + top) / (2 * top)
+            row += nodes.entry(
+                "", LevelGlyphNode(level=level["level"], place=place, lanes=2 * top + 1)
+            )
             name = nodes.paragraph()
             name += nodes.strong("", f"{level['level']} \N{MIDDLE DOT} {level['name']}")
             row += nodes.entry("", name)
+            row += nodes.entry("", nodes.paragraph("", human.get(h, str(h))))
+            row += nodes.entry("", nodes.paragraph("", ai.get(a, str(a))))
             row += nodes.entry("", nodes.paragraph("", level["summary"]))
             body += row
         group += body
@@ -251,7 +261,7 @@ class LevelsDirective(SphinxDirective):
 
 
 def _visit_glyph(self: HTML5Translator, node: LevelGlyphNode) -> None:
-    self.body.append(_glyph(node["level"], node["top"]))
+    self.body.append(_glyph(node["level"], node["place"], node["lanes"]))
     raise nodes.SkipNode
 
 
