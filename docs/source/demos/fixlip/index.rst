@@ -262,10 +262,10 @@ The value function then evaluates the model on the masked image and the masked t
 
    For an image–text pair :math:`(x_\mathcal{I}, x_\mathcal{T})` and a baseline
    :math:`(b_\mathcal{I}, b_\mathcal{T})`, the *vision–language game* is the tuple
-   :math:`(N_\mathcal{I} \cup N_\mathcal{T}, \nu)` of the tokens as the player set and the value
-   function :math:`\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}} \to \mathbb{R}`, which measures the
-   similarity of the masked image–text pair for every mask :math:`M \subseteq N_\mathcal{I} \cup
-   N_\mathcal{T}` as
+   :math:`(N_\mathcal{I} \cup N_\mathcal{T}, \nu)` of the image and text tokens as the *player
+   set* and the *value function* :math:`\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}} \to
+   \mathbb{R}`, which measures the similarity of the masked image–text pair for every mask
+   :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}` as
 
    .. math::
 
