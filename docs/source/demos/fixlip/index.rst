@@ -1,5 +1,6 @@
 .. role:: fixlip-red
 .. role:: fixlip-blue
+.. role:: fixlip-lead
 
 Explaining Similarity in Vision-Language Encoders
 =================================================
@@ -362,7 +363,7 @@ input. At :math:`p = 0.7`, the predictions move towards the similarity of the fu
 .. shapiq-demo-figure:: fixlip masking
    :alt: Three columns for p equal to 0.3, 0.5 and 0.7. Each shows one random mask and a histogram of the similarity of 512 random masks. The histogram moves from the similarity of no tokens towards the similarity of all tokens as p grows. Masks that keep the word with the largest main effect have higher similarities.
 
-   **The parameter** :math:`\boldsymbol{p}` **decides which masks matter.** One random mask for
+   **The parameter** :fixlip-lead:`p` **decides which masks matter.** One random mask for
    each :math:`p` (top) and the predictions of SigLIP 2 for 512 random masks (bottom). The dashed
    lines mark the output of the model given the empty and the full input. The colors separate the
    masks that keep the word with the largest main effect from all others.
