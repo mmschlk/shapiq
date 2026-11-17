@@ -62,9 +62,9 @@
   }
 
   function sameShap(figure) {
-    figure.classList.add("talk-same");
+    const row = make("div", { class: "talk-same" }, figure);
     const cards = MODELS.map((model, index) => {
-      const card = make("div", { class: "talk-same-card" }, figure);
+      const card = make("div", { class: "talk-same-card" }, row);
       const head = make("div", { class: "talk-same-head" }, card);
       make("div", { class: "talk-same-model" }, head, `Model ${"ABC"[index]}`);
       const named = make("div", { class: "talk-same-name talk-from-1" }, head);
@@ -125,6 +125,26 @@
       make("div", { class: "talk-same-says talk-from-2" }, card, model.says);
       return card;
     });
+
+    // on a phone, the cards are a row to swipe through, with a dot for each
+    const dots = make("div", { class: "talk-same-dots", role: "tablist", "aria-label": "Models" }, figure);
+    const marks = cards.map((card, index) => {
+      const dot = make("button", { type: "button", role: "tab", "aria-label": `Model ${"ABC"[index]}` }, dots);
+      dot.addEventListener("click", () => row.scrollTo({ left: card.offsetLeft - row.offsetLeft - (row.clientWidth - card.offsetWidth) / 2, behavior: "smooth" }));
+      return dot;
+    });
+    const mark = () => {
+      const middle = row.scrollLeft + row.clientWidth / 2;
+      let best = 0;
+      cards.forEach((card, index) => {
+        const centre = card.offsetLeft - row.offsetLeft + card.offsetWidth / 2;
+        const bestCentre = cards[best].offsetLeft - row.offsetLeft + cards[best].offsetWidth / 2;
+        if (Math.abs(centre - middle) < Math.abs(bestCentre - middle)) best = index;
+      });
+      marks.forEach((dot, index) => dot.setAttribute("aria-selected", String(index === best)));
+    };
+    row.addEventListener("scroll", mark, { passive: true });
+    mark();
     return { cards };
   }
 

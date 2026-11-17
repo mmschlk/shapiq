@@ -488,6 +488,91 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   font-style: italic;
 }
 
+/* ---- presented on a phone: the slides scroll ---------------------------------------------------
+   Each slide is at least one screen tall and the scroll snaps softly to its start. A taller slide
+   (a demo) scrolls through. The line at the top and the corner stay where they are. */
+
+.shapiq-deck--scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shapiq-deck--scroll .shapiq-slide {
+  position: relative;
+  inset: auto;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: calc(2.6rem + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    calc(3.5rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  overflow: visible;
+  opacity: 1;
+  visibility: visible;
+  scroll-snap-align: start;
+  transition: none;
+}
+
+/* where one slide ends and the next begins */
+.shapiq-deck--scroll .shapiq-slide + .shapiq-slide {
+  border-top: 1px solid var(--shapiq-border);
+}
+
+.shapiq-deck--scroll .shapiq-slide-body {
+  flex: 1 0 auto;
+}
+
+.shapiq-deck--scroll .shapiq-slide--wide .shapiq-slide-body {
+  justify-content: flex-start;
+}
+
+/* the slide's number above its title, as on the page */
+.shapiq-deck--scroll .shapiq-slide::before {
+  content: attr(data-number) " / " attr(data-total);
+  position: absolute;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  left: max(16px, env(safe-area-inset-left, 0px));
+  color: var(--shapiq-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.shapiq-deck--scroll .shapiq-deck-progress {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  bottom: auto;
+}
+
+.shapiq-deck--scroll .shapiq-deck-progress span {
+  transition: none;
+}
+
+.shapiq-deck--scroll .shapiq-deck-bar {
+  position: fixed;
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--shapiq-surface-raised);
+  box-shadow: var(--shapiq-shadow);
+  opacity: 0.92;
+}
+
+/* scrolling moves through the slides, so the arrows and full screen are left out */
+.shapiq-deck--scroll .shapiq-deck-bar [data-action="prev"],
+.shapiq-deck--scroll .shapiq-deck-bar [data-action="next"],
+.shapiq-deck--scroll .shapiq-deck-bar [data-action="full"] {
+  display: none;
+}
+
+.shapiq-deck--scroll .shapiq-deck-notes {
+  position: fixed;
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: calc(10px + 2.8rem + env(safe-area-inset-bottom, 0px));
+  width: calc(100vw - 20px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shapiq-deck .shapiq-slide,
   .shapiq-deck .shapiq-slide.shapiq-current,
@@ -505,4 +590,9 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   article .shapiq-slide {
     break-inside: avoid;
   }
+}
+
+/* on a phone, the number of the slide stands above its title, so the corner leaves it out */
+.shapiq-deck--scroll .shapiq-deck-count {
+  display: none;
 }

@@ -10,6 +10,11 @@
      F                      full screen
      Esc                    back to the page
 
+   On a phone (a window up to 720 px wide), the deck scrolls instead: the slides follow each other,
+   each at least one screen tall, and the scroll snaps softly to the start of each. A slide that is
+   taller than the screen, as most demos are, scrolls through. Every step of a slide shows at once,
+   and a thin line at the top tells how far the talk is. Turning the phone switches between both.
+
    The address follows the slide (#slide-3). A slide that builds up in steps tells its parts and
    figures with the class shapiq-later (a part of a later step), its data-talk-step, and the event
    "shapiq-talk-step" (detail: step, steps, presenting), which bubbles. The document hears
@@ -34,6 +39,9 @@
     },
   };
   const PRESENTING = "shapiq-talk-presenting:" + location.pathname;
+  // a phone scrolls through the slides, a larger screen shows one at a time
+  const phone = window.matchMedia("(max-width: 720px)");
+  const scrolling = () => Boolean(deck) && deck.classList.contains("shapiq-deck--scroll");
 
   const ICONS = {
     play: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>',
@@ -61,6 +69,7 @@
   const parts = (slide) => slide.querySelectorAll('[class*="shapiq-from-"]');
 
   for (const slide of slides) {
+    slide.dataset.total = String(slides.length);
     let last = 0;
     for (const part of parts(slide)) last = Math.max(last, fromStep(part));
     slide.shapiqSteps = Math.max(Number(slide.dataset.steps) || 1, last + 1);
@@ -86,8 +95,14 @@
   const start = make("button", "shapiq-talk-present", ICONS.play + "<span>Present</span>");
   start.type = "button";
   start.addEventListener("click", () => present(0));
-  const hint = make("p", "", 'One slide at a time. Press <kbd class="shapiq-talk-key">P</kbd> to start, ' +
-    'the arrow keys to move, and <kbd class="shapiq-talk-key">Esc</kbd> to come back here.');
+  const hint = make("p");
+  const hints = () => {
+    hint.innerHTML = phone.matches
+      ? "One slide per screen. Scroll from slide to slide."
+      : 'One slide at a time. Press <kbd class="shapiq-talk-key">P</kbd> to start, ' +
+        'the arrow keys to move, and <kbd class="shapiq-talk-key">Esc</kbd> to come back here.';
+  };
+  hints();
   bar.append(start, hint);
   slides[0].before(bar);
 
@@ -109,6 +124,7 @@
   function button(icon, label, action) {
     const element = make("button", "", ICONS[icon]);
     element.type = "button";
+    element.dataset.action = icon;
     element.title = label;
     element.setAttribute("aria-label", label);
     element.addEventListener("click", (event) => {
@@ -160,13 +176,13 @@
     deck.addEventListener("pointerdown", swipeStart);
     deck.addEventListener("pointerup", swipeEnd);
     deck.addEventListener("pointermove", showCorner);
+    deck.addEventListener("scroll", followScroll, { passive: true });
 
     document.body.append(deck);
     root.classList.add("shapiq-presenting");
     store.set(PRESENTING, "1");
-    slides.forEach((slide, other) => setStep(slide, other < index ? slide.shapiqSteps - 1 : 0, true));
     current = index;
-    go(index, step || 0);
+    layout(step || 0);
     deck.focus({ preventScroll: true });
     // the demos measure their room again
     window.dispatchEvent(new Event("resize"));
@@ -190,8 +206,72 @@
     slides[current].scrollIntoView({ block: "start" });
   }
 
+  // one slide at a time, or all of them to scroll through, by the width of the window
+  function layout(step) {
+    const scroll = phone.matches;
+    deck.classList.toggle("shapiq-deck--scroll", scroll);
+    const index = current;
+    if (scroll) {
+      slides.forEach((slide) => {
+        slide.classList.remove("shapiq-current");
+        slide.removeAttribute("aria-hidden");
+        setStep(slide, slide.shapiqSteps - 1, true);
+      });
+      slides[index].scrollIntoView({ block: "start" });
+      show(index);
+    } else {
+      slides.forEach((slide, other) => setStep(slide, other < index ? slide.shapiqSteps - 1 : 0, true));
+      slides[index].classList.remove("shapiq-current");
+      go(index, step);
+    }
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  phone.addEventListener("change", () => {
+    hints();
+    if (deck) layout(0);
+  });
+
+  // what the corner, the line and the notes say about the slide that is shown
+  function show(index) {
+    const slide = slides[index];
+    const changed = index !== current || !count.textContent;
+    current = index;
+    count.textContent = `${index + 1} / ${slides.length}`;
+    if (!changed && scrolling()) return;
+    const source = slide.querySelector(":scope > .shapiq-slide-notes");
+    notes.innerHTML = source ? source.innerHTML : '<p class="shapiq-deck-notes-empty">No notes for this slide.</p>';
+    try {
+      history.replaceState(null, "", "#" + slide.id);
+    } catch (error) { /* a page in a frame may not change its address */ }
+    document.dispatchEvent(new CustomEvent("shapiq-talk-slide", { detail: { slide, index } }));
+  }
+
+  // scrolled: the slide shown is the last one whose top has passed the upper third of the screen,
+  // and the line at the top grows with the scroll
+  let scrollFrame = 0;
+  function followScroll() {
+    if (!scrolling() || scrollFrame) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = 0;
+      if (!deck) return;
+      const line = deck.clientHeight / 3;
+      let index = 0;
+      slides.forEach((slide, other) => {
+        if (slide.getBoundingClientRect().top <= line) index = other;
+      });
+      const room = deck.scrollHeight - deck.clientHeight;
+      progress.firstChild.style.transform = `scaleX(${room > 0 ? deck.scrollTop / room : 1})`;
+      if (index !== current) show(index);
+    });
+  }
+
   function go(index, step) {
     index = Math.max(0, Math.min(slides.length - 1, index));
+    if (scrolling()) {
+      slides[index].scrollIntoView({ block: "start", behavior: "smooth" });
+      return;
+    }
     const slide = slides[index];
     const moved = index !== current || !slide.classList.contains("shapiq-current");
     if (moved) {
@@ -203,22 +283,14 @@
       });
       slide.scrollTop = 0;
     }
-    current = index;
     setStep(slide, step, true);
-    count.textContent = `${index + 1} / ${slides.length}`;
     const done = (index + (slide.shapiqStep + 1) / slide.shapiqSteps) / slides.length;
     progress.firstChild.style.transform = `scaleX(${done})`;
-    if (moved) {
-      const source = slide.querySelector(":scope > .shapiq-slide-notes");
-      notes.innerHTML = source ? source.innerHTML : '<p class="shapiq-deck-notes-empty">No notes for this slide.</p>';
-      try {
-        history.replaceState(null, "", "#" + slide.id);
-      } catch (error) { /* a page in a frame may not change its address */ }
-      document.dispatchEvent(new CustomEvent("shapiq-talk-slide", { detail: { slide, index } }));
-    }
+    if (moved) show(index);
   }
 
   function forward() {
+    if (scrolling()) return go(current + 1);
     const slide = slides[current];
     if (slide.shapiqStep < slide.shapiqSteps - 1) go(current, slide.shapiqStep + 1);
     else if (current < slides.length - 1) {
@@ -228,6 +300,7 @@
   }
 
   function back() {
+    if (scrolling()) return go(current - 1);
     const slide = slides[current];
     if (slide.shapiqStep > 0) go(current, slide.shapiqStep - 1);
     else if (current > 0) go(current - 1, slides[current - 1].shapiqSteps - 1);
@@ -264,14 +337,14 @@
     (target.classList.contains("shapiq-slide") || target.classList.contains("shapiq-slide-body"));
 
   function clickToAdvance(event) {
-    if (event.button !== 0 || !onBackground(event.target)) return;
+    if (event.button !== 0 || scrolling() || !onBackground(event.target)) return;
     if (String(window.getSelection && window.getSelection()).length) return;
     forward();
   }
 
   let swipe = null;
   function swipeStart(event) {
-    swipe = event.pointerType === "touch" && onBackground(event.target) ? { x: event.clientX, y: event.clientY } : null;
+    swipe = event.pointerType === "touch" && !scrolling() && onBackground(event.target) ? { x: event.clientX, y: event.clientY } : null;
   }
   function swipeEnd(event) {
     if (!swipe) return;

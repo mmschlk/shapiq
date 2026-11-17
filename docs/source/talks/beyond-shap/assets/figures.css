@@ -179,10 +179,69 @@
   text-align: center;
 }
 
+.talk-same-dots {
+  display: none;
+}
+
+/* on a phone: a row of cards to swipe through, the next one peeking in, and a dot for each */
 @media (max-width: 720px) {
   .talk-same {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
+    display: flex;
+    gap: 0.75rem;
+    margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    padding-inline: max(16px, env(safe-area-inset-left, 0px));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: max(16px, env(safe-area-inset-left, 0px));
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .talk-same::-webkit-scrollbar {
+    display: none;
+  }
+
+  .talk-same-card {
+    display: flex;
+    flex: 0 0 82%;
+    flex-direction: column;
+    scroll-snap-align: center;
+  }
+
+  .talk-same-says {
+    margin-top: auto;
+  }
+
+  .talk-same-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-top: 0.6rem;
+  }
+
+  .talk-same-dots button {
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  .talk-same-dots button::before {
+    content: "";
+    display: block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: auto;
+    border-radius: 999px;
+    background: var(--shapiq-border);
+    transition: background var(--shapiq-duration) var(--shapiq-ease), transform var(--shapiq-duration) var(--shapiq-ease);
+  }
+
+  .talk-same-dots button[aria-selected="true"]::before {
+    background: var(--shapiq-amber);
+    transform: scale(1.25);
   }
 }
 
