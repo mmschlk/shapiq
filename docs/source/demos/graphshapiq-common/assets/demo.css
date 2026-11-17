@@ -15,7 +15,7 @@
   --gsq-stage: var(--shapiq-surface-raised, #f7f8fc);
   --gsq-border: var(--shapiq-border, #e2e6f3);
   --gsq-link: var(--color-brand-content, #285bff);
-  --gsq-lavender: var(--shapiq-lavender, #b3c2e5);
+  --gsq-lavender: var(--shapiq-amber, #f5a300); /* the score's chip and fill: amber, as on the FIxLIP page */
   --gsq-mono: var(--font-stack--monospace, ui-monospace, "SFMono-Regular", Menlo, monospace);
   --gsq-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
   --gsq-glide: cubic-bezier(0.45, 0, 0.15, 1); /* for what moves a distance: the pill */
@@ -32,6 +32,7 @@
   --gsq-build-text: var(--shapiq-amber-ink, #8c5800);
   --gsq-build-ink: #1b1e27; /* on amber */
   --gsq-build-strong: color-mix(in srgb, var(--gsq-build) 82%, #000); /* a darker amber, for what is selected: white reads on it */
+  --gsq-gray: #9299ab; /* the dots of a row that scrolls, as the FIxLIP page's */
 }
 
 body[data-theme="dark"] .gsq {
@@ -39,6 +40,7 @@ body[data-theme="dark"] .gsq {
   --gsq-blue-text: #4ba3f0;
   --gsq-violet-text: #a597ff;
   --gsq-build-text: var(--shapiq-amber-ink, #ffc24d);
+  --gsq-gray: #737a8e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -47,6 +49,7 @@ body[data-theme="dark"] .gsq {
     --gsq-blue-text: #4ba3f0;
     --gsq-violet-text: #a597ff;
     --gsq-build-text: var(--shapiq-amber-ink, #ffc24d);
+    --gsq-gray: #737a8e;
   }
 }
 
@@ -150,6 +153,61 @@ body[data-theme="dark"] .gsq {
   display: none;
 }
 
+/* the row and its dots */
+.gsq .gsq-picker {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* where the row scrolls, dots under it, the molecule shown dark (as the FIxLIP page's figures) */
+.gsq .gsq-dots {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.1rem;
+}
+
+.gsq .gsq-dots[hidden] {
+  display: none;
+}
+
+.gsq .gsq-dot {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.gsq .gsq-dot::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gsq-gray, #9299ab);
+  content: "";
+  opacity: 0.55;
+  transition:
+    background 220ms var(--gsq-ease),
+    opacity 220ms var(--gsq-ease),
+    scale 220ms var(--gsq-ease);
+}
+
+.gsq .gsq-dot[aria-pressed="true"]::before {
+  background: var(--gsq-ink);
+  opacity: 1;
+  scale: 1.3;
+}
+
+.gsq .gsq-dot:focus-visible {
+  outline: 2px solid var(--gsq-ink);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
 .gsq .gsq-mol {
   flex: none;
   width: 5.3rem;
@@ -204,7 +262,7 @@ body[data-theme="dark"] .gsq {
   fill: #fff;
 }
 
-.gsq .gsq-mol:active {
+.gsq .gsq-mol:not(:disabled):active {
   transform: scale(0.96);
 }
 
@@ -256,11 +314,14 @@ body[data-theme="dark"] .gsq {
     transform 120ms var(--gsq-ease);
 }
 
-.gsq .gsq-opt:hover {
-  color: var(--gsq-ink);
+/* hover only where there is a pointer that hovers, so that it does not stick after a tap */
+@media (hover: hover) {
+  .gsq .gsq-opt:not(:disabled):hover {
+    color: var(--gsq-ink);
+  }
 }
 
-.gsq .gsq-opt:active {
+.gsq .gsq-opt:not(:disabled):active {
   transform: scale(0.96);
 }
 
@@ -282,39 +343,70 @@ body[data-theme="dark"] .gsq {
 }
 
 .gsq .gsq-info {
-  width: 1.75rem;
-  height: 1.75rem;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--gsq-control);
+  height: var(--gsq-control);
   padding: 0;
   border: 1px solid var(--gsq-border);
   border-radius: 999px;
   background: var(--gsq-stage);
   color: var(--gsq-muted);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-style: italic;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  transition:
+    border-color 220ms var(--gsq-ease),
+    color 220ms var(--gsq-ease);
 }
 
-.gsq .gsq-info:hover,
+@media (hover: hover) {
+  .gsq .gsq-info:hover {
+    border-color: var(--gsq-ink);
+    color: var(--gsq-ink);
+  }
+}
+
 .gsq .gsq-info[aria-expanded="true"] {
   border-color: var(--gsq-ink);
   color: var(--gsq-ink);
 }
 
+/* the note opens under the bar, in the flow, as on the FIxLIP page, and pushes the molecule down:
+   its rows grow from none to its content's height (demo.js makes it inert while closed) */
 .gsq .gsq-about {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  right: 0;
-  z-index: 5;
-  box-sizing: border-box;
-  width: min(26rem, 100%);
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 260ms var(--gsq-ease),
+    margin-bottom 260ms var(--gsq-ease),
+    visibility 0s 260ms;
+}
+
+.gsq .gsq-about.gsq-about-open {
+  grid-template-rows: 1fr;
+  margin-bottom: 0.9rem;
+  visibility: visible;
+  transition:
+    grid-template-rows 260ms var(--gsq-ease),
+    margin-bottom 260ms var(--gsq-ease),
+    visibility 0s;
+}
+
+.gsq .gsq-about-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gsq .gsq-about-card {
   padding: 0.9rem 1.1rem 0.4rem;
   border: 1px solid var(--gsq-border);
   border-radius: var(--shapiq-radius-small, 8px);
-  background: var(--gsq-sheet);
-  box-shadow: var(--shapiq-shadow), 0 8px 24px rgba(0, 0, 0, 0.12);
+  background: var(--gsq-stage);
   color: var(--gsq-muted);
   font-size: 0.88rem;
   line-height: 1.5;
@@ -340,6 +432,13 @@ body[data-theme="dark"] .gsq {
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gsq .gsq-about,
+  .gsq .gsq-about.gsq-about-open {
+    transition: none;
+  }
 }
 
 /* -- the question: its switch, and the card of the question asked ------------------------------- */
@@ -495,26 +594,18 @@ body[data-theme="dark"] .gsq {
   }
 }
 
-/* on a phone, the options of a switch still fit in a row */
+/* on a phone, the options of a switch keep their size (as on the FIxLIP page) and lose padding */
 @container (max-width: 26rem) {
   .gsq .gsq-opt {
-    padding: 0 0.6rem;
-    font-size: 0.8rem;
+    padding: 0 0.7rem;
   }
 }
 
-@container (max-width: 23.5rem) {
-  .gsq .gsq-opt {
-    padding: 0 0.42rem;
-    font-size: 0.72rem;
-    letter-spacing: -0.01em;
-  }
-}
-
+/* the longest switch, the explanations', loses a little more on the narrowest phones */
 @container (max-width: 20.5rem) {
-  .gsq .gsq-opt {
-    padding: 0 0.3rem;
-    font-size: 0.64rem;
+  .gsq .gsq-kinds .gsq-opt {
+    padding: 0 0.5rem;
+    font-size: 0.8rem;
   }
 }
 

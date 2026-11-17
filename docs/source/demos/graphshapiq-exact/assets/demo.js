@@ -50,10 +50,6 @@
       });
       pulse();
       renderPanel();
-      // the molecule's tile in sight, where the row scrolls (phones): cholesterol, the first shown, is last
-      const tile = mols.buttons[molecules.indexOf(m)].getBoundingClientRect(), row = mols.node.getBoundingClientRect(), pad = parseFloat(getComputedStyle(mols.node).paddingLeft) || 0;
-      if (tile.left < row.left + pad) mols.node.scrollLeft += tile.left - row.left - pad;
-      else if (tile.right > row.right - pad) mols.node.scrollLeft += tile.right - row.right + pad;
     }
     function pulse() {
       timers.forEach(clearTimeout); timers = [];
