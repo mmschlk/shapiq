@@ -363,7 +363,38 @@ table.shapiq-ai-levels td:first-child {
 @media (max-width: 67em) {
   :root {
     --shapiq-ai-gap: 2.4px;
-    --shapiq-ai-offset: 0px;
+    --shapiq-ai-offset: 6px;
+  }
+}
+
+/* On a phone, the page has only a narrow margin. The text moves right by a few pixels so that the
+   line keeps its own column, and the line, its glow and the tag get smaller. The theme narrows
+   the margin at 50em. */
+@media (max-width: 50em) {
+  :root {
+    --shapiq-ai-gap: 2px;
+    --shapiq-ai-offset: 0px; /* the line fills the margin, the padding below keeps the text off it */
+  }
+
+  article.shapiq-ai-page {
+    padding-left: 8px;
+  }
+
+  .shapiq-ai-halo {
+    opacity: 0.3;
+  }
+
+  .shapiq-ai-label {
+    width: 13px;
+    margin-left: calc(50% - 6.5px);
+    padding: 5px 0;
+    gap: 4px;
+    font-size: 8.5px;
+    box-shadow: 0 0 5px color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 40%, transparent);
+  }
+
+  .shapiq-ai-label-ai {
+    font-size: 7.5px;
   }
 }
 
