@@ -660,12 +660,6 @@ body[data-theme="dark"] .fixlip-figure {
   line-height: 0;
 }
 
-/* under an embedding and beside the bracket, the symbol has a line of its own */
-.fixlip-figure-vector small .fixlip-figure-symbol,
-.fixlip-figure-similarity span .fixlip-figure-symbol {
-  display: block;
-}
-
 .fixlip-figure-encoder {
   position: relative;
   display: flex;
@@ -871,10 +865,6 @@ body[data-theme="dark"] .fixlip-figure {
     border: 1.5px solid var(--fixlip-line);
     border-top: 0;
     border-radius: 0 0 10px 10px;
-  }
-
-  .fixlip-figure-similarity span .fixlip-figure-symbol {
-    display: inline;
   }
 
   .fixlip-figure-encoders > .fixlip-figure-similarity {

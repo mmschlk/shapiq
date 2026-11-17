@@ -129,17 +129,18 @@ Interactions Are the Natural Language of Similarity
 Explanations of a classifier usually attribute a score to the parts of *one* input. A similarity
 prediction is *different*, because it is a property of an image–text *pair*. :cite:t:`Liang.2023`
 argue that such multimodal models cannot be understood without their cross-modal interactions. To
-see why, consider what happens when one half of the pair is missing. The first row of
-:shapiq-figure:`masks` shows the prediction of SigLIP 2 with the image alone and with the text
-alone. In both cases, it stays close to the prediction for an *empty input*, in which all patches
-and all text tokens are masked. Often it is even lower. Only both modalities together reach the
-similarity of the pair. Neither modality has a similarity on its own.
+see why, consider what happens when one half of the pair is missing. :shapiq-figure:`masks` shows
+the prediction of SigLIP 2 with the image alone and with the text alone. In both cases, it stays
+close to the prediction for an *empty input*, in which all patches and all text tokens are masked.
+Often it is even lower. Only both modalities together reach the similarity of the pair. Neither
+modality has a similarity on its own.
 
 .. shapiq-demo-figure:: fixlip masks
-   :alt: Eight masked versions of the example with the similarity that SigLIP 2 predicts. In the first row, all tokens, no tokens, the image only and the text only. The similarity is high only with all tokens. In the second row, the image without one object, the image without another object, and two random masks.
+   :alt: Four versions of the example with the similarity that SigLIP 2 predicts. All tokens, no tokens, the image only and the text only. The similarity is high only with all tokens.
 
-   **The model on masked inputs.** The prediction of SigLIP 2 for eight masked versions of the
-   example. Gray patches and crossed-out text tokens are masked.
+   **One modality alone.** The prediction of SigLIP 2 for the example with all tokens, with no
+   tokens, with the image only and with the text only. Gray patches and crossed-out text tokens are
+   masked.
 
 This behavior follows from how the prediction is computed. The dot product in :eq:`fixlip-vle`
 multiplies the coordinates of the image embedding with those of the text embedding. What an image
@@ -237,10 +238,16 @@ For the image, a masked patch is set to 0 after normalization, which propagates 
 The figures show it as a gray patch. For the text, a masked token is excluded through the attention
 mask of the encoder, while special tokens and padding are always kept.
 
-:shapiq-figure:`masks` showed eight of these masks. For example, removing an object from the image
+:shapiq-figure:`removal` shows four of these masks. For example, removing an object from the image
 lowers the similarity for all five examples, although the text still names the object. With
 :math:`2^{n_\mathcal{I} + n_\mathcal{T}}` masks, the game cannot be inspected directly. An
 explanation has to *summarize* it.
+
+.. shapiq-demo-figure:: fixlip removal
+   :alt: Four masked versions of the example with the similarity that SigLIP 2 predicts. The image without one object, the image without another object, and two random masks, of which the second keeps fewer tokens.
+
+   **Four masks of the game.** The prediction of SigLIP 2 for the example without one of its
+   objects and for two random masks. Gray patches and crossed-out text tokens are masked.
 
 :cite:t:`Baniecki.2025` explain the logit-scaled similarity :math:`C \cdot f(x_\mathcal{I},
 x_\mathcal{T})`, where the learnt constant :math:`C` is about 100 for CLIP and about 112 for SigLIP

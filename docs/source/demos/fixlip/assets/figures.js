@@ -406,6 +406,10 @@
     return ticks;
   };
 
+  // a masked version of the pair with the similarity that the model predicts for it
+  const masked = (c, label, players, value) =>
+    panel(label, reading("similarity", fmt(value)), pair(c, { kept: new Set(players) }));
+
   // -- the figures that follow the image -------------------------------------------------------------
 
   const FIGURES = {
@@ -428,8 +432,7 @@
       };
       // an input with its label under it. The label is no part of the height that the arrows and the
       // embeddings are centered on (figures.css)
-      // the notation of the text with the numbers of the pair: the input x of n tokens, the encoder
-      // by its signature, and the embedding f(x)
+      // an encoder carries its signature in the notation of the text, with the numbers of the pair
       const of = (letter, modality) => [el("i", "", letter), el("sub", "", modality)];
       const math = (...parts) => add(el("span", "fixlip-figure-symbol"), ...parts.flat());
       const space = (dimension) => ["\u211D", el("sup", "", String(dimension))];
@@ -439,7 +442,7 @@
           add(
             el("div", "fixlip-figure-held"),
             input,
-            add(el("small"), math(of("x", modality)), " with ", math(of("n", modality)), ` = ${count} ${unit}`),
+            el("small", "", `${count} ${unit}`),
           ),
         ),
         add(
@@ -450,7 +453,7 @@
         add(
           el("div", "fixlip-figure-vector"),
           embedding(values),
-          add(el("small"), "embedding ", math(of("f", modality), "(", of("x", modality), ")")),
+          el("small", "", `embedding of ${fig.embeddings.dimension} values`),
         ),
       ];
       const photo = pair(c, { lined: true, text: false });
@@ -465,11 +468,7 @@
         text.style.minHeight = "";
       };
       const result = el("div", "fixlip-figure-similarity");
-      add(
-        result,
-        add(el("span"), "cosine similarity ", math(el("i", "", "f"), "(", of("x", "\u2110"), ", ", of("x", "\u{1D4AF}"), ")")),
-        el("strong", "", fmt(ex.similarity)),
-      );
+      add(result, el("span", "", "cosine similarity"), el("strong", "", fmt(ex.similarity)));
       add(
         stage,
         add(
@@ -525,28 +524,36 @@
       plot.inset(legend);
     },
 
-    // the model on masked inputs: one modality alone, the image without an object, random masks
+    // the model on one modality alone: all tokens, no tokens, the image only, the text only
     masks(stage, c) {
       const { ex, fig } = c;
       const all = range(ex.n);
-      const image = all.slice(0, ex.patches);
-      const text = all.slice(ex.patches);
-      const [one, two] = fig.objects;
-      const without = (thing) => all.filter((k) => !thing.patches.includes(k));
-      const card = (label, players, value) =>
-        panel(label, reading("similarity", fmt(value)), pair(c, { kept: new Set(players) }));
       add(
         stage,
         columns(
           "fixlip-figure-four",
-          card("All tokens", all, fig.presets.full),
-          card("No tokens", [], fig.presets.empty),
-          card("Image only", image, fig.presets.image),
-          card("Text only", text, fig.presets.text),
-          card(`No ${one.name}`, without(one), fig.presets["no-one"]),
-          card(`No ${two.name}`, without(two), fig.presets["no-two"]),
-          card("A random mask", fig.examples["0.5"].players, fig.examples["0.5"].value),
-          card("A sparser mask", fig.examples["0.3"].players, fig.examples["0.3"].value),
+          masked(c, "All tokens", all, fig.presets.full),
+          masked(c, "No tokens", [], fig.presets.empty),
+          masked(c, "Image only", all.slice(0, ex.patches), fig.presets.image),
+          masked(c, "Text only", all.slice(ex.patches), fig.presets.text),
+        ),
+      );
+    },
+
+    // four masks of the game: the image without an object, and two random masks
+    removal(stage, c) {
+      const { ex, fig } = c;
+      const all = range(ex.n);
+      const [one, two] = fig.objects;
+      const without = (thing) => all.filter((k) => !thing.patches.includes(k));
+      add(
+        stage,
+        columns(
+          "fixlip-figure-four",
+          masked(c, `No ${one.name}`, without(one), fig.presets["no-one"]),
+          masked(c, `No ${two.name}`, without(two), fig.presets["no-two"]),
+          masked(c, "A random mask", fig.examples["0.5"].players, fig.examples["0.5"].value),
+          masked(c, "A sparser mask", fig.examples["0.3"].players, fig.examples["0.3"].value),
         ),
       );
     },
