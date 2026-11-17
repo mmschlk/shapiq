@@ -204,8 +204,8 @@ predictions for masked inputs.
 
 .. _fixlip-sec-game:
 
-The FIxLIP Game
-~~~~~~~~~~~~~~~
+The Vision–Language Game
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 FIxLIP views the input tokens as players of a cooperative game. We index the image patches with
 :math:`N_\mathcal{I} := \{1, \dots, n_\mathcal{I}\}` and the text tokens with :math:`N_\mathcal{T}
@@ -225,8 +225,9 @@ baseline. For inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of the in
    \end{cases}
 
 For an image–text pair :math:`(x_\mathcal{I}, x_\mathcal{T})` and a baseline :math:`(b_\mathcal{I},
-b_\mathcal{T})`, the *FIxLIP game* :math:`\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}} \to \mathbb{R}`
-assigns to each mask the similarity that the model predicts for the masked image–text pair.
+b_\mathcal{T})`, the *vision–language game* :math:`\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}} \to
+\mathbb{R}` assigns to each mask the similarity that the model predicts for the masked image–text
+pair.
 
 .. math::
    :label: fixlip-game
@@ -746,9 +747,9 @@ Limitations
 Explain It Yourself
 -------------------
 
-The FIxLIP game can be implemented with ``shapiq`` and ``transformers`` in about 40 lines. The
-following game masks the image patches and text tokens of CLIP as described in :ref:`the section on
-the game <fixlip-sec-game>`.
+The vision–language game can be implemented with ``shapiq`` and ``transformers`` in about 40 lines.
+The following game masks the image patches and text tokens of CLIP as described in :ref:`the section
+on the game <fixlip-sec-game>`.
 
 .. code-block:: python
 
@@ -760,7 +761,7 @@ the game <fixlip-sec-game>`.
    import shapiq
 
 
-   class FIxLIPGame(shapiq.Game):
+   class VisionLanguageGame(shapiq.Game):
        """The similarity that CLIP predicts for a masked image-text pair.
 
        The players are the 7 x 7 patches of the image and the tokens of the text.
@@ -817,7 +818,7 @@ demo, which takes a minute or two on a laptop.
    url = "https://s3.amazonaws.com/images.cocodataset.org/train2017/000000046761.jpg"
    image = Image.open(io.BytesIO(urllib.request.urlopen(url).read()))
    image = image.crop((76, 0, 503, 427))  # the square that the demo shows
-   game = FIxLIPGame(image, "a small elephant standing next to a white bird.")
+   game = VisionLanguageGame(image, "a small elephant standing next to a white bird.")
    n = game.n_players  # 49 patches and 10 tokens
 
    approximator = shapiq.approximator.ProxySHAP(
