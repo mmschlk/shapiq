@@ -201,14 +201,13 @@ one input.
 Explaining Similarity with FIxLIP
 ---------------------------------
 
-FIxLIP formalizes the problem with game theory. It views the input tokens as players of a
-cooperative game. We index the image patches with :math:`N_\mathcal{I} := \{1, \dots,
-n_\mathcal{I}\}` and the text tokens with :math:`N_\mathcal{T} := \{n_\mathcal{I} + 1, \dots,
-n_\mathcal{I} + n_\mathcal{T}\}`. For SigLIP 2 and the examples of the demo, these are
-:math:`n_\mathcal{I} = 64` image patches and between 10 and 19 text tokens, e.g. 74 players for the
-first example (the elephant image). On these tokens, FIxLIP explains the similarity with the main
-effects of single tokens and with the interactions of pairs of tokens, both cross-modal and
-intra-modal.
+FIxLIP explains a similarity prediction with the main effects of single tokens and with the
+interactions of pairs of tokens, both cross-modal and intra-modal. We index the image patches with
+:math:`N_\mathcal{I} := \{1, \dots, n_\mathcal{I}\}` and the text tokens with :math:`N_\mathcal{T}
+:= \{n_\mathcal{I} + 1, \dots, n_\mathcal{I} + n_\mathcal{T}\}`. For SigLIP 2 and the examples of
+the demo, these are :math:`n_\mathcal{I} = 64` image patches and between 10 and 19 text tokens, e.g.
+74 tokens for the first example (the elephant image). On these indices, an explanation is defined as
+follows.
 
 .. shapiq-definition:: Explanation
    :name: fixlip-def-explanation
@@ -238,11 +237,14 @@ intra-modal.
 The Vision–Language Game
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-FIxLIP is model-agnostic, since it only needs the predictions of the model for masked inputs. A
-*mask* :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}` selects the tokens that the model
-receives. All other tokens are replaced with a baseline. For inputs :math:`x, b` and a subset
-:math:`M_o \subseteq N` of the indices :math:`N \in \{N_\mathcal{I}, N_\mathcal{T}\}` of one
-modality, the *masking operator* is defined as
+:shapiq-statement:`fixlip-def-explanation` fixes the form of an explanation, but not its values. The
+values should describe how the prediction changes when tokens are removed from the input. FIxLIP
+formalizes this with game theory. It views the tokens as players of a cooperative game, which
+assigns a similarity to every subset of tokens. Such a subset is a *mask* :math:`M \subseteq
+N_\mathcal{I} \cup N_\mathcal{T}`, which selects the tokens that the model receives. All other
+tokens are replaced with a baseline. For inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of
+the indices :math:`N \in \{N_\mathcal{I}, N_\mathcal{T}\}` of one modality, the *masking operator*
+is defined as
 
 .. math::
    :label: fixlip-masking
