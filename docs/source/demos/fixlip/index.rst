@@ -312,16 +312,16 @@ and the text tokens *words*, and both together *features*.
 Interpreting the FIxLIP Explanation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**What an interaction measures.** A positive interaction means that two tokens raise the similarity
-more together than the sum of their individual effects. :shapiq-figure:`interaction` measures this
-directly on the model, for the strongest interaction of the explanation between an image patch and
-a word. We sample 256 random masks of all other tokens, in which each token is kept with
-probability 0.5, and add the patch, the word, or both. What both add beyond the sum of their
-individual effects is their interaction. The second panel pairs the same patch with the word that
-has the largest main effect. Here, both together add just about the sum of their individual
-effects, so their interaction is close to zero. The last bar of each panel shows the estimate of
-the explanation. For all five examples, it agrees with the interaction measured on the model up to
-0.002.
+To interpret a FIxLIP explanation, it helps to know what an interaction measures. A positive
+interaction means that two tokens raise the similarity more together than the sum of their
+individual effects. :shapiq-figure:`interaction` measures this directly on the model, for the
+strongest interaction of the explanation between an image patch and a word. We sample 256 random
+masks of all other tokens, in which each token is kept with probability 0.5, and add the patch, the
+word, or both. What both add beyond the sum of their individual effects is their interaction. The
+second panel pairs the same patch with the word that has the largest main effect. Here, both
+together add just about the sum of their individual effects, so their interaction is close to zero.
+The last bar of each panel shows the estimate of the explanation. For all five examples, it agrees
+with the interaction measured on the model up to 0.002.
 
 .. shapiq-demo-figure:: fixlip interaction
    :alt: Two bar charts. Each shows how much adding a patch, adding a word and adding both change the similarity on average, the interaction, which is what both add beyond the sum of the two, and the estimate of this interaction in the explanation. The interaction is large in the first chart and close to zero in the second.
