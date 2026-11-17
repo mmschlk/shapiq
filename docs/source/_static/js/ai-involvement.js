@@ -1,7 +1,11 @@
-/* The AI involvement of a page: a thin line beside the text, from level 0 (a person wrote it
-   without AI) on the left to level 5 (AI wrote it and no person checked it) on the right. The line
-   steps where the level of a part changes. A click on the line shows what is known about the part.
-   The data is the JSON that the directive of _ext/shapiq_ai_involvement.py writes into the page. */
+/* The AI involvement of a page: a thin line beside the text. In the view with one line, its lane
+   is the level, from 0 (a person wrote it without AI) on the left to 5 (AI wrote it and no person
+   checked it) next to the text. In the view with two lines, one line shows what a person did and
+   the other what AI did, each drifting away from a common center as it does more. The line curves
+   where a part changes. Pointing at it shows a dot on it and tints the part on the page, a click
+   shows what is known about the part, and the tag at the top names the level of the part being
+   read. A reader can switch the line off. A page with ``mixer = true`` gets a panel above its
+   title to try colors and views. The data is the JSON that _ext/shapiq_ai_involvement.py writes. */
 (function () {
   "use strict";
 
@@ -18,13 +22,47 @@
   var top = levels[levels.length - 1].level;
   var byLevel = {};
   levels.forEach(function (level) { byLevel[level.level] = level; });
+  var humanSteps = data.human || [];
+  var aiSteps = data.ai || [];
+  var axisTop = Math.max(1, humanSteps.length - 1, aiSteps.length - 1);
 
   var SVG = "http://www.w3.org/2000/svg";
-  var GAP = 2.5; // the distance of two lanes, in px (--shapiq-ai-gap of the stylesheet)
+  var GAP = 4; // the distance of two lanes, in px (--shapiq-ai-gap of the stylesheet)
   var PAD = 1.5; // the space left of lane 0
-  var HEAD = 18; // the height of the label above the line
-  var STEP = 90; // half the height of the curve from one lane to the next, at most
+  var HEAD = 18; // where the line starts
   var CLOSE = 64; // a gap between two parts below this height belongs to the part above it
+  var SPECTRUM = [160, 105, 70, 45, 25, 8]; // the hue of each level in the palette "spectrum"
+
+  // what the mixer sets, and what a page without the mixer shows
+  var DEFAULTS = {
+    view: "one", // "one" line of levels, or "two" lines, human and AI
+    palette: "spectrum", // "spectrum" of hues, or "mono", one hue in shades
+    hue: 265, // the hue of "mono"
+    humanHue: 38, // the hues of the two lines
+    aiHue: 265,
+    saturation: 0.85,
+    lightness: 0.6,
+    glow: 3, // the blur of the halo, in px
+    width: 1.25, // the line, in px
+    shade: 0.28, // the strongest shade under the line
+    curve: 90, // half the height of a curve, at most, in px
+  };
+  var STORE = "shapiq-ai-mixer";
+  var VISIBLE = "shapiq-ai-visible";
+
+  function read(key) {
+    try { return window.localStorage.getItem(key); } catch (error) { return null; }
+  }
+  function write(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (error) { /* private window */ }
+  }
+
+  var page = Object.assign({ name: "The page as a whole", whole: true }, data.page);
+  var settings = Object.assign({}, DEFAULTS);
+  if (page.mixer) {
+    try { Object.assign(settings, JSON.parse(read(STORE) || "{}")); } catch (error) { /* keep */ }
+  }
+  var visible = read(VISIBLE) !== "off";
 
   function el(name, attributes, text) {
     var node = name.indexOf("svg:") === 0
@@ -34,8 +72,6 @@
     if (text != null) node.textContent = text;
     return node;
   }
-
-  function lane(level) { return PAD + level * GAP; }
 
   function date(text) {
     if (!text) return "";
@@ -48,15 +84,53 @@
   function nameOf(part, node) {
     if (part.name) return part.name;
     var heading = node && node.querySelector(".shapiq-statement-title, h1, h2, h3, h4, h5, h6");
-    if (heading) return heading.textContent.replace(/[\s#¶\u00a0\u200b]+$/, "").trim();
+    if (heading) return heading.textContent.replace(/[\s#¶ ​]+$/, "").trim();
     var number = node && node.querySelector(".caption-number");
     if (number) return number.textContent.replace(/[.\s]+$/, "");
     return part.target;
   }
 
-  var page = Object.assign({ name: "The page as a whole", whole: true }, data.page);
+  // the two axes of a part: its own, or those of its level
+  function humanOf(part) { return part.human_level != null ? part.human_level : (byLevel[part.level].human || 0); }
+  function aiOf(part) { return part.ai_level != null ? part.ai_level : (byLevel[part.level].ai || 0); }
 
-  // the widget: the lanes, the line, the part pointed at, a button per stretch of the line, the card
+  // -- colors ------------------------------------------------------------------------------------
+
+  function dark() {
+    var theme = document.body.dataset.theme;
+    if (theme === "dark") return true;
+    if (theme === "light") return false;
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  function hsl(h, s, l) {
+    return "hsl(" + Math.round(h) + " " + Math.round(100 * Math.max(0, Math.min(1, s))) + "% "
+      + Math.round(100 * Math.max(0, Math.min(1, l))) + "%)";
+  }
+
+  // the color of a level in the view with one line
+  function colorOf(level) {
+    var l = settings.lightness + (dark() ? 0.08 : 0);
+    if (settings.palette === "mono") {
+      var t = level / top;
+      return hsl(settings.hue, settings.saturation * (0.3 + 0.7 * t), l + (1 - t) * 0.22 * (dark() ? -0.6 : 1));
+    }
+    return hsl(SPECTRUM[level] != null ? SPECTRUM[level] : 0, settings.saturation, l);
+  }
+
+  function axisColor(axis) {
+    return hsl(axis === "human" ? settings.humanHue : settings.aiHue, settings.saturation,
+      settings.lightness + (dark() ? 0.08 : 0));
+  }
+
+  // the color that stands for a part on the page, the tag and the card
+  function partColor(part) {
+    if (settings.view !== "two") return colorOf(part.level);
+    return aiOf(part) > humanOf(part) ? axisColor("ai") : axisColor("human");
+  }
+
+  // -- the widget --------------------------------------------------------------------------------
+
   var root = el("div", { class: "shapiq-ai", "aria-label": "AI involvement of this page, part by part" });
   root.setAttribute("role", "group");
   // the tag that sticks to the top of the line: the level of the part being read
@@ -65,29 +139,14 @@
   label.appendChild(el("span", { class: "shapiq-ai-label-ai" }, "AI"));
   label.appendChild(labelText);
   var svg = el("svg:svg", { class: "shapiq-ai-svg", "aria-hidden": "true" });
-  // the color of each level along the page, and a shade that grows stronger towards the text
   var defs = el("svg:defs");
-  var color = el("svg:linearGradient", { id: "shapiq-ai-color", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0 });
-  var across = el("svg:linearGradient", { id: "shapiq-ai-across", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, y2: 0 });
-  across.appendChild(el("svg:stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0.02 }));
-  across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": 0.28 }));
-  var fade = el("svg:mask", { id: "shapiq-ai-fade", maskUnits: "userSpaceOnUse", x: 0, y: 0 });
-  var fadeRect = el("svg:rect", { x: 0, y: 0, fill: "url(#shapiq-ai-across)" });
-  fade.appendChild(fadeRect);
-  defs.appendChild(color);
-  defs.appendChild(across);
-  defs.appendChild(fade);
   var lanes = el("svg:g", { class: "shapiq-ai-lanes" });
-  var shade = el("svg:path", { class: "shapiq-ai-shade", fill: "url(#shapiq-ai-color)", mask: "url(#shapiq-ai-fade)" });
-  var halo = el("svg:path", { class: "shapiq-ai-halo", stroke: "url(#shapiq-ai-color)" });
-  var line = el("svg:path", { class: "shapiq-ai-line", stroke: "url(#shapiq-ai-color)" });
-  var dot = el("svg:circle", { class: "shapiq-ai-dot", r: 3, cx: -20, cy: -20 });
+  var tracksGroup = el("svg:g");
+  var dots = el("svg:g");
   svg.appendChild(defs);
   svg.appendChild(lanes);
-  svg.appendChild(shade);
-  svg.appendChild(halo);
-  svg.appendChild(line);
-  svg.appendChild(dot);
+  svg.appendChild(tracksGroup);
+  svg.appendChild(dots);
   var hits = el("div", { class: "shapiq-ai-hits" });
   var card = el("div", { class: "shapiq-ai-card", role: "dialog", hidden: "" });
   var glow = el("div", { class: "shapiq-ai-glow", "aria-hidden": "true" }); // the part pointed at, on the page
@@ -99,9 +158,11 @@
   article.appendChild(card);
   article.classList.add("shapiq-ai-page");
 
-  var segments = [];
+  var segments = []; // the stretches of the page, one per part
+  var tracks = []; // the lines: their stretches with places, and their colors
   var open = null; // the segment (or the page) whose card is shown
   var pointed = null;
+  var pointedY = 0;
 
   // Every part covers its element from top to bottom. Where parts overlap, the innermost one
   // counts. What no part covers is the page's.
@@ -156,48 +217,48 @@
     return { height: height, segments: found };
   }
 
-  // The line is straight along a part and curves gently into the lane of the next part. The
-  // curve takes up to 90 px of either part, and at most 45 % of it.
-  function shape(list) {
-    list.forEach(function (segment, i) {
-      segment.x = lane(segment.item.part.level);
-      segment.y0 = segment.top;
-      segment.y1 = segment.bottom;
+  // The line is straight along a part and curves gently into the place of the next part. The
+  // curve takes up to settings.curve px of either part, and at most 45 % of it.
+  function shape(list, xOf) {
+    var out = list.map(function (segment) {
+      return { segment: segment, x: xOf(segment.item.part), y0: segment.top, y1: segment.bottom };
     });
-    list.forEach(function (segment, i) {
-      var next = list[i + 1];
-      if (!next || next.x === segment.x) return;
-      var half = Math.min(STEP, (segment.bottom - segment.top) * 0.45, (next.bottom - next.top) * 0.45);
-      segment.y1 = segment.bottom - half;
-      next.y0 = next.top + half;
+    out.forEach(function (stretch, i) {
+      var next = out[i + 1];
+      if (!next || next.x === stretch.x) return;
+      var a = stretch.segment, b = next.segment;
+      var half = Math.min(settings.curve, (a.bottom - a.top) * 0.45, (b.bottom - b.top) * 0.45);
+      stretch.y1 = a.bottom - half;
+      next.y0 = b.top + half;
     });
+    return out;
   }
 
   function path(list) {
     var d = "";
-    list.forEach(function (segment, i) {
+    list.forEach(function (stretch, i) {
       var previous = list[i - 1];
-      if (!previous) d += "M" + segment.x + " " + segment.y0.toFixed(1);
+      if (!previous) d += "M" + stretch.x.toFixed(2) + " " + stretch.y0.toFixed(1);
       else {
-        var bend = (segment.y0 - previous.y1) * 0.55;
-        d += "C" + previous.x + " " + (previous.y1 + bend).toFixed(1) + " " + segment.x + " "
-          + (segment.y0 - bend).toFixed(1) + " " + segment.x + " " + segment.y0.toFixed(1);
+        var bend = (stretch.y0 - previous.y1) * 0.55;
+        d += "C" + previous.x.toFixed(2) + " " + (previous.y1 + bend).toFixed(1) + " " + stretch.x.toFixed(2) + " "
+          + (stretch.y0 - bend).toFixed(1) + " " + stretch.x.toFixed(2) + " " + stretch.y0.toFixed(1);
       }
-      d += "L" + segment.x + " " + segment.y1.toFixed(1);
+      d += "L" + stretch.x.toFixed(2) + " " + stretch.y1.toFixed(1);
     });
     return d;
   }
 
-  // where the line is at a height y: in a part's lane, or on the curve between two parts
-  function at(y) {
-    for (var i = 0; i < segments.length; i++) {
-      var segment = segments[i];
-      if (y <= segment.y1) {
-        if (y >= segment.y0 || i === 0) return segment.x;
-        var previous = segments[i - 1];
-        var bend = (segment.y0 - previous.y1) * 0.55;
-        var ys = [previous.y1, previous.y1 + bend, segment.y0 - bend, segment.y0];
-        var xs = [previous.x, previous.x, segment.x, segment.x];
+  // where a line is at a height y: in a part's place, or on the curve between two parts
+  function at(list, y) {
+    for (var i = 0; i < list.length; i++) {
+      var stretch = list[i];
+      if (y <= stretch.y1) {
+        if (y >= stretch.y0 || i === 0) return stretch.x;
+        var previous = list[i - 1];
+        var bend = (stretch.y0 - previous.y1) * 0.55;
+        var ys = [previous.y1, previous.y1 + bend, stretch.y0 - bend, stretch.y0];
+        var xs = [previous.x, previous.x, stretch.x, stretch.x];
         var bez = function (p, t) {
           var u = 1 - t;
           return u * u * u * p[0] + 3 * u * u * t * p[1] + 3 * u * t * t * p[2] + t * t * t * p[3];
@@ -210,7 +271,7 @@
         return bez(xs, (lo + hi) / 2);
       }
     }
-    return segments.length ? segments[segments.length - 1].x : 0;
+    return list.length ? list[list.length - 1].x : 0;
   }
 
   function segmentAt(y) {
@@ -218,63 +279,92 @@
       || segments[segments.length - 1];
   }
 
-  // the tag names the level of the part a third down the window, and opens the page's card
-  var current = null;
-  function reading() {
-    if (!segments.length) return;
-    var y = window.innerHeight * 0.33 - article.getBoundingClientRect().top;
-    var segment = segmentAt(Math.max(HEAD, y));
-    var level = segment.item.part.level;
-    if (current === level) return;
-    current = level;
-    labelText.textContent = byLevel[level].name;
-    label.style.setProperty("--shapiq-ai-tag", colorOf(level));
-    label.setAttribute("aria-label", "AI involvement here: level " + level + ", " + byLevel[level].name
-      + ". Show the page's AI involvement.");
-    label.title = "Level " + level + " \u00b7 " + byLevel[level].summary;
+  // the lines of the view: where each part sits, its color, and where its shade starts
+  function views(width) {
+    if (settings.view === "two") {
+      var center = width / 2;
+      var step = (width / 2 - PAD) / axisTop;
+      return [
+        { name: "human", base: center, x: function (part) { return center - humanOf(part) * step; },
+          color: function () { return axisColor("human"); } },
+        { name: "ai", base: center, x: function (part) { return center + aiOf(part) * step; },
+          color: function () { return axisColor("ai"); } },
+      ];
+    }
+    return [{ name: "level", base: 0, x: function (part) { return PAD + part.level * GAP; },
+      color: function (part) { return colorOf(part.level); } }];
   }
 
-  function colorOf(level) {
-    return getComputedStyle(root).getPropertyValue("--shapiq-ai-" + level).trim() || "currentColor";
-  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
   function draw() {
     var gap = parseFloat(getComputedStyle(root).getPropertyValue("--shapiq-ai-gap"));
     if (gap > 0) GAP = gap;
     var result = measure();
     segments = result.segments;
-    var width = lane(top) + PAD;
+    var height = result.height;
+    var width = 2 * PAD + top * GAP;
     svg.setAttribute("width", width);
-    svg.setAttribute("height", result.height);
-    svg.setAttribute("viewBox", "0 0 " + width + " " + result.height);
-    root.style.height = result.height + "px";
-    while (lanes.firstChild) lanes.removeChild(lanes.firstChild);
-    for (var level = 0; level <= top; level++) {
-      lanes.appendChild(el("svg:line", { x1: lane(level), x2: lane(level), y1: HEAD, y2: result.height }));
+    svg.setAttribute("height", height);
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+    root.style.height = height + "px";
+    root.style.setProperty("--shapiq-ai-width", settings.width + "px");
+    clear(lanes);
+    clear(defs);
+    clear(tracksGroup);
+    clear(dots);
+    if (settings.view === "two") {
+      lanes.appendChild(el("svg:line", { class: "center", x1: width / 2, x2: width / 2, y1: HEAD, y2: height }));
+    } else {
+      for (var level = 0; level <= top; level++) {
+        lanes.appendChild(el("svg:line", { x1: PAD + level * GAP, x2: PAD + level * GAP, y1: HEAD, y2: height }));
+      }
     }
-    shape(segments);
-    var d = path(segments);
-    line.setAttribute("d", d);
-    halo.setAttribute("d", d);
-    if (segments.length) {
-      var first = segments[0];
-      var last = segments[segments.length - 1];
-      shade.setAttribute("d", d + "L0 " + last.y1.toFixed(1) + "L0 " + first.y0.toFixed(1) + "Z");
-    }
-    color.setAttribute("y2", result.height);
-    while (color.firstChild) color.removeChild(color.firstChild);
-    segments.forEach(function (segment) {
-      var c = colorOf(segment.item.part.level);
-      [segment.y0, segment.y1].forEach(function (y) {
-        color.appendChild(el("svg:stop", { offset: (y / result.height).toFixed(5), "stop-color": c }));
+    tracks = views(width).map(function (view, index) {
+      var list = shape(segments, view.x);
+      var d = path(list);
+      var id = "shapiq-ai-" + view.name;
+      // the color along the page
+      var color = el("svg:linearGradient", { id: id + "-color", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0, y2: height });
+      list.forEach(function (stretch) {
+        var c = view.color(stretch.segment.item.part);
+        [stretch.y0, stretch.y1].forEach(function (y) {
+          color.appendChild(el("svg:stop", { offset: (y / height).toFixed(5), "stop-color": c }));
+        });
       });
+      // the shade, stronger away from where the line starts
+      var far = view.name === "human" ? 0 : width;
+      var across = el("svg:linearGradient", { id: id + "-across", gradientUnits: "userSpaceOnUse", x1: view.base, y1: 0, x2: far, y2: 0 });
+      across.appendChild(el("svg:stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0.02 }));
+      across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": settings.shade }));
+      var mask = el("svg:mask", { id: id + "-fade", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: width, height: height });
+      mask.appendChild(el("svg:rect", { x: 0, y: 0, width: width, height: height, fill: "url(#" + id + "-across)" }));
+      defs.appendChild(color);
+      defs.appendChild(across);
+      defs.appendChild(mask);
+      var group = el("svg:g", { class: "shapiq-ai-track" });
+      if (list.length && settings.shade > 0) {
+        var first = list[0], last = list[list.length - 1];
+        group.appendChild(el("svg:path", {
+          class: "shapiq-ai-shade", fill: "url(#" + id + "-color)", mask: "url(#" + id + "-fade)",
+          d: d + "L" + view.base + " " + last.y1.toFixed(1) + "L" + view.base + " " + first.y0.toFixed(1) + "Z",
+        }));
+      }
+      if (settings.glow > 0) {
+        var halo = el("svg:path", { class: "shapiq-ai-halo", stroke: "url(#" + id + "-color)", d: d });
+        halo.style.strokeWidth = (settings.width + 2 * settings.glow) + "px";
+        halo.style.filter = "blur(" + settings.glow + "px)";
+        group.appendChild(halo);
+      }
+      var line = el("svg:path", { class: "shapiq-ai-line", stroke: "url(#" + id + "-color)", d: d });
+      line.style.strokeWidth = settings.width + "px";
+      group.appendChild(line);
+      tracksGroup.appendChild(group);
+      var dot = el("svg:circle", { class: "shapiq-ai-dot", r: 3, cx: -20, cy: -20 });
+      dots.appendChild(dot);
+      return { view: view, list: list, dot: dot, index: index };
     });
-    across.setAttribute("x2", width);
-    fade.setAttribute("width", width);
-    fade.setAttribute("height", result.height);
-    fadeRect.setAttribute("width", width);
-    fadeRect.setAttribute("height", result.height);
-    while (hits.firstChild) hits.removeChild(hits.firstChild);
+    clear(hits);
     segments.forEach(function (segment) {
       var part = segment.item.part;
       var name = segment.item.name || part.name;
@@ -282,7 +372,7 @@
       button.style.top = segment.top + "px";
       button.style.height = Math.max(8, segment.bottom - segment.top) + "px";
       button.setAttribute("aria-label", name + ": level " + part.level + ", " + byLevel[part.level].name + ". Show details.");
-      button.title = name + " · " + part.level + " " + byLevel[part.level].name;
+      button.title = name + " · " + byLevel[part.level].name;
       button.addEventListener("focus", function () { if (!button.matches(":hover")) point(segment); });
       button.addEventListener("blur", function () { point(null); });
       button.addEventListener("click", function (event) {
@@ -294,34 +384,34 @@
     });
     if (open && !open.whole) {
       var again = segments.filter(function (segment) { return segment.item === open.item; })[0];
-      if (again) { open = again; again.button.setAttribute("aria-expanded", "true"); }
+      if (again) { again.y = open.y; open = again; again.button.setAttribute("aria-expanded", "true"); }
     }
     point(pointed && segments.filter(function (s) { return s.item === pointed.item; })[0], pointed && pointedY);
     current = null;
     reading();
   }
 
-  // The part pointed at, or the one whose card is open: a dot on the line where the pointer is, and
-  // a soft tint of the part's color over the part on the page.
-  var pointedY = 0;
+  // The part pointed at, or the one whose card is open: a dot on each line where the pointer is,
+  // and a soft tint of the part's color over the part on the page.
   function point(segment, y) {
     pointed = segment || null;
     if (pointed) pointedY = y == null ? (segment.top + segment.bottom) / 2 : y;
     var show = pointed || (open && !open.whole ? open : null);
-    if (!show) {
-      dot.classList.remove("on");
+    if (!show || !visible) {
+      tracks.forEach(function (track) { track.dot.classList.remove("on"); });
       glow.classList.remove("on");
       return;
     }
-    var level = show.item.part.level;
-    var c = colorOf(level);
     var yy = pointed ? pointedY : (open.y != null ? open.y : (show.top + show.bottom) / 2);
-    dot.setAttribute("cx", at(yy).toFixed(2));
-    dot.setAttribute("cy", yy.toFixed(1));
-    dot.style.fill = c;
-    dot.style.color = c;
-    dot.classList.add("on");
-    glow.style.setProperty("--shapiq-ai-glow", c);
+    tracks.forEach(function (track) {
+      var c = track.view.color(show.item.part);
+      track.dot.setAttribute("cx", at(track.list, yy).toFixed(2));
+      track.dot.setAttribute("cy", yy.toFixed(1));
+      track.dot.style.fill = c;
+      track.dot.style.color = c;
+      track.dot.classList.add("on");
+    });
+    glow.style.setProperty("--shapiq-ai-glow", partColor(show.item.part));
     glow.style.left = root.offsetLeft + "px";
     glow.style.top = show.top + "px";
     glow.style.height = (show.bottom - show.top) + "px";
@@ -333,6 +423,33 @@
     point(segmentAt(y), y);
   });
   hits.addEventListener("mouseleave", function () { point(null); });
+
+  // the tag names the level of the part a third down the window
+  var current = null;
+  function reading() {
+    if (!segments.length) return;
+    if (!visible) {
+      current = null;
+      labelText.textContent = "off";
+      label.style.removeProperty("--shapiq-ai-tag");
+      label.setAttribute("aria-label", "The AI involvement line is off. Show it.");
+      label.title = "Show the AI involvement of this page";
+      return;
+    }
+    var y = window.innerHeight * 0.33 - article.getBoundingClientRect().top;
+    var segment = segmentAt(Math.max(HEAD, y));
+    var part = segment.item.part;
+    var key = part.level + "|" + settings.view + "|" + partColor(part);
+    if (current === key) return;
+    current = key;
+    labelText.textContent = byLevel[part.level].name;
+    label.style.setProperty("--shapiq-ai-tag", partColor(part));
+    label.setAttribute("aria-label", "AI involvement here: level " + part.level + ", " + byLevel[part.level].name
+      + ". Show the page's AI involvement.");
+    label.title = byLevel[part.level].summary;
+  }
+
+  // -- the card ----------------------------------------------------------------------------------
 
   function row(list, term, value) {
     if (!value || (Array.isArray(value) && !value.length)) return;
@@ -346,6 +463,27 @@
       drawing.appendChild(el("svg:circle", { cx: 3 + 6 * i, cy: 5, r: i === level ? 2.8 : 1.5, fill: i <= level ? colorOf(i) : "", class: i === level ? "on" : "" }));
     }
     return drawing;
+  }
+
+  // the two axes of a part, as two small bars from the center
+  function axes(part) {
+    var h = humanOf(part), a = aiOf(part);
+    var box = el("div", { class: "shapiq-ai-axes" });
+    [["Person", h, humanSteps, "human"], ["AI", a, aiSteps, "ai"]].forEach(function (axis) {
+      var line = el("div", { class: "shapiq-ai-axis" });
+      line.appendChild(el("span", { class: "who" }, axis[0]));
+      var bar = el("span", { class: "track" });
+      var fillBar = el("span", { class: "bar" });
+      fillBar.style.width = (100 * axis[1] / axisTop) + "%";
+      fillBar.style.background = settings.view === "two" ? axisColor(axis[3]) : "var(--color-foreground-muted)";
+      bar.appendChild(fillBar);
+      line.appendChild(bar);
+      var step = axis[2][axis[1]];
+      line.appendChild(el("span", { class: "what" }, step ? step.name : String(axis[1])));
+      if (step) line.title = step.summary;
+      box.appendChild(line);
+    });
+    return box;
   }
 
   // the share of the page's height at each level
@@ -363,7 +501,7 @@
       var item = el("li");
       var bar = el("span", { class: "bar" });
       bar.style.width = Math.max(2, Math.round(100 * by[level.level] / total)) + "%";
-      bar.style.background = colorOf(level.level);
+      bar.style.background = partColor({ level: level.level });
       item.appendChild(el("span", { class: "name" }, level.level + " · " + level.name));
       var track = el("span", { class: "track" });
       track.appendChild(bar);
@@ -375,9 +513,9 @@
   }
 
   function fill(part, name) {
-    while (card.firstChild) card.removeChild(card.firstChild);
+    clear(card);
     var level = byLevel[part.level];
-    card.style.setProperty("--shapiq-ai-card", colorOf(part.level));
+    card.style.setProperty("--shapiq-ai-card", partColor(part));
     var head = el("div", { class: "shapiq-ai-card-head" });
     head.appendChild(scale(part.level));
     head.appendChild(el("span", { class: "shapiq-ai-card-level" }, "Level " + part.level + " · " + level.name));
@@ -387,6 +525,7 @@
     card.appendChild(head);
     card.appendChild(el("p", { class: "shapiq-ai-card-name" }, name));
     card.appendChild(el("p", { class: "shapiq-ai-card-meaning" }, level.summary));
+    if (humanSteps.length && aiSteps.length) card.appendChild(axes(part));
     if (part.whole && part.summary) card.appendChild(el("p", { class: "shapiq-ai-card-summary" }, part.summary));
     var list = el("dl");
     row(list, "Written by", part.written);
@@ -400,8 +539,12 @@
       card.appendChild(el("p", { class: "shapiq-ai-card-caption" }, "Share of the page at each level"));
       card.appendChild(shares());
     }
-    var more = el("a", { class: "shapiq-ai-card-more", href: data.about }, "How the levels work");
-    card.appendChild(more);
+    var foot = el("div", { class: "shapiq-ai-card-foot" });
+    foot.appendChild(el("a", { class: "shapiq-ai-card-more", href: data.about }, "How the levels work"));
+    var hide = el("button", { type: "button", class: "shapiq-ai-card-hide" }, "Hide the line");
+    hide.addEventListener("click", function () { close(); setVisible(false); label.focus(); });
+    foot.appendChild(hide);
+    card.appendChild(foot);
     card.setAttribute("aria-label", "AI involvement of " + name);
   }
 
@@ -445,7 +588,20 @@
     if (focus && button) button.focus();
   }
 
+  // -- on and off --------------------------------------------------------------------------------
+
+  function setVisible(on) {
+    visible = on;
+    write(VISIBLE, on ? "on" : "off");
+    root.classList.toggle("off", !on);
+    if (mixerToggle) mixerToggle.checked = on;
+    point(null);
+    current = null;
+    reading();
+  }
+
   label.addEventListener("click", function () {
+    if (!visible) { setVisible(true); return; }
     if (open && open.whole) close();
     else showPage();
   });
@@ -456,12 +612,115 @@
     if (open && !card.contains(event.target) && !root.contains(event.target)) close();
   });
 
+  // -- the mixer ---------------------------------------------------------------------------------
+
+  var mixerToggle = null;
   var waiting = false;
   function later() {
     if (waiting) return;
     waiting = true;
     requestAnimationFrame(function () { waiting = false; draw(); });
   }
+
+  function mixer() {
+    var panel = el("details", { class: "shapiq-ai-mixer", open: "" });
+    panel.appendChild(el("summary", null, "AI line mixer"));
+    var grid = el("div", { class: "shapiq-ai-mixer-grid" });
+    var inputs = {};
+    function save() { write(STORE, JSON.stringify(settings)); later(); }
+    function choice(key, title, options) {
+      var field = el("label", { class: "shapiq-ai-mixer-field" });
+      field.appendChild(el("span", { class: "name" }, title));
+      var select = el("select");
+      options.forEach(function (option) {
+        var node = el("option", { value: option[0] }, option[1]);
+        if (settings[key] === option[0]) node.selected = true;
+        select.appendChild(node);
+      });
+      select.addEventListener("change", function () { settings[key] = select.value; sync(); save(); });
+      field.appendChild(select);
+      grid.appendChild(field);
+      inputs[key] = { node: select, field: field };
+    }
+    function slider(key, title, min, max, step, format) {
+      var field = el("label", { class: "shapiq-ai-mixer-field" });
+      field.appendChild(el("span", { class: "name" }, title));
+      var input = el("input", { type: "range", min: min, max: max, step: step });
+      input.value = settings[key];
+      var value = el("span", { class: "value" }, format(settings[key]));
+      input.addEventListener("input", function () {
+        settings[key] = parseFloat(input.value);
+        value.textContent = format(settings[key]);
+        sync();
+        save();
+      });
+      field.appendChild(input);
+      field.appendChild(value);
+      grid.appendChild(field);
+      inputs[key] = { node: input, field: field, value: value, format: format };
+    }
+    var hue = function (v) { return Math.round(v) + "°"; };
+    var px = function (v) { return String(Math.round(v * 100) / 100) + " px"; };
+    var pct = function (v) { return Math.round(100 * v) + "%"; };
+    choice("view", "View", [["one", "One line, six levels"], ["two", "Two lines, person and AI"]]);
+    choice("palette", "Palette", [["spectrum", "Spectrum"], ["mono", "One hue"]]);
+    slider("hue", "Hue", 0, 360, 1, hue);
+    slider("humanHue", "Person hue", 0, 360, 1, hue);
+    slider("aiHue", "AI hue", 0, 360, 1, hue);
+    slider("saturation", "Intensity", 0, 1, 0.01, pct);
+    slider("lightness", "Lightness", 0.3, 0.85, 0.01, pct);
+    slider("glow", "Glow", 0, 10, 0.5, px);
+    slider("width", "Line", 0.5, 4, 0.05, px);
+    slider("shade", "Shade", 0, 0.8, 0.01, pct);
+    slider("curve", "Curve", 0, 300, 5, px);
+    function sync() {
+      var two = settings.view === "two";
+      inputs.palette.field.hidden = two;
+      inputs.hue.field.hidden = two || settings.palette !== "mono";
+      inputs.humanHue.field.hidden = !two;
+      inputs.aiHue.field.hidden = !two;
+      ["hue", "humanHue", "aiHue"].forEach(function (key) {
+        inputs[key].node.style.setProperty("--swatch", hsl(settings[key], settings.saturation, settings.lightness));
+      });
+    }
+    panel.appendChild(grid);
+    var actions = el("div", { class: "shapiq-ai-mixer-actions" });
+    var toggleLabel = el("label", { class: "shapiq-ai-mixer-toggle" });
+    mixerToggle = el("input", { type: "checkbox" });
+    mixerToggle.checked = visible;
+    mixerToggle.addEventListener("change", function () { setVisible(mixerToggle.checked); });
+    toggleLabel.appendChild(mixerToggle);
+    toggleLabel.appendChild(el("span", null, "Line on this page"));
+    actions.appendChild(toggleLabel);
+    var reset = el("button", { type: "button" }, "Reset");
+    reset.addEventListener("click", function () {
+      settings = Object.assign({}, DEFAULTS);
+      Object.keys(inputs).forEach(function (key) {
+        inputs[key].node.value = settings[key];
+        if (inputs[key].value) inputs[key].value.textContent = inputs[key].format(settings[key]);
+      });
+      sync();
+      save();
+    });
+    actions.appendChild(reset);
+    var copy = el("button", { type: "button" }, "Copy settings");
+    var out = el("code", { class: "shapiq-ai-mixer-out" });
+    copy.addEventListener("click", function () {
+      var text = JSON.stringify(settings);
+      out.textContent = text;
+      try { navigator.clipboard.writeText(text); copy.textContent = "Copied"; } catch (error) { /* shown below */ }
+      setTimeout(function () { copy.textContent = "Copy settings"; }, 1500);
+    });
+    actions.appendChild(copy);
+    panel.appendChild(actions);
+    panel.appendChild(out);
+    sync();
+    return panel;
+  }
+
+  if (page.mixer) article.insertBefore(mixer(), article.firstChild);
+
+  root.classList.toggle("off", !visible);
   draw();
   if (window.ResizeObserver) new ResizeObserver(later).observe(article);
   window.addEventListener("load", later);

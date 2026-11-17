@@ -384,5 +384,184 @@ table.shapiq-ai-levels td:nth-child(2) {
   .content:has(> article.shapiq-ai-page),
   .content:has(article.shapiq-ai-page) {
     overflow-x: clip;
+    min-width: 0; /* a flex item that clips would otherwise grow to its widest content */
   }
+}
+
+/* the center of the view with two lines */
+.shapiq-ai-lanes line.center {
+  stroke-dasharray: 2 3;
+}
+
+/* switched off: only the tag stays, quiet, to switch it on again */
+.shapiq-ai-svg,
+.shapiq-ai-hits {
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-ai.off .shapiq-ai-svg {
+  opacity: 0;
+}
+
+.shapiq-ai.off .shapiq-ai-hits {
+  pointer-events: none;
+}
+
+.shapiq-ai.off .shapiq-ai-label {
+  border-style: dashed;
+  border-color: var(--color-background-border);
+  background: var(--color-background-primary);
+  box-shadow: none;
+  color: var(--color-foreground-muted);
+}
+
+/* the two axes on the card */
+.shapiq-ai-axes {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.45rem;
+}
+
+.shapiq-ai-axis {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr 4.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shapiq-ai-axis .who,
+.shapiq-ai-axis .what {
+  color: var(--color-foreground-muted);
+}
+
+.shapiq-ai-axis .track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-background-secondary);
+}
+
+.shapiq-ai-axis .bar {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.shapiq-ai-card-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+}
+
+.shapiq-ai-card-foot a.shapiq-ai-card-more {
+  margin-top: 0;
+}
+
+.shapiq-ai-card-hide {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-foreground-muted);
+  font: inherit;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.shapiq-ai-card-hide:hover {
+  color: var(--color-foreground-primary);
+}
+
+/* the mixer above the title, for trying views and colors */
+.shapiq-ai-mixer {
+  margin: 0 0 1.25rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px dashed var(--color-background-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--color-background-secondary);
+  font-size: 0.78rem;
+}
+
+.shapiq-ai-mixer summary {
+  color: var(--color-foreground-muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shapiq-ai-mixer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+  gap: 0.35rem 1.25rem;
+  margin-top: 0.55rem;
+}
+
+.shapiq-ai-mixer-field {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 3.4rem;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.shapiq-ai-mixer-field[hidden] {
+  display: none;
+}
+
+.shapiq-ai-mixer-field select {
+  grid-column: 2 / 4;
+  min-width: 0;
+  width: 100%;
+  font: inherit;
+}
+
+.shapiq-ai-mixer-field .name,
+.shapiq-ai-mixer-field .value {
+  color: var(--color-foreground-muted);
+}
+
+.shapiq-ai-mixer-field .value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.shapiq-ai-mixer-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--swatch, var(--shapiq-amber));
+}
+
+.shapiq-ai-mixer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.shapiq-ai-mixer-actions button {
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--color-background-border);
+  border-radius: 6px;
+  background: var(--color-background-primary);
+  color: var(--color-foreground-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.shapiq-ai-mixer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: auto;
+}
+
+.shapiq-ai-mixer-out {
+  display: block;
+  margin-top: 0.4rem;
+  overflow-wrap: anywhere;
+  font-size: 0.72rem;
+}
+
+.shapiq-ai-mixer-out:empty {
+  display: none;
 }

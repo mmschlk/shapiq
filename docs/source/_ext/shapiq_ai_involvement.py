@@ -61,8 +61,11 @@ logger = logging.getLogger(__name__)
 
 _LEVELS = Path("_data") / "ai-involvement.toml"
 _ABOUT = "ai-involvement"  # the page that explains the levels
-_PAGE = {"level", "summary"}, {"written", "models", "human", "checked", "note"}
-_PART = {"target", "level", "written"}, {"name", "models", "human", "sources", "checked", "note"}
+_PAGE = {"level", "summary"}, {"written", "models", "human", "checked", "note", "mixer"}
+_PART = (
+    {"target", "level", "written"},
+    {"name", "models", "human", "sources", "checked", "note", "human_level", "ai_level"},
+)
 _DEFAULTS = set(), (_PART[1] | {"level", "written"}) - {"name"}
 
 
@@ -74,10 +77,20 @@ class LevelGlyphNode(nodes.Inline, nodes.Element):
     """A small drawing of the line at one level, for the list of levels."""
 
 
+def _scale(srcdir: str) -> dict[str, Any]:
+    """Return the levels and the steps of the two axes (``human``, ``ai``), each in order."""
+    with (Path(srcdir) / _LEVELS).open("rb") as file:
+        data = tomllib.load(file)
+    return {
+        "levels": sorted(data["levels"], key=lambda level: level["level"]),
+        "human": sorted(data.get("human", []), key=lambda step: step["step"]),
+        "ai": sorted(data.get("ai", []), key=lambda step: step["step"]),
+    }
+
+
 def _levels(srcdir: str) -> list[dict[str, Any]]:
     """Return the levels, in order."""
-    with (Path(srcdir) / _LEVELS).open("rb") as file:
-        return sorted(tomllib.load(file)["levels"], key=lambda level: level["level"])
+    return _scale(srcdir)["levels"]
 
 
 def _plain(value: Any) -> Any:  # noqa: ANN401
@@ -170,7 +183,7 @@ def _resolve_targets(app: Sphinx, doctree: nodes.document, docname: str) -> None
 def _visit_involvement(self: HTML5Translator, node: InvolvementNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     data = {
-        "levels": _levels(self.builder.srcdir),
+        **_scale(self.builder.srcdir),
         "page": node["page"],
         "parts": node["parts"],
         "about": relative_uri(page, self.builder.get_target_uri(_ABOUT)),

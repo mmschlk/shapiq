@@ -2,33 +2,89 @@
 # ``ai-involvement.rst`` and ``_ext/shapiq_ai_involvement.py``). Level 0 is a text that a person
 # wrote alone, level 5 one that AI wrote and no person checked. A page lists its parts in its own
 # file, e.g. ``demos/fixlip/ai-involvement.toml``.
+#
+# Each level is also a point on two neutral axes, how much a person and how much AI did (``human``
+# and ``ai``, steps 0 to 3 below). The line can show the two axes as two lines instead of one.
 
 [[levels]]
 level = 0
+human = 3
+ai = 0
 name = "Handmade"
 summary = "A person wrote it without AI."
 
 [[levels]]
 level = 1
+human = 3
+ai = 1
 name = "Polished"
 summary = "A person wrote it. AI only fixed wording, grammar or layout."
 
 [[levels]]
 level = 2
+human = 3
+ai = 2
 name = "Co-written"
 summary = "AI drafted parts of it. A person rewrote or edited them line by line."
 
 [[levels]]
 level = 3
+human = 2
+ai = 3
 name = "Vetted"
 summary = "AI wrote it. A person read every line, asked for changes and approved it."
 
 [[levels]]
 level = 4
+human = 1
+ai = 3
 name = "Guided"
 summary = "AI wrote it to a person's brief. A person checked the result but not every line or claim."
 
 [[levels]]
 level = 5
+human = 0
+ai = 3
 name = "Autopilot"
 summary = "AI wrote it and no person checked it."
+
+# the two axes, without any judgment: what a person did, and what AI did
+[[human]]
+step = 0
+name = "None"
+summary = "No person checked it."
+
+[[human]]
+step = 1
+name = "Checked"
+summary = "A person checked the result, not every line."
+
+[[human]]
+step = 2
+name = "Reviewed"
+summary = "A person read every line and asked for changes."
+
+[[human]]
+step = 3
+name = "Wrote"
+summary = "A person wrote or rewrote it."
+
+[[ai]]
+step = 0
+name = "None"
+summary = "No AI was used."
+
+[[ai]]
+step = 1
+name = "Assisted"
+summary = "AI fixed wording, grammar or layout."
+
+[[ai]]
+step = 2
+name = "Drafted"
+summary = "AI drafted parts of it."
+
+[[ai]]
+step = 3
+name = "Wrote"
+summary = "AI wrote it."

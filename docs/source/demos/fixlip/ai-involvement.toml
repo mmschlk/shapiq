@@ -9,6 +9,8 @@ written = "Claude, directed by Max"
 models = ["Claude Fable 5.2", "Claude Opus 5.5"]
 checked = 2026-11-17
 note = "Max is still reviewing the page. The levels give its state on 17 Nov 2026."
+# the panel to try views and colors, for review only (remove before merging into main)
+mixer = true
 
 # what every part below has unless it says otherwise
 [defaults]
