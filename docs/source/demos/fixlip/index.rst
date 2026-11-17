@@ -31,11 +31,12 @@ defined as the most faithful additive model of a cooperative game that masks tok
 the weighted Banzhaf interaction index.
 
 This page explains FIxLIP step by step on the five examples of the demo. It motivates why similarity
-calls for interactions, defines the game and the explanation, describes how it is computed, and
-evaluates it with three metrics. **For all five examples, the second-order explanation is more
-faithful to the model than the first-order explanation derived from it.** This agrees with a larger
-evaluation on 1,000 image–text pairs from MS COCO :cite:p:`Baniecki.2025`. Finally, the page
-compares CLIP and SigLIP 2 and shows how to explain an image–text pair with ``shapiq``.
+calls for interactions, defines the game and the explanation, shows how to interpret it, describes
+how it is computed, and evaluates it with three metrics. **For all five examples, the second-order
+explanation is more faithful to the model than the first-order explanation derived from it.** This
+agrees with a larger evaluation on 1,000 image–text pairs from MS COCO :cite:p:`Baniecki.2025`.
+Finally, the page compares CLIP and SigLIP 2 and shows how to explain an image–text pair with
+``shapiq``.
 
 .. _fixlip-sec-introduction:
 
@@ -305,12 +306,69 @@ image patches or two text tokens. The explanation can be viewed as a complete gr
 as weighted nodes and the interactions as weighted edges. The demo calls the image patches *regions*
 and the text tokens *words*, and both together *features*.
 
+.. _fixlip-sec-faithfulness:
+
+The FIxLIP Explanation
+~~~~~~~~~~~~~~~~~~~~~~
+
+Many explanations have the form of :shapiq-statement:`fixlip-def-explanation`. FIxLIP chooses the
+one whose additive model predicts the game best. It measures the squared error :math:`\big(\nu(M) -
+\hat\nu_\mathbf{e}(M)\big)^2` over all masks and weights each mask according to its size.
+
+.. shapiq-definition:: :math:`p`-Faithfulness
+   :name: fixlip-def-faithfulness
+
+   For :math:`p \in (0, 1)` and two games :math:`\nu, \hat\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}}
+   \to \mathbb{R}`, the *p-faithfulness* is defined as
+
+   .. math::
+
+      \mathfrak{F}_p(\nu,\hat\nu) := \sum_{M \subseteq N_\mathcal{I} \cup N_\mathcal{T}}
+      p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert M \vert}
+      \big(\nu(M) - \hat\nu(M)\big)^2
+
+The weight :math:`\mathbb{P}_p(M) := p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert
+M \vert}` is the probability of the mask when every token is kept independently with probability
+:math:`p`. Since :math:`\mathfrak{F}_p` is an error, a smaller value means a more faithful
+explanation. FIxLIP chooses the explanation with the smallest error.
+
+.. shapiq-definition:: FIxLIP Explanation
+   :name: fixlip-def-fixlip
+
+   For :math:`p \in (0, 1)`, the *FIxLIP-p* explanation of the game :math:`\nu` is the explanation
+   whose additive model is the most faithful with respect to :math:`\mathfrak{F}_p`, given by
+
+   .. math::
+
+      \mathbf{e}^{\text{FIxLIP-}p}
+      := \operatorname*{arg\,min}_{\mathbf{e}} \, \mathfrak{F}_p(\nu,\hat\nu_\mathbf{e})
+
+Its interactions are the *weighted Banzhaf interactions* :cite:p:`Marichal.2011`. For :math:`p =
+0.5`, all masks have equal weight. FIxLIP then recovers the faithful Banzhaf interaction index
+:cite:p:`Tsai.2022`, which has a known analytical solution :cite:p:`Hammer.1992`.
+
+**Masking with a purpose.** The parameter :math:`p` addresses a known problem of removal-based
+explanations :cite:p:`Hase.2021`. Inputs with many masked tokens are *out-of-distribution*, i.e.
+images become unrecognizable and texts become ambiguous. A larger :math:`p` prioritizes masks that
+keep most tokens and thus stay closer to real inputs, whereas a smaller :math:`p` prioritizes sparse
+masks. :shapiq-figure:`masking` shows the effect for the chosen example. At :math:`p = 0.3`, many
+masks fall back to the similarity of an empty input. At :math:`p = 0.7`, the predictions move
+towards the similarity of the full input.
+
+.. shapiq-demo-figure:: fixlip masking
+   :alt: Three columns for p equal to 0.3, 0.5 and 0.7. Each shows one random mask and a histogram of the similarity of 512 random masks. The histogram moves from the similarity of no tokens towards the similarity of all tokens as p grows. Masks that keep the word with the largest main effect have higher similarities.
+
+   **The parameter p decides which masks matter.** One random mask for each :math:`p` and the
+   predictions of SigLIP 2 for 512 random masks. The dashed lines mark the empty and the full input.
+   The colors separate the masks that keep the word with the largest main effect from all others.
+
 .. _fixlip-sec-explanation:
 
 Interpreting the FIxLIP Explanation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
-To interpret a FIxLIP explanation, it helps to know what an interaction measures. A positive
+The FIxLIP explanation is now fully defined, and all explanations on this page use :math:`p = 0.5`.
+To interpret such an explanation, it helps to know what an interaction measures. A positive
 interaction means that two tokens raise the similarity more together than the sum of their
 individual effects. :shapiq-figure:`interaction` measures this directly on the model, for the
 strongest interaction of the explanation between an image patch and a word. It adds the patch, the
@@ -352,9 +410,9 @@ with the elephant, the word *elephant* has the largest main effect with +0.064. 
 tokens masked, however, this word changes the prediction of SigLIP 2 by only +0.002. The two numbers
 differ for every example. The main effect absorbs what the word contributes together with many
 patches of its object at once, which no single pair can express. Second, the terms of the
-explanation do not have to add up to the prediction for the full input. FIxLIP optimizes how well
-the additive model predicts all masks, which :ref:`the section on faithfulness
-<fixlip-sec-faithfulness>` makes precise.
+explanation do not have to add up to the prediction for the full input. By
+:shapiq-statement:`fixlip-def-fixlip`, FIxLIP optimizes how well the additive model predicts all
+masks, and not how well it reproduces a single one.
 
 **First-order conversion.** A second-order explanation can always be simplified into a first-order
 one. The idea is simple. Every token keeps its main effect and receives a part of each interaction
@@ -366,13 +424,12 @@ that it takes part in. Formally, the first-order attribution of a token :math:`i
 
    \mathbf{e}_i + p \sum_{j \in N_\mathcal{I} \cup N_\mathcal{T}: j \neq i} \mathbf{e}_{\{i,j\}}
 
-Here, :math:`p \in (0, 1)` is the parameter of FIxLIP that :ref:`the section on faithfulness
-<fixlip-sec-faithfulness>` introduces. For :math:`p = 0.5`, an interaction is split equally between
-its two tokens. A token then receives its main effect plus one half of each of its interactions.
-These attributions are the weighted Banzhaf values of :math:`\hat\nu_\mathbf{e}`
-:cite:p:`Baniecki.2025`. They can be visualized as a traditional saliency map. However, the
-conversion keeps only the sum of the interactions of a token and no longer says with which tokens it
-interacts.
+Here, :math:`p` is the parameter of :shapiq-statement:`fixlip-def-fixlip`. For :math:`p = 0.5`, an
+interaction is split equally between its two tokens. A token then receives its main effect plus one
+half of each of its interactions. These attributions are the weighted Banzhaf values of
+:math:`\hat\nu_\mathbf{e}` :cite:p:`Baniecki.2025`. They can be visualized as a traditional saliency
+map. However, the conversion keeps only the sum of the interactions of a token and no longer says
+with which tokens it interacts.
 
 .. _fixlip-sec-conditioning:
 
@@ -431,65 +488,8 @@ empty input. The explanation thus *overestimates* small cliques, which :ref:`the
 Computing FIxLIP
 ----------------
 
-The FIxLIP explanation is defined as the most faithful additive model of the game. This section
-defines this notion of faithfulness and describes how the explanation is estimated from sampled
-masks.
-
-.. _fixlip-sec-faithfulness:
-
-Faithfulness
-~~~~~~~~~~~~
-
-A natural requirement is that the explanation predicts the game well. FIxLIP measures the squared
-error :math:`\big(\nu(M) - \hat\nu_\mathbf{e}(M)\big)^2` over all masks and weights each mask
-according to its size.
-
-.. shapiq-definition:: :math:`p`-Faithfulness
-   :name: fixlip-def-faithfulness
-
-   For :math:`p \in (0, 1)` and two games :math:`\nu, \hat\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}}
-   \to \mathbb{R}`, the *p-faithfulness* is defined as
-
-   .. math::
-
-      \mathfrak{F}_p(\nu,\hat\nu) := \sum_{M \subseteq N_\mathcal{I} \cup N_\mathcal{T}}
-      p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert M \vert}
-      \big(\nu(M) - \hat\nu(M)\big)^2
-
-The weight :math:`\mathbb{P}_p(M) := p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert
-M \vert}` is the probability of the mask when every token is kept independently with probability
-:math:`p`. Since :math:`\mathfrak{F}_p` is an error, a smaller value means a more faithful
-explanation. FIxLIP chooses the explanation with the smallest error.
-
-.. shapiq-definition:: FIxLIP Explanation
-   :name: fixlip-def-fixlip
-
-   For :math:`p \in (0, 1)`, the *FIxLIP-p* explanation of the game :math:`\nu` is the explanation
-   whose additive model is the most faithful with respect to :math:`\mathfrak{F}_p`, given by
-
-   .. math::
-
-      \mathbf{e}^{\text{FIxLIP-}p}
-      := \operatorname*{arg\,min}_{\mathbf{e}} \, \mathfrak{F}_p(\nu,\hat\nu_\mathbf{e})
-
-Its interactions are the *weighted Banzhaf interactions* :cite:p:`Marichal.2011`. For :math:`p =
-0.5`, all masks have equal weight. FIxLIP then recovers the faithful Banzhaf interaction index
-:cite:p:`Tsai.2022`, which has a known analytical solution :cite:p:`Hammer.1992`.
-
-**Masking with a purpose.** The parameter :math:`p` addresses a known problem of removal-based
-explanations :cite:p:`Hase.2021`. Inputs with many masked tokens are *out-of-distribution*, i.e.
-images become unrecognizable and texts become ambiguous. A larger :math:`p` prioritizes masks that
-keep most tokens and thus stay closer to real inputs, whereas a smaller :math:`p` prioritizes sparse
-masks. :shapiq-figure:`masking` shows the effect for the chosen example. At :math:`p = 0.3`, many
-masks fall back to the similarity of an empty input. At :math:`p = 0.7`, the predictions move
-towards the similarity of the full input.
-
-.. shapiq-demo-figure:: fixlip masking
-   :alt: Three columns for p equal to 0.3, 0.5 and 0.7. Each shows one random mask and a histogram of the similarity of 512 random masks. The histogram moves from the similarity of no tokens towards the similarity of all tokens as p grows. Masks that keep the word with the largest main effect have higher similarities.
-
-   **The parameter p decides which masks matter.** One random mask for each :math:`p` and the
-   predictions of SigLIP 2 for 512 random masks. The dashed lines mark the empty and the full input.
-   The colors separate the masks that keep the word with the largest main effect from all others.
+:shapiq-statement:`fixlip-def-fixlip` defines the FIxLIP explanation over all masks of the game.
+This section describes how it is estimated from sampled masks.
 
 .. _fixlip-sec-sampling:
 
@@ -628,8 +628,7 @@ predict the similarity itself poorly. Their median :math:`R^2` is below 0 for Sh
 interactions (SI) lies in between with 0.73.
 
 The choice of :math:`p` matters as well. An explanation computed with :math:`p = 0.7` predicts masks
-sampled with :math:`p = 0.3` much better than vice versa :cite:p:`Baniecki.2025`. All explanations
-on this page use :math:`p = 0.5`.
+sampled with :math:`p = 0.3` much better than vice versa :cite:p:`Baniecki.2025`.
 
 .. shapiq-demo-figure:: fixlip paper-faithfulness
    :alt: Box plots of the p-faithfulness correlation for p equal to 0.7 and of R squared for p equal to 0.5. FIxLIP with the matching p has the highest median and the narrowest box in both. GAME, Grad-ECLIP and exCLIP have median correlations between 0.40 and 0.51.
