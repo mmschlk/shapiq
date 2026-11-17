@@ -23,7 +23,7 @@
   var GAP = 2.5; // the distance of two lanes, in px (--shapiq-ai-gap of the stylesheet)
   var PAD = 1.5; // the space left of lane 0
   var HEAD = 18; // the height of the label above the line
-  var STEP = 16; // half the height of the curve from one lane to the next, at most
+  var STEP = 90; // half the height of the curve from one lane to the next, at most
   var CLOSE = 64; // a gap between two parts below this height belongs to the part above it
 
   function el(name, attributes, text) {
@@ -69,8 +69,8 @@
   var defs = el("svg:defs");
   var color = el("svg:linearGradient", { id: "shapiq-ai-color", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0 });
   var across = el("svg:linearGradient", { id: "shapiq-ai-across", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, y2: 0 });
-  across.appendChild(el("svg:stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0.04 }));
-  across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": 0.42 }));
+  across.appendChild(el("svg:stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0.02 }));
+  across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": 0.2 }));
   var fade = el("svg:mask", { id: "shapiq-ai-fade", maskUnits: "userSpaceOnUse", x: 0, y: 0 });
   var fadeRect = el("svg:rect", { x: 0, y: 0, fill: "url(#shapiq-ai-across)" });
   fade.appendChild(fadeRect);
@@ -80,7 +80,7 @@
   var lanes = el("svg:g", { class: "shapiq-ai-lanes" });
   var shade = el("svg:path", { class: "shapiq-ai-shade", fill: "url(#shapiq-ai-color)", mask: "url(#shapiq-ai-fade)" });
   var line = el("svg:path", { class: "shapiq-ai-line", stroke: "url(#shapiq-ai-color)" });
-  var dot = el("svg:circle", { class: "shapiq-ai-dot", r: 4, cx: -20, cy: -20 });
+  var dot = el("svg:circle", { class: "shapiq-ai-dot", r: 3, cx: -20, cy: -20 });
   svg.appendChild(defs);
   svg.appendChild(lanes);
   svg.appendChild(shade);
@@ -154,8 +154,8 @@
     return { height: height, segments: found };
   }
 
-  // The line is straight along a part and curves smoothly into the lane of the next part. The
-  // curve takes at most a third of either part.
+  // The line is straight along a part and curves gently into the lane of the next part. The
+  // curve takes up to 90 px of either part, and at most 45 % of it.
   function shape(list) {
     list.forEach(function (segment, i) {
       segment.x = lane(segment.item.part.level);
@@ -165,7 +165,7 @@
     list.forEach(function (segment, i) {
       var next = list[i + 1];
       if (!next || next.x === segment.x) return;
-      var half = Math.min(STEP, (segment.bottom - segment.top) / 3, (next.bottom - next.top) / 3);
+      var half = Math.min(STEP, (segment.bottom - segment.top) * 0.45, (next.bottom - next.top) * 0.45);
       segment.y1 = segment.bottom - half;
       next.y0 = next.top + half;
     });
