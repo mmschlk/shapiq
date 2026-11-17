@@ -256,10 +256,6 @@ directly. An explanation has to *summarize* it.
    **Four masks of the game.** The prediction of SigLIP 2 for the example without one of its
    objects and for two random masks. Gray patches and crossed-out text tokens are masked.
 
-:cite:t:`Baniecki.2025` explain the logit-scaled similarity :math:`C \cdot f(x_\mathcal{I},
-x_\mathcal{T})`, where the learnt constant :math:`C` is about 100 for CLIP and about 112 for SigLIP
-2. The demo explains the cosine similarity itself, so its values are smaller by this factor.
-
 .. _fixlip-sec-explanation:
 
 The FIxLIP Explanation
