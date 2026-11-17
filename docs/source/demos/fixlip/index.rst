@@ -232,19 +232,20 @@ follows.
       \{\{i,j\}: i,j \in N_\mathcal{I} \cup N_\mathcal{T}, i \neq j\}
       }}_{\class{fixlip-braced}{\text{pairs of tokens}}}}
 
+:shapiq-statement:`fixlip-def-explanation` fixes the form of an explanation, but not its values. The
+values should describe how the prediction changes when tokens are removed from the input. FIxLIP
+formalizes this with game theory.
+
 .. _fixlip-sec-game:
 
 The Vision–Language Game
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-:shapiq-statement:`fixlip-def-explanation` fixes the form of an explanation, but not its values. The
-values should describe how the prediction changes when tokens are removed from the input. FIxLIP
-formalizes this with game theory. It views the tokens as players of a cooperative game, which
-assigns a similarity to every subset of tokens. Such a subset is a *mask* :math:`M \subseteq
-N_\mathcal{I} \cup N_\mathcal{T}`, which selects the tokens that the model receives. All other
-tokens are replaced with a baseline. For inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of
-the indices :math:`N \in \{N_\mathcal{I}, N_\mathcal{T}\}` of one modality, the *masking operator*
-is defined as
+FIxLIP views the tokens as players of a cooperative game, which assigns a similarity to every subset
+of tokens. Such a subset is a *mask* :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}`, which
+selects the tokens that the model receives. All other tokens are replaced with a baseline. For
+inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of the indices :math:`N \in
+\{N_\mathcal{I}, N_\mathcal{T}\}` of one modality, the *masking operator* is defined as
 
 .. math::
    :label: fixlip-masking
