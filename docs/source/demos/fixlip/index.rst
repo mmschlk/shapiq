@@ -240,11 +240,12 @@ formalizes this with game theory.
 The Vision–Language Game
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-FIxLIP views the tokens as players of a cooperative game, which assigns a similarity to every subset
-of tokens. Such a subset is a *mask* :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}`, which
-selects the tokens that the model receives. All other tokens are replaced with a baseline. For
-inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of the indices :math:`N \in
-\{N_\mathcal{I}, N_\mathcal{T}\}` of one modality, the *masking operator* is defined as
+Formally, a cooperative game is a tuple of a *player set* and a *value function*, which assigns a
+real value to every subset of the players. FIxLIP views the tokens as the players and the predicted
+similarity as the value. A subset of the players is a *mask* :math:`M \subseteq N_\mathcal{I} \cup
+N_\mathcal{T}`, which selects the tokens that the model receives. All other tokens are replaced with
+a baseline. For inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of the indices :math:`N
+\in \{N_\mathcal{I}, N_\mathcal{T}\}` of one modality, the *masking operator* is defined as
 
 .. math::
    :label: fixlip-masking
@@ -254,15 +255,17 @@ inputs :math:`x, b` and a subset :math:`M_o \subseteq N` of the indices :math:`N
    b_i, & \text{if } i \in N \setminus M_o.
    \end{cases}
 
-The game then evaluates the model on the masked image and the masked text of every mask.
+The value function then evaluates the model on the masked image and the masked text of every mask.
 
 .. shapiq-definition:: Vision–Language Game
    :name: fixlip-def-game
 
    For an image–text pair :math:`(x_\mathcal{I}, x_\mathcal{T})` and a baseline
-   :math:`(b_\mathcal{I}, b_\mathcal{T})`, the *vision–language game* :math:`\nu: 2^{N_\mathcal{I}
-   \cup N_\mathcal{T}} \to \mathbb{R}` measures the similarity of the masked image–text pair for
-   every mask :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}` as
+   :math:`(b_\mathcal{I}, b_\mathcal{T})`, the *vision–language game* is the tuple
+   :math:`(N_\mathcal{I} \cup N_\mathcal{T}, \nu)` of the tokens as the player set and the value
+   function :math:`\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}} \to \mathbb{R}`, which measures the
+   similarity of the masked image–text pair for every mask :math:`M \subseteq N_\mathcal{I} \cup
+   N_\mathcal{T}` as
 
    .. math::
 
