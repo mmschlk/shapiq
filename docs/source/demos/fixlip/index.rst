@@ -220,14 +220,15 @@ explanation is defined as follows.
 
       \mathbf{e} := \Big(
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-      \mathbf{e}_0
-      }}_{\class{fixlip-braced}{\text{constant}}}}, \;
+      \mathbf{e}_0 \vphantom{(\mathbf{e}_{\{i,j\}})_{\{i,j\} \subseteq N_\mathcal{T}: i \neq j}}
+      }}_{\class{fixlip-braced}{\text{constant}\mathstrut}}}, \;
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
       (\mathbf{e}_i)_{i \in N_\mathcal{I} \cup N_\mathcal{T}}
-      }}_{\class{fixlip-braced}{\text{main effects}}}}, \;
+      \vphantom{(\mathbf{e}_{\{i,j\}})_{\{i,j\} \subseteq N_\mathcal{T}: i \neq j}}
+      }}_{\class{fixlip-braced}{\text{main effects}\mathstrut}}}, \;
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
       (\mathbf{e}_{\{i,j\}})_{\{i,j\} \subseteq N_\mathcal{I} \cup N_\mathcal{T}: i \neq j}
-      }}_{\class{fixlip-braced}{\text{interactions}}}}
+      }}_{\class{fixlip-braced}{\text{interactions}\mathstrut}}}
       \Big)
 
 :shapiq-statement:`fixlip-def-explanation` fixes the form of an explanation, but not its values. The
@@ -415,9 +416,9 @@ explanation do not have to add up to the prediction for the full input. By
 masks, and not how well it reproduces a single one.
 
 **First-order conversion.** A second-order explanation can always be simplified into a first-order
-one. The idea is simple. Every token keeps its main effect and receives a part of each interaction
-that it takes part in. Formally, the first-order attribution of a token :math:`i \in N_\mathcal{I}
-\cup N_\mathcal{T}` is given by
+one. Every token keeps its main effect and receives a part of each interaction that it takes part
+in. Formally, the first-order attribution of a token :math:`i \in N_\mathcal{I} \cup N_\mathcal{T}`
+is given by
 
 .. math::
    :label: fixlip-first-order
@@ -613,7 +614,7 @@ the second-order explanation predicts them better than its conversion to first o
    **Predicting the model on held-out masks.** Each dot is one of 512 random masks with
    :math:`p = 0.5`. The constant of the explanation is refit on these masks.
 
-This :math:`R^2` ranges from 0.74 to 0.96 across the five examples and the two models. Note that the
+This :math:`R^2` ranges from 0.74 to 0.96 across the five examples and the two models. The
 explanation is optimized for :math:`p = 0.5`, i.e. for masks that keep about half of the tokens. On
 sparser masks sampled with :math:`p = 0.3`, its :math:`R^2` drops for every example. A small clique
 is an even sparser mask, since it keeps only a few of the tokens. This is why the value of a small
