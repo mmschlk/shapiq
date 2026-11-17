@@ -1611,7 +1611,7 @@ article[role="main"] .table-wrapper table.docutils td {
 /* -- the summary of the page ---------------------------------------------------------------------------- */
 
 /* The summary is set like the abstract of a paper: in a box of its own, in the amber of the docs. */
-article[role="main"] section.fixlip-summary {
+article[role="main"] section:is(.fixlip-summary, .fixlip-citation) {
   margin: 2rem 0 2.5rem;
   padding: 1.1rem 1.4rem 0.6rem;
   border: 1.5px solid var(--shapiq-amber);
@@ -1620,7 +1620,7 @@ article[role="main"] section.fixlip-summary {
   font-size: 0.95em;
 }
 
-article[role="main"] section.fixlip-summary > h2 {
+article[role="main"] section:is(.fixlip-summary, .fixlip-citation) > h2 {
   margin: 0 0 0.6rem;
   padding: 0;
   font-size: 0.85rem;
@@ -1630,7 +1630,16 @@ article[role="main"] section.fixlip-summary > h2 {
   color: var(--shapiq-amber-ink);
 }
 
-article[role="main"] section.fixlip-summary > p {
+article[role="main"] section:is(.fixlip-summary, .fixlip-citation) > p {
+  margin: 0 0 0.75rem;
+}
+
+/* the box at the end of the page that says how to cite the method */
+article[role="main"] section.fixlip-citation {
+  margin-bottom: 1rem;
+}
+
+article[role="main"] section.fixlip-citation div[class*="highlight-"] {
   margin: 0 0 0.75rem;
 }
 
