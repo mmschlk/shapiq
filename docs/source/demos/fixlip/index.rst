@@ -292,10 +292,12 @@ FIxLIP summarizes the game with an explanation :math:`\mathbf{e}` in the sense o
    + \sum_{\{i,j\} \subseteq M: i \neq j} \mathbf{e}_{\{i,j\}}
    \quad \text{for all masks } M \subseteq N_\mathcal{I} \cup N_\mathcal{T}
 
-An interaction is *cross-modal* if it links an image patch with a text token. It is *intra-modal*
-if it links two image patches or two text tokens. The explanation can be viewed as a complete graph
-with the tokens as weighted nodes and the interactions as weighted edges. The demo calls the image
-patches *regions* and the text tokens *words*, and both together *features*.
+In words, the additive model predicts a mask by adding up the constant, the main effects of the
+tokens that are kept, and the interactions of the pairs of tokens that are both kept. An interaction
+is *cross-modal* if it links an image patch with a text token. It is *intra-modal* if it links two
+image patches or two text tokens. The explanation can be viewed as a complete graph with the tokens
+as weighted nodes and the interactions as weighted edges. The demo calls the image patches *regions*
+and the text tokens *words*, and both together *features*.
 
 .. _fixlip-sec-explanation:
 
@@ -349,8 +351,9 @@ the additive model predicts all masks, which :ref:`the section on faithfulness
 <fixlip-sec-faithfulness>` makes precise.
 
 **First-order conversion.** A second-order explanation can always be simplified into a first-order
-one. For a token :math:`i \in N_\mathcal{I} \cup N_\mathcal{T}`, the first-order attribution is
-given by
+one. The idea is simple. Every token keeps its main effect and receives a part of each interaction
+that it takes part in. Formally, the first-order attribution of a token :math:`i \in N_\mathcal{I}
+\cup N_\mathcal{T}` is given by
 
 .. math::
    :label: fixlip-first-order
@@ -358,11 +361,12 @@ given by
    \mathbf{e}_i + p \sum_{j \in N_\mathcal{I} \cup N_\mathcal{T}: j \neq i} \mathbf{e}_{\{i,j\}}
 
 Here, :math:`p \in (0, 1)` is the parameter of FIxLIP that :ref:`the section on faithfulness
-<fixlip-sec-faithfulness>` introduces. In the demo, the attribution of a token is its main effect
-plus one half of the sum of its interactions. :cite:t:`Baniecki.2025` show that these attributions
-are the weighted Banzhaf values of :math:`\hat\nu_\mathbf{e}`. They can be visualized as a
-traditional saliency map. However, the conversion keeps only the sum of the interactions of a token
-and no longer says with which tokens it interacts.
+<fixlip-sec-faithfulness>` introduces. In the demo, an interaction is split equally between its two
+tokens. A token thus receives its main effect plus one half of each of its interactions.
+:cite:t:`Baniecki.2025` show that these attributions are the weighted Banzhaf values of
+:math:`\hat\nu_\mathbf{e}`. They can be visualized as a traditional saliency map. However, the
+conversion keeps only the sum of the interactions of a token and no longer says with which tokens
+it interacts.
 
 .. _fixlip-sec-conditioning:
 
