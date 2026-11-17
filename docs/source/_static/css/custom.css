@@ -137,9 +137,10 @@ div.docutils.shapiq-statement {
   font-weight: 600;
 }
 
+/* the number has the amber of the line at the left and of the captions' numbers */
 .shapiq-statement > .shapiq-statement-title > strong {
   font-weight: 700;
-  color: var(--shapiq-amber-ink);
+  color: var(--shapiq-amber);
 }
 
 /* the link to a statement shows up when the pointer is over its box, and always without a pointer */
