@@ -1,3 +1,6 @@
+.. role:: fixlip-red
+.. role:: fixlip-blue
+
 Explaining Similarity in Vision-Language Encoders
 =================================================
 
@@ -324,21 +327,21 @@ the explanation. For all five examples, it agrees with the interaction measured 
    in the explanation.
 
 **Reading the explanation.** The demo shows the whole explanation as *Full explanation*, and
-:shapiq-figure:`explanation` shows it for the chosen example. **Red** marks what raises the
-similarity and **blue** marks what lowers it. Typically, the words that name the objects have the
-largest main effects, and the strongest interactions link these words with patches of their objects.
-The main effects of the image patches are small in comparison. For SigLIP 2 and all five examples,
-their sum stays below 0.03 in absolute value, while the cross-modal interactions sum to about 0.1.
-The list of the figure gives both sums for the chosen example. Thus, **the image contributes to the
-similarity almost exclusively through interactions with the text**.
+:shapiq-figure:`explanation` shows it for the chosen example. :fixlip-red:`Red` marks what raises
+the similarity and :fixlip-blue:`blue` marks what lowers it. Typically, the words that name the
+objects have the largest main effects, and the strongest interactions link these words with patches
+of their objects. The main effects of the image patches are small in comparison. For SigLIP 2 and
+all five examples, their sum stays below 0.03 in absolute value, while the cross-modal interactions
+sum to about 0.1. The list of the figure gives both sums for the chosen example. Thus, **the image
+contributes to the similarity almost exclusively through interactions with the text**.
 
 .. shapiq-demo-figure:: fixlip explanation
    :alt: The photo and its tokens. Tints mark the main effects, and lines link the pairs of tokens with the strongest interactions. A list gives the strongest main effects and the strongest interactions with their values, the sum of the main effects of all patches, and the sum of all cross-modal interactions.
 
    **The explanation of the example for SigLIP 2.** Tints show the main effects and lines show the
-   12 strongest interactions, as in the demo. **Red** raises the similarity and **blue** lowers it.
-   Lines under the text are interactions between two text tokens. The list also sums the main
-   effects of all patches and all cross-modal interactions.
+   12 strongest interactions, as in the demo. :fixlip-red:`Red` raises the similarity and
+   :fixlip-blue:`blue` lowers it. Lines under the text are interactions between two text tokens. The
+   list also sums the main effects of all patches and all cross-modal interactions.
 
 Two properties of the explanation are worth keeping in mind. First, a main effect is a coefficient
 of the additive model :eq:`fixlip-additive` and not the effect of a token alone. For the example
@@ -716,9 +719,9 @@ report for SigLIP 2 with four objects.
 
    **The pointing game.** The left panel shows a pointing game on four photos of the demo. The
    patches are tinted by their interaction with the framed name in the explanation of SigLIP 2.
-   **Red** raises the similarity and **blue** lowers it. The right panel shows Table 1 of
-   :cite:t:`Baniecki.2025` for CLIP (ViT-B/32), where FIxLIP uses :math:`p = 0.5`. Each score is
-   an average over 500 inputs.
+   :fixlip-red:`Red` raises the similarity and :fixlip-blue:`blue` lowers it. The right panel shows
+   Table 1 of :cite:t:`Baniecki.2025` for CLIP (ViT-B/32), where FIxLIP uses :math:`p = 0.5`. Each
+   score is an average over 500 inputs.
 
 The right panel shows the results of the authors for CLIP. First-order methods fail to distinguish
 between several objects and approach the random baseline. With four objects, Grad-ECLIP and GAME

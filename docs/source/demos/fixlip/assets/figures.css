@@ -1616,6 +1616,20 @@ article[role="main"] hr.docutils {
   margin: 2.25rem 0;
 }
 
+/* -- the colors that the text names -------------------------------------------------------------------- */
+
+/* Where the text or a caption names the red and the blue of the figures, the word is set in that
+   color (RED and BLUE of figures.js and demo.js). The roles fixlip-red and fixlip-blue mark it. */
+article[role="main"] .fixlip-red {
+  font-weight: 700;
+  color: rgb(255, 13, 87);
+}
+
+article[role="main"] .fixlip-blue {
+  font-weight: 700;
+  color: rgb(30, 136, 229);
+}
+
 /* -- the equations of the page ------------------------------------------------------------------------ */
 
 /* The number of an equation keeps its place at the right. On a small screen, a wide equation
