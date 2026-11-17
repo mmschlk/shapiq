@@ -188,3 +188,10 @@
 .graphshapiq-exact-demo .gsq-switch .gsq-opt {
   min-width: 2rem;
 }
+
+/* an atom reached by the keyboard gets a ring, as in the explorer */
+.graphshapiq-exact-demo .gsq-plot .gsq-hit:focus-visible {
+  stroke: var(--gsq-link);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}

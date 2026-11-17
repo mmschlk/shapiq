@@ -1,4 +1,4 @@
-// The GraphSHAP-IQ explorer (demos/graphshapiq-explorer/index.rst): eight molecules, three GNNs
+// The GraphSHAP-IQ explorer (demos/graphshapiq-explorer/index.rst): seven molecules and one of the reader's own, three GNNs
 // (one per question), and every molecule explained for every question, exactly, with GraphSHAP-IQ.
 //
 // Two views of the molecule. Input: beside it the question's card (the library's `question`), what
@@ -239,7 +239,7 @@
       update(); kinds.buttons[k].focus({ preventScroll: true });
     });
     kinds.node.classList.add("gsq-kinds");
-    const ask = G.question(data.tasks, (t) => { state.task = t; if (built()) compute(); reset(false); });
+    const ask = G.question(data.tasks, (t) => { if (t.id === state.task.id) return; state.task = t; if (built()) compute(); reset(false); });
     const info = h("button", "gsq-info", "i");
     info.type = "button"; info.setAttribute("aria-label", "What does the demo show?"); info.setAttribute("aria-expanded", "false");
     // the note opens under the bar, in the flow, as on the FIxLIP page: inert while closed
@@ -269,7 +269,7 @@
     });
 
     const body = h("div", "gsq-body"), stage = h("div", "gsq-stage"), frame = h("div", "gsq-frame"), panel = h("div", "gsq-panel");
-    const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule; its atoms are the players" }, frame);
+    const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", tabindex: "-1", "aria-label": "The molecule; its atoms are the players" }, frame);
     const hint = G.hinter(frame);
     const slotLayer = svg("g", { class: "gsq-slots" });
     const progress = h("div", "gsq-progress"), progressFill = h("i");
@@ -336,7 +336,10 @@
       rebuild();
       slotLayer.children[i]?.focus({ preventScroll: true });
     }
-    function start(k) { const s = STARTS[k]; build.slots = s.slots.slice(); build.picked = true; if (s.task) state.task = taskById(s.task); rebuild(); }
+    function start(k) {
+      const s = STARTS[k];
+      if (built() && s.slots.join() === build.slots.join() && (!s.task || s.task === state.task.id)) return; // the molecule shown already
+      build.slots = s.slots.slice(); build.picked = true; if (s.task) state.task = taskById(s.task); rebuild(); }
     // the GNN's answer is one evaluation, at once; the worker explains the latest molecule only. A
     // job still running is stopped (the worker is replaced), so that jobs do not queue up
     function stopWorker() { if (build.worker) build.worker.terminate(); build.worker = null; build.busy = false; }
@@ -348,12 +351,13 @@
     let workerUrl = null; // one script for every worker
     function startWorker() {
       try { workerUrl = workerUrl || URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" })); build.worker = new Worker(workerUrl); } catch (err) { console.error(err); return false; }
-      build.worker.onerror = (err) => { console.error(err.message || err); failed(); };
-      build.worker.onmessage = ({ data: d }) => {
-        if (d.id !== build.run) return; // an earlier molecule's
+      const worker = build.worker; // a replaced worker's messages and errors are not heard
+      worker.onerror = (err) => { if (worker !== build.worker) return; console.error(err.message || err); failed(); };
+      worker.onmessage = ({ data: d }) => {
+        if (worker !== build.worker || d.id !== build.run) return; // an earlier molecule's
         if (d.progress != null) { progressFill.style.width = `${Math.round(d.progress * 100)}%`; return; }
         build.busy = false; progress.hidden = true;
-        build.result = { ...build.result, ...d, p: sig(d.logOdds), pending: false };
+        build.result = { ...build.result, ...d, p: sig(d.logOdds), pending: false, failed: false };
         if (built()) { draw(); renderPanel(); if (state.view === "explain") live.textContent += " Its interactions are ready."; }
       };
       return true;
@@ -485,6 +489,7 @@
       if (pointing()) pin(k);
     });
     plot.addEventListener("focusin", (e) => { const k = Number(e.target.dataset?.k); if (!Number.isNaN(k)) scene.keyFocus(k); });
+    const rove = G.roving(plot, () => (pointing() ? scene.hits() : []));
     plot.addEventListener("focusout", (e) => { if (!plot.contains(e.relatedTarget)) scene.keyFocus(null); });
 
     // -- the molecule: the state as the scene's rings, bands and shapes ---------------------------
@@ -501,9 +506,10 @@
       for (const hit of scene.hits()) {
         const k = Number(hit.dataset.k), name = G.atomName(m, k);
         if (!pointing()) { hit.removeAttribute("tabindex"); hit.removeAttribute("role"); hit.removeAttribute("aria-label"); hit.removeAttribute("aria-pressed"); continue; }
-        hit.setAttribute("tabindex", "0"); hit.setAttribute("role", "button");
+        hit.setAttribute("role", "button"); hit.setAttribute("aria-pressed", String(state.pinned && state.focus === k));
         hit.setAttribute("aria-label", `Interactions of ${name.toLowerCase()} ${k + 1}`);
       }
+      if (pointing()) rove.mark();
       const explained = state.view !== "predict";
       // the SI graph: a halo per atom, and the strongest interactions as hyperedges, all on one
       // scale (as si_graph_plot scales them by the largest value shown)
@@ -511,8 +517,8 @@
       let groups = [];
       if (ready && state.order !== 1) {
         // every group the list shows (its first ROWS), and more strong ones up to a limit
-        const all = groupsOf(e, state.order), limit = state.order === 2 ? 10 : 6, top = Math.abs(all[0]?.v || 0);
-        groups = state.row ? [state.row] : state.focus != null ? upTo(all.filter((g) => g.atoms.includes(state.focus)), 8) : upTo(all.filter((g, i) => i < ROWS || Math.abs(g.v) >= 0.08 * top), limit);
+        const all = groupsOf(e, state.order), limit = state.order === 2 ? 10 : ROWS, top = Math.abs(all[0]?.v || 0);
+        groups = state.row ? [state.row] : state.focus != null ? all.filter((g) => g.atoms.includes(state.focus)).slice(0, ROWS) : upTo(all.filter((g, i) => i < ROWS || Math.abs(g.v) >= 0.08 * top), limit);
       }
       // one scale for the order, whatever is shown (as si_graph_plot scales by every value plotted)
       const largest = ready ? Math.max(1e-9, ...rowsOf(e, state.order).map(([, v]) => Math.abs(v))) : 1;
@@ -582,7 +588,9 @@
           const off = () => { state.row = null; draw(); for (const o of list.children) o.classList.remove("gsq-dim"); };
           li.addEventListener("pointerenter", (ev) => { if (ev.pointerType !== "touch") on(); });
           li.addEventListener("pointerleave", (ev) => { if (ev.pointerType !== "touch") off(); });
-          li.addEventListener("focus", on); li.addEventListener("blur", off);
+          // only the keyboard's focus picks a row (a click focuses it too, and the focus is given back
+          // after a redraw: then a row stuck on while the pointer was elsewhere)
+          li.addEventListener("focus", () => { if (li.matches(":focus-visible")) on(); }); li.addEventListener("blur", off);
           list.append(li);
         }
         if (!rows.length) list.append(h("li", "gsq-none", "No interactions of this atom here."));

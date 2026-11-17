@@ -142,7 +142,7 @@
     function tick(now) {
       let alive = false;
       for (const [key, tw] of tweens) {
-        const p = tw.dur ? Math.min(1, (now - tw.t0) / tw.dur) : 1, k = ease(p);
+        const p = tw.dur ? Math.min(1, Math.max(0, (now - tw.t0) / tw.dur)) : 1, k = ease(p);
         for (const a of tw.anim) a.set(a.from + (a.to - a.from) * k);
         if (p >= 1) { tweens.delete(key); if (tw.done) tw.done(); } else alive = true;
       }
@@ -331,6 +331,19 @@
     new ResizeObserver(() => { move(true); placed = pill.clientWidth > 0; }).observe(node);
     return { node, buttons, set(k) { at = k; buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); move(!placed || reducedMotion()); } };
   }
+  // the atoms of a drawing as one stop of the Tab key: the arrow keys move between them (a roving
+  // tabindex). `hits()` lists the atoms' hit circles in order; the one last focused keeps the stop
+  function roving(plot, hits) {
+    let at = 0;
+    const mark = () => hits().forEach((x, i) => x.setAttribute("tabindex", i === at ? "0" : "-1"));
+    plot.addEventListener("focusin", (e) => { const i = hits().indexOf(e.target); if (i >= 0) { at = i; mark(); } });
+    plot.addEventListener("keydown", (e) => {
+      const list = hits(), i = list.indexOf(e.target), d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (i < 0 || !d) return;
+      e.preventDefault(); at = (i + d + list.length) % list.length; mark(); list[at].focus({ preventScroll: true });
+    });
+    return { mark, reset() { at = 0; mark(); } };
+  }
   // the molecules to choose from: a tile each, with the molecule's name (`short`, if it has one)
   function picker(label, molecules, pick) {
     const node = h("div", "gsq-mols");
@@ -345,7 +358,7 @@
     // sight (`gsq-dots`, sticky). They show that there are more molecules, a tap on one shows it,
     // and a swipe sideways over the demo goes to the next (`swipe`)
     const dots = h("div", "gsq-dots");
-    dots.setAttribute("role", "group"); dots.setAttribute("aria-label", label);
+    dots.setAttribute("role", "group"); dots.setAttribute("aria-label", `${label}, as dots`);
     const dotButtons = molecules.map((m, k) => {
       const d = h("button", "gsq-dot"); d.type = "button"; d.setAttribute("aria-label", m.name);
       d.addEventListener("click", () => pick(k)); dots.append(d);
@@ -380,7 +393,9 @@
     };
     addEventListener("scroll", float, { passive: true, capture: true });
     addEventListener("resize", float, { passive: true });
-    new ResizeObserver(float).observe(slot);
+    // the demo's height changes without a scroll too (a view, a molecule, the note): then again
+    const sizes = new ResizeObserver(float); sizes.observe(slot);
+    queueMicrotask(() => { if (slot.parentElement) sizes.observe(slot.parentElement); });
     const box = h("div", "gsq-picker", node);
     // where the row scrolls (phones), its edges fade, so that one sees there is more: on the side
     // that can scroll on. A tile pinned at the end (the explorer's own molecule) draws the fade
@@ -483,7 +498,7 @@
     scale.setAttribute("aria-hidden", "true");
     scale.append(fill, h("span", "gsq-scale-half"), mark);
     const card = h("div", "gsq-ask-card", picture, h("div", "gsq-ask-text", title, meaning, here), h("div", "gsq-ask-answer", h("div", "gsq-ask-head", h("p", "gsq-barlab", "GNN prediction"), right), h("p", "gsq-pred-number", number, verdict), scale, note));
-    const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", h("span", "gsq-long", "Question"), h("abbr", "gsq-short", "Q")), choice.node), card);
+    const node = h("div", "gsq-ask", h("div", "gsq-ask-pick", h("span", "gsq-barlab", h("span", "gsq-long", "Question"), Object.assign(h("abbr", "gsq-short", "Q"), { title: "Question" })), choice.node), card);
     let asked = null;
     return {
       node,
@@ -538,5 +553,5 @@
     document.head.appendChild(loader);
   }
 
-  window.ShapiqGraph = { RED, BLUE, VIOLET, NAMES, reducedMotion, hovers, switcher, picker, question, hinter, h, svg, sig, bits, signed, percent, colorOf, value, sameSet, neighbors, geom, skeleton, tile, motif, row, groupName, atomName, legend, formula, predict, createScene, mount };
+  window.ShapiqGraph = { RED, BLUE, VIOLET, NAMES, reducedMotion, hovers, switcher, roving, picker, question, hinter, h, svg, sig, bits, signed, percent, colorOf, value, sameSet, neighbors, geom, skeleton, tile, motif, row, groupName, atomName, legend, formula, predict, createScene, mount };
 })();

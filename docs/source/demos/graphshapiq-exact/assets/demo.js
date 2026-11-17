@@ -23,11 +23,11 @@
 
     // -- the frame --------------------------------------------------------------------------------
     const bar = h("div", "gsq-bar");
-    const mols = G.picker("Molecule", molecules, (k) => { state.mol = molecules[k]; state.focus = central(state.mol); build(); });
+    const mols = G.picker("Molecule", molecules, (k) => { if (molecules[k] === state.mol) return; state.mol = molecules[k]; state.focus = central(state.mol); build(); });
     const depth = G.switcher("Layers of the GNN", LAYERS.map(String), (k) => { state.layers = LAYERS[k]; pulse(); renderPanel(); });
     bar.append(mols.node, h("div", "gsq-switches", h("span", "gsq-barlab", "GNN layers"), depth.node));
     const body = h("div", "gsq-body"), stage = h("div", "gsq-stage"), frame = h("div", "gsq-frame"), panel = h("div", "gsq-panel");
-    const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", "aria-label": "The molecule; point at an atom to see its receptive field" }, frame);
+    const plot = svg("svg", { class: "gsq-plot", viewBox: "0 0 100 100", role: "group", tabindex: "-1", "aria-label": "The molecule; point at an atom to see its receptive field" }, frame);
     const hint = G.hinter(frame);
     const caption = h("p", "gsq-caption");
     stage.append(frame, caption);
@@ -46,7 +46,7 @@
       discs = m.atoms.map((a, k) => {
         const [x, y] = pos[k], disc = svg("circle", { class: "gsq-atom", cx: x, cy: y, r: 0.26 * s }, atoms);
         if (a[0] !== "C") svg("text", { class: "gsq-el", x, y, "font-size": (a[0].length > 1 ? 0.24 : 0.3) * s }, atoms).textContent = a[0];
-        svg("circle", { class: "gsq-hit", cx: x, cy: y, r: 0.5 * s, "data-k": k, tabindex: "0", "aria-label": `${G.atomName(m, k)} ${k + 1}: its receptive field` }, hits);
+        svg("circle", { class: "gsq-hit", cx: x, cy: y, r: 0.5 * s, "data-k": k, tabindex: k === state.focus ? "0" : "-1", "aria-label": `${G.atomName(m, k)} ${k + 1}: its receptive field` }, hits);
         return disc;
       });
       pulse();
@@ -67,11 +67,12 @@
         if (still) light(); else timers.push(setTimeout(light, hop * 170));
       }
     }
-    function setFocus(k) { if (k < 0 || k === state.focus) return; state.focus = k; hint.hide(); pulse(); renderField(); }
+    function setFocus(k) { if (k < 0) return; hint.hide(); if (k === state.focus) return; state.focus = k; pulse(); renderField(); }
     plot.addEventListener("mousedown", (e) => e.preventDefault());
     plot.addEventListener("pointermove", (e) => { if (e.pointerType === "touch") return; const k = atomAt(e); plot.style.cursor = k >= 0 ? "pointer" : ""; setFocus(k); });
     plot.addEventListener("click", (e) => setFocus(atomAt(e)));
     plot.addEventListener("focusin", (e) => { const k = Number(e.target.dataset?.k); if (!Number.isNaN(k)) setFocus(k); });
+    G.roving(plot, () => [...plot.querySelectorAll(".gsq-hit")]);
     function atomAt(e) {
       const point = plot.createSVGPoint(); point.x = e.clientX; point.y = e.clientY;
       const ctm = plot.getScreenCTM(); if (!ctm) return -1;
@@ -111,6 +112,9 @@
       if (factor > 1.05) {
         const fewer = factor >= 10 ? `${fmt(Math.round(factor))}× fewer` : `${factor.toFixed(1)}× fewer`;
         punch.replaceChildren(h("strong", "gsq-accent", fewer), " evaluations, and still ", h("strong", "", "exact"), ".");
+      } else if (ours < all) { // a few fewer: say how many, not a factor of 1.0
+        const few = all - ours;
+        punch.replaceChildren(h("strong", "gsq-accent", `${fmt(few)} fewer`), ` ${few === 1 ? "evaluation" : "evaluations"}, and still `, h("strong", "", "exact"), ".");
       } else punch.replaceChildren("Here every masking is needed. The larger the molecule, the more GraphSHAP-IQ saves.");
       renderField();
       countUp(allValue, all);

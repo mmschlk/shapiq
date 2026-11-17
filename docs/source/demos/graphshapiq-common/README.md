@@ -261,7 +261,8 @@ to shapiq and the paper). The worker agrees with `ExactComputer` on every value.
   interaction split evenly.
 - One scale per explanation, over all its values, so halos do not change size on hover.
 - Hubs never land on an atom (none of the 2,982 groups of 3+ atoms in `data.js`).
-- Cut-offs keep ties together, and the drawing shows every group the list shows.
+- The drawing shows every group the list shows. The list shows at most seven rows (as asked), so a
+  tie at the seventh row is cut in sorted order. The drawing's extra strong groups keep ties together.
 - The row of molecules fades where it scrolls on (phones), before the pinned tile.
 - Keyboard: the focus stays on a row through re-renders and when leaving the wheel. Escape and a
   click outside close the "i". Rows read their atoms with numbers. The live region names the
@@ -354,3 +355,13 @@ demo fills half the screen (fixed by script: Furo's content is a scroll box on a
 `position: sticky` does not hold). A swipe sideways anywhere on the demo, except on the row of
 molecules (which scrolls) and the wheel, goes to the next molecule or the one before (`picker`'s
 `swipe`, after the FIxLIP page's `swipeable`).
+
+A twenty-seventh pass followed three reviews. The floating dots hand over to their slot where both
+places are the same (no jump), fade where the slot is out of sight, step aside for an open wheel,
+and follow height changes of the demo without a scroll. The selected tile's border no longer fades.
+The drawing shows all seven listed groups at every order. A row clicked and then left no longer
+stays pinned (only the keyboard's focus picks a row). A replaced worker's error is ignored, and
+picking the question, start or molecule already shown does nothing. The atoms of a drawing are one
+Tab stop, with arrow keys between them (`roving`), and the drawings themselves are not. The exact
+demo says "1 fewer evaluation" for benzene at two layers, hides its hint on any atom, and shows a
+focus ring. A hidden hint stops bobbing.

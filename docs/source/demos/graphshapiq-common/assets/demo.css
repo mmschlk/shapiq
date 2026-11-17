@@ -199,12 +199,23 @@ body[data-theme="dark"] .gsq {
     bottom: max(0.75rem, env(safe-area-inset-bottom));
     translate: -50% 0;
   }
+
+  /* a wheel of groups that is open comes first: the floating dots step aside */
+  .gsq:has(.gsq-wheel:not([hidden])) .gsq-dots.gsq-dots-fixed {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* a swipe sideways is the demo's, from its first pixel (iOS decides early) */
+  .gsq .gsq-body {
+    touch-action: pan-y pinch-zoom;
+  }
 }
 
 .gsq .gsq-dot {
   display: grid;
   place-items: center;
-  width: 1.75rem;
+  width: 2rem;
   height: 100%;
   padding: 0;
   border: 0;
@@ -245,7 +256,7 @@ body[data-theme="dark"] .gsq {
   border-radius: var(--shapiq-radius-small, 8px);
   background: none;
   color: var(--gsq-ink);
-  opacity: 0.55;
+  opacity: 0.62;
   cursor: pointer;
   /* the amber of the molecule shown changes at once: a fading border left the last one's behind */
   transition:
@@ -456,9 +467,9 @@ body[data-theme="dark"] .gsq {
 
 .gsq .gsq-about-close {
   float: right;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
-  margin: -0.45rem -0.6rem 0 0;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  margin: -0.7rem -0.85rem 0 0;
   padding: 0 0.3rem;
   border: 0;
   background: none;
@@ -791,6 +802,7 @@ body[data-theme="dark"] .gsq {
 .gsq .gsq-hint[hidden] {
   display: block !important;
   opacity: 0;
+  animation: none; /* a hidden hint does not bob on */
 }
 
 .gsq .gsq-caption {
