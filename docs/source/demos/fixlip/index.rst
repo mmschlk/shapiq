@@ -276,11 +276,10 @@ The game then evaluates the model on the masked image and the masked text of eve
 There is no unique way to remove a token from the input of a model, so the baseline is a choice
 :cite:p:`Covert.2021`. Practically, in this demo, a masked image patch is set to 0 after
 normalization, which propagates no signal forward. The figures show it as a gray patch. A masked
-text token is excluded through the attention mask of the encoder, while special tokens and padding
-are always kept. :shapiq-figure:`removal` shows four of these masks. For example, removing an object
-from the image lowers the similarity for all five examples, although the text still names the
-object. With :math:`2^{n_\mathcal{I} + n_\mathcal{T}}` masks, the game cannot be inspected
-directly. An explanation has to *summarize* it.
+text token is excluded through the attention mask of the encoder. :shapiq-figure:`removal` shows
+four of these masks. For example, removing an object from the image lowers the similarity for all
+five examples, although the text still names the object. With :math:`2^{n_\mathcal{I} +
+n_\mathcal{T}}` masks, the game cannot be inspected directly. An explanation has to *summarize* it.
 
 .. shapiq-demo-figure:: fixlip removal
    :alt: Four masked versions of the example with the similarity that SigLIP 2 predicts. The image without one object, the image without another object, and two random masks, of which the second keeps fewer tokens.
@@ -314,13 +313,13 @@ Interpreting the FIxLIP Explanation
 To interpret a FIxLIP explanation, it helps to know what an interaction measures. A positive
 interaction means that two tokens raise the similarity more together than the sum of their
 individual effects. :shapiq-figure:`interaction` measures this directly on the model, for the
-strongest interaction of the explanation between an image patch and a word. For this, 256 random
-masks of all other tokens are sampled, in which each token is kept with probability 0.5. The patch,
-the word, or both are then added. What both add beyond the sum of their individual effects is their
-interaction. The second panel pairs the same patch with the word that has the largest main effect.
-Here, both together add just about the sum of their individual effects, so their interaction is
-close to zero. The last bar of each panel shows the estimate of the explanation. For all five
-examples, it agrees with the interaction measured on the model up to 0.002.
+strongest interaction of the explanation between an image patch and a word. It adds the patch, the
+word, or both to random masks of all other tokens. What both add beyond the sum of their individual
+effects is their interaction. The second panel pairs the same patch with the word that has the
+largest main effect. Here, both together add just about the sum of their individual effects, so
+their interaction is close to zero. The last bar of each panel shows the estimate of the
+explanation. For all five examples, it agrees with the interaction measured on the model up to
+0.002.
 
 .. shapiq-demo-figure:: fixlip interaction
    :alt: Two bar charts. Each shows how much adding a patch, adding a word and adding both change the similarity on average, the interaction, which is what both add beyond the sum of the two, and the estimate of this interaction in the explanation. The interaction is large in the first chart and close to zero in the second.
@@ -480,18 +479,17 @@ Its interactions are the *weighted Banzhaf interactions* :cite:p:`Marichal.2011`
 **Masking with a purpose.** The parameter :math:`p` addresses a known problem of removal-based
 explanations :cite:p:`Hase.2021`. Inputs with many masked tokens are *out-of-distribution*, i.e.
 images become unrecognizable and texts become ambiguous. A larger :math:`p` prioritizes masks that
-keep most tokens and thus stay closer to real inputs, whereas a smaller :math:`p` prioritizes
-sparse masks. :shapiq-figure:`masking` shows the effect for the chosen example. At :math:`p = 0.3`,
-many masks fall back to the similarity of an empty input. At :math:`p = 0.7`, the predictions move
-towards the similarity of the full input. The colors separate the masks that keep the word with
-the largest main effect from all others.
+keep most tokens and thus stay closer to real inputs, whereas a smaller :math:`p` prioritizes sparse
+masks. :shapiq-figure:`masking` shows the effect for the chosen example. At :math:`p = 0.3`, many
+masks fall back to the similarity of an empty input. At :math:`p = 0.7`, the predictions move
+towards the similarity of the full input.
 
 .. shapiq-demo-figure:: fixlip masking
    :alt: Three columns for p equal to 0.3, 0.5 and 0.7. Each shows one random mask and a histogram of the similarity of 512 random masks. The histogram moves from the similarity of no tokens towards the similarity of all tokens as p grows. Masks that keep the word with the largest main effect have higher similarities.
 
    **The parameter p decides which masks matter.** One random mask for each :math:`p` and the
-   predictions of SigLIP 2 for 512 random masks. The dashed lines mark the empty and the full
-   input.
+   predictions of SigLIP 2 for 512 random masks. The dashed lines mark the empty and the full input.
+   The colors separate the masks that keep the word with the largest main effect from all others.
 
 .. _fixlip-sec-sampling:
 
@@ -534,17 +532,13 @@ Each masked image and each masked text is encoded once, and the similarities of 
 six masked images and six masked texts cost twelve passes of an encoder and give 36 predictions.
 This is also a reason to prefer weighted Banzhaf interactions over Shapley interactions, for which
 it is unknown if the weights factor into one distribution per modality. The cross-modal estimate
-:math:`\hat{\mathfrak{F}}_p^{(m_\mathcal{I},m_\mathcal{T})}` is unbiased for :math:`\mathfrak{F}_p`
-:cite:p:`Baniecki.2025`. Its variance is at most of the same order as for the model-agnostic
-estimator with :math:`m \approx m_\mathcal{I} \approx m_\mathcal{T}` masks, and at least the
-variance of the model-agnostic estimator with :math:`m_\mathcal{I} \cdot m_\mathcal{T}` independent
-masks.
+:math:`\hat{\mathfrak{F}}_p^{(m_\mathcal{I},m_\mathcal{T})}` is unbiased for :math:`\mathfrak{F}_p`,
+and its variance is at most of the same order as for the model-agnostic estimator at the same cost
+:cite:p:`Baniecki.2025`.
 
 Empirically, the cross-modal estimator speeds up model inference by over 20× and the whole
-explanation pipeline by about 5×. :shapiq-figure:`paper-runtime` shows the measured runtime of both
-estimators. In the larger experiments :cite:p:`Baniecki.2025`, FIxLIP with weighted Banzhaf
-interactions uses the cross-modal estimator with a budget of :math:`2^{21}` masks, whereas FIxLIP
-with Shapley interactions uses the model-agnostic estimator with :math:`2^{17}` masks.
+explanation pipeline by about 5× :cite:p:`Baniecki.2025`. :shapiq-figure:`paper-runtime` shows the
+measured runtime of both estimators.
 
 .. shapiq-demo-figure:: fixlip paper-runtime
    :alt: A line chart of the runtime in seconds against the number of sampled masks, from 2 to the power of 15 to 2 to the power of 21, on a logarithmic scale. The cross-modal estimator is several times faster than the model-agnostic estimator for the whole explanation, and far faster in model inference.
@@ -595,8 +589,8 @@ sampled from :math:`\mathbb{P}_p`.
 
 It relies on ranks, since methods like saliency maps do not estimate the similarity itself. For
 game-theoretic explanations, the :math:`R^2` coefficient applies as well.
-:shapiq-figure:`faithfulness` shows 512 held-out masks for the chosen example. For all five
-examples, the second-order explanation predicts them better than its conversion to first order.
+:shapiq-figure:`faithfulness` shows held-out masks for the chosen example. For all five examples,
+the second-order explanation predicts them better than its conversion to first order.
 
 .. shapiq-demo-figure:: fixlip faithfulness
    :alt: Two scatter plots of the similarity predicted by the explanation against the similarity predicted by SigLIP 2 for 512 masks. The dots of the second-order explanation lie closer to the diagonal than those of its first-order conversion.
@@ -604,21 +598,19 @@ examples, the second-order explanation predicts them better than its conversion 
    **Predicting the model on held-out masks.** Each dot is one of 512 random masks with
    :math:`p = 0.5`. The constant of the explanation is refit on these masks.
 
-With the constant :math:`\mathbf{e}_0` refit on the held-out masks, this :math:`R^2` ranges from
-0.74 to 0.96 across the five examples and the two models. Note that the explanation is optimized for
-:math:`p = 0.5`, i.e. for masks that keep about half of the tokens. On sparser masks sampled with
-:math:`p = 0.3`, its :math:`R^2` drops for every example. A small clique is an even sparser mask,
-since it keeps only a few of the tokens. This is why the value of a small clique differs from the
-prediction of the model for the clique alone.
+This :math:`R^2` ranges from 0.74 to 0.96 across the five examples and the two models. Note that the
+explanation is optimized for :math:`p = 0.5`, i.e. for masks that keep about half of the tokens. On
+sparser masks sampled with :math:`p = 0.3`, its :math:`R^2` drops for every example. A small clique
+is an even sparser mask, since it keeps only a few of the tokens. This is why the value of a small
+clique differs from the prediction of the model for the clique alone.
 
-On a larger dataset, FIxLIP with the matching :math:`p` is the most faithful method for CLIP
-:cite:p:`Baniecki.2025`, as :shapiq-figure:`paper-faithfulness` shows. This evaluation uses the
-1,000 image–text pairs from the MS COCO test set for which the model predicts the highest
-similarity. GAME and Grad-ECLIP stay at a median correlation of about 0.5, and exCLIP has the lowest
-median with 0.40. Shapley and Banzhaf values rank the masks well, with median correlations of about
-0.8. However, they predict the similarity itself poorly. Their median :math:`R^2` is below 0 for
-Shapley values and 0.58 for Banzhaf values, against 0.85 for FIxLIP with :math:`p = 0.5`. FIxLIP
-with Shapley interactions (SI) lies in between with 0.73.
+On 1,000 image–text pairs from MS COCO, FIxLIP with the matching :math:`p` is the most faithful
+method for CLIP :cite:p:`Baniecki.2025`, as :shapiq-figure:`paper-faithfulness` shows. GAME and
+Grad-ECLIP stay at a median correlation of about 0.5, and exCLIP has the lowest median with 0.40.
+Shapley and Banzhaf values rank the masks well, with median correlations of about 0.8. However, they
+predict the similarity itself poorly. Their median :math:`R^2` is below 0 for Shapley values and
+0.58 for Banzhaf values, against 0.85 for FIxLIP with :math:`p = 0.5`. FIxLIP with Shapley
+interactions (SI) lies in between with 0.73.
 
 The choice of :math:`p` matters as well. An explanation computed with :math:`p = 0.7` predicts masks
 sampled with :math:`p = 0.3` much better than vice versa :cite:p:`Baniecki.2025`. All explanations
@@ -639,15 +631,12 @@ Insertion and Deletion
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The second metric evaluates whether the explanation finds the subsets of tokens that matter. For
-every size :math:`k`, it selects the subsets with the highest and the lowest value under the
-explanation, i.e. :math:`M_{\mathbf{e},\max,k} := \operatorname*{arg\,max}_{M: \vert M \vert = k}
-\hat\nu_\mathbf{e}(M)` and :math:`M_{\mathbf{e},\min,k} := \operatorname*{arg\,min}_{M: \vert M
-\vert = k} \hat\nu_\mathbf{e}(M)`, and evaluates the model on both. The *insertion curve*
-:math:`\mathcal{C}_{\mathrm{insert}}(\mathbf{e}) := \{(k, \nu(M_{\mathbf{e},\max,k}))\}_k` inserts
-:math:`k` tokens into the empty input. The *deletion curve*
-:math:`\mathcal{C}_{\mathrm{delete}}(\mathbf{e}) := \{(k, \nu(M_{\mathbf{e},\min,n_\mathcal{I} +
-n_\mathcal{T} - k}))\}_k` deletes :math:`k` tokens from the full input, so that the tokens with the
-lowest value remain. The *AID* score is the area between the two curves.
+every size :math:`k`, it selects the subsets :math:`M_{\mathbf{e},\max,k}` and
+:math:`M_{\mathbf{e},\min,k}` of :math:`k` tokens with the highest and the lowest value under the
+explanation, and evaluates the model on both. The *insertion curve* follows the subsets with the
+highest value, i.e. it inserts tokens into the empty input. The *deletion curve* follows the subsets
+with the lowest value, i.e. it deletes tokens from the full input so that the tokens with the lowest
+value remain. The *AID* score is the area between the two curves.
 
 .. math::
    :label: fixlip-aid
@@ -661,10 +650,7 @@ with the highest attribution first, and the deletion curve removes them first. W
 the best subset of size :math:`k + 1` does not have to contain the best subset of size :math:`k`.
 The subsets are therefore searched for every size.
 
-:shapiq-figure:`curves` shows both curves for the chosen example. Its horizontal axis counts the
-tokens that are kept. The insertion curve is thus read from left to right, and the deletion curve
-from right to left. The figure reports :eq:`fixlip-aid` as an average over all sizes, normalized by
-the difference between the predictions for the full and the empty input. For all five examples, the
+:shapiq-figure:`curves` shows both curves for the chosen example. For all five examples, the
 second-order explanation reaches a larger AID than its conversion to first order. It also finds five
 tokens whose removal lowers the similarity below the prediction for an empty input. Moreover, it
 finds subsets with a higher similarity than the full input.
@@ -674,9 +660,10 @@ finds subsets with a higher similarity than the full input.
 
    **Insertion and deletion for the example.** The prediction of SigLIP 2 over the number of tokens
    that are kept. Solid lines are insertion curves, which add the tokens valued the most from left
-   to right. Dotted lines are deletion curves, which remove them from right to left. The slider
-   sets the number of tokens kept. The two masks below the chart are the subsets of the
-   second-order explanation at this point, which the dots mark on its curves.
+   to right. Dotted lines are deletion curves, which remove them from right to left. The slider sets
+   the number of tokens kept. The two masks below the chart are the subsets of the second-order
+   explanation at this point, which the dots mark on its curves. The AID is averaged over all sizes
+   and normalized by the difference between the predictions for the full and the empty input.
 
 The same behavior holds on 1,000 pairs from MS COCO :cite:p:`Baniecki.2025`, as
 :shapiq-figure:`paper-curves` shows. FIxLIP finds tokens whose removal increases the prediction,
