@@ -335,3 +335,8 @@ the pill (the pill's copies of the labels were sized as content boxes, the butto
 `.gsq-opt` is now `box-sizing: border-box` everywhere). Its panel is built once and updated in place,
 so hovering an atom no longer fades the panel in again, and the bars glide. On a phone the row of
 molecules scrolls to the one shown.
+
+A twenty-fourth pass took the docs' amber of the FIxLIP page (`--shapiq-amber` #f5a300, its ink
+`--shapiq-amber-ink` #8c5800 and #ffc24d in dark, from `tokens.css` on the FIxLIP branch, with these
+values as fallbacks here). `--gsq-build` and `--gsq-build-text` follow it, and the selected amber
+is mixed from it. Red and blue were the same already.
