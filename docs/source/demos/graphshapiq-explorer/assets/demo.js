@@ -298,7 +298,8 @@
     stage.append(frame);
     const live = h("p", "gsq-sr"); live.setAttribute("aria-live", "polite");
     body.append(stage, panel);
-    root.append(bar, about, body, live);
+    root.append(bar, about, body, mols.dotsNode, live);
+    mols.swipe(root, body, ".gsq-wheel, .gsq-scrim, .gsq-about");
     const scene = G.createScene(plot);
 
     function setView(id) { hideWheel(); state.view = id; state.focus = null; state.pinned = false; state.row = null; update(); views.buttons[VIEWS.findIndex((v) => v[0] === id)].focus({ preventScroll: true }); }

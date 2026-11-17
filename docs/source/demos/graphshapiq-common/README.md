@@ -346,5 +346,11 @@ A twenty-fifth pass compared the demos with the FIxLIP page. The score's chip an
 under the bar in the page's flow, with the FIxLIP page's growing rows. It closes with the "i", its
 × or Escape (only while the focus is in the note or on the "i"), not on a click elsewhere, and is
 inert while closed. Hover is gated by `(hover: hover)`, so it does not stick after a tap. On a phone
-the switches keep their size and lose padding. Where the row of molecules scrolls, dots under it
-(as the FIxLIP figures' dots) show the molecule shown and pick one, and both edges fade.
+the switches keep their size and lose padding, and the row of molecules fades at both edges.
+
+A twenty-sixth pass gave phones a way through the molecules as the FIxLIP figures have. Dots, one
+per molecule, sit on a frosted pill at the demo's end and float at the screen's bottom while the
+demo fills half the screen (fixed by script: Furo's content is a scroll box on a phone, where
+`position: sticky` does not hold). A swipe sideways anywhere on the demo, except on the row of
+molecules (which scrolls) and the wheel, goes to the next molecule or the one before (`picker`'s
+`swipe`, after the FIxLIP page's `swipeable`).

@@ -161,22 +161,51 @@ body[data-theme="dark"] .gsq {
   max-width: 100%;
 }
 
-/* where the row scrolls, dots under it, the molecule shown dark (as the FIxLIP page's figures) */
+/* on a phone, the dots of the molecules float at the screen's bottom while the demo is in sight,
+   on a frosted pill (as the FIxLIP page's figure dots), and rest in their slot at the demo's end;
+   a swipe over the demo goes to the next molecule */
+.gsq .gsq-dots-slot,
 .gsq .gsq-dots {
-  display: flex;
-  justify-content: center;
-  margin-top: 0.1rem;
+  display: none;
 }
 
-.gsq .gsq-dots[hidden] {
-  display: none;
+@container (max-width: 42rem) {
+  .gsq .gsq-dots-slot {
+    display: flex;
+    justify-content: center;
+    height: 2.2rem;
+    margin-top: 1rem;
+  }
+
+  .gsq .gsq-dots {
+    z-index: 6;
+    display: flex;
+    justify-content: center;
+    width: max-content;
+    max-width: 100%;
+    height: 2.2rem;
+    box-sizing: border-box;
+    padding: 0 0.3rem;
+    border: 1px solid var(--gsq-border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--gsq-sheet) 82%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shapiq-shadow, 0 1px 2px rgba(20, 28, 60, 0.06), 0 4px 16px rgba(20, 28, 60, 0.06));
+  }
+
+  .gsq .gsq-dots.gsq-dots-fixed {
+    position: fixed;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    translate: -50% 0;
+  }
 }
 
 .gsq .gsq-dot {
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 2.25rem;
+  width: 1.75rem;
+  height: 100%;
   padding: 0;
   border: 0;
   background: none;

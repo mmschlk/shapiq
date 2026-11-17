@@ -340,8 +340,10 @@
       b.addEventListener("click", () => pick(k)); node.append(b);
       return b;
     });
-    // where the row scrolls (phones), dots under it, one for each molecule, the one shown dark (as
-    // the FIxLIP page's figures): they show that there are more, and a tap on one shows it
+    // on a phone, dots, one for each molecule, the one shown dark (as the FIxLIP page's figures):
+    // the demo puts them at its end, where they float at the screen's bottom while the demo is in
+    // sight (`gsq-dots`, sticky). They show that there are more molecules, a tap on one shows it,
+    // and a swipe sideways over the demo goes to the next (`swipe`)
     const dots = h("div", "gsq-dots");
     dots.setAttribute("role", "group"); dots.setAttribute("aria-label", label);
     const dotButtons = molecules.map((m, k) => {
@@ -349,7 +351,25 @@
       d.addEventListener("click", () => pick(k)); dots.append(d);
       return d;
     });
-    const box = h("div", "gsq-picker", node, dots);
+    // (the docs' theme makes its content a scroll box on a phone, where `position: sticky` does not
+    // hold, so the dots are fixed to the screen's bottom while the demo's end is below it and the
+    // demo fills half the screen, and otherwise rest in their slot at the demo's end)
+    const slot = h("div", "gsq-dots-slot", dots);
+    let floatAsked = false;
+    const float = () => {
+      floatAsked = false;
+      const root = slot.parentElement;
+      if (!root || getComputedStyle(dots).display === "none") { dots.classList.remove("gsq-dots-fixed"); return; }
+      const vh = window.visualViewport?.height ?? innerHeight, s = slot.getBoundingClientRect(), r = root.getBoundingClientRect();
+      const on = s.bottom > vh && r.top < vh * 0.5; // once the demo fills half the screen
+      dots.classList.toggle("gsq-dots-fixed", on);
+      dots.style.left = on ? `${s.left + s.width / 2}px` : "";
+    };
+    const askFloat = () => { if (!floatAsked) { floatAsked = true; requestAnimationFrame(float); } };
+    addEventListener("scroll", askFloat, { passive: true, capture: true });
+    addEventListener("resize", askFloat, { passive: true });
+    new ResizeObserver(askFloat).observe(slot);
+    const box = h("div", "gsq-picker", node);
     // where the row scrolls (phones), its edges fade, so that one sees there is more: on the side
     // that can scroll on. A tile pinned at the end (the explorer's own molecule) draws the fade
     // before it itself (`gsq-more-right`), and nothing shows past it
@@ -358,7 +378,6 @@
       const left = max > 1 && node.scrollLeft > 1, right = max > 1 && node.scrollLeft < max - 1;
       const pinned = buttons.find((b) => getComputedStyle(b).position === "sticky");
       node.classList.toggle("gsq-more-left", left); node.classList.toggle("gsq-more-right", right);
-      dots.hidden = max <= 12; // a row that scrolls a few pixels needs no dots
       if (max <= 1) { node.style.maskImage = node.style.webkitMaskImage = ""; return; }
       const tail = pinned ? Math.max(0, Math.floor(node.getBoundingClientRect().right - pinned.getBoundingClientRect().right)) : 0;
       const end = pinned ? `#000 calc(100% - ${tail}px), transparent calc(100% - ${tail}px)` : `#000 calc(100% - ${right ? W : 0}px), transparent 100%`;
@@ -376,8 +395,59 @@
       const by = at.left < row.left + W ? at.left - row.left - W : at.right > row.right - end ? at.right - row.right + end : 0;
       if (by) node.scrollTo({ left: node.scrollLeft + by, behavior: shown < 0 || reducedMotion() ? "auto" : "smooth" });
     };
+    // a swipe sideways across `area` (on a touch screen) goes to the next molecule or the one before,
+    // as the FIxLIP page's figures: `moving` follows the finger, and past a fifth of its width, or
+    // flicked, the next molecule comes in from the other side. A swipe up or down scrolls the page.
+    // It does not start on the row of molecules, which scrolls itself, or on what `skip` matches
+    const swipe = (area, moving, skip = "") => {
+      let drag = null;
+      const shift = (dx) => {
+        moving.style.transform = dx ? `translateX(${dx}px)` : "";
+        moving.style.opacity = dx ? String(1 - Math.min(0.6, Math.abs(dx) / moving.clientWidth)) : "";
+      };
+      area.addEventListener("touchstart", (e) => {
+        const zoomed = (window.visualViewport?.scale ?? 1) > 1.01; // then a drag pans the page
+        const [t] = e.touches;
+        const off = node.contains(e.target) || slot.contains(e.target) || (skip && e.target.closest?.(skip));
+        drag = e.touches.length === 1 && !zoomed && !off ? { x: t.clientX, y: t.clientY, dx: 0, sideways: null, moves: [[e.timeStamp, 0]] } : null;
+      }, { passive: true });
+      area.addEventListener("touchmove", (e) => {
+        if (!drag) return;
+        const [t] = e.touches, dx = t.clientX - drag.x, dy = t.clientY - drag.y;
+        if (drag.sideways === null) {
+          if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+          drag.sideways = e.touches.length === 1 && Math.abs(dx) > Math.abs(dy) * 1.2;
+          if (!drag.sideways) { drag = null; return; } // the page scrolls
+          moving.style.transition = "none";
+        }
+        e.preventDefault(); // the drag is the demo's
+        const end = (dx > 0 && shown <= 0) || (dx < 0 && shown >= molecules.length - 1);
+        drag.dx = end ? dx / 4 : dx; drag.end = end; // nothing before the first and past the last
+        drag.moves.push([e.timeStamp, dx]);
+        shift(drag.dx);
+      }, { passive: false });
+      const stop = (e, cancelled) => {
+        if (!drag) return;
+        const { dx, sideways, moves, end } = drag; drag = null;
+        if (!sideways) return;
+        const [time, from] = moves.find(([t]) => e.timeStamp - t <= 100) ?? moves.at(-1);
+        const speed = (moves.at(-1)[1] - from) / Math.max(16, e.timeStamp - time);
+        const flick = Math.abs(dx) > 20 && Math.abs(speed) > 0.3 && Math.sign(speed) === Math.sign(dx);
+        const go = !cancelled && !end && (Math.abs(dx) > moving.clientWidth / 5 || flick);
+        moving.style.transition = "";
+        if (!go) {
+          if (!reducedMotion()) moving.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], { duration: 200, easing: "ease-out" });
+          shift(0); return;
+        }
+        shift(0);
+        pick(shown + (dx < 0 ? 1 : -1));
+        if (!reducedMotion()) moving.animate([{ transform: `translateX(${dx < 0 ? 48 : -48}px)`, opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 260, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" });
+      };
+      area.addEventListener("touchend", (e) => stop(e, false));
+      area.addEventListener("touchcancel", (e) => stop(e, true));
+    };
     return {
-      node: box, row: node, buttons, dots: dotButtons,
+      node: box, row: node, buttons, dots: dotButtons, dotsNode: slot, swipe,
       set(k) {
         buttons.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k)));
         dotButtons.forEach((d, i) => d.setAttribute("aria-pressed", String(i === k)));

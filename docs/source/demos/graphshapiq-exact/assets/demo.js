@@ -32,7 +32,8 @@
     const caption = h("p", "gsq-caption");
     stage.append(frame, caption);
     body.append(stage, panel);
-    root.append(bar, body);
+    root.append(bar, body, mols.dotsNode);
+    mols.swipe(root, body);
 
     // -- the molecule, and the receptive field as a glow that spreads bond by bond ------------------
     let aura = null, discs = [], timers = [];
