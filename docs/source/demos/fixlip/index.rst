@@ -254,22 +254,26 @@ is defined as
    b_i, & \text{if } i \in N \setminus M_o.
    \end{cases}
 
-For an image–text pair :math:`(x_\mathcal{I}, x_\mathcal{T})` and a baseline :math:`(b_\mathcal{I},
-b_\mathcal{T})`, the *vision–language game* :math:`\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}} \to
-\mathbb{R}` assigns to each mask the similarity that the model predicts for the masked image–text
-pair.
+The game then evaluates the model on the masked image and the masked text of every mask.
 
-.. math::
-   :label: fixlip-game
+.. shapiq-definition:: Vision–Language Game
+   :name: fixlip-def-game
 
-   \nu(M) := f\big(
-   \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-   x_\mathcal{I} \oplus_{M \cap N_\mathcal{I}} b_\mathcal{I}
-   }}_{\class{fixlip-braced}{\text{masked image}}}}, \,
-   \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-   x_\mathcal{T} \oplus_{M \cap N_\mathcal{T}} b_\mathcal{T}
-   }}_{\class{fixlip-braced}{\text{masked text}}}}
-   \big)
+   For an image–text pair :math:`(x_\mathcal{I}, x_\mathcal{T})` and a baseline
+   :math:`(b_\mathcal{I}, b_\mathcal{T})`, the *vision–language game* :math:`\nu: 2^{N_\mathcal{I}
+   \cup N_\mathcal{T}} \to \mathbb{R}` measures the similarity of the masked image–text pair for
+   every mask :math:`M \subseteq N_\mathcal{I} \cup N_\mathcal{T}` as
+
+   .. math::
+
+      \nu(M) := f\big(
+      \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
+      x_\mathcal{I} \oplus_{M \cap N_\mathcal{I}} b_\mathcal{I}
+      }}_{\class{fixlip-braced}{\text{masked image}}}}, \,
+      \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
+      x_\mathcal{T} \oplus_{M \cap N_\mathcal{T}} b_\mathcal{T}
+      }}_{\class{fixlip-braced}{\text{masked text}}}}
+      \big)
 
 There is no unique way to remove a token from the input of a model, so the baseline is a choice
 :cite:p:`Covert.2021`. Practically, in this demo, a masked image patch is set to 0 after
@@ -443,25 +447,35 @@ Faithfulness
 
 A natural requirement is that the explanation predicts the game well. FIxLIP measures the squared
 error :math:`\big(\nu(M) - \hat\nu_\mathbf{e}(M)\big)^2` over all masks and weights each mask
-according to its size. For :math:`p \in (0, 1)`, the *p-faithfulness* is defined as
+according to its size.
 
-.. math::
-   :label: fixlip-faithfulness
+.. shapiq-definition:: :math:`p`-Faithfulness
+   :name: fixlip-def-faithfulness
 
-   \mathfrak{F}_p(\nu,\hat\nu) := \sum_{M \subseteq N_\mathcal{I} \cup N_\mathcal{T}}
-   p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert M \vert}
-   \big(\nu(M) - \hat\nu(M)\big)^2
+   For :math:`p \in (0, 1)` and two games :math:`\nu, \hat\nu: 2^{N_\mathcal{I} \cup N_\mathcal{T}}
+   \to \mathbb{R}`, the *p-faithfulness* is defined as
+
+   .. math::
+
+      \mathfrak{F}_p(\nu,\hat\nu) := \sum_{M \subseteq N_\mathcal{I} \cup N_\mathcal{T}}
+      p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert M \vert}
+      \big(\nu(M) - \hat\nu(M)\big)^2
 
 The weight :math:`\mathbb{P}_p(M) := p^{\vert M \vert} (1-p)^{n_\mathcal{I} + n_\mathcal{T} - \vert
 M \vert}` is the probability of the mask when every token is kept independently with probability
-:math:`p`. The *FIxLIP-p* explanation is the most faithful approximation of the game with respect
-to :math:`\mathfrak{F}_p`.
+:math:`p`. Since :math:`\mathfrak{F}_p` is an error, a smaller value means a more faithful
+explanation. FIxLIP chooses the explanation with the smallest error.
 
-.. math::
-   :label: fixlip-explanation
+.. shapiq-definition:: FIxLIP Explanation
+   :name: fixlip-def-fixlip
 
-   \mathbf{e}^{\text{FIxLIP-}p}
-   := \operatorname*{arg\,min}_{\mathbf{e}} \, \mathfrak{F}_p(\nu,\hat\nu_\mathbf{e})
+   For :math:`p \in (0, 1)`, the *FIxLIP-p* explanation of the game :math:`\nu` is the explanation
+   whose additive model is the most faithful with respect to :math:`\mathfrak{F}_p`, given by
+
+   .. math::
+
+      \mathbf{e}^{\text{FIxLIP-}p}
+      := \operatorname*{arg\,min}_{\mathbf{e}} \, \mathfrak{F}_p(\nu,\hat\nu_\mathbf{e})
 
 Its interactions are the *weighted Banzhaf interactions* :cite:p:`Marichal.2011`. For :math:`p =
 0.5`, all masks have equal weight. FIxLIP then recovers the faithful Banzhaf interaction index
