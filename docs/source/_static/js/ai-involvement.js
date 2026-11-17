@@ -23,7 +23,7 @@
   var GAP = 2.5; // the distance of two lanes, in px (--shapiq-ai-gap of the stylesheet)
   var PAD = 1.5; // the space left of lane 0
   var HEAD = 18; // the height of the label above the line
-  var STEP = 6; // half the height of a step from one lane to the next
+  var STEP = 16; // half the height of the curve from one lane to the next, at most
   var CLOSE = 64; // a gap between two parts below this height belongs to the part above it
 
   function el(name, attributes, text) {
@@ -59,22 +59,41 @@
   // the widget: the lanes, the line, the part pointed at, a button per stretch of the line, the card
   var root = el("div", { class: "shapiq-ai", "aria-label": "AI involvement of this page, part by part" });
   root.setAttribute("role", "group");
-  var label = el("button", { class: "shapiq-ai-label", type: "button", "aria-expanded": "false" }, "AI");
-  label.setAttribute("aria-label", "AI involvement of the page as a whole: level " + page.level + ", "
-    + byLevel[page.level].name + ". Show details.");
+  // the tag that sticks to the top of the line: the level of the part being read
+  var label = el("button", { class: "shapiq-ai-label", type: "button", "aria-expanded": "false" });
+  var labelText = el("span", { class: "shapiq-ai-label-text" });
+  label.appendChild(el("span", { class: "shapiq-ai-label-ai" }, "AI"));
+  label.appendChild(labelText);
   var svg = el("svg:svg", { class: "shapiq-ai-svg", "aria-hidden": "true" });
+  // the color of each level along the page, and a shade that grows stronger towards the text
+  var defs = el("svg:defs");
+  var color = el("svg:linearGradient", { id: "shapiq-ai-color", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0 });
+  var across = el("svg:linearGradient", { id: "shapiq-ai-across", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, y2: 0 });
+  across.appendChild(el("svg:stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0.04 }));
+  across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": 0.42 }));
+  var fade = el("svg:mask", { id: "shapiq-ai-fade", maskUnits: "userSpaceOnUse", x: 0, y: 0 });
+  var fadeRect = el("svg:rect", { x: 0, y: 0, fill: "url(#shapiq-ai-across)" });
+  fade.appendChild(fadeRect);
+  defs.appendChild(color);
+  defs.appendChild(across);
+  defs.appendChild(fade);
   var lanes = el("svg:g", { class: "shapiq-ai-lanes" });
-  var line = el("svg:path", { class: "shapiq-ai-line" });
-  var mark = el("svg:path", { class: "shapiq-ai-mark" });
+  var shade = el("svg:path", { class: "shapiq-ai-shade", fill: "url(#shapiq-ai-color)", mask: "url(#shapiq-ai-fade)" });
+  var line = el("svg:path", { class: "shapiq-ai-line", stroke: "url(#shapiq-ai-color)" });
+  var dot = el("svg:circle", { class: "shapiq-ai-dot", r: 4, cx: -20, cy: -20 });
+  svg.appendChild(defs);
   svg.appendChild(lanes);
+  svg.appendChild(shade);
   svg.appendChild(line);
-  svg.appendChild(mark);
+  svg.appendChild(dot);
   var hits = el("div", { class: "shapiq-ai-hits" });
   var card = el("div", { class: "shapiq-ai-card", role: "dialog", hidden: "" });
+  var glow = el("div", { class: "shapiq-ai-glow", "aria-hidden": "true" }); // the part pointed at, on the page
   root.appendChild(svg);
   root.appendChild(label);
   root.appendChild(hits);
   article.appendChild(root);
+  article.appendChild(glow);
   article.appendChild(card);
   article.classList.add("shapiq-ai-page");
 
@@ -135,20 +154,86 @@
     return { height: height, segments: found };
   }
 
+  // The line is straight along a part and curves smoothly into the lane of the next part. The
+  // curve takes at most a third of either part.
+  function shape(list) {
+    list.forEach(function (segment, i) {
+      segment.x = lane(segment.item.part.level);
+      segment.y0 = segment.top;
+      segment.y1 = segment.bottom;
+    });
+    list.forEach(function (segment, i) {
+      var next = list[i + 1];
+      if (!next || next.x === segment.x) return;
+      var half = Math.min(STEP, (segment.bottom - segment.top) / 3, (next.bottom - next.top) / 3);
+      segment.y1 = segment.bottom - half;
+      next.y0 = next.top + half;
+    });
+  }
+
   function path(list) {
     var d = "";
     list.forEach(function (segment, i) {
-      var x = lane(segment.item.part.level);
       var previous = list[i - 1];
-      var next = list[i + 1];
-      var change = function (other) { return other && other.item.part.level !== segment.item.part.level; };
-      var y0 = segment.top + (change(previous) ? STEP : 0);
-      var y1 = segment.bottom - (change(next) ? STEP : 0);
-      if (y1 < y0) y0 = y1 = (segment.top + segment.bottom) / 2;
-      d += (i === 0 || !previous || previous.bottom < segment.top - 0.5 ? "M" : "L") + x + " " + y0.toFixed(1)
-        + "L" + x + " " + y1.toFixed(1);
+      if (!previous) d += "M" + segment.x + " " + segment.y0.toFixed(1);
+      else {
+        var bend = (segment.y0 - previous.y1) * 0.55;
+        d += "C" + previous.x + " " + (previous.y1 + bend).toFixed(1) + " " + segment.x + " "
+          + (segment.y0 - bend).toFixed(1) + " " + segment.x + " " + segment.y0.toFixed(1);
+      }
+      d += "L" + segment.x + " " + segment.y1.toFixed(1);
     });
     return d;
+  }
+
+  // where the line is at a height y: in a part's lane, or on the curve between two parts
+  function at(y) {
+    for (var i = 0; i < segments.length; i++) {
+      var segment = segments[i];
+      if (y <= segment.y1) {
+        if (y >= segment.y0 || i === 0) return segment.x;
+        var previous = segments[i - 1];
+        var bend = (segment.y0 - previous.y1) * 0.55;
+        var ys = [previous.y1, previous.y1 + bend, segment.y0 - bend, segment.y0];
+        var xs = [previous.x, previous.x, segment.x, segment.x];
+        var bez = function (p, t) {
+          var u = 1 - t;
+          return u * u * u * p[0] + 3 * u * u * t * p[1] + 3 * u * t * t * p[2] + t * t * t * p[3];
+        };
+        var lo = 0, hi = 1;
+        for (var k = 0; k < 24; k++) {
+          var mid = (lo + hi) / 2;
+          if (bez(ys, mid) < y) lo = mid; else hi = mid;
+        }
+        return bez(xs, (lo + hi) / 2);
+      }
+    }
+    return segments.length ? segments[segments.length - 1].x : 0;
+  }
+
+  function segmentAt(y) {
+    return segments.filter(function (segment) { return segment.top <= y && y < segment.bottom; })[0]
+      || segments[segments.length - 1];
+  }
+
+  // the tag names the level of the part a third down the window, and opens the page's card
+  var current = null;
+  function reading() {
+    if (!segments.length) return;
+    var y = window.innerHeight * 0.33 - article.getBoundingClientRect().top;
+    var segment = segmentAt(Math.max(HEAD, y));
+    var level = segment.item.part.level;
+    if (current === level) return;
+    current = level;
+    labelText.textContent = byLevel[level].name;
+    label.style.setProperty("--shapiq-ai-tag", colorOf(level));
+    label.setAttribute("aria-label", "AI involvement here: level " + level + ", " + byLevel[level].name
+      + ". Show the page's AI involvement.");
+    label.title = "Level " + level + " \u00b7 " + byLevel[level].summary;
+  }
+
+  function colorOf(level) {
+    return getComputedStyle(root).getPropertyValue("--shapiq-ai-" + level).trim() || "currentColor";
   }
 
   function draw() {
@@ -165,7 +250,27 @@
     for (var level = 0; level <= top; level++) {
       lanes.appendChild(el("svg:line", { x1: lane(level), x2: lane(level), y1: HEAD, y2: result.height }));
     }
-    line.setAttribute("d", path(segments));
+    shape(segments);
+    var d = path(segments);
+    line.setAttribute("d", d);
+    if (segments.length) {
+      var first = segments[0];
+      var last = segments[segments.length - 1];
+      shade.setAttribute("d", d + "L0 " + last.y1.toFixed(1) + "L0 " + first.y0.toFixed(1) + "Z");
+    }
+    color.setAttribute("y2", result.height);
+    while (color.firstChild) color.removeChild(color.firstChild);
+    segments.forEach(function (segment) {
+      var c = colorOf(segment.item.part.level);
+      [segment.y0, segment.y1].forEach(function (y) {
+        color.appendChild(el("svg:stop", { offset: (y / result.height).toFixed(5), "stop-color": c }));
+      });
+    });
+    across.setAttribute("x2", width);
+    fade.setAttribute("width", width);
+    fade.setAttribute("height", result.height);
+    fadeRect.setAttribute("width", width);
+    fadeRect.setAttribute("height", result.height);
     while (hits.firstChild) hits.removeChild(hits.firstChild);
     segments.forEach(function (segment) {
       var part = segment.item.part;
@@ -175,9 +280,7 @@
       button.style.height = Math.max(8, segment.bottom - segment.top) + "px";
       button.setAttribute("aria-label", name + ": level " + part.level + ", " + byLevel[part.level].name + ". Show details.");
       button.title = name + " · " + part.level + " " + byLevel[part.level].name;
-      button.addEventListener("mouseenter", function () { point(segment); });
-      button.addEventListener("mouseleave", function () { point(null); });
-      button.addEventListener("focus", function () { point(segment); });
+      button.addEventListener("focus", function () { if (!button.matches(":hover")) point(segment); });
       button.addEventListener("blur", function () { point(null); });
       button.addEventListener("click", function (event) {
         if (open && open.item === segment.item) close();
@@ -190,15 +293,42 @@
       var again = segments.filter(function (segment) { return segment.item === open.item; })[0];
       if (again) { open = again; again.button.setAttribute("aria-expanded", "true"); }
     }
-    point(pointed && segments.filter(function (s) { return s.item === pointed.item; })[0]);
+    point(pointed && segments.filter(function (s) { return s.item === pointed.item; })[0], pointed && pointedY);
+    current = null;
+    reading();
   }
 
-  // the part pointed at or open: its stretch of the line, drawn over it
-  function point(segment) {
+  // The part pointed at, or the one whose card is open: a dot on the line where the pointer is, and
+  // a soft tint of the part's color over the part on the page.
+  var pointedY = 0;
+  function point(segment, y) {
     pointed = segment || null;
+    if (pointed) pointedY = y == null ? (segment.top + segment.bottom) / 2 : y;
     var show = pointed || (open && !open.whole ? open : null);
-    mark.setAttribute("d", show ? path([show]) : "");
+    if (!show) {
+      dot.classList.remove("on");
+      glow.classList.remove("on");
+      return;
+    }
+    var level = show.item.part.level;
+    var c = colorOf(level);
+    var yy = pointed ? pointedY : (open.y != null ? open.y : (show.top + show.bottom) / 2);
+    dot.setAttribute("cx", at(yy).toFixed(2));
+    dot.setAttribute("cy", yy.toFixed(1));
+    dot.style.fill = c;
+    dot.classList.add("on");
+    glow.style.setProperty("--shapiq-ai-glow", c);
+    glow.style.left = root.offsetLeft + "px";
+    glow.style.top = show.top + "px";
+    glow.style.height = (show.bottom - show.top) + "px";
+    glow.classList.add("on");
   }
+
+  hits.addEventListener("mousemove", function (event) {
+    var y = event.clientY - article.getBoundingClientRect().top;
+    point(segmentAt(y), y);
+  });
+  hits.addEventListener("mouseleave", function () { point(null); });
 
   function row(list, term, value) {
     if (!value || (Array.isArray(value) && !value.length)) return;
@@ -209,7 +339,7 @@
   function scale(level) {
     var drawing = el("svg:svg", { class: "shapiq-ai-scale", width: 6 * (top + 1), height: 10, "aria-hidden": "true" });
     for (var i = 0; i <= top; i++) {
-      drawing.appendChild(el("svg:circle", { cx: 3 + 6 * i, cy: 5, r: i === level ? 2.6 : 1.4, class: i === level ? "on" : "" }));
+      drawing.appendChild(el("svg:circle", { cx: 3 + 6 * i, cy: 5, r: i === level ? 2.8 : 1.5, fill: i <= level ? colorOf(i) : "", class: i === level ? "on" : "" }));
     }
     return drawing;
   }
@@ -229,6 +359,7 @@
       var item = el("li");
       var bar = el("span", { class: "bar" });
       bar.style.width = Math.max(2, Math.round(100 * by[level.level] / total)) + "%";
+      bar.style.background = colorOf(level.level);
       item.appendChild(el("span", { class: "name" }, level.level + " · " + level.name));
       var track = el("span", { class: "track" });
       track.appendChild(bar);
@@ -242,6 +373,7 @@
   function fill(part, name) {
     while (card.firstChild) card.removeChild(card.firstChild);
     var level = byLevel[part.level];
+    card.style.setProperty("--shapiq-ai-card", colorOf(part.level));
     var head = el("div", { class: "shapiq-ai-card-head" });
     head.appendChild(scale(part.level));
     head.appendChild(el("span", { class: "shapiq-ai-card-level" }, "Level " + part.level + " · " + level.name));
@@ -286,8 +418,9 @@
     fill(segment.item.part, segment.item.name || segment.item.part.name);
     var box = article.getBoundingClientRect();
     var y = event && event.clientY ? event.clientY - box.top : segment.top + 8;
+    segment.y = y;
     place(Math.max(segment.top, Math.min(segment.bottom - 8, y)));
-    point(pointed);
+    point(pointed, pointedY);
   }
 
   function showPage() {
@@ -295,7 +428,7 @@
     open = { whole: true, item: { part: page } };
     label.setAttribute("aria-expanded", "true");
     fill(page, page.name);
-    place(0);
+    place(label.getBoundingClientRect().top - article.getBoundingClientRect().top);
   }
 
   function close(focus) {
@@ -304,7 +437,7 @@
     if (button) button.setAttribute("aria-expanded", "false");
     open = null;
     card.hidden = true;
-    point(pointed);
+    point(pointed, pointedY);
     if (focus && button) button.focus();
   }
 
@@ -329,4 +462,16 @@
   if (window.ResizeObserver) new ResizeObserver(later).observe(article);
   window.addEventListener("load", later);
   window.addEventListener("resize", later);
+  var scrolling = false;
+  window.addEventListener("scroll", function () {
+    if (scrolling) return;
+    scrolling = true;
+    requestAnimationFrame(function () { scrolling = false; reading(); });
+  }, { passive: true });
+  // the colors follow the theme
+  new MutationObserver(later).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) {
+    var scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    if (scheme.addEventListener) scheme.addEventListener("change", later);
+  }
 })();

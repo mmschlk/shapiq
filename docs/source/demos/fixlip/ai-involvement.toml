@@ -1,5 +1,5 @@
 # What AI did on this page, part by part, for the line beside the text (see ai-involvement.rst).
-# Levels: 0 Human, 1 Polished, 2 Co-written, 3 Reviewed, 4 Supervised, 5 Unsupervised
+# Levels: 0 Handmade, 1 Polished, 2 Co-written, 3 Vetted, 4 Guided, 5 Autopilot
 # (_data/ai-involvement.toml). Self-reported. Change a level here when it no longer holds.
 
 [page]

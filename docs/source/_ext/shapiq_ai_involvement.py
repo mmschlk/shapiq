@@ -187,8 +187,8 @@ def _skip(self: nodes.NodeVisitor, node: nodes.Node) -> None:  # noqa: ARG001
 
 
 def _glyph(level: int, top: int) -> str:
-    """Return the line at a level as a small SVG: faint lanes and the line in its lane."""
-    gap, height = 3, 18
+    """Return the line at a level as a small SVG: faint lanes, the shade and the line in its lane."""
+    gap, height = 4, 22
     width = gap * top + 3
     lanes = "".join(
         f'<line class="lane" x1="{1.5 + i * gap}" x2="{1.5 + i * gap}" y1="0" y2="{height}"/>'
@@ -196,8 +196,10 @@ def _glyph(level: int, top: int) -> str:
     )
     x = 1.5 + level * gap
     return (
-        f'<svg class="shapiq-ai-glyph" width="{width}" height="{height}" aria-hidden="true">'
-        f'{lanes}<line class="line" x1="{x}" x2="{x}" y1="0" y2="{height}"/></svg>'
+        f'<svg class="shapiq-ai-glyph" data-level="{level}" width="{width}" height="{height}"'
+        f' aria-hidden="true">{lanes}<rect class="shade" x="0" y="0" width="{x}" height="{height}"'
+        f' fill="currentColor"/><line class="line" x1="{x}" x2="{x}" y1="0" y2="{height}"'
+        f' stroke="currentColor"/></svg>'
     )
 
 

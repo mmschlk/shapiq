@@ -34,14 +34,16 @@ the part names the source.
 Reading the Line
 ----------------
 
-The line runs along the whole page. Its position gives the level. Level 0 is on the far left, and
-level 5 is next to the text. Where the level changes, the line steps to another lane. A part inside
-a section, such as a figure or a definition, can have its own level. The line then steps out and
-back for the length of the part.
+The line runs along the whole page. Its position and its color give the level. Level 0 is green
+and on the far left. Level 5 is an intense orange and next to the text. The shade under the line
+grows with the level, so a part written mostly by AI carries more color. Where the level changes,
+the line curves into another lane. A part inside a section, such as a figure or a definition, can
+have its own level. The line then swings out and back for the length of the part.
 
-A click on the line opens a card with the details of the part. The label *AI* on top of the line
-opens a card for the whole page, with the share of the page at each level. Each card lists the
-following.
+A small tag sticks to the top of the line while the page scrolls. It names the level of the part
+being read. Pointing at the line shows a dot on it and tints the part on the page. A click opens a
+card with the details of the part, and a click on the tag opens a card for the whole page, with the
+share of the page at each level. Each card lists the following.
 
 .. list-table::
    :header-rows: 1

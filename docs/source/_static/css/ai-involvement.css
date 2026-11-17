@@ -3,6 +3,34 @@
 :root {
   --shapiq-ai-gap: 4px; /* the distance of two lanes */
   --shapiq-ai-offset: 12px; /* the space between the line and the text */
+  /* the color of each level, from green (a person wrote it) to an intense orange (no person
+     checked it), away from the red and blue of the explanations */
+  --shapiq-ai-0: #1f9d6b;
+  --shapiq-ai-1: #4fa83d;
+  --shapiq-ai-2: #9db21c;
+  --shapiq-ai-3: #f5a300;
+  --shapiq-ai-4: #f27a12;
+  --shapiq-ai-5: #e5461c;
+}
+
+body[data-theme="dark"] {
+  --shapiq-ai-0: #3cc68e;
+  --shapiq-ai-1: #74c95a;
+  --shapiq-ai-2: #c2cf3c;
+  --shapiq-ai-3: #ffb627;
+  --shapiq-ai-4: #ff9140;
+  --shapiq-ai-5: #ff6a45;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --shapiq-ai-0: #3cc68e;
+    --shapiq-ai-1: #74c95a;
+    --shapiq-ai-2: #c2cf3c;
+    --shapiq-ai-3: #ffb627;
+    --shapiq-ai-4: #ff9140;
+    --shapiq-ai-5: #ff6a45;
+  }
 }
 
 .shapiq-ai-page {
@@ -28,29 +56,59 @@
 .shapiq-ai-lanes line {
   stroke: var(--color-background-border);
   stroke-width: 1px;
-  stroke-dasharray: 1 3;
+  stroke-dasharray: 1 4;
+  opacity: 0.7;
 }
 
-.shapiq-ai-line,
-.shapiq-ai-mark {
+.shapiq-ai-line {
   fill: none;
+  stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.shapiq-ai-line {
-  stroke: var(--color-foreground-secondary);
-  stroke-width: 1.25px;
+/* the dot that rides on the line under the pointer */
+.shapiq-ai-dot {
+  stroke: var(--color-background-primary);
+  stroke-width: 2px;
+  opacity: 0;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
 }
 
-.shapiq-ai-mark {
-  stroke: var(--shapiq-amber);
-  stroke-width: 2.5px;
+.shapiq-ai-dot.on {
+  opacity: 1;
 }
 
 .shapiq-ai-hits {
   position: absolute;
   inset: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* the part pointed at, on the page: a soft tint of its color that fades towards the right */
+.shapiq-ai-glow {
+  position: absolute;
+  right: 0;
+  z-index: 1;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--shapiq-ai-glow) 16%, transparent) 0,
+    color-mix(in srgb, var(--shapiq-ai-glow) 6%, transparent) 3rem,
+    color-mix(in srgb, var(--shapiq-ai-glow) 3%, transparent) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity var(--shapiq-duration) var(--shapiq-ease),
+    top var(--shapiq-duration) var(--shapiq-ease),
+    height var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-ai-glow.on {
+  opacity: 1;
 }
 
 /* a stretch of the line: a button over it, wider than the line to be easy to hit */
@@ -73,25 +131,48 @@
   outline-offset: 0;
 }
 
+/* the tag at the top of the line, which stays in view: AI and the level of the part being read */
 .shapiq-ai-label {
-  position: absolute;
-  top: 0;
-  left: -3px;
-  margin: 0;
-  padding: 0 3px;
-  border: 0;
-  border-radius: 3px;
-  background: none;
-  color: var(--color-foreground-muted);
-  font: 600 9px/14px var(--font-stack);
-  letter-spacing: 0.06em;
+  position: sticky;
+  top: 1rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  width: 17px;
+  margin: 0 0 0 calc(50% - 8.5px);
+  padding: 6px 0;
+  border: 1px solid color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 55%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 14%, var(--color-background-primary));
+  color: color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 62%, var(--color-foreground-primary));
+  font: 600 10px/1 var(--font-stack);
+  letter-spacing: 0.04em;
+  writing-mode: vertical-rl;
   cursor: pointer;
   pointer-events: auto;
+  transition:
+    background var(--shapiq-duration) var(--shapiq-ease),
+    border-color var(--shapiq-duration) var(--shapiq-ease),
+    color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-ai-label-ai {
+  font-size: 8.5px;
+  font-weight: 700;
+  opacity: 0.75;
 }
 
 .shapiq-ai-label:hover,
 .shapiq-ai-label[aria-expanded="true"] {
-  color: var(--shapiq-amber-ink);
+  background: color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 26%, var(--color-background-primary));
+}
+
+@media (max-width: 63em) {
+  .shapiq-ai-label {
+    top: calc(var(--header-height) + 0.75rem);
+  }
 }
 
 /* the card of a part */
@@ -105,6 +186,7 @@
   border-radius: var(--shapiq-radius-small);
   background: var(--color-background-primary);
   box-shadow: var(--shapiq-shadow-hover);
+  border-left: 3px solid var(--shapiq-ai-card, var(--color-background-border));
   color: var(--color-foreground-primary);
   font-size: 0.8rem;
   line-height: 1.45;
@@ -128,8 +210,12 @@
   fill: var(--color-foreground-muted);
 }
 
+.shapiq-ai-scale circle {
+  opacity: 0.45;
+}
+
 .shapiq-ai-scale circle.on {
-  fill: var(--shapiq-amber);
+  opacity: 1;
 }
 
 .shapiq-ai-card-level {
@@ -242,10 +328,20 @@ a.shapiq-ai-card-more {
 }
 
 .shapiq-ai-glyph .line {
-  stroke: var(--color-foreground-secondary);
-  stroke-width: 1.25px;
+  stroke-width: 2px;
   stroke-linecap: round;
 }
+
+.shapiq-ai-glyph .shade {
+  opacity: 0.22;
+}
+
+.shapiq-ai-glyph[data-level="0"] { color: var(--shapiq-ai-0); }
+.shapiq-ai-glyph[data-level="1"] { color: var(--shapiq-ai-1); }
+.shapiq-ai-glyph[data-level="2"] { color: var(--shapiq-ai-2); }
+.shapiq-ai-glyph[data-level="3"] { color: var(--shapiq-ai-3); }
+.shapiq-ai-glyph[data-level="4"] { color: var(--shapiq-ai-4); }
+.shapiq-ai-glyph[data-level="5"] { color: var(--shapiq-ai-5); }
 
 table.shapiq-ai-levels td:first-child {
   vertical-align: middle;
@@ -268,4 +364,13 @@ table.shapiq-ai-levels td:first-child {
 
 table.shapiq-ai-levels td:nth-child(2) {
   white-space: nowrap;
+}
+
+/* On a narrow page, the theme lets the content scroll sideways, which would keep the tag from
+   sticking. Clipping keeps the content in its column without making it a scroll container. */
+@media (max-width: 48em) {
+  .content:has(> article.shapiq-ai-page),
+  .content:has(article.shapiq-ai-page) {
+    overflow-x: clip;
+  }
 }
