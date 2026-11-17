@@ -148,6 +148,173 @@ article .shapiq-slide--title .shapiq-slide-title {
   margin-bottom: 0;
 }
 
+/* ---- for readers: code to try, references, the recording ---------------------------------------
+   Below the slide on the page and on a phone, not in the deck on a large screen. */
+
+.shapiq-slide-extra {
+  margin: 0.75rem 0 0;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface);
+  font-size: 0.9rem;
+}
+
+details.shapiq-slide-extra > summary {
+  padding: 0.5rem 0.9rem;
+  color: var(--shapiq-text-muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+details.shapiq-slide-extra > summary:hover,
+details.shapiq-slide-extra[open] > summary {
+  color: var(--color-foreground-primary);
+}
+
+details.shapiq-slide-extra > :not(summary) {
+  margin: 0 0.9rem 0.9rem;
+}
+
+details.shapiq-slide-extra .highlight pre {
+  font-size: 0.8rem;
+}
+
+.shapiq-slide-references {
+  padding: 0;
+  list-style: none;
+}
+
+.shapiq-slide-references li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--shapiq-border);
+}
+
+.shapiq-slide-references li:first-child {
+  border-top: 0;
+}
+
+.shapiq-slide-references li > span {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.shapiq-slide-references a {
+  font-size: 0.85em;
+}
+
+.shapiq-copy-bibtex {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.7rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--shapiq-surface-raised);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.shapiq-copy-bibtex:hover {
+  border-color: var(--shapiq-amber);
+}
+
+.shapiq-bibtex {
+  flex: 1 0 100%;
+  margin: 0.2rem 0 0;
+  padding: 0.6rem 0.8rem;
+  overflow-x: auto;
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+  font-size: 0.75rem;
+  white-space: pre;
+}
+
+.shapiq-bibtex[hidden] {
+  display: none;
+}
+
+.shapiq-slide-recording {
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.3rem 0.9rem;
+  color: var(--shapiq-text-muted);
+}
+
+.shapiq-slide-recording[hidden] {
+  display: none;
+}
+
+.shapiq-slide-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.shapiq-talk-about {
+  flex: 1 0 100%;
+}
+
+.shapiq-talk-bar {
+  flex-wrap: wrap;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-slide-extra {
+  display: none;
+}
+
+/* the deck on a phone: the extras close the slide, before the next begins */
+.shapiq-deck--scroll .shapiq-slide-extra {
+  font-size: 14px;
+}
+
+.shapiq-deck--scroll .shapiq-slide-extra .highlight pre {
+  font-size: 12px;
+}
+
+/* the QR code of the title slide, which opens the talk on a phone */
+.shapiq-talk-qr {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  color: var(--shapiq-text-muted);
+  font-size: 0.85rem;
+}
+
+.shapiq-talk-qr > p {
+  margin: 0;
+}
+
+.shapiq-talk-qr img {
+  width: 8rem;
+  height: auto;
+  border-radius: var(--shapiq-radius-small);
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--shapiq-border);
+}
+
+.shapiq-deck .shapiq-slide--title .shapiq-talk-qr {
+  position: absolute;
+  right: max(6vw, 1.5rem);
+  bottom: 12vh;
+  margin: 0;
+  font-size: 0.6em;
+}
+
+.shapiq-deck .shapiq-slide--title .shapiq-talk-qr img {
+  width: clamp(7rem, 20vmin, 15rem);
+}
+
+/* a phone that shows the deck is already there */
+.shapiq-deck--scroll .shapiq-talk-qr {
+  display: none;
+}
+
 /* ---- the parts that every slide may use ---------------------------------------------------- */
 
 .shapiq-slide-body > :first-child {

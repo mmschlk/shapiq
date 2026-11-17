@@ -23,3 +23,22 @@ keys are listed at the top of `talk.js`. The address follows the slide (`#slide-
 The text size of a slide follows the window (`font-size` of `.shapiq-deck`). Slides of the layout
 `wide` keep the docs' text size for the demos. A slide whose content is taller than the window
 scrolls.
+
+## For readers during and after the talk
+
+No backend: everything is static. Below a slide, on the page and in the deck on a phone:
+
+- `shapiq-try::` code that reproduces the slide ("Try it in shapiq"). Run each snippet before you
+  commit it.
+- `:cite:` of a slide lists its references from `references.bib`, each with a button that copies
+  its BibTeX.
+- `:recording: m:ss` of a slide is where it starts in the recording. Once the talk names its
+  recording (`.. shapiq-talk::` with `:recording: <url>` and `:event:`), each becomes a link that
+  adds `t=<seconds>` to the URL. Without a recording, the slots stay hidden.
+
+The title slide shows `assets/qr-deck.svg`, a QR code of the talk's page on Read the Docs with
+`?present`, so that it opens as a deck. It is a static file. To make it again for another address:
+
+```bash
+npx qrcode@1.5.4 -t svg -e M -q 2 -d 1b1e27 -l ffffff -o assets/qr-deck.svg "<url>?present"
+```

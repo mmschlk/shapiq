@@ -91,6 +91,10 @@
 
   // ---- on the page -----------------------------------------------------------------------------
 
+  // the talk's event and recording (the shapiq-talk directive), if it names them
+  const info = document.querySelector(".shapiq-talk-info");
+  const recording = info ? info.dataset.recording : "";
+
   const bar = make("div", "shapiq-talk-bar");
   const start = make("button", "shapiq-talk-present", ICONS.play + "<span>Present</span>");
   start.type = "button";
@@ -104,6 +108,17 @@
   };
   hints();
   bar.append(start, hint);
+  if (info && (info.dataset.event || recording)) {
+    const about = make("p", "shapiq-talk-about");
+    if (info.dataset.event) about.append(info.dataset.event);
+    if (recording) {
+      if (info.dataset.event) about.append(" · ");
+      const link = make("a", "", "Recording");
+      link.href = recording;
+      about.append(link);
+    }
+    bar.append(about);
+  }
   slides[0].before(bar);
 
   slides.forEach((slide, index) => {
@@ -112,6 +127,43 @@
     here.addEventListener("click", () => present(index));
     slide.prepend(here);
   });
+
+  // ---- for readers: BibTeX to copy, and the recording --------------------------------------------
+
+  // a reference's BibTeX goes to the clipboard, or is selected where the clipboard is refused
+  for (const copy of document.querySelectorAll(".shapiq-copy-bibtex")) {
+    copy.addEventListener("click", () => {
+      const source = copy.nextElementSibling;
+      const done = (text) => {
+        copy.textContent = text;
+        setTimeout(() => { copy.textContent = "Copy BibTeX"; }, 1600);
+      };
+      const select = () => {
+        source.hidden = false;
+        const range = document.createRange();
+        range.selectNodeContents(source);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        done("Selected, copy it");
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(source.textContent).then(() => done("Copied"), select);
+      } else select();
+    });
+  }
+
+  // where a slide starts in the recording: a link once the talk names its recording
+  if (recording) {
+    for (const slot of document.querySelectorAll(".shapiq-slide-recording")) {
+      const time = slot.querySelector(".shapiq-slide-time");
+      const link = make("a", "shapiq-slide-time", time.textContent);
+      link.href = recording + (recording.includes("?") ? "&" : "?") + "t=" + slot.dataset.seconds;
+      time.replaceWith(link);
+    }
+  } else {
+    for (const slot of document.querySelectorAll(".shapiq-slide-recording")) slot.hidden = true;
+  }
 
   // ---- the deck --------------------------------------------------------------------------------
 
