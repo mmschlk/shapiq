@@ -99,8 +99,10 @@
   content: "";
 }
 
-.graphshapiq-explorer-demo .gsq-mol-own:hover {
-  background: color-mix(in srgb, var(--gsq-build) 26%, var(--gsq-sheet));
+@media (hover: hover) {
+  .graphshapiq-explorer-demo .gsq-mol-own:hover {
+    background: color-mix(in srgb, var(--gsq-build) 26%, var(--gsq-sheet));
+  }
 }
 
 .graphshapiq-explorer-demo .gsq-mol-own[aria-pressed="true"] {
@@ -271,11 +273,19 @@
   pointer-events: none;
 }
 
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot:hover circle,
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-sel circle {
   fill: color-mix(in srgb, var(--gsq-build) 34%, var(--gsq-stage));
   stroke: var(--gsq-build);
   stroke-width: 2px;
+}
+
+/* hover only with a pointer that hovers: on a phone it would stick after a tap */
+@media (hover: hover) {
+  .graphshapiq-explorer-demo .gsq-plot .gsq-slot:hover circle {
+    fill: color-mix(in srgb, var(--gsq-build) 34%, var(--gsq-stage));
+    stroke: var(--gsq-build);
+    stroke-width: 2px;
+  }
 }
 
 /* a × on the bond of a group: it removes the group. Quiet until pointed at */
@@ -284,13 +294,15 @@
   stroke: color-mix(in srgb, var(--gsq-build) 70%, var(--gsq-stage));
 }
 
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:hover circle {
-  fill: var(--gsq-build);
-  stroke: var(--gsq-build);
-}
+@media (hover: hover) {
+  .graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:hover circle {
+    fill: var(--gsq-build);
+    stroke: var(--gsq-build);
+  }
 
-.graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:hover .gsq-plus {
-  stroke: var(--gsq-build-ink);
+  .graphshapiq-explorer-demo .gsq-plot .gsq-slot.gsq-filled:hover .gsq-plus {
+    stroke: var(--gsq-build-ink);
+  }
 }
 
 .graphshapiq-explorer-demo .gsq-plot .gsq-slot:focus {
@@ -411,10 +423,16 @@
     scale 160ms var(--gsq-ease);
 }
 
-.graphshapiq-explorer-demo .gsq-wheel-item:hover,
 .graphshapiq-explorer-demo .gsq-wheel-item:focus-visible {
   border-color: var(--gsq-ink);
   scale: 1.1;
+}
+
+@media (hover: hover) {
+  .graphshapiq-explorer-demo .gsq-wheel-item:hover {
+    border-color: var(--gsq-ink);
+    scale: 1.1;
+  }
 }
 
 .graphshapiq-explorer-demo .gsq-wheel-item[aria-pressed="true"] {
@@ -546,9 +564,11 @@
   fill: currentColor;
 }
 
-.graphshapiq-explorer-demo .gsq-start:hover {
-  background: color-mix(in srgb, var(--gsq-ink) 7%, transparent);
-  color: var(--gsq-ink);
+@media (hover: hover) {
+  .graphshapiq-explorer-demo .gsq-start:hover {
+    background: color-mix(in srgb, var(--gsq-ink) 7%, transparent);
+    color: var(--gsq-ink);
+  }
 }
 
 .graphshapiq-explorer-demo .gsq-start:active {

@@ -352,23 +352,35 @@
       return d;
     });
     // (the docs' theme makes its content a scroll box on a phone, where `position: sticky` does not
-    // hold, so the dots are fixed to the screen's bottom while the demo's end is below it and the
-    // demo fills half the screen, and otherwise rest in their slot at the demo's end)
+    // hold, so the dots are fixed to the screen's bottom while the demo fills half the screen and
+    // their slot at the demo's end is below that place, and otherwise rest in the slot. They hand
+    // over where both places are the same, so nothing jumps: `gap`, the fixed dots' distance from
+    // the screen's bottom (safe areas included), is measured while they are fixed. They fade in and
+    // out where the slot is out of sight. Checked on every scroll event, before the frame is drawn)
     const slot = h("div", "gsq-dots-slot", dots);
-    let floatAsked = false;
+    let fixed = false, gap = 12, leaving = null;
     const float = () => {
-      floatAsked = false;
       const root = slot.parentElement;
-      if (!root || getComputedStyle(dots).display === "none") { dots.classList.remove("gsq-dots-fixed"); return; }
-      const vh = window.visualViewport?.height ?? innerHeight, s = slot.getBoundingClientRect(), r = root.getBoundingClientRect();
-      const on = s.bottom > vh && r.top < vh * 0.5; // once the demo fills half the screen
-      dots.classList.toggle("gsq-dots-fixed", on);
-      dots.style.left = on ? `${s.left + s.width / 2}px` : "";
+      if (!root || getComputedStyle(dots).display === "none") { fixed = false; dots.classList.remove("gsq-dots-fixed"); return; }
+      const vh = innerHeight, s = slot.getBoundingClientRect(), r = root.getBoundingClientRect();
+      if (fixed && !leaving) gap = Math.max(0, vh - dots.getBoundingClientRect().bottom);
+      const on = s.bottom > vh - gap + 0.5 && r.top < vh * 0.5; // once the demo fills half the screen
+      dots.style.left = `${s.left + s.width / 2}px`;
+      if (on === fixed) return;
+      fixed = on;
+      const away = s.top > vh; // the slot is out of sight: fade, do not hand over
+      if (leaving) { leaving.cancel(); leaving = null; }
+      if (on) {
+        dots.classList.add("gsq-dots-fixed");
+        if (away && !reducedMotion()) dots.animate([{ opacity: 0, transform: "translateY(0.5rem)" }, { opacity: 1, transform: "none" }], { duration: 180, easing: "ease-out" });
+      } else if (away && !reducedMotion()) {
+        leaving = dots.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: "ease-in", fill: "forwards" });
+        leaving.onfinish = () => { leaving?.cancel(); leaving = null; if (!fixed) dots.classList.remove("gsq-dots-fixed"); };
+      } else dots.classList.remove("gsq-dots-fixed");
     };
-    const askFloat = () => { if (!floatAsked) { floatAsked = true; requestAnimationFrame(float); } };
-    addEventListener("scroll", askFloat, { passive: true, capture: true });
-    addEventListener("resize", askFloat, { passive: true });
-    new ResizeObserver(askFloat).observe(slot);
+    addEventListener("scroll", float, { passive: true, capture: true });
+    addEventListener("resize", float, { passive: true });
+    new ResizeObserver(float).observe(slot);
     const box = h("div", "gsq-picker", node);
     // where the row scrolls (phones), its edges fade, so that one sees there is more: on the side
     // that can scroll on. A tile pinned at the end (the explorer's own molecule) draws the fade

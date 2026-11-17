@@ -247,9 +247,9 @@ body[data-theme="dark"] .gsq {
   color: var(--gsq-ink);
   opacity: 0.55;
   cursor: pointer;
+  /* the amber of the molecule shown changes at once: a fading border left the last one's behind */
   transition:
     opacity 220ms var(--gsq-ease),
-    border-color 220ms var(--gsq-ease),
     transform 120ms var(--gsq-ease);
 }
 
@@ -271,9 +271,14 @@ body[data-theme="dark"] .gsq {
   white-space: nowrap;
 }
 
-.gsq .gsq-mol:hover,
 .gsq .gsq-mol[aria-pressed="true"] {
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .gsq .gsq-mol:hover {
+    opacity: 1;
+  }
 }
 
 /* the molecule shown, white on a dark amber, in both demos */
