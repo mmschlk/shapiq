@@ -212,25 +212,23 @@ follows.
 .. shapiq-definition:: Explanation
    :name: fixlip-def-explanation
 
-   An explanation :math:`\mathbf{e} \in \mathbb{R}^{\vert \mathcal{B} \vert}` assigns a constant
-   :math:`\mathbf{e}_0`, a *main effect* :math:`\mathbf{e}_i \in \mathbb{R}` to each token, and an
-   *interaction* :math:`\mathbf{e}_{\{i,j\}} \in \mathbb{R}` to each pair of tokens, for an
-   explanation basis
+   An explanation :math:`\mathbf{e}` consists of a constant :math:`\mathbf{e}_0 \in \mathbb{R}`, a
+   *main effect* :math:`\mathbf{e}_i \in \mathbb{R}` for each token, and an *interaction*
+   :math:`\mathbf{e}_{\{i,j\}} \in \mathbb{R}` for each pair of tokens, i.e.
 
    .. math::
 
-      \mathcal{B} :=
+      \mathbf{e} := \Big(
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-      \{0\}
-      }}_{\class{fixlip-braced}{\text{constant}}}}
-      \cup\;
+      \mathbf{e}_0
+      }}_{\class{fixlip-braced}{\text{constant}}}}, \;
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-      \{i: i \in N_\mathcal{I} \cup N_\mathcal{T}\}
-      }}_{\class{fixlip-braced}{\text{individual tokens}}}}
-      \;\cup\;
+      (\mathbf{e}_i)_{i \in N_\mathcal{I} \cup N_\mathcal{T}}
+      }}_{\class{fixlip-braced}{\text{main effects}}}}, \;
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-      \{\{i,j\}: i,j \in N_\mathcal{I} \cup N_\mathcal{T}, i \neq j\}
-      }}_{\class{fixlip-braced}{\text{pairs of tokens}}}}
+      (\mathbf{e}_{\{i,j\}})_{\{i,j\} \subseteq N_\mathcal{I} \cup N_\mathcal{T}: i \neq j}
+      }}_{\class{fixlip-braced}{\text{interactions}}}}
+      \Big)
 
 :shapiq-statement:`fixlip-def-explanation` fixes the form of an explanation, but not its values. The
 values should describe how the prediction changes when tokens are removed from the input. FIxLIP
