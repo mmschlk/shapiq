@@ -512,14 +512,14 @@
         band(m.norms.matching, y, "amber");
         const value = data.explanations[`${c.id}/${m.id}`].similarity;
         const dot = draw("circle", { class: "fixlip-figure-dot", cx: x(value), cy: y, r: 5.5 });
-        dot.append(svgEl("title", {}, `${m.label}, this pair ${fmt(value)}`));
+        dot.append(svgEl("title", {}, `${m.label}, this example ${fmt(value)}`));
         draw("text", { class: "fixlip-figure-strong", x: x(value), y: y + 21, "text-anchor": "middle" }, fmt(value));
       });
       const legend = add(
         el("p", "fixlip-figure-legend"),
         add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-amber"), "matching pairs"),
         add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-gray"), "unrelated pairs"),
-        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-round"), "this pair"),
+        add(el("span"), el("i", "fixlip-figure-swatch fixlip-figure-round"), "this example"),
       );
       stage.append(legend);
       plot.inset(legend);
@@ -1279,10 +1279,10 @@
     shown.alt = "";
     const photos = el("div", "fixlip-figure-photos");
     photos.setAttribute("role", "group");
-    photos.setAttribute("aria-label", "Image–text pair of the figures");
+    photos.setAttribute("aria-label", "Example of the figures");
     const dots = el("div", "fixlip-figure-dots");
     dots.setAttribute("role", "group");
-    dots.setAttribute("aria-label", "Image–text pair of the figures");
+    dots.setAttribute("aria-label", "Example of the figures");
     for (const image of data.images) {
       const button = el("button", "fixlip-figure-photo-button");
       button.type = "button";
@@ -1307,7 +1307,7 @@
     frame.stage.after(dots);
     if (!hints.length) {
       // only the first figure says that it can be swiped, and only until it was
-      const hint = el("p", "fixlip-figure-hint", "Swipe for another pair");
+      const hint = el("p", "fixlip-figure-hint", "Swipe for another example");
       dots.after(hint);
       hints.push(hint);
     }
