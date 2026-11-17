@@ -3,33 +3,33 @@
 :root {
   --shapiq-ai-gap: 4px; /* the distance of two lanes */
   --shapiq-ai-offset: 12px; /* the space between the line and the text */
-  /* the color of each level, muted, from sage green (a person wrote it) to a dusty terracotta (no
+  /* the color of each level, light and bright, from mint (a person wrote it) to a soft coral (no
      person checked it), away from the red and blue of the explanations */
-  --shapiq-ai-0: #5f9e83;
-  --shapiq-ai-1: #7fa56c;
-  --shapiq-ai-2: #a3a462;
-  --shapiq-ai-3: #bf9a55;
-  --shapiq-ai-4: #c08360;
-  --shapiq-ai-5: #b86e5e;
+  --shapiq-ai-0: #2fd6a0;
+  --shapiq-ai-1: #7ddc6a;
+  --shapiq-ai-2: #c9e04f;
+  --shapiq-ai-3: #ffc83d;
+  --shapiq-ai-4: #ffa25e;
+  --shapiq-ai-5: #ff7f72;
 }
 
 body[data-theme="dark"] {
-  --shapiq-ai-0: #7dbb9f;
-  --shapiq-ai-1: #9ec28a;
-  --shapiq-ai-2: #c2c27f;
-  --shapiq-ai-3: #d9b673;
-  --shapiq-ai-4: #d9a07c;
-  --shapiq-ai-5: #d48a7a;
+  --shapiq-ai-0: #4fe8b4;
+  --shapiq-ai-1: #98ec82;
+  --shapiq-ai-2: #dcef6c;
+  --shapiq-ai-3: #ffd45e;
+  --shapiq-ai-4: #ffb27a;
+  --shapiq-ai-5: #ff958a;
 }
 
 @media (prefers-color-scheme: dark) {
   body:not([data-theme="light"]) {
-    --shapiq-ai-0: #7dbb9f;
-    --shapiq-ai-1: #9ec28a;
-    --shapiq-ai-2: #c2c27f;
-    --shapiq-ai-3: #d9b673;
-    --shapiq-ai-4: #d9a07c;
-    --shapiq-ai-5: #d48a7a;
+    --shapiq-ai-0: #4fe8b4;
+    --shapiq-ai-1: #98ec82;
+    --shapiq-ai-2: #dcef6c;
+    --shapiq-ai-3: #ffd45e;
+    --shapiq-ai-4: #ffb27a;
+    --shapiq-ai-5: #ff958a;
   }
 }
 
@@ -60,9 +60,19 @@ body[data-theme="dark"] {
   opacity: 0.7;
 }
 
+/* a soft glow around the line, in the same colors */
+.shapiq-ai-halo {
+  fill: none;
+  stroke-width: 6px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.45;
+  filter: blur(3px);
+}
+
 .shapiq-ai-line {
   fill: none;
-  stroke-width: 1.1px;
+  stroke-width: 1.25px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -71,6 +81,7 @@ body[data-theme="dark"] {
 .shapiq-ai-dot {
   stroke: var(--color-background-primary);
   stroke-width: 1.5px;
+  filter: drop-shadow(0 0 3px currentColor);
   opacity: 0;
   transition: opacity var(--shapiq-duration) var(--shapiq-ease);
 }
@@ -94,8 +105,8 @@ body[data-theme="dark"] {
   border-radius: 6px;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--shapiq-ai-glow) 9%, transparent) 0,
-    color-mix(in srgb, var(--shapiq-ai-glow) 3.5%, transparent) 3rem,
+    color-mix(in srgb, var(--shapiq-ai-glow) 14%, transparent) 0,
+    color-mix(in srgb, var(--shapiq-ai-glow) 5%, transparent) 3rem,
     color-mix(in srgb, var(--shapiq-ai-glow) 1.5%, transparent) 60%,
     transparent 100%
   );
@@ -143,10 +154,11 @@ body[data-theme="dark"] {
   width: 17px;
   margin: 0 0 0 calc(50% - 8.5px);
   padding: 6px 0;
-  border: 1px solid color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 60%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 45%, transparent);
   border-radius: 9px;
-  background: color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 8%, var(--color-background-primary));
-  color: color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 45%, var(--color-foreground-secondary));
+  background: color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 12%, var(--color-background-primary));
+  color: color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 30%, var(--color-foreground-secondary));
   font: 600 10px/1 var(--font-stack);
   letter-spacing: 0.04em;
   writing-mode: vertical-rl;

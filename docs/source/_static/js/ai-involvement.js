@@ -70,7 +70,7 @@
   var color = el("svg:linearGradient", { id: "shapiq-ai-color", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0 });
   var across = el("svg:linearGradient", { id: "shapiq-ai-across", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, y2: 0 });
   across.appendChild(el("svg:stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 0.02 }));
-  across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": 0.2 }));
+  across.appendChild(el("svg:stop", { offset: 1, "stop-color": "#fff", "stop-opacity": 0.28 }));
   var fade = el("svg:mask", { id: "shapiq-ai-fade", maskUnits: "userSpaceOnUse", x: 0, y: 0 });
   var fadeRect = el("svg:rect", { x: 0, y: 0, fill: "url(#shapiq-ai-across)" });
   fade.appendChild(fadeRect);
@@ -79,11 +79,13 @@
   defs.appendChild(fade);
   var lanes = el("svg:g", { class: "shapiq-ai-lanes" });
   var shade = el("svg:path", { class: "shapiq-ai-shade", fill: "url(#shapiq-ai-color)", mask: "url(#shapiq-ai-fade)" });
+  var halo = el("svg:path", { class: "shapiq-ai-halo", stroke: "url(#shapiq-ai-color)" });
   var line = el("svg:path", { class: "shapiq-ai-line", stroke: "url(#shapiq-ai-color)" });
   var dot = el("svg:circle", { class: "shapiq-ai-dot", r: 3, cx: -20, cy: -20 });
   svg.appendChild(defs);
   svg.appendChild(lanes);
   svg.appendChild(shade);
+  svg.appendChild(halo);
   svg.appendChild(line);
   svg.appendChild(dot);
   var hits = el("div", { class: "shapiq-ai-hits" });
@@ -253,6 +255,7 @@
     shape(segments);
     var d = path(segments);
     line.setAttribute("d", d);
+    halo.setAttribute("d", d);
     if (segments.length) {
       var first = segments[0];
       var last = segments[segments.length - 1];
@@ -316,6 +319,7 @@
     dot.setAttribute("cx", at(yy).toFixed(2));
     dot.setAttribute("cy", yy.toFixed(1));
     dot.style.fill = c;
+    dot.style.color = c;
     dot.classList.add("on");
     glow.style.setProperty("--shapiq-ai-glow", c);
     glow.style.left = root.offsetLeft + "px";

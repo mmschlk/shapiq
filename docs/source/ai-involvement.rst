@@ -34,8 +34,8 @@ the part names the source.
 Reading the Line
 ----------------
 
-The line runs along the whole page. Its position and its color give the level. Level 0 is a sage
-green on the far left. Level 5 is a dusty terracotta next to the text. The faint shade under the line
+The line runs along the whole page. Its position and its color give the level. Level 0 is a mint
+green on the far left. Level 5 is a soft coral next to the text. The faint shade under the line
 grows with the level, so a part written mostly by AI carries more color. Where the level changes,
 the line curves into another lane. A part inside a section, such as a figure or a definition, can
 have its own level. The line then swings out and back for the length of the part.
