@@ -587,8 +587,23 @@ sampled from :math:`\mathbb{P}_p`.
    \underset{M^{(1)},\dots,M^{(m)} \overset{\mathrm{iid}}{\sim} \mathbb{P}_p}
    {\mathrm{correlation}}\big(\nu(M^{(i)}),\hat\nu_\mathbf{e}(M^{(i)})\big)
 
-It relies on ranks, since methods like saliency maps do not estimate the similarity itself. For
-game-theoretic explanations, the :math:`R^2` coefficient applies as well.
+In words, a correlation of 1 means that the explanation orders the masks by similarity exactly as
+the model does. A correlation of 0 means that the two orders are unrelated. The metric relies on
+ranks, since methods like saliency maps do not estimate the similarity itself. Game-theoretic
+explanations, in contrast, predict the similarity of a mask with their additive model
+:math:`\hat\nu_\mathbf{e}`. For them, the error of this prediction can be measured directly with the
+:math:`R^2` coefficient over the same masks.
+
+.. math::
+   :label: fixlip-r2
+
+   R^2 := 1 - \frac
+   {\sum_{i=1}^m \big(\nu(M^{(i)}) - \hat\nu_\mathbf{e}(M^{(i)})\big)^2}
+   {\sum_{i=1}^m \big(\nu(M^{(i)}) - \bar\nu\big)^2}
+
+Here, :math:`\bar\nu` is the average similarity of the masks. An :math:`R^2` of 1 means that the
+explanation predicts the model exactly. An :math:`R^2` of 0 means that it does no better than always
+predicting the average, and a negative :math:`R^2` means that it does worse.
 :shapiq-figure:`faithfulness` shows held-out masks for the chosen example. For all five examples,
 the second-order explanation predicts them better than its conversion to first order.
 

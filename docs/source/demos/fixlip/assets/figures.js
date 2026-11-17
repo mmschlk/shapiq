@@ -1037,7 +1037,6 @@
             group.append(svgEl("line", { class: "fixlip-figure-median", x1: at(method.median), x2: at(method.median), y1: y - 7, y2: y + 7 }));
           if (method.low === null || method.low < 0)
             group.append(svgEl("polygon", { class: `fixlip-figure-${kind}`, points: `${box.x0 - 6},${y} ${box.x0 - 1},${y - 4} ${box.x0 - 1},${y + 4}` }));
-          if (method.median === null) plot.draw("text", { x: box.x0 + 6, y: y - 5 }, "median below 0");
         });
       };
       draw("correlation", "*p*-faithfulness correlation for *p* = 0.7", "rank correlation", "FIxLIP (p = 0.7)");
