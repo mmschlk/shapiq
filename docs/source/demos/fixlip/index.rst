@@ -232,8 +232,14 @@ pair.
 .. math::
    :label: fixlip-game
 
-   \nu(M) := f\big(x_\mathcal{I} \oplus_{M \cap N_\mathcal{I}} b_\mathcal{I}, \,
-   x_\mathcal{T} \oplus_{M \cap N_\mathcal{T}} b_\mathcal{T}\big)
+   \nu(M) := f\big(
+   \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
+   x_\mathcal{I} \oplus_{M \cap N_\mathcal{I}} b_\mathcal{I}
+   }}_{\class{fixlip-braced}{\text{masked image}}}}, \,
+   \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
+   x_\mathcal{T} \oplus_{M \cap N_\mathcal{T}} b_\mathcal{T}
+   }}_{\class{fixlip-braced}{\text{masked text}}}}
+   \big)
 
 For the image, a masked patch is set to 0 after normalization, which propagates no signal forward.
 The figures show it as a gray patch. For the text, a masked token is excluded through the attention

@@ -1650,6 +1650,21 @@ article[role="main"] div.math > mjx-container {
   overflow: auto hidden;
 }
 
+/* A brace under a part of an equation is amber, and what it spans and its label keep the color of
+   the text. The classes are set in the equation with \class. MathJax colors its SVG output with
+   fill and stroke and its HTML output with color, so each rule sets all three. */
+article[role="main"] mjx-container .fixlip-brace {
+  color: var(--shapiq-amber);
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+article[role="main"] mjx-container .fixlip-braced {
+  color: var(--color-foreground-primary);
+  fill: currentColor;
+  stroke: currentColor;
+}
+
 /* -- the links of the page ----------------------------------------------------------------------------- */
 
 /* This stylesheet is loaded only by pages with these figures. Their links are underlined in amber,
