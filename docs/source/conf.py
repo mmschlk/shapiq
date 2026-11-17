@@ -91,6 +91,12 @@ extensions.append("shapiq_timeline")
 # a page and adds its stylesheet and script there; see ``demos/README.md``.
 extensions.append("shapiq_demos")
 
+# -- AI involvement --------------------------------------------------------------------------------
+# A page that names a TOML file in the ``shapiq-ai-involvement`` directive of
+# ``_ext/shapiq_ai_involvement.py`` shows, beside its text, how much AI wrote each part. The levels
+# are in ``_data/ai-involvement.toml`` and explained on ``ai-involvement.rst``.
+extensions.append("shapiq_ai_involvement")
+
 # -- Sphinx-Gallery -------------------------------------------------------------------------------
 # One gallery per group of examples (``examples/<group>``), each with its own page; the landing
 # page ``examples.rst`` links them. Groups may have subsections (subfolders with a header).

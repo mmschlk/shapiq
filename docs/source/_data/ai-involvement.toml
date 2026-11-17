@@ -1,0 +1,34 @@
+# The levels of AI involvement that a page of the docs reports, part by part (see
+# ``ai-involvement.rst`` and ``_ext/shapiq_ai_involvement.py``). Level 0 is a text that a person
+# wrote alone, level 5 one that AI wrote and no person checked. A page lists its parts in its own
+# file, e.g. ``demos/fixlip/ai-involvement.toml``.
+
+[[levels]]
+level = 0
+name = "Human"
+summary = "A person wrote it without AI."
+
+[[levels]]
+level = 1
+name = "Polished"
+summary = "A person wrote it. AI only fixed wording, grammar or layout."
+
+[[levels]]
+level = 2
+name = "Co-written"
+summary = "AI drafted parts of it. A person rewrote or edited them line by line."
+
+[[levels]]
+level = 3
+name = "Reviewed"
+summary = "AI wrote it. A person read every line, asked for changes and approved it."
+
+[[levels]]
+level = 4
+name = "Supervised"
+summary = "AI wrote it to a person's brief. A person checked the result but not every line or claim."
+
+[[levels]]
+level = 5
+name = "Unsupervised"
+summary = "AI wrote it and no person checked it."

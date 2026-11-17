@@ -1,0 +1,91 @@
+# What AI did on this page, part by part, for the line beside the text (see ai-involvement.rst).
+# Levels: 0 Human, 1 Polished, 2 Co-written, 3 Reviewed, 4 Supervised, 5 Unsupervised
+# (_data/ai-involvement.toml). Self-reported. Change a level here when it no longer holds.
+
+[page]
+level = 3
+summary = "Claude wrote most of this page from the FIxLIP paper. Max directed it in rounds and reviewed it with about 70 comments. The introduction is his own text."
+written = "Claude, directed by Max"
+models = ["Claude Fable 5.2", "Claude Opus 5.5"]
+checked = 2026-11-17
+note = "Max is still reviewing the page. The levels give its state on 17 Nov 2026."
+
+# what every part below has unless it says otherwise
+[defaults]
+level = 3
+written = "Claude, from the FIxLIP paper"
+models = ["Claude Fable 5.2"]
+human = "Max set the structure, the titles and the style. He asked for changes in rounds and in about 70 comments on the text."
+sources = "Baniecki et al. (2025)"
+checked = 2026-11-17
+
+[[parts]]
+target = ".fixlip-demo"
+name = "Demo"
+level = 4
+written = "Claude, in sessions with Max"
+models = ["Claude Opus 5.5", "Claude Fable 5.2"]
+human = "Max committed it on 26 Oct 2026 and asked for changes since. He checked how it works, not every line of its code."
+sources = "Explanations computed with shapiq from SigLIP 2 and CLIP"
+note = "Level to be confirmed by Max."
+
+[[parts]]
+target = "#fixlip-sec-summary"
+level = 4
+written = "Claude"
+human = "Max has not yet approved it."
+
+[[parts]]
+target = "#fixlip-sec-introduction"
+level = 1
+written = "Max"
+human = "Max wrote it. Claude changed a few words where he asked."
+sources = ""
+
+[[parts]]
+target = "#fixlip-sec-background"
+
+[[parts]]
+target = "#fixlip-sec-method"
+
+[[parts]]
+target = "#fixlip-sec-explanation"
+
+[[parts]]
+target = "#fixlip-sec-computation"
+
+[[parts]]
+target = "#fixlip-sec-evaluation"
+
+[[parts]]
+target = "#fixlip-sec-models"
+
+[[parts]]
+target = "#fixlip-sec-limitations"
+
+[[parts]]
+target = "#fixlip-sec-code"
+
+# the definitions are the paper's, set in boxes
+[[parts]]
+target = "div.shapiq-statement-definition"
+level = 1
+written = "Baniecki et al. (2025), set by Claude"
+human = "Max asked for the boxes. The definitions keep the paper's words and notation."
+sources = "Definitions of Baniecki et al. (2025)"
+
+# all figures are drawn by Claude's script, from values computed for the page
+[[parts]]
+target = "figure.fixlip-figure"
+level = 4
+written = "Claude, drawn by its script figures.js"
+human = "Max checked every figure on the page and asked for changes. He did not check the code or every value."
+sources = "Values computed with shapiq from SigLIP 2 and CLIP"
+
+# three figures re-render the data of the paper
+[[parts]]
+target = "#fixlip-figure-paper-runtime, #fixlip-figure-paper-faithfulness, #fixlip-figure-paper-curves"
+level = 4
+written = "Claude, drawn by its script figures.js"
+human = "Max checked every figure on the page and asked for changes. He did not check the code or every value."
+sources = "Data of Baniecki et al. (2025), drawn again"

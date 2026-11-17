@@ -391,3 +391,10 @@ If you enjoy using ``shapiq``, please consider citing our NeurIPS paper :cite:p:
 
    related_software
    references
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: About
+
+   ai-involvement

@@ -11,6 +11,8 @@ FIxLIP provides faithful interaction explanations of language–image pre-traini
 for an image–text pair. This demo lets you explore FIxLIP explanations for five image–text pairs
 from MS COCO. All explanations are computed with ``shapiq``.
 
+.. shapiq-ai-involvement:: ai-involvement.toml
+
 .. shapiq-demo:: fixlip
    :fallback: images/hero_siglip2.png
    :alt: A photo of a giraffe drinking at a river and the text 'a giraffe drinking water from a river', explained by a network of image regions and words, linked by the interactions that raise (red) or lower (blue) the similarity that SigLIP 2 assigns them.
