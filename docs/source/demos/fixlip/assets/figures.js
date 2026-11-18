@@ -1546,8 +1546,7 @@
   }
 
   // The first screen of the page: the block of the demo (.fixlip-opening) reaches to the end of the
-  // screen, for which figures.css needs to know where the block starts on the page. Its link to the
-  // write-up scrolls there smoothly.
+  // screen, for which figures.css needs to know where the block starts on the page.
   const opening = document.querySelector(".fixlip-opening");
   if (opening) {
     const place = () => {
@@ -1557,47 +1556,97 @@
     place();
     // the title and the lead above the block wrap anew at another width
     new ResizeObserver(place).observe(opening.parentElement);
-    opening.querySelector(".fixlip-more a")?.addEventListener("click", (event) => {
-      // the label of the write-up's first section lies inside its box: the box is what comes into view
-      const target = document.getElementById(event.currentTarget.hash.slice(1))?.closest("section");
-      if (!target) return;
-      event.preventDefault();
-      const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      target.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
-      history.replaceState(null, "", event.currentTarget.hash);
-    });
 
-    // The way into the write-up: the divider after the block is a line down an empty stretch of the
-    // page, and the box of the summary follows it. While the page is scrolled, the line is drawn
-    // down to the lower part of the screen, and the box comes up into its place as it enters the
-    // screen (figures.css reads both shares). The places come from the layout, which the two
-    // effects do not change. A reader who asked for less motion sees both from the start.
-    const thread = opening.nextElementSibling;
-    const arrival = thread?.nextElementSibling;
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (thread?.matches("hr") && arrival?.matches("section")) {
-      const share = (value) => Math.min(1, Math.max(0, value));
-      let waiting = false;
-      const follow = () => {
-        waiting = false;
-        const screen = window.innerHeight;
-        const end = opening.getBoundingClientRect().bottom;
-        const boxTop = end + arrival.offsetTop - opening.offsetTop - opening.offsetHeight;
-        const drawn = still.matches ? 1 : share((screen * 0.9 - end) / thread.offsetHeight);
-        const arrived = still.matches ? 1 : share((screen * 0.96 - boxTop) / (screen * 0.3));
-        thread.style.setProperty("--fixlip-thread", drawn.toFixed(3));
-        arrival.style.setProperty("--fixlip-arrive", arrived.toFixed(3));
-        arrival.classList.toggle("fixlip-arriving", arrived < 1);
+    // The way into the write-up. The start of the page has two places to rest: the demo, with the
+    // end of its block at the end of the screen, and the box of the summary at the top of the
+    // screen. Between them the page does not stop. It gives a little under a scroll (GIVE), and then
+    // travels to the place ahead by itself (glide). The link under the demo travels the same way.
+    // Only a scroll by the wheel, a trackpad or the keys starts a travel, and it goes the way the
+    // reader scrolled, so a jump to a section, a drag of the scrollbar and a correction of the
+    // position by the browser are left alone. The same condition as in figures.css decides where
+    // this is on. A reader who asked for less motion scrolls freely, and the link jumps.
+    const link = opening.querySelector(".fixlip-more a");
+    // the label of the write-up's first section lies inside its box: the box is what comes into view
+    const summary = link && document.getElementById(link.hash.slice(1))?.closest("section");
+    if (summary) {
+      const GIVE = 5; // rem of free scrolling at either place, as the room around the divider
+      const GLIDE = 1100; // ms for a travel of a screen or more
+      const KEYS = { " ": 1, PageDown: 1, ArrowDown: 1, PageUp: -1, ArrowUp: -1 };
+      const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const desk = window.matchMedia("(min-width: 40rem) and (hover: hover)");
+      const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize);
+      // the scroll positions of the two places
+      const rest = () => {
+        const end = opening.getBoundingClientRect().bottom + window.scrollY;
+        return Math.max(0, Math.round(end - document.documentElement.clientHeight));
       };
-      const ask = () => {
-        if (waiting) return;
-        waiting = true;
-        requestAnimationFrame(follow);
+      const arrival = () => {
+        const top = summary.getBoundingClientRect().top + window.scrollY;
+        return Math.round(top - parseFloat(getComputedStyle(summary).scrollMarginTop));
       };
-      follow();
-      window.addEventListener("scroll", ask, { passive: true });
-      window.addEventListener("resize", ask);
-      still.addEventListener("change", ask);
+
+      let gliding = 0; // the number of the travel that runs, 0 if none
+      let travels = 0;
+      let asked = -Infinity; // when the reader last scrolled by hand
+      let way = 0; // and which way: 1 down the page, -1 up
+      const hold = (event) => event.preventDefault();
+      const end = () => {
+        gliding = 0;
+        window.removeEventListener("wheel", hold);
+      };
+      const glide = (to) => {
+        if (calm.matches) {
+          window.scrollTo({ top: to, behavior: "instant" });
+          return;
+        }
+        const travel = ++travels;
+        const from = window.scrollY;
+        const time = Math.min(GLIDE, Math.max(GLIDE * 0.4, Math.abs(to - from) * 1.2));
+        const start = performance.now();
+        gliding = travel;
+        // what is left of the scroll that started the travel must not move the page against it
+        window.addEventListener("wheel", hold, { passive: false });
+        const step = (now) => {
+          if (gliding !== travel) return;
+          const share = Math.min(1, (now - start) / time);
+          const eased = 0.5 - Math.cos(Math.PI * share) / 2;
+          window.scrollTo({ top: from + (to - from) * eased, behavior: "instant" });
+          if (share < 1) requestAnimationFrame(step);
+          else setTimeout(() => gliding === travel && end(), 150);
+        };
+        requestAnimationFrame(step);
+      };
+
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (gliding || calm.matches || !desk.matches || performance.now() - asked > 400) return;
+          const y = window.scrollY;
+          const give = GIVE * rem();
+          const from = rest();
+          const to = arrival();
+          if (y >= from + give && y <= to - give) glide(way > 0 ? to : from);
+        },
+        { passive: true },
+      );
+      const ask = (direction) => {
+        if (!direction) return;
+        asked = performance.now();
+        way = Math.sign(direction);
+      };
+      window.addEventListener("wheel", (event) => ask(event.deltaY), { passive: true });
+      window.addEventListener("keydown", (event) => {
+        if (event.target.closest?.("input, select, textarea")) return;
+        ask((KEYS[event.key] ?? 0) * (event.key === " " && event.shiftKey ? -1 : 1));
+      });
+      // a finger on the screen takes the page back
+      window.addEventListener("touchstart", () => gliding && end(), { passive: true });
+
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        glide(arrival());
+        history.replaceState(null, "", link.hash);
+      });
     }
   }
 
