@@ -365,3 +365,12 @@ picking the question, start or molecule already shown does nothing. The atoms of
 Tab stop, with arrow keys between them (`roving`), and the drawings themselves are not. The exact
 demo says "1 fewer evaluation" for benzene at two layers, hides its hint on any atom, and shows a
 focus ring. A hidden hint stops bobbing.
+
+A twenty-eighth pass rebased the demos onto the FIxLIP page and took its conventions. The page's
+title is the paper's, shortened as FIxLIP's is ("Exact Shapley Interactions for Graph Neural
+Networks"), in the middle over an amber bar. The explorer has the first screen with "Read the
+write-up" at its end (`graphshapiq-opening`, `graphshapiq-more` in `index.rst`), and below a divider
+the write-up slides over it like a sheet on a wide screen (`stage()` in `demo.js`, the rules at the
+end of `demo.css`, copied from `fixlip/assets/figures.js` and `figures.css` with `gsq-` names).
+Until the write-up exists, the figure of the receptive fields stands for it. Section titles are in
+title case.

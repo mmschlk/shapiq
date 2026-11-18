@@ -1159,3 +1159,226 @@ body[data-theme="dark"] .gsq {
     transition-duration: 1ms !important;
   }
 }
+
+/* -- the page: its title, its first screen, and the write-up that slides over it --------------- */
+
+/* As on the FIxLIP page (fixlip/assets/figures.css, whose notes say more): the title stands over the
+   demo in the middle over a short amber bar, on one line from the width of a tablet on. The demo
+   has the first screen for itself (.graphshapiq-opening), with a link to the write-up at its end.
+   While the page is scrolled, the first page stays and recedes, and the write-up slides over it
+   like a sheet (graphshapiq-staged, set and measured by demo.js). On a narrow screen, without the
+   script and on paper, the page scrolls as one. */
+article[role="main"] section:has(> .graphshapiq-opening) > h1 {
+  position: relative;
+  clear: both;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  text-align: center;
+  text-wrap: balance;
+  letter-spacing: -0.02em;
+}
+
+article[role="main"] section:has(> .graphshapiq-opening) > h1::after {
+  content: "";
+  display: block;
+  width: 2.25rem;
+  height: 3px;
+  margin: 0.7rem auto 0;
+  border-radius: 2px;
+  background: var(--shapiq-amber, #f5a300);
+}
+
+article[role="main"] section:has(> .graphshapiq-opening) > h1 > a.headerlink {
+  position: absolute;
+  margin-left: 0.3em;
+}
+
+@media (min-width: 40rem) {
+  article[role="main"] section:has(> .graphshapiq-opening) > h1 {
+    font-size: min(1.9rem, calc((100vw - 2rem) / 24.8));
+    white-space: nowrap;
+  }
+}
+
+.graphshapiq-opening {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--gsq-opening-top, 8rem));
+  min-height: calc(100svh - var(--gsq-opening-top, 8rem));
+}
+
+.graphshapiq-opening > .graphshapiq-explorer-demo {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+article[role="main"] .graphshapiq-opening > p.graphshapiq-more {
+  margin: 0;
+  padding: 1rem 0 0.6rem;
+  text-align: center;
+}
+
+@media (min-width: 40rem) {
+  article[role="main"] .graphshapiq-opening > p.graphshapiq-more {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-top: 2rem;
+    background: linear-gradient(to bottom, transparent, var(--color-background-primary, #ffffff) 55%);
+    pointer-events: none;
+  }
+
+  article[role="main"] .graphshapiq-opening > p.graphshapiq-more a.reference {
+    pointer-events: auto;
+  }
+}
+
+article[role="main"] p.graphshapiq-more a.reference,
+article[role="main"] p.graphshapiq-more a.reference:hover {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-shadow: none;
+  color: var(--shapiq-text-muted, #5b6275);
+  transition: color 0.2s ease;
+}
+
+article[role="main"] p.graphshapiq-more a.reference:hover,
+article[role="main"] p.graphshapiq-more a.reference:focus-visible {
+  color: var(--shapiq-amber-ink, #8c5800);
+}
+
+article[role="main"] p.graphshapiq-more a::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid var(--shapiq-amber, #f5a300);
+  border-bottom: 1.5px solid var(--shapiq-amber, #f5a300);
+  transform: rotate(45deg);
+  animation: gsq-more 2.4s ease-in-out infinite;
+}
+
+@keyframes gsq-more {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 0.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  article[role="main"] p.graphshapiq-more a::after {
+    animation: none;
+  }
+}
+
+/* the section the link leads to keeps a distance from the upper edge of the screen, and from the
+   bar that the docs keep there on a narrow page */
+article[role="main"] section.graphshapiq-writeup,
+article[role="main"] section.graphshapiq-writeup > span[id] {
+  scroll-margin-top: 1.25rem;
+}
+
+@media (max-width: 67em) {
+  article[role="main"] section.graphshapiq-writeup,
+  article[role="main"] section.graphshapiq-writeup > span[id] {
+    scroll-margin-top: 4.5rem;
+  }
+}
+
+@media print {
+  .graphshapiq-opening {
+    display: block;
+    min-height: 0;
+  }
+
+  article[role="main"] .graphshapiq-opening > p.graphshapiq-more {
+    display: none;
+  }
+}
+
+/* the divider between the demo and the write-up */
+article[role="main"] section:has(> .graphshapiq-opening) > hr.docutils {
+  margin: 2.25rem 0;
+}
+
+@media screen and (min-width: 48.1em) {
+  article[role="main"] section.gsq-staged {
+    position: relative;
+    isolation: isolate;
+  }
+
+  article[role="main"] section.gsq-staged:not(.gsq-placing) > h1,
+  article[role="main"] section.gsq-staged:not(.gsq-placing) > .graphshapiq-opening {
+    position: sticky;
+    z-index: -2;
+  }
+
+  article[role="main"] section.gsq-staged:not(.gsq-placing) > h1 {
+    top: calc(var(--gsq-title-top, 0px) - var(--gsq-over, 0px));
+    transform-origin: 50% calc(45vh - var(--gsq-title-top, 0px) + var(--gsq-over, 0px));
+  }
+
+  article[role="main"] section.gsq-staged:not(.gsq-placing) > .graphshapiq-opening {
+    top: calc(var(--gsq-opening-top, 0px) - var(--gsq-over, 0px));
+    transform-origin: 50% calc(45vh - var(--gsq-opening-top, 0px) + var(--gsq-over, 0px));
+  }
+
+  article[role="main"] section.gsq-staged::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: calc(var(--gsq-sheet-top, 100vh) + 2rem);
+    right: calc(-1 * var(--gsq-sheet-bleed));
+    bottom: 0;
+    left: calc(-1 * var(--gsq-sheet-bleed));
+    border-top: 1px solid var(--color-background-border, #eeebee);
+    border-radius: 1.25rem 1.25rem 0 0;
+    background: var(--color-background-primary, #ffffff);
+    box-shadow: 0 -1.5rem 2.5rem -1.75rem rgba(15, 18, 30, 0.35);
+    --gsq-sheet-bleed: 1rem;
+  }
+
+  /* the edge of the sheet is the divider */
+  article[role="main"] section.gsq-staged > .graphshapiq-opening + hr.docutils {
+    display: none;
+  }
+
+  article[role="main"] section.gsq-staged > .graphshapiq-opening + hr.docutils + section {
+    margin-top: 4.5rem;
+  }
+}
+
+@media screen and (min-width: 67.1em) {
+  article[role="main"] section.gsq-staged::before {
+    --gsq-sheet-bleed: 2rem;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  @media screen and (min-width: 48.1em) and (prefers-reduced-motion: no-preference) {
+    article[role="main"] section.gsq-staged:not(.gsq-placing) > h1,
+    article[role="main"] section.gsq-staged:not(.gsq-placing) > .graphshapiq-opening {
+      animation: gsq-recede linear both;
+      animation-timeline: scroll(root block);
+      animation-range: var(--gsq-over, 0px) calc(var(--gsq-over, 0px) + 85vh);
+    }
+  }
+}
+
+@keyframes gsq-recede {
+  to {
+    opacity: 0.2;
+    scale: 0.93;
+  }
+}

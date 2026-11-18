@@ -553,5 +553,55 @@
     document.head.appendChild(loader);
   }
 
+  // The page's first page is its title and the block of the demo (.graphshapiq-opening), which
+  // reaches to the end of the screen; the write-up is the second page. As on the FIxLIP page
+  // (fixlip/assets/figures.js), demo.css keeps the first page in place while the second slides over
+  // it, and needs the places for that, measured with nothing held: where the title and the block
+  // lie, by how much the first page is higher than the screen, and where the second page starts.
+  function stage() {
+    const opening = document.querySelector(".graphshapiq-opening");
+    const section = opening?.parentElement, title = section?.querySelector(":scope > h1");
+    if (!opening || !title) return;
+    section.classList.add("gsq-staged");
+    const place = () => {
+      section.classList.add("gsq-placing");
+      // the title stays on one line (demo.css), also in a font that runs wider than expected
+      title.style.fontSize = "";
+      const look = getComputedStyle(title);
+      if (look.whiteSpace === "nowrap") {
+        const words = document.createRange();
+        words.selectNodeContents(title.firstChild);
+        const width = words.getBoundingClientRect().width, room = title.clientWidth;
+        if (width > room) title.style.fontSize = `${Math.floor((parseFloat(look.fontSize) * room * 10) / width) / 10}px`;
+      }
+      const down = window.scrollY, top = Math.round(opening.getBoundingClientRect().top + down);
+      section.style.setProperty("--gsq-title-top", `${Math.round(title.getBoundingClientRect().top + down)}px`);
+      section.style.setProperty("--gsq-opening-top", `${top}px`);
+      const height = opening.offsetHeight; // the block now has its height for this place
+      section.style.setProperty("--gsq-over", `${Math.max(0, top + height - document.documentElement.clientHeight)}px`);
+      section.style.setProperty("--gsq-sheet-top", `${Math.round(top + height - (section.getBoundingClientRect().top + down))}px`);
+      section.classList.remove("gsq-placing");
+    };
+    place();
+    // the title wraps anew at another width, the demo grows with its note, the screen changes
+    const watch = new ResizeObserver(place);
+    watch.observe(section); watch.observe(opening);
+    window.addEventListener("resize", place);
+    // the link under the demo glides to the write-up
+    const link = opening.querySelector(".graphshapiq-more a");
+    const target = link && document.getElementById(link.hash.slice(1))?.closest("section");
+    link?.addEventListener("click", (event) => {
+      if (!target) return;
+      event.preventDefault();
+      target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
+      history.replaceState(null, "", link.hash);
+    });
+    // a part of the first page that takes the focus while the write-up covers it comes into view
+    opening.addEventListener("focusin", () => {
+      if (window.scrollY > parseFloat(section.style.getPropertyValue("--gsq-over")) + 8) window.scrollTo({ top: 0 });
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", stage); else stage();
+
   window.ShapiqGraph = { RED, BLUE, VIOLET, NAMES, reducedMotion, hovers, switcher, roving, picker, question, hinter, h, svg, sig, bits, signed, percent, colorOf, value, sameSet, neighbors, geom, skeleton, tile, motif, row, groupName, atomName, legend, formula, predict, createScene, mount };
 })();

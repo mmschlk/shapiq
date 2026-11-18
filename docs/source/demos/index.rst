@@ -41,7 +41,7 @@ takes too long or needs too large a model to run with the docs, and it shows wha
       :img-top: /_static/images/hero_graphshapiq_explorer_demo.png
       :img-alt: The GraphSHAP-IQ explorer: 1,3-dinitrobenzene, each nitrogen joined to its oxygens by red bands, beside the strongest pairs of atoms.
 
-      Three graph neural networks, eight molecules, every molecule explained for every question:
+      Three graph neural networks, seven molecules, every molecule explained for every question:
       Shapley values, interactions of up to four atoms, and the Möbius interactions of all orders,
       exactly, with GraphSHAP-IQ, and why that does not take 2ⁿ evaluations. Build a molecule of
       your own, and your browser explains it while you watch.
