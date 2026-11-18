@@ -1545,7 +1545,29 @@
     });
   }
 
-  // the data: on the page (the docs load both files before this script), or loaded now
+  // The first screen of the page: the block of the demo (.fixlip-opening) reaches to the end of the
+  // screen, for which figures.css needs to know where the block starts on the page. Its link to the
+  // write-up scrolls there smoothly.
+  const opening = document.querySelector(".fixlip-opening");
+  if (opening) {
+    const place = () => {
+      const top = Math.round(opening.getBoundingClientRect().top + window.scrollY);
+      opening.style.setProperty("--fixlip-opening-top", `${top}px`);
+    };
+    place();
+    // the title and the lead above the block wrap anew at another width
+    new ResizeObserver(place).observe(opening.parentElement);
+    opening.querySelector(".fixlip-more a")?.addEventListener("click", (event) => {
+      // the label of the write-up's first section lies inside its box: the box is what comes into view
+      const target = document.getElementById(event.currentTarget.hash.slice(1))?.closest("section");
+      if (!target) return;
+      event.preventDefault();
+      const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+      history.replaceState(null, "", event.currentTarget.hash);
+    });
+  }
+
   const load = (name, file) =>
     window[name]
       ? Promise.resolve()

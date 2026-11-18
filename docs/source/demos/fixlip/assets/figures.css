@@ -1597,6 +1597,125 @@ article[role="main"] section.fixlip-citation div[class*="highlight-"] {
   margin: 0 0 0.75rem;
 }
 
+/* -- the first screen of the page ---------------------------------------------------------------------- */
+
+/* The demo has the first screen for itself. Its block reaches down to the end of the screen, with the
+   demo in the middle of the room that is left and a link to the write-up at its end, so the write-up
+   starts below the screen. --fixlip-opening-top is where the block starts on the page, measured by
+   figures.js. Where the demo is higher than the screen, the link follows it. */
+.fixlip-opening {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--fixlip-opening-top, 17rem));
+  min-height: calc(100svh - var(--fixlip-opening-top, 17rem));
+}
+
+.fixlip-opening > .fixlip-demo {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+article[role="main"] .fixlip-opening > p.fixlip-more {
+  margin: 0;
+  padding: 1.25rem 0 0.9rem;
+  text-align: center;
+}
+
+/* Where the demo is higher than the screen, the link stays at the lower edge of the screen until the
+   end of the demo is reached, over a ground that fades into the page. Only the link takes the
+   pointer, so the demo under the ground can still be used. On a phone, where the demo is several
+   screens long, the link waits at the end of the demo. */
+@media (min-width: 40rem) {
+  article[role="main"] .fixlip-opening > p.fixlip-more {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-top: 2.5rem;
+    background: linear-gradient(to bottom, transparent, var(--color-background-primary, #ffffff) 55%);
+    pointer-events: none;
+  }
+
+  article[role="main"] .fixlip-opening > p.fixlip-more a.reference {
+    pointer-events: auto;
+  }
+}
+
+/* the link to the write-up: a small label over an arrow that points down the page */
+article[role="main"] p.fixlip-more a.reference,
+article[role="main"] p.fixlip-more a.reference:hover {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-shadow: none;
+  color: var(--shapiq-text-muted, #5b6275);
+  transition: color 0.2s ease;
+}
+
+article[role="main"] p.fixlip-more a.reference:hover,
+article[role="main"] p.fixlip-more a.reference:focus-visible {
+  color: var(--shapiq-amber-ink);
+}
+
+article[role="main"] p.fixlip-more a::after {
+  content: "";
+  width: 0.7rem;
+  height: 0.7rem;
+  border-right: 2.5px solid var(--shapiq-amber);
+  border-bottom: 2.5px solid var(--shapiq-amber);
+  border-radius: 1px;
+  transform: rotate(45deg);
+  animation: fixlip-more 2.4s ease-in-out infinite;
+}
+
+@keyframes fixlip-more {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 0.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  article[role="main"] p.fixlip-more a::after {
+    animation: none;
+  }
+}
+
+/* the box that the link leads to keeps a distance from the upper edge of the screen, and from the
+   bar that the docs keep there on a narrow page */
+article[role="main"] section.fixlip-summary,
+article[role="main"] section.fixlip-summary > span[id] {
+  scroll-margin-top: 1.25rem;
+}
+
+@media (max-width: 67em) {
+  article[role="main"] section.fixlip-summary,
+  article[role="main"] section.fixlip-summary > span[id] {
+    scroll-margin-top: 4.5rem;
+  }
+}
+
+/* on paper there is no screen to fill and nothing to scroll to */
+@media print {
+  .fixlip-opening {
+    display: block;
+    min-height: 0;
+  }
+
+  article[role="main"] .fixlip-opening > p.fixlip-more {
+    display: none;
+  }
+}
+
 /* the divider between the demo and the write-up */
 article[role="main"] hr.docutils {
   margin: 2.25rem 0;
