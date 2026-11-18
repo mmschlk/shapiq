@@ -929,7 +929,7 @@ figure. Everything shown for the five examples is computed for this page with ``
 Grad-ECLIP and exCLIP in :shapiq-figure:`methods` are computed with their settings in the original
 code of FIxLIP.
 
-FIxLIP is joint work with authors of ``shapiq``, and its original code is available at
+The original code of FIxLIP is available at
 `github.com/hbaniecki/fixlip <https://github.com/hbaniecki/fixlip>`__. If you use FIxLIP in your
 work, please cite it.
 
