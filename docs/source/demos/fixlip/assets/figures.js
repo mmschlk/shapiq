@@ -1545,109 +1545,64 @@
     });
   }
 
-  // The first screen of the page: the block of the demo (.fixlip-opening) reaches to the end of the
-  // screen, for which figures.css needs to know where the block starts on the page.
+  // The first page of the page is its title and the block of the demo (.fixlip-opening), which
+  // reaches to the end of the screen. The write-up is the second page. figures.css keeps the first
+  // page in place while the second slides over it, and needs the places for that: where the title
+  // and the block lie on the page, by how much the first page is higher than the screen, and where
+  // the second page starts in the section. They are measured with nothing held in place.
   const opening = document.querySelector(".fixlip-opening");
-  if (opening) {
+  const stage = opening?.parentElement;
+  const title = stage?.querySelector(":scope > h1");
+  if (opening && title) {
+    stage.classList.add("fixlip-staged");
     const place = () => {
-      const top = Math.round(opening.getBoundingClientRect().top + window.scrollY);
-      opening.style.setProperty("--fixlip-opening-top", `${top}px`);
+      stage.classList.add("fixlip-placing");
+      // the title stays on one line (figures.css), also in a font that runs wider than expected
+      title.style.fontSize = "";
+      const look = getComputedStyle(title);
+      if (look.whiteSpace === "nowrap") {
+        const words = document.createRange();
+        words.selectNodeContents(title.firstChild);
+        const width = words.getBoundingClientRect().width;
+        const room = title.clientWidth;
+        if (width > room) title.style.fontSize = `${Math.floor((parseFloat(look.fontSize) * room * 10) / width) / 10}px`;
+      }
+      const down = window.scrollY;
+      const top = Math.round(opening.getBoundingClientRect().top + down);
+      stage.style.setProperty("--fixlip-title-top", `${Math.round(title.getBoundingClientRect().top + down)}px`);
+      stage.style.setProperty("--fixlip-opening-top", `${top}px`);
+      // the block now has its height for this place
+      const height = opening.offsetHeight;
+      const over = Math.max(0, top + height - document.documentElement.clientHeight);
+      stage.style.setProperty("--fixlip-over", `${over}px`);
+      const start = top + height - (stage.getBoundingClientRect().top + down);
+      stage.style.setProperty("--fixlip-sheet-top", `${Math.round(start)}px`);
+      stage.classList.remove("fixlip-placing");
     };
     place();
-    // the title and the lead above the block wrap anew at another width
-    new ResizeObserver(place).observe(opening.parentElement);
+    // the title wraps anew at another width, the demo grows with its note, the screen changes
+    const watch = new ResizeObserver(place);
+    watch.observe(stage);
+    watch.observe(opening);
+    window.addEventListener("resize", place);
 
-    // The way into the write-up. The start of the page has two places to rest: the demo, with the
-    // end of its block at the end of the screen, and the box of the summary at the top of the
-    // screen. Between them the page does not stop. It gives a little under a scroll (GIVE), and then
-    // travels to the place ahead by itself (glide). The link under the demo travels the same way.
-    // Only a scroll by the wheel, a trackpad or the keys starts a travel, and it goes the way the
-    // reader scrolled, so a jump to a section, a drag of the scrollbar and a correction of the
-    // position by the browser are left alone. The same condition as in figures.css decides where
-    // this is on. A reader who asked for less motion scrolls freely, and the link jumps.
+    // the link under the demo leads to the write-up, which starts with the box of the summary (the
+    // label of the section lies inside the box)
     const link = opening.querySelector(".fixlip-more a");
-    // the label of the write-up's first section lies inside its box: the box is what comes into view
     const summary = link && document.getElementById(link.hash.slice(1))?.closest("section");
-    if (summary) {
-      const GIVE = 5; // rem of free scrolling at either place, as the room around the divider
-      const GLIDE = 1100; // ms for a travel of a screen or more
-      const KEYS = { " ": 1, PageDown: 1, ArrowDown: 1, PageUp: -1, ArrowUp: -1 };
-      const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
-      const desk = window.matchMedia("(min-width: 40rem) and (hover: hover)");
-      const rem = () => parseFloat(getComputedStyle(document.documentElement).fontSize);
-      // the scroll positions of the two places
-      const rest = () => {
-        const end = opening.getBoundingClientRect().bottom + window.scrollY;
-        return Math.max(0, Math.round(end - document.documentElement.clientHeight));
-      };
-      const arrival = () => {
-        const top = summary.getBoundingClientRect().top + window.scrollY;
-        return Math.round(top - parseFloat(getComputedStyle(summary).scrollMarginTop));
-      };
-
-      let gliding = 0; // the number of the travel that runs, 0 if none
-      let travels = 0;
-      let asked = -Infinity; // when the reader last scrolled by hand
-      let way = 0; // and which way: 1 down the page, -1 up
-      const hold = (event) => event.preventDefault();
-      const end = () => {
-        gliding = 0;
-        window.removeEventListener("wheel", hold);
-      };
-      const glide = (to) => {
-        if (calm.matches) {
-          window.scrollTo({ top: to, behavior: "instant" });
-          return;
-        }
-        const travel = ++travels;
-        const from = window.scrollY;
-        const time = Math.min(GLIDE, Math.max(GLIDE * 0.4, Math.abs(to - from) * 1.2));
-        const start = performance.now();
-        gliding = travel;
-        // what is left of the scroll that started the travel must not move the page against it
-        window.addEventListener("wheel", hold, { passive: false });
-        const step = (now) => {
-          if (gliding !== travel) return;
-          const share = Math.min(1, (now - start) / time);
-          const eased = 0.5 - Math.cos(Math.PI * share) / 2;
-          window.scrollTo({ top: from + (to - from) * eased, behavior: "instant" });
-          if (share < 1) requestAnimationFrame(step);
-          else setTimeout(() => gliding === travel && end(), 150);
-        };
-        requestAnimationFrame(step);
-      };
-
-      window.addEventListener(
-        "scroll",
-        () => {
-          if (gliding || calm.matches || !desk.matches || performance.now() - asked > 400) return;
-          const y = window.scrollY;
-          const give = GIVE * rem();
-          const from = rest();
-          const to = arrival();
-          if (y >= from + give && y <= to - give) glide(way > 0 ? to : from);
-        },
-        { passive: true },
-      );
-      const ask = (direction) => {
-        if (!direction) return;
-        asked = performance.now();
-        way = Math.sign(direction);
-      };
-      window.addEventListener("wheel", (event) => ask(event.deltaY), { passive: true });
-      window.addEventListener("keydown", (event) => {
-        if (event.target.closest?.("input, select, textarea")) return;
-        ask((KEYS[event.key] ?? 0) * (event.key === " " && event.shiftKey ? -1 : 1));
-      });
-      // a finger on the screen takes the page back
-      window.addEventListener("touchstart", () => gliding && end(), { passive: true });
-
-      link.addEventListener("click", (event) => {
-        event.preventDefault();
-        glide(arrival());
-        history.replaceState(null, "", link.hash);
-      });
-    }
+    link?.addEventListener("click", (event) => {
+      if (!summary) return;
+      event.preventDefault();
+      const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      summary.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+      history.replaceState(null, "", link.hash);
+    });
+    // a part of the first page that takes the focus while the write-up covers it comes into view
+    opening.addEventListener("focusin", () => {
+      if (window.scrollY > parseFloat(stage.style.getPropertyValue("--fixlip-over")) + 8) {
+        window.scrollTo({ top: 0 });
+      }
+    });
   }
 
   const load = (name, file) =>

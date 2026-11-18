@@ -143,21 +143,26 @@
     models.setAttribute("role", "group");
     models.setAttribute("aria-label", "Model");
     const switches = el("div", "fixlip-demo-switches");
-    // what the models are, for readers who have not met them, behind a small "i"
+    // what the demo shows, in a few sentences behind a small "i": the models, the explanation and
+    // its parts, each with a link to the section of the write-up that treats it
     function normsSentence() {
       const known = data.models.filter((m) => m.norms);
       if (!known.length) return "";
       const median = (m, kind) => m.norms[kind][10].toFixed(2).replace("-", "−");
       const own = known.map((m) => `${median(m, "matching")} (${m.label})`).join(" and ");
       const unrelated = known.map((m) => median(m, "unrelated")).join(" and ");
-      return (
-        "<p>Similarities are small numbers: COCO photos score about " +
-        `${own} with their own captions, and ${unrelated} with unrelated ones.</p>`
-      );
+      return ` A photo from MS COCO scores about ${own} with its own caption, and ${unrelated} with an unrelated one.`;
     }
+    // a section of the write-up: on its page a place on the page, elsewhere (the landing page) the
+    // page of the demo, which lies three folders above the demo's assets
+    const section = (label, text) => {
+      const here = document.getElementById(label);
+      const page = here ? "" : `${root.dataset.root ?? ""}../../../demos/fixlip/index.html`;
+      return `<a href="${page}#${label}">${text}</a>`;
+    };
     const info = el("button", "fixlip-demo-info", "i");
     info.type = "button";
-    info.setAttribute("aria-label", "What are CLIP and SigLIP 2?");
+    info.setAttribute("aria-label", "About the demo");
     info.setAttribute("aria-expanded", "false");
     info.setAttribute("aria-controls", "fixlip-demo-about");
     // the note opens under the bar, in the page's flow: it pushes the photo and the panel down, and
@@ -169,23 +174,21 @@
     aboutClip.append(aboutCard);
     about.append(aboutClip);
     aboutCard.innerHTML =
-      '<p class="fixlip-demo-about-title">What are CLIP and SigLIP 2?</p>' +
-      "<p>Vision–language models: they turn a photo and a sentence each into a list of numbers. " +
-      "When both say the same thing, the two lists point the same way, and their " +
-      "<strong>similarity</strong> is high.</p>" +
+      '<p class="fixlip-demo-about-title">About the demo</p>' +
+      `<p>CLIP and SigLIP 2 are ${section("fixlip-sec-encoders", "vision–language encoders")}. ` +
+      "They predict the <strong>similarity</strong> of an image and a text." +
       normsSentence() +
-      "<p>They see a photo as a grid of square <strong>patches</strong> (here 32 × 32 pixels each: " +
-      "7 × 7 for CLIP, 8 × 8 for SigLIP 2) and a sentence as <strong>tokens</strong>, words or " +
-      "pieces of them, and look at all of them at once.</p>" +
-      "<p>They learned from millions of photos with their captions from the web which go together, " +
-      "but were never told where in a photo a giraffe is. That is why, in the photo of the giraffe " +
-      "at the pond, they also see one in the dead tree behind it.</p>" +
-      "<p>To explain a prediction, <code>shapiq</code> hides patches and words in many combinations " +
-      "and watches how the similarity changes. The patches and words are the <strong>features</strong>. " +
-      "The explanation gives each feature a <strong>main effect</strong> and each pair of features an " +
-      "<strong>interaction</strong>, which is what the two add together beyond their main effects. " +
-      "A <strong>clique</strong> is a group of features that raise " +
-      "the similarity the most together.</p>";
+      "</p>" +
+      `<p>${section("fixlip-sec-faithfulness", "FIxLIP")} explains this prediction with the ` +
+      "<strong>features</strong> of the pair, i.e. its image patches (8 × 8 for SigLIP 2, 7 × 7 for " +
+      "CLIP) and its text tokens. Each feature receives a <strong>main effect</strong> and each " +
+      `pair of features an ${section("fixlip-sec-interactions", "<strong>interaction</strong>")}. ` +
+      '<strong class="fixlip-demo-red">Red</strong> raises the similarity and ' +
+      '<strong class="fixlip-demo-blue">blue</strong> lowers it.</p>' +
+      `<p>A ${section("fixlip-sec-cliques", "<strong>clique</strong>")} is the group of features ` +
+      `that raises the similarity the most together. The ${section("fixlip-sec-correlation", "R²")} ` +
+      "states how faithful the explanation is to the model. All explanations are computed with " +
+      `<code>shapiq</code> and ${section("fixlip-sec-demo-estimator", "estimated with ProxySHAP")}.</p>`;
     const close = el("button", "fixlip-demo-about-close", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Close");

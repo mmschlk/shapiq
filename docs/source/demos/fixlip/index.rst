@@ -7,13 +7,6 @@
 Explaining Similarity in Vision-Language Encoders
 =================================================
 
-.. rst-class:: shapiq-examples-lead
-
-FIxLIP provides faithful interaction explanations of language–image pre-training models
-:cite:p:`Baniecki.2025`. It explains the similarity that encoders such as CLIP and SigLIP 2 predict
-for an image–text pair. This demo lets you explore FIxLIP explanations for five image–text pairs
-from MS COCO. All explanations are computed with ``shapiq``.
-
 .. container:: fixlip-opening
 
    .. shapiq-demo:: fixlip

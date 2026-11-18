@@ -216,6 +216,15 @@ body[data-theme="dark"] .fixlip-demo {
   font-weight: 700;
 }
 
+/* the two colors of the explanation, where the note names them (RED and BLUE of demo.js) */
+.fixlip-demo-about strong.fixlip-demo-red {
+  color: rgb(255, 13, 87);
+}
+
+.fixlip-demo-about strong.fixlip-demo-blue {
+  color: rgb(30, 136, 229);
+}
+
 .fixlip-demo-about-close {
   float: right;
   margin: -0.35rem -0.5rem 0 0;
