@@ -453,11 +453,23 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   transition: opacity 280ms var(--shapiq-ease), visibility 0s;
 }
 
+/* Every content slide has its title in the same place and size, at the top of one column of at most
+   72rem in the middle of the window, and the amber line above it. Only the room around them grows
+   with the window. What does not fit below the title scrolls. */
+.shapiq-deck .shapiq-slide-title,
+.shapiq-deck .shapiq-slide-body {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
 .shapiq-deck .shapiq-slide-title {
   position: relative;
-  margin: 0 0 1.1em;
+  flex: 0 0 auto;
+  margin-top: 0;
+  margin-bottom: 0.8em;
   padding-top: 0.55em;
-  font-size: 1.75em;
+  font-size: 1.5em;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.01em;
@@ -504,37 +516,20 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   flex: 0 0 auto;
 }
 
+/* their left edge is the one of the content slides */
 .shapiq-deck .shapiq-slide--title .shapiq-slide-title {
-  max-width: 18em;
   margin-bottom: 0.25em;
   font-size: 2.8em;
   line-height: 1.08;
 }
 
 .shapiq-deck .shapiq-slide--section .shapiq-slide-title {
-  max-width: 16em;
   font-size: 2.6em;
 }
 
-/* a demo or a figure that needs the full width: a smaller title, the content up to 72rem wide */
-.shapiq-deck .shapiq-slide--wide .shapiq-slide-title {
-  margin-bottom: 0.6em;
-  font-size: 1.3em;
-}
-
+/* a demo or a figure that needs the full width keeps the size of the docs' text */
 .shapiq-deck .shapiq-slide--wide .shapiq-slide-body {
-  justify-content: center;
-  width: 100%;
-  max-width: 72rem;
-  margin: 0 auto;
-  /* the demos keep the size of the docs' text */
   font-size: 1rem;
-}
-
-.shapiq-deck .shapiq-slide--wide .shapiq-slide-title {
-  width: 100%;
-  max-width: 72rem;
-  margin-inline: auto;
 }
 
 /* the corner: where the talk is, and the buttons to move through it */

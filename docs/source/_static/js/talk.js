@@ -4,7 +4,7 @@
    moves the slides into a deck that fills the window and shows one slide at a time:
 
      →, Space, Page Down    the next step, or the next slide      (a presenter's clicker sends Page Down)
-     ←, Page Up             the step before, or the slide before
+     ←, Backspace, Page Up  the step before, or the slide before
      Home, End              the first and the last slide
      N                      the notes of the slide, on this screen
      F                      full screen
@@ -224,7 +224,7 @@
     notes = make("aside", "shapiq-deck-notes");
     notes.hidden = true;
     deck.append(corner, progress, notes);
-    deck.addEventListener("click", clickToAdvance);
+    deck.addEventListener("pointerup", keepKeys);
     deck.addEventListener("pointerdown", swipeStart);
     deck.addEventListener("pointerup", swipeEnd);
     deck.addEventListener("pointermove", showCorner);
@@ -384,15 +384,19 @@
     pointerTimer = setTimeout(() => deck && deck.classList.remove("shapiq-pointer-moved"), 1800);
   }
 
-  // a click or a swipe on the slide itself moves on, not one on its text, a demo or a figure
+  // A mouse click never moves through the talk: the demos are clicked all the time. After a click on
+  // a button or a slider of a demo, the keys go back to the deck, so that → and Space move on.
+  function keepKeys(event) {
+    if (event.pointerType === "touch") return;
+    const focused = document.activeElement;
+    if (focused && focused !== deck && deck.contains(focused) && control(focused) && !typing(focused)) {
+      deck.focus({ preventScroll: true });
+    }
+  }
+
+  // a swipe on the slide itself moves on (a tablet), not one on its text, a demo or a figure
   const onBackground = (target) => target.classList &&
     (target.classList.contains("shapiq-slide") || target.classList.contains("shapiq-slide-body"));
-
-  function clickToAdvance(event) {
-    if (event.button !== 0 || scrolling() || !onBackground(event.target)) return;
-    if (String(window.getSelection && window.getSelection()).length) return;
-    forward();
-  }
 
   let swipe = null;
   function swipeStart(event) {
@@ -435,7 +439,7 @@
     if (key === "PageDown") action = forward;
     else if (key === "PageUp") action = back;
     else if ((key === "ArrowRight" || key === " ") && !inControl) action = forward;
-    else if (key === "ArrowLeft" && !inControl) action = back;
+    else if ((key === "ArrowLeft" || key === "Backspace") && !inControl) action = back;
     else if (key === "Home" && !inControl) action = () => go(0, 0);
     else if (key === "End" && !inControl) action = () => go(slides.length - 1, slides[slides.length - 1].shapiqSteps - 1);
     else if (key === "n" || key === "N") action = toggleNotes;
