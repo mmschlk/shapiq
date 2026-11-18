@@ -15,6 +15,9 @@
 // Pointing at a player (hover, keyboard focus, or a tap that pins it) lights up all its
 // interactions, red for those that raise the similarity and blue for those that lower it.
 //
+// On the demo's page, the figures of the write-up show the photo chosen here (figures.js), and a
+// photo chosen in a figure is shown here.
+//
 // Without JavaScript, the static figure in the <noscript> shows; when the data does not load or
 // does not fit, the script shows that figure itself.
 (() => {
@@ -33,6 +36,7 @@
   const BLUE = [30, 136, 229];
   const TOP = 5; // the strongest interactions listed for a player
   const STRONGEST = 12; // the interactions drawn in the full explanation
+  const IMAGE_EVENT = "fixlip-demo-image"; // a photo was chosen, here or in a figure of the page
   const VIEWS = [
     // the view, its label, and the label on small screens
     ["none", "No explanation", "None"],
@@ -139,21 +143,26 @@
     models.setAttribute("role", "group");
     models.setAttribute("aria-label", "Model");
     const switches = el("div", "fixlip-demo-switches");
-    // what the models are, for readers who have not met them, behind a small "i"
+    // what the demo shows, in a few sentences behind a small "i": the models, the explanation and
+    // its parts, each with a link to the section of the write-up that treats it
     function normsSentence() {
       const known = data.models.filter((m) => m.norms);
       if (!known.length) return "";
       const median = (m, kind) => m.norms[kind][10].toFixed(2).replace("-", "−");
       const own = known.map((m) => `${median(m, "matching")} (${m.label})`).join(" and ");
       const unrelated = known.map((m) => median(m, "unrelated")).join(" and ");
-      return (
-        "<p>Similarities are small numbers: COCO photos score about " +
-        `${own} with their own captions, and ${unrelated} with unrelated ones.</p>`
-      );
+      return ` A photo from MS COCO scores about ${own} with its own caption, and ${unrelated} with an unrelated one.`;
     }
+    // a section of the write-up: on its page a place on the page, elsewhere (the landing page) the
+    // page of the demo, which lies three folders above the demo's assets
+    const section = (label, text) => {
+      const here = document.getElementById(label);
+      const page = here ? "" : `${root.dataset.root ?? ""}../../../demos/fixlip/index.html`;
+      return `<a href="${page}#${label}">${text}</a>`;
+    };
     const info = el("button", "fixlip-demo-info", "i");
     info.type = "button";
-    info.setAttribute("aria-label", "What are CLIP and SigLIP 2?");
+    info.setAttribute("aria-label", "About the demo");
     info.setAttribute("aria-expanded", "false");
     info.setAttribute("aria-controls", "fixlip-demo-about");
     // the note opens under the bar, in the page's flow: it pushes the photo and the panel down, and
@@ -165,22 +174,21 @@
     aboutClip.append(aboutCard);
     about.append(aboutClip);
     aboutCard.innerHTML =
-      '<p class="fixlip-demo-about-title">What are CLIP and SigLIP 2?</p>' +
-      "<p>Vision–language models: they turn a photo and a sentence each into a list of numbers. " +
-      "When both say the same thing, the two lists point the same way, and their " +
-      "<strong>similarity</strong> is high.</p>" +
+      '<p class="fixlip-demo-about-title">About the demo</p>' +
+      `<p>CLIP and SigLIP 2 are ${section("fixlip-sec-encoders", "vision–language encoders")}. ` +
+      "They predict the <strong>similarity</strong> of an image and a text." +
       normsSentence() +
-      "<p>They see a photo as a grid of square <strong>patches</strong> (here 32 × 32 pixels each: " +
-      "7 × 7 for CLIP, 8 × 8 for SigLIP 2) and a sentence as <strong>tokens</strong>, words or " +
-      "pieces of them, and look at all of them at once.</p>" +
-      "<p>They learned from millions of photos with their captions from the web which go together, " +
-      "but were never told where in a photo a giraffe is. That is why, in the photo of the giraffe " +
-      "at the pond, they also see one in the dead tree behind it.</p>" +
-      "<p>To explain a prediction, <code>shapiq</code> hides patches and words in many combinations " +
-      "and watches how the similarity changes. The patches and words are the <strong>players</strong>: " +
-      "what each adds on its own, and what pairs of them add together (their " +
-      "<strong>interactions</strong>). A <strong>clique</strong> is a group of players that raise " +
-      "the similarity the most together.</p>";
+      "</p>" +
+      `<p>${section("fixlip-sec-faithfulness", "FIxLIP")} explains this prediction with the ` +
+      "<strong>features</strong> of the pair, i.e. its image patches (8 × 8 for SigLIP 2, 7 × 7 for " +
+      "CLIP) and its text tokens. Each feature receives a <strong>main effect</strong> and each " +
+      `pair of features an ${section("fixlip-sec-interactions", "<strong>interaction</strong>")}. ` +
+      '<strong class="fixlip-demo-red">Red</strong> raises the similarity and ' +
+      '<strong class="fixlip-demo-blue">blue</strong> lowers it.</p>' +
+      `<p>A ${section("fixlip-sec-cliques", "<strong>clique</strong>")} is the group of features ` +
+      `that raises the similarity the most together. The ${section("fixlip-sec-correlation", "R²")} ` +
+      "states how faithful the explanation is to the model. All explanations are computed with " +
+      `<code>shapiq</code> and ${section("fixlip-sec-demo-estimator", "estimated with ProxySHAP")}.</p>`;
     const close = el("button", "fixlip-demo-about-close", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Close");
@@ -235,14 +243,12 @@
     graph.setAttribute("aria-hidden", "true"); // the panel's text and the photo say the same
     const links = document.createElementNS(SVG, "svg");
     links.setAttribute("class", "fixlip-demo-links");
-    const sizer = el("div", "fixlip-demo-size");
-    const smaller = el("button", "fixlip-demo-step", "−");
-    const larger = el("button", "fixlip-demo-step", "+");
+    const sizer = el("label", "fixlip-demo-size");
+    const sizeInput = el("input");
+    Object.assign(sizeInput, { type: "range", step: 1 });
+    sizeInput.setAttribute("aria-label", "Features in the clique");
     const sizeLabel = el("span", "fixlip-demo-size-label");
-    smaller.type = larger.type = "button";
-    smaller.setAttribute("aria-label", "Fewer players in the clique");
-    larger.setAttribute("aria-label", "More players in the clique");
-    sizer.append(smaller, sizeLabel, larger);
+    sizer.append(sizeInput, sizeLabel);
     const legend = el("p", "fixlip-demo-legend");
     for (const [color, meaning] of [["red", "raises the similarity"], ["blue", "lowers it"]]) {
       const key = el("span", "fixlip-demo-key");
@@ -252,7 +258,7 @@
     const meta = el("p", "fixlip-demo-meta");
     const live = el("p", "fixlip-demo-live");
     live.setAttribute("aria-live", "polite");
-    // without an explanation: only the model's prediction, and the photo's credit
+    // without an explanation: only the model's prediction
     const prediction = el("div", "fixlip-demo-prediction");
     const predictionMain = el("div", "fixlip-demo-prediction-main");
     const predictionModel = el("p", "fixlip-demo-prediction-model");
@@ -270,7 +276,8 @@
     scale.append(scaleUnrelated, scaleMatching, scaleMark, ...scaleLabels);
     const predictionCompare = el("p", "fixlip-demo-prediction-compare");
     const predictionWhy = el("p", "fixlip-demo-prediction-why");
-    const predictionCredit = el("p", "fixlip-demo-meta");
+    // the photo's credit, small and faint under the whole demo
+    const credit = el("p", "fixlip-demo-credit");
     const toView = (view, label) => {
       const button = el("button", "fixlip-demo-link", label);
       button.type = "button";
@@ -289,12 +296,23 @@
       predictionWhy,
     );
     predictionWhy.append("But why? See the ", toView("clique", "clique"), " or the ", toView("full", "full explanation"), ".");
-    prediction.append(predictionMain, predictionCredit);
+    prediction.append(predictionMain);
     slot.append(sizer, graph, list);
     panel.append(title, detail, slot, legend, meta, prediction, live);
     body.append(stage, panel);
-    root.append(bar, about, body);
+    root.append(bar, about, body, credit);
 
+    // another photo: the demo shows it, and tells the page, whose figures follow the photo
+    // (figures.js); a figure that chooses a photo tells the demo the same way
+    const setImage = (id, tell = true) => {
+      if (id === state.image || !data.models.some((model) => has(id, model.id))) return;
+      crossFade(() => {
+        state.image = id;
+        reset();
+      }, true);
+      if (tell) document.dispatchEvent(new CustomEvent(IMAGE_EVENT, { detail: { image: id, source: null } }));
+    };
+    document.addEventListener(IMAGE_EVENT, (event) => setImage(event.detail?.image, false));
     const photoButtons = data.images.map((image) => {
       const button = el("button", "fixlip-demo-photo");
       button.type = "button";
@@ -305,12 +323,7 @@
       thumb.alt = "";
       thumb.loading = "lazy";
       button.append(thumb);
-      button.addEventListener("click", () =>
-        crossFade(() => {
-          state.image = image.id;
-          reset();
-        }, true),
-      );
+      button.addEventListener("click", () => setImage(image.id));
       photos.append(button);
       return button;
     });
@@ -371,12 +384,7 @@
     };
     for (const group of [views, models]) new ResizeObserver(movePills).observe(group);
 
-    const step = (button, by) =>
-      button.addEventListener("click", () => {
-        if (button.getAttribute("aria-disabled") !== "true") setSize(state.size + by);
-      });
-    step(smaller, -1);
-    step(larger, 1);
+    sizeInput.addEventListener("input", () => setSize(Number(sizeInput.value)));
 
     // -- the players of the current photo and model --------------------------------------------
     let ex = null; // the explanation: tokens, main effects, interactions, cliques
@@ -470,11 +478,11 @@
           show(again ? null : player, true);
         });
       });
-      meta.replaceChildren(...metaText(image, model, ex));
+      meta.replaceChildren(...metaText(ex));
       predictionModel.textContent = `${model.label} (${model.detail}) predicts`;
       predictionValue.textContent = ex.similarity.toFixed(2);
       setScale(model.norms, ex.similarity);
-      predictionCredit.replaceChildren(...creditText(image));
+      credit.replaceChildren(...creditText(image));
       setInteractive();
       placeExcerpt();
       show(null, true);
@@ -488,9 +496,8 @@
       ", cropped.",
     ];
     // under the explanation, as on the orders demo's card: a bar by its fit (R^2 on held-out
-    // coalitions) with a word for it, what it was explained with, the model's similarity, and the
-    // photo's credit, a line each
-    const metaText = (image, model, e) => {
+    // coalitions) with a word for it, and what it was explained with, a line each
+    const metaText = (e) => {
       const line = (className, ...content) => {
         const node = el("span", `fixlip-demo-meta-line ${className}`);
         node.append(...content);
@@ -507,14 +514,6 @@
         lines.push(fit);
       }
       lines.push(line("fixlip-demo-method", "Explained with ", el("strong", "", data.method.split(" from ")[0]), ", estimated"));
-      lines.push(
-        line(
-          "fixlip-demo-model",
-          `${model.label} (${model.detail}): similarity ${e.similarity.toFixed(2)}` +
-            (model.norms ? `, ${verdict(e.similarity, model.norms)}` : ""),
-        ),
-      );
-      lines.push(line("fixlip-demo-credit", ...creditText(image)));
       return lines;
     };
     // the word for the similarity, its place on the scale (the middle 90% of unrelated pairs and of
@@ -611,7 +610,7 @@
       inner.style.transform = `translateY(${Math.round(middle - (top + bottom) / 2)}px)`;
     }
 
-    // the caption, the model's line, and the credit keep the room of the longest of all photos and
+    // the caption, the lines under the explanation, and the credit keep the room of the longest of all photos and
     // models, so that switching between them moves nothing
     function reserveRoom() {
       const all = Object.entries(data.explanations).map(([key, e]) => {
@@ -619,8 +618,8 @@
         return [data.images.find((x) => x.id === image), data.models.find((x) => x.id === model), e];
       });
       reserveCaption(all);
-      reserve(meta, all.map(([image, model, e]) => metaText(image, model, e)));
-      reserve(predictionCredit, data.images.map(creditText));
+      reserve(meta, all.map(([, , e]) => metaText(e)));
+      reserve(credit, data.images.map(creditText));
     }
 
     // the caption's room: its tallest lines of tokens, of all photos and models, and half a line of
@@ -749,7 +748,6 @@
       setShift();
       root.classList.toggle("fixlip-demo-full", view === "full");
       root.classList.toggle("fixlip-demo-none", view === "none");
-      reserve(predictionCredit, data.images.map(creditText)); // laid out only now on small screens
       setInteractive();
       show(null, true);
     }
@@ -792,7 +790,7 @@
         button.style.removeProperty("color");
       });
       const regions = clique.filter((k) => k < regionCount).length;
-      title.replaceChildren(el("strong", "", "Clique"), " the players that raise the similarity most together");
+      title.replaceChildren(el("strong", "", "Clique:"), " features that raise the similarity most together");
       const tokens = clique.length - regions;
       detail.replaceChildren(
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
@@ -803,15 +801,17 @@
       sizer.hidden = false;
       graph.hidden = false;
       list.hidden = true;
-      sizeLabel.textContent = `${state.size} players`;
-      smaller.setAttribute("aria-disabled", String(state.size <= sizes[0]));
-      larger.setAttribute("aria-disabled", String(state.size >= sizes[1]));
+      sizeLabel.textContent = `${state.size} features`;
+      Object.assign(sizeInput, { min: sizes[0], max: sizes[1], value: state.size });
+      // the part of the track left of the thumb, which the style sheet fills
+      const part = (state.size - sizes[0]) / (sizes[1] - sizes[0] || 1);
+      sizeInput.style.setProperty("--fixlip-part", part);
       drawEdges(cliquePairs(clique));
       drawGraph(clique);
-      return `Clique of ${clique.length} players, ${clique.map(name).join(", ")}, that add ${signed(value)} together.`;
+      return `Clique of ${clique.length} features, ${clique.map(name).join(", ")}, that add ${signed(value)} together.`;
     }
 
-    // the full explanation: every player tinted by what it adds on its own, the strongest
+    // the full explanation: every player tinted by its main effect, the strongest
     // interactions drawn between them, the five strongest between a region and a token listed
     function showFull() {
       const largest = Math.max(...ex.first.map(Math.abs));
@@ -823,10 +823,10 @@
         button.style.setProperty("--fixlip-tint", color);
         button.classList.toggle("fixlip-demo-strong", alpha > 0.55);
       });
-      title.replaceChildren(el("strong", "", "Full explanation"), " every player, alone and in pairs");
+      title.replaceChildren(el("strong", "", "Full explanation:"), " every main effect and the strongest interactions");
       detail.textContent =
-        "Each region and word is colored by what it adds alone; " +
-        `lines link the ${STRONGEST} strongest interactions. Listed: the strongest image–text pairs.`;
+        "Each region and word is colored by its main effect. " +
+        `Lines link the ${STRONGEST} strongest interactions. The list shows the strongest image–text pairs.`;
       sizer.hidden = true;
       graph.hidden = true;
       list.hidden = false;
@@ -870,9 +870,9 @@
         title.replaceChildren(el("strong", "", "Interactions"), ` of ${name(player)}`);
       }
       detail.replaceChildren(
-        "On its own, it adds ",
+        "Its main effect is ",
         valued(ex.first[player]),
-        " to the similarity. Together with each player below, it adds more (red) or less (blue) than the two do alone.",
+        ". Together with each feature below, it adds more (red) or less (blue) than their main effects.",
       );
       sizer.hidden = true;
       graph.hidden = true;
@@ -894,8 +894,8 @@
       drawEdges([]);
       const [best] = order;
       return (
-        `Interactions of ${name(player)}: on its own, it adds ${signed(ex.first[player])}; ` +
-        `most with ${name(best)}, ${signed(values[best])}.`
+        `Interactions of ${name(player)}. Its main effect is ${signed(ex.first[player])}. ` +
+        `The strongest is with ${name(best)}, ${signed(values[best])}.`
       );
     }
 

@@ -111,6 +111,62 @@ html.shapiq-logo-pulling * {
   color: var(--color-brand-primary);
 }
 
+/* -- Statements --------------------------------------------------------------------------------- */
+
+/* A central definition of a page is set in a box of its own (see _ext/shapiq_demos.py), with an
+   amber line at its left. Its number and its name are a line of their own, which links to it.
+   The selector outweighs the one that takes the padding from every container of docutils. */
+div.docutils.shapiq-statement {
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.25rem 0.3rem;
+  border: 1px solid var(--color-background-border);
+  border-left: 4px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--color-background-secondary);
+}
+
+.shapiq-statement:target {
+  background: var(--shapiq-amber-soft);
+}
+
+.shapiq-statement > p {
+  margin: 0 0 0.6rem;
+}
+
+.shapiq-statement > .shapiq-statement-title {
+  font-weight: 600;
+}
+
+/* the number has the amber of the line at the left and of the captions' numbers */
+.shapiq-statement > .shapiq-statement-title > strong {
+  font-weight: 700;
+  color: var(--shapiq-amber);
+}
+
+/* the link to a statement shows up when the pointer is over its box, and always without a pointer */
+.shapiq-statement > .shapiq-statement-title > .headerlink {
+  margin-left: 0.4rem;
+  font-weight: 400;
+  color: var(--color-foreground-muted);
+  text-decoration: none;
+  visibility: hidden;
+}
+
+.shapiq-statement:hover > .shapiq-statement-title > .headerlink,
+.shapiq-statement > .shapiq-statement-title > .headerlink:focus-visible {
+  visibility: visible;
+}
+
+@media (hover: none) {
+  .shapiq-statement > .shapiq-statement-title > .headerlink {
+    visibility: visible;
+  }
+}
+
+.shapiq-statement .math-wrapper {
+  margin: 0.6rem 0;
+}
+
 /* -- sphinx-design ------------------------------------------------------------------------------ */
 
 .sd-card {

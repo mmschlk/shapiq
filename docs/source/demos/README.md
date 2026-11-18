@@ -15,6 +15,7 @@ demos/
     │                  orders demo has none: its card opens the guide that builds it up)
     ├── README.md      optional: notes for maintainers on how the demo is built and embedded
     ├── assets/        what the page loads: demo.js, demo.css and the demo's data
+    ├── figures/       optional: the static images of the write-up (the FIxLIP demo has one)
     └── compute/       the scripts that computed the data, with a README on how to run them
 ```
 
@@ -44,6 +45,36 @@ Three more options are passed on to the demo's script, as `data-step`, `data-sel
 `:step:` shows one step of a figure built up step by step, `:select:` what it points at at rest,
 and `:examples:` only the examples it names, in that order (`:examples: tabpfn`, or
 `house, houses`). `orders/README.md` lists their values.
+
+A write-up's figures are drawn in the browser, so that they follow the theme of the docs, the
+width of the page, and what is chosen in the demo. The `shapiq-demo-figure` directive names the
+demo and the figure, with a description for screen readers and the caption as its content:
+
+```rst
+.. shapiq-demo-figure:: fixlip masks
+   :alt: What the figure shows.
+
+   The caption.
+```
+
+It writes `<figure class="<name>-figure" data-figure="..." data-root="...">` with an empty stage
+and the caption, and adds `assets/figures.css`, `assets/figures-data.js` (if there is one) and
+`assets/figures.js` to the page, next to the demo's data. The script draws every figure into its
+stage. Without JavaScript, the stage shows the description. The figures of the FIxLIP demo show
+the image–text pair chosen in the demo. Each of them has its own selector, and the demo and the
+figures tell each other about a choice with the event `fixlip-demo-image` on the document.
+Builders other than HTML keep only the caption.
+
+On a page with such figures, the extension numbers the captions in the order of the page. The
+figures of the directive and the `figure` directives with a caption become Figure 1, Figure 2, and
+so on, and the tables with a title become Table 1, and so on. The figures are narrower than the
+text column and sit in its middle (`--fixlip-figure-width` in `figures.css`). The text refers to a
+figure or a table with the role `shapiq-figure`, which becomes its number and a link to it. The
+target is the name of a demo's figure, or the `:name:` of a `figure` or a table:
+
+```rst
+:shapiq-figure:`masks` shows eight masks.
+```
 
 The folders `assets/` and `compute/` and this README are not pages of the docs (`exclude_patterns`
 in `conf.py`).

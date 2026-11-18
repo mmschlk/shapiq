@@ -133,22 +133,25 @@ body[data-theme="dark"] .fixlip-demo {
 
 .fixlip-demo-switches {
   display: flex;
+  flex: 1 1 auto; /* the whole row, so that the "i" reaches its right end */
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
 
-/* the "i" that tells what the models are, and its note */
+/* the "i" that tells what the models are, and its note: as high as a switch, at the bar's right */
 .fixlip-demo-info {
-  width: 1.75rem;
-  height: 1.75rem;
+  box-sizing: border-box;
+  width: var(--fixlip-control);
+  height: var(--fixlip-control);
+  margin-left: auto;
   padding: 0;
   border: 1px solid var(--shapiq-border);
   border-radius: 999px;
   background: var(--shapiq-surface-raised);
   color: var(--color-foreground-secondary);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-style: italic;
   font-weight: 700;
   line-height: 1;
@@ -211,6 +214,15 @@ body[data-theme="dark"] .fixlip-demo {
 .fixlip-demo-about-title {
   padding-right: 1.5rem;
   font-weight: 700;
+}
+
+/* the two colors of the explanation, where the note names them (RED and BLUE of demo.js) */
+.fixlip-demo-about strong.fixlip-demo-red {
+  color: rgb(255, 13, 87);
+}
+
+.fixlip-demo-about strong.fixlip-demo-blue {
+  color: rgb(30, 136, 229);
 }
 
 .fixlip-demo-about-close {
@@ -739,58 +751,81 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   display: none;
 }
 
-/* the clique's size: a control that stands out above its graph */
+/* the clique's size: a slider above its graph, as in the figures of the write-up */
 .fixlip-demo-size {
-  display: inline-flex;
+  display: flex;
   flex: none;
-  align-self: center;
   align-items: center;
-  gap: 0.25rem;
-  padding: 3px;
-  border: 1px solid var(--shapiq-border);
-  border-radius: 999px;
-  background: var(--shapiq-surface-raised);
+  align-self: center;
+  gap: 0.75rem;
+  width: min(100%, 19rem);
+  min-height: var(--fixlip-control);
 }
 
 .fixlip-demo-size[hidden] {
   display: none;
 }
 
-.fixlip-demo-step {
-  width: calc(var(--fixlip-control) - 8px);
-  height: calc(var(--fixlip-control) - 8px);
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--fixlip-ink);
-  color: var(--fixlip-sheet);
-  font: inherit;
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
+/* The slider is drawn here and not by the browser, which darkens its own while it is pressed. */
+.fixlip-demo-size input {
+  --fixlip-at: calc(8px + var(--fixlip-part, 0) * (100% - 16px)); /* the middle of the thumb */
+  flex: 1;
+  min-width: 0;
+  height: 1.75rem; /* a target for a finger */
+  margin: 0;
+  background: none;
   cursor: pointer;
-  transition:
-    opacity var(--fixlip-duration) var(--fixlip-ease),
-    transform 120ms var(--fixlip-ease);
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.fixlip-demo-step:active:not([aria-disabled="true"]) {
-  transform: scale(0.96);
+.fixlip-demo-size input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber, #f5a300) var(--fixlip-at),
+    var(--shapiq-border, #e2e6f3) var(--fixlip-at)
+  );
 }
 
-.fixlip-demo-step:focus-visible {
-  outline: 2px solid var(--fixlip-ink);
+.fixlip-demo-size input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber, #f5a300) var(--fixlip-at),
+    var(--shapiq-border, #e2e6f3) var(--fixlip-at)
+  );
+}
+
+.fixlip-demo-size input::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber, #f5a300);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fixlip-demo-size input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber, #f5a300);
+}
+
+.fixlip-demo-size input:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--shapiq-amber, #f5a300);
   outline-offset: 2px;
 }
 
-.fixlip-demo-step[aria-disabled="true"] {
-  opacity: 0.25;
-  cursor: default;
-}
-
 .fixlip-demo-size-label {
-  min-width: 5.5rem;
-  text-align: center;
+  min-width: 5.2rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-foreground-primary);
@@ -979,8 +1014,8 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
   color: var(--shapiq-text-muted);
 }
 
-/* under the explanation, a line each, as on the orders demo's card: its fit, what it was explained
-   with, the model's similarity, the photo's credit */
+/* under the explanation, a line each, as on the orders demo's card: its fit, and what it was
+   explained with */
 .fixlip-demo-meta-line {
   display: block;
 }
@@ -1023,6 +1058,30 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 .fixlip-demo-method strong {
   color: var(--fixlip-ink);
   font-weight: 600;
+}
+
+/* the photo's credit, small and faint, in the middle under the demo */
+.fixlip-demo-credit {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--shapiq-text-muted);
+  opacity: 0.75;
+}
+
+/* its links faint too, whatever the page gives the demo's links */
+.fixlip-demo .fixlip-demo-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-shadow: none;
+}
+
+.fixlip-demo .fixlip-demo-credit a:hover {
+  color: var(--fixlip-ink);
+  text-decoration-thickness: 1px;
 }
 
 /* the invitation over the photo, as the orders demo's over its layers: tap a region or a word, or
@@ -1183,10 +1242,6 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
 
   .fixlip-demo-none .fixlip-demo-panel > :not(.fixlip-demo-prediction, .fixlip-demo-live) {
     display: none;
-  }
-
-  .fixlip-demo-prediction .fixlip-demo-meta {
-    margin-top: 1rem;
   }
 }
 

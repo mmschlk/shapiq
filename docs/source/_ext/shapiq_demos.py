@@ -38,6 +38,43 @@ is left out.
 The assets are copied before the pages are written, so that Sphinx adds its checksums to the links
 of ``demo.css`` and ``demo.js``, and they are dependencies of the pages that embed the demo, so that a
 change to them writes these pages again.
+
+The ``shapiq-demo-figure`` directive adds a figure that a demo's script draws on the page, e.g.
+one that follows what the demo shows. Its arguments are the demo and the name of the figure, and
+its content is the caption::
+
+    .. shapiq-demo-figure:: fixlip masks
+       :alt: What the figure shows.
+
+       **The game assigns a similarity to every mask.** The caption.
+
+It writes ``<figure class="<demo>-figure" data-figure="<name>" data-root="...">`` with an empty
+stage, which is labeled with the alt text and shows it without JavaScript, and the caption. A page
+with such figures gets ``figures.css``, the demo's ``data.js``, ``figures-data.js`` (if the demo has
+one) and ``figures.js`` of the demo's assets. Outside HTML, only the caption is kept.
+
+On a page with such figures, the captions are numbered in the order of the page. The figures of
+the directive and the ``figure`` directives with a caption count as ``Figure 1``, ``Figure 2``,
+and so on, and the tables with a title as ``Table 1``, and so on. The other pages of the docs keep
+their captions as they are. The role ``shapiq-figure`` refers to a figure or a table of the page by
+its number, as a link. Its target is the name of a demo's figure, or the ``:name:`` of a ``figure``
+or a table::
+
+    :shapiq-figure:`masks` shows eight masks.
+
+The ``shapiq-definition`` directive sets a central definition in a box of its own. Its argument is
+the name of the definition, its content the statement, and its ``:name:`` what refers to it::
+
+    .. shapiq-definition:: Explanation
+       :name: fixlip-def-explanation
+
+       An explanation assigns ...
+
+The definitions of a page are numbered in its order, as ``Definition 1 (Explanation)``, and so on,
+and the title of a box links to it. The role ``shapiq-statement`` refers to a definition by its
+number, as a link. Its target is the ``:name:`` of the box::
+
+    :shapiq-statement:`fixlip-def-explanation` covers main effects and interactions.
 """
 
 from __future__ import annotations
@@ -50,6 +87,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from docutils import nodes
 from docutils.parsers.rst import directives
+from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.osutil import relative_uri
 
@@ -58,8 +96,14 @@ if TYPE_CHECKING:
     from sphinx.util.typing import ExtensionMetadata
     from sphinx.writers.html5 import HTML5Translator
 
+logger = logging.getLogger(__name__)
+
 _ASSETS = ("demo.js", "demo.css")  # the files that every demo's assets folder has
 _DATA = "data.js"  # the demo's data, which its script loads, if it has any
+_FIGURES = ("figures.js", "figures.css")  # the files of a demo with figures on a page
+_FIGURES_DATA = "figures-data.js"  # what the figures show beyond the demo's data, if anything
+_STATEMENTS = ("definition",)  # the kinds of statements that get a box, as ``shapiq-<kind>``
+_STATEMENT = "shapiq-statement"  # the class of a box and the name of the role that refers to one
 
 
 class DemoNode(nodes.General, nodes.Element):
@@ -101,6 +145,65 @@ class DemoDirective(SphinxDirective):
         return [node]
 
 
+class FigureNode(nodes.General, nodes.Element):
+    """A figure that a demo's script draws; its children are the caption."""
+
+
+class FigureDirective(SphinxDirective):
+    """Add a figure of a demo: ``.. shapiq-demo-figure:: <demo> <name>``, with its caption."""
+
+    required_arguments = 2
+    has_content = True
+    option_spec: ClassVar[dict[str, Any]] = {
+        "alt": directives.unchanged_required,  # what the figure shows, in words
+    }
+
+    def run(self) -> list[nodes.Node]:
+        """Return the figure with its parsed caption, after checking the demo's assets."""
+        demo, name = self.arguments
+        assets = Path(self.env.srcdir) / "demos" / demo / "assets"
+        if missing := [file for file in _FIGURES if not (assets / file).is_file()]:
+            msg = f"the demo {demo!r} has no {', '.join(missing)} in demos/{demo}/assets"
+            raise self.error(msg)
+        for file in (*_FIGURES, _DATA, _FIGURES_DATA):
+            if (assets / file).is_file():
+                self.env.note_dependency(str(assets / file))
+        node = FigureNode(demo=demo, figure=name, alt=self.options.get("alt", ""))
+        node["ids"].append(f"{demo}-figure-{name}")
+        self.state.nested_parse(self.content, self.content_offset, node)
+        return [node]
+
+
+class StatementDirective(SphinxDirective):
+    """Set a statement in a box: ``.. shapiq-definition:: <name>``, with the statement."""
+
+    required_arguments = 1
+    final_argument_whitespace = True
+    has_content = True
+    option_spec: ClassVar[dict[str, Any]] = {
+        "name": directives.unchanged,  # what the role and ``:ref:`` refer to
+    }
+
+    def run(self) -> list[nodes.Node]:
+        """Return the box with its title, which is numbered when the page is written."""
+        kind = self.name.removeprefix("shapiq-")
+        node = nodes.container(classes=[_STATEMENT, f"{_STATEMENT}-{kind}"], statement=kind)
+        name, messages = self.state.inline_text(self.arguments[0], self.lineno)
+        title = nodes.paragraph("", "", classes=[f"{_STATEMENT}-title"])
+        title += nodes.inline("", "", nodes.Text("("), *name, nodes.Text(")"))
+        node += title
+        self.state.nested_parse(self.content, self.content_offset, node)
+        self.add_name(node)
+        return [node, *messages]
+
+
+class FigureReference(nodes.Inline, nodes.Element):
+    """A reference to a numbered figure, table or statement, resolved when the page is written."""
+
+
+_CAPTIONED = (FigureNode, nodes.figure, nodes.table)  # what a page with figures numbers
+
+
 def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     root = relative_uri(page, f"_static/demos/{node['demo']}/")
@@ -126,6 +229,99 @@ def _skip_demo(self: nodes.NodeVisitor, node: DemoNode) -> None:  # noqa: ARG001
     raise nodes.SkipNode
 
 
+def _visit_figure(self: HTML5Translator, node: FigureNode) -> None:
+    page = self.builder.get_target_uri(self.builder.current_docname)
+    root = relative_uri(page, f"_static/demos/{node['demo']}/")
+    name = f"{node['demo']}-figure"
+    self.body.append(
+        self.starttag(
+            node, "figure", CLASS=name, **{"data-figure": node["figure"], "data-root": root}
+        )
+    )
+    alt = escape(node["alt"])
+    self.body.append(
+        f'<div class="{name}-stage" role="group" aria-label="{alt}">'
+        f'<noscript><p class="{name}-missing">{alt}</p></noscript></div>\n<figcaption>\n'
+    )
+
+
+def _depart_figure(self: HTML5Translator, node: FigureNode) -> None:  # noqa: ARG001
+    self.body.append("</figcaption>\n</figure>\n")
+
+
+def _keep_caption(self: nodes.NodeVisitor, node: FigureNode) -> None:
+    """Outside HTML, a figure is its caption."""
+
+
+def _figure_role(
+    name: str,  # noqa: ARG001
+    rawtext: str,
+    text: str,
+    lineno: int,  # noqa: ARG001
+    inliner: object,  # noqa: ARG001
+    options: dict[str, Any] | None = None,  # noqa: ARG001
+    content: list[str] | None = None,  # noqa: ARG001
+) -> tuple[list[nodes.Node], list[nodes.system_message]]:
+    """Refer to a numbered part of the page: ``:shapiq-figure:`<name>```, or a statement."""
+    return [FigureReference(rawtext, target=text.strip())], []
+
+
+def _number_captions(app: Sphinx, doctree: nodes.document, docname: str) -> None:
+    """Number the captions and the statements of a page, and link the references to them."""
+    labels: dict[str, tuple[str, str]] = {}  # the name of a numbered part: its number and id
+    if next(iter(doctree.findall(FigureNode)), None) is not None:
+        counts = {"Figure": 0, "Table": 0}
+        for node in list(doctree.findall(lambda n: isinstance(n, _CAPTIONED))):
+            kind = "Table" if isinstance(node, nodes.table) else "Figure"
+            # the caption is the title of a table, the caption of a figure, or the first
+            # paragraph of a demo's figure
+            holder = (
+                nodes.title
+                if kind == "Table"
+                else nodes.paragraph
+                if isinstance(node, FigureNode)
+                else nodes.caption
+            )
+            caption = next((child for child in node.children if isinstance(child, holder)), None)
+            if caption is None:
+                continue
+            counts[kind] += 1
+            label = f"{kind} {counts[kind]}"
+            caption.insert(0, nodes.inline("", f"{label}. ", classes=["caption-number"]))
+            names = [node["figure"]] if isinstance(node, FigureNode) else node["names"]
+            for name in names:
+                labels[name] = (label, node["ids"][0] if node["ids"] else "")
+    counts = dict.fromkeys(_STATEMENTS, 0)
+    for node in list(doctree.findall(nodes.container)):
+        if (kind := node.get("statement")) not in counts:
+            continue
+        counts[kind] += 1
+        label = f"{kind.capitalize()} {counts[kind]}"
+        target = node["ids"][0] if node["ids"] else ""
+        title = node.children[0]
+        title.insert(0, [nodes.strong("", label), nodes.Text(" ")])
+        if target and app.builder.format == "html":
+            link = (
+                f'<a class="headerlink" href="#{escape(target)}" title="Link to this {kind}">¶</a>'
+            )
+            title += nodes.raw("", link, format="html")
+        for name in node["names"]:
+            labels[name] = (label, target)
+    for reference in list(doctree.findall(FigureReference)):
+        label, target = labels.get(reference["target"], ("", ""))
+        if not label:
+            logger.warning(
+                "no numbered figure, table or statement %r on this page",
+                reference["target"],
+                location=(docname, reference.line),
+            )
+            reference.replace_self(nodes.Text(reference["target"]))
+        elif target and app.builder.format == "html":
+            reference.replace_self(nodes.reference("", label, refid=target, internal=True))
+        else:
+            reference.replace_self(nodes.Text(label))
+
+
 def _add_assets(
     app: Sphinx,
     pagename: str,  # noqa: ARG001
@@ -136,14 +332,25 @@ def _add_assets(
     """Add the stylesheet and the script of every demo of a page to it."""
     if doctree is None:
         return
-    for name in sorted({node["demo"] for node in doctree.findall(DemoNode)}):
-        # the stylesheet after html_css_files, whose tokens.css it uses
-        app.add_css_file(f"demos/{name}/demo.css", priority=900)
-        # the data, if any, just before the script and loaded alongside it (not by it, once it has
-        # run): the script uses the data on the page, and loads it itself where it is missing
-        if (Path(app.srcdir) / "demos" / name / "assets" / _DATA).is_file():
-            app.add_js_file(f"demos/{name}/{_DATA}", loading_method="defer", priority=499)
-        app.add_js_file(f"demos/{name}/demo.js", loading_method="defer")
+    demos = {node["demo"] for node in doctree.findall(DemoNode)}
+    figures = {node["demo"] for node in doctree.findall(FigureNode)}
+    for name in sorted(demos | figures):
+        assets = Path(app.srcdir) / "demos" / name / "assets"
+        # the stylesheets after html_css_files, whose tokens.css they use
+        if name in demos:
+            app.add_css_file(f"demos/{name}/demo.css", priority=900)
+        if name in figures:
+            app.add_css_file(f"demos/{name}/figures.css", priority=900)
+        # the data, if any, just before the scripts and loaded alongside them (not by them, once
+        # they have run): a script uses the data on the page, and loads it itself where it is missing
+        data = [_DATA, *([_FIGURES_DATA] if name in figures else [])]
+        for file in data:
+            if (assets / file).is_file():
+                app.add_js_file(f"demos/{name}/{file}", loading_method="defer", priority=499)
+        if name in demos:
+            app.add_js_file(f"demos/{name}/demo.js", loading_method="defer")
+        if name in figures:
+            app.add_js_file(f"demos/{name}/figures.js", loading_method="defer")
 
 
 def _copy_assets(app: Sphinx, env: object) -> None:  # noqa: ARG001
@@ -156,7 +363,7 @@ def _copy_assets(app: Sphinx, env: object) -> None:  # noqa: ARG001
 
 
 def setup(app: Sphinx) -> ExtensionMetadata:
-    """Register the directive, its node and the assets."""
+    """Register the directives, their nodes and roles, and the assets."""
     skip = (_skip_demo, None)
     app.add_node(
         DemoNode,
@@ -166,12 +373,28 @@ def setup(app: Sphinx) -> ExtensionMetadata:
         man=skip,
         texinfo=skip,
     )
+    keep = (_keep_caption, _keep_caption)
+    app.add_node(
+        FigureNode,
+        html=(_visit_figure, _depart_figure),
+        latex=keep,
+        text=keep,
+        man=keep,
+        texinfo=keep,
+    )
     app.add_directive("shapiq-demo", DemoDirective)
+    app.add_directive("shapiq-demo-figure", FigureDirective)
+    app.add_node(FigureReference)
+    app.add_role("shapiq-figure", _figure_role)
+    for kind in _STATEMENTS:
+        app.add_directive(f"shapiq-{kind}", StatementDirective)
+    app.add_role(_STATEMENT, _figure_role)
+    app.connect("doctree-resolved", _number_captions)
     app.connect("html-page-context", _add_assets)
     app.connect("env-updated", _copy_assets)
     return {
         "version": "1.0",
-        "env_version": 2,  # the nodes carry a version: environments of earlier builds are read again
+        "env_version": 8,  # pages are read again where what the extension writes to them changed
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

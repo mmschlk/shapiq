@@ -6,6 +6,11 @@
   --shapiq-blue: #4567f2;
   --shapiq-blue-light: #82a9e7;
   --shapiq-lavender: #b3c2e5;
+  /* the docs' color: amber itself for lines and fills, its ink for text (5:1 on the page and on
+     its soft tint), its soft tint for highlights */
+  --shapiq-amber: #f5a300;
+  --shapiq-amber-ink: #8c5800;
+  --shapiq-amber-soft: rgba(245, 163, 0, 0.16);
   --brand-ink-red: #ff2763;   /* probly × shapiq family red  */
   --brand-ink-blue: #285bff;  /* probly × shapiq family blue */
   /* the logo's attribution scale (red 5 and 4, blue 3 and 2), through shapiq's violet */
@@ -27,6 +32,8 @@ body[data-theme="dark"] {
   --shapiq-surface-raised: #22252e;
   --shapiq-border: #343846;
   --shapiq-text-muted: #a3a9ba;
+  --shapiq-amber-ink: #ffc24d;
+  --shapiq-amber-soft: rgba(245, 163, 0, 0.18);
   --shapiq-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
   --shapiq-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.4);
 }
@@ -37,6 +44,8 @@ body[data-theme="dark"] {
     --shapiq-surface-raised: #22252e;
     --shapiq-border: #343846;
     --shapiq-text-muted: #a3a9ba;
+    --shapiq-amber-ink: #ffc24d;
+    --shapiq-amber-soft: rgba(245, 163, 0, 0.18);
     --shapiq-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
     --shapiq-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.4);
   }

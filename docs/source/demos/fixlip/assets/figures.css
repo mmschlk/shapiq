@@ -1,0 +1,2114 @@
+/* The figures of the FIxLIP demo's page (figures.js, demos/fixlip/index.rst), and the page's links.
+   A figure sits open on the page, as the demo. Amber is the color of the docs (tokens.css): it
+   marks what a figure points at and the series of FIxLIP in a chart. Red raises the similarity
+   and blue lowers it, as in the demo. Everything else is ink and gray. */
+
+.fixlip-figure {
+  clear: both;
+  /* a figure is narrower than the text around it, and sits in the middle of the column */
+  max-width: var(--fixlip-figure-width, 38rem);
+  margin: 2rem auto 2.25rem;
+  container-type: inline-size; /* the layout follows the figure's width, not the window's */
+  -webkit-tap-highlight-color: transparent;
+  --fixlip-ink: var(--color-foreground-primary, #1b1e27);
+  --fixlip-muted: var(--shapiq-text-muted, #5b6275);
+  --fixlip-line: var(--shapiq-border, #e2e6f3);
+  --fixlip-raised: var(--shapiq-surface-raised, #f7f8fc);
+  --fixlip-type: 1; /* the small texts of a figure are larger by this on a narrow page */
+  --fixlip-page: var(--color-background-primary, #ffffff);
+  --fixlip-masked: #c9cdd8; /* a masked patch: the gray that the model sees */
+  --fixlip-gray: #9299ab; /* the series that are not FIxLIP's */
+  --fixlip-veil: rgba(255, 255, 255, 0.62); /* over the patches outside a clique */
+  --fixlip-red-text: #d6003f;
+  --fixlip-blue-text: #1565c0;
+  --fixlip-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --fixlip-duration: var(--shapiq-duration, 220ms);
+  /* the methods of the paper in a plot that overlays them (figures.js, SERIES): the warm colors
+     are FIxLIP's, the cool ones are the other methods'. Every two of the seven are told apart on
+     both surfaces, also with a red-green color vision deficiency. */
+  --fixlip-method-1: #e17174;
+  --fixlip-method-2: var(--shapiq-amber);
+  --fixlip-method-3: #833444;
+  --fixlip-method-4: #649029;
+  --fixlip-method-5: #49c7c0;
+  --fixlip-method-6: #5880c2;
+  --fixlip-method-7: #094bae;
+}
+
+body[data-theme="dark"] .fixlip-figure {
+  --fixlip-masked: #3d414e;
+  --fixlip-gray: #737a8e;
+  --fixlip-veil: rgba(19, 20, 22, 0.66);
+  --fixlip-red-text: #ff3d74;
+  --fixlip-blue-text: #4ba3f0;
+  --fixlip-method-1: #da6b6e;
+  --fixlip-method-3: #934252;
+  --fixlip-method-4: #558113;
+  --fixlip-method-5: #18a7a1;
+  --fixlip-method-6: #3a5f9e;
+  --fixlip-method-7: #508ff9;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .fixlip-figure {
+    --fixlip-masked: #3d414e;
+    --fixlip-gray: #737a8e;
+    --fixlip-veil: rgba(19, 20, 22, 0.66);
+    --fixlip-red-text: #ff3d74;
+    --fixlip-blue-text: #4ba3f0;
+    --fixlip-method-1: #da6b6e;
+    --fixlip-method-3: #934252;
+    --fixlip-method-4: #558113;
+    --fixlip-method-5: #18a7a1;
+    --fixlip-method-6: #3a5f9e;
+    --fixlip-method-7: #508ff9;
+  }
+}
+
+/* while the script draws a figure, it keeps some room, so the page jumps less */
+@media (scripting: enabled) {
+  .fixlip-figure:not(.fixlip-figure-ready) .fixlip-figure-stage {
+    min-height: 14rem;
+  }
+}
+
+/* A figure is drawn into a layer of its stage. While one pair fades into the next, the layers of
+   both lie in the same cell, so the stage is as high as the higher one and nothing below moves. */
+.fixlip-figure-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* a swipe sideways goes to the next image (figures.js), up or down scrolls the page */
+  touch-action: pan-y pinch-zoom;
+}
+
+.fixlip-figure-layer {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* From one pair to the next (figures.js, morph): a part of the drawing before that is the same in
+   the new one is hidden at once, a part that changes fades out before its successor fades in, and
+   a photo fades in over the one before. */
+.fixlip-figure-gone {
+  visibility: hidden;
+}
+
+.fixlip-figure-out {
+  animation: fixlip-figure-out 140ms ease-out both;
+}
+
+.fixlip-figure-in {
+  animation: fixlip-figure-in 220ms ease-out 140ms both;
+}
+
+.fixlip-figure-cross {
+  animation: fixlip-figure-in 360ms ease both;
+}
+
+@keyframes fixlip-figure-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fixlip-figure-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.fixlip-figure-missing {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure figcaption {
+  margin-top: 0.7rem;
+  font-size: calc(0.88rem * var(--fixlip-type, 1));
+  line-height: 1.5;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure figcaption p {
+  margin: 0;
+}
+
+.fixlip-figure figcaption strong {
+  color: var(--fixlip-ink);
+}
+
+/* where a caption says on which side a panel lies: the roles fixlip-wide and fixlip-narrow hold the
+   word for panels side by side and the word for stacked panels, and one of the two is shown */
+.fixlip-figure figcaption .fixlip-narrow {
+  display: none;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure figcaption .fixlip-wide {
+    display: none;
+  }
+
+  .fixlip-figure figcaption .fixlip-narrow {
+    display: inline;
+  }
+}
+
+/* a symbol inside the bold lead of a caption, in italics (the role fixlip-lead of the page) */
+.fixlip-figure figcaption .fixlip-lead {
+  font-weight: bold;
+  font-style: italic;
+  color: var(--fixlip-ink);
+}
+
+.fixlip-figure-up {
+  color: var(--fixlip-red-text);
+}
+
+.fixlip-figure-down {
+  color: var(--fixlip-blue-text);
+}
+
+/* -- the selector: the image shown, and the others to choose from ------------------------------- */
+
+.fixlip-figure-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.1rem;
+  margin-bottom: 0.7rem;
+}
+
+.fixlip-figure-shown {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(0.8rem * var(--fixlip-type, 1));
+  line-height: 1.3;
+  color: var(--fixlip-muted);
+}
+
+/* the photo of the pair, shown where the thumbnails are not */
+.fixlip-figure .fixlip-figure-shown-photo {
+  display: none;
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.fixlip-figure-photos {
+  display: flex;
+  flex: none;
+  gap: 0.3rem;
+}
+
+.fixlip-figure-photo-button {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: none;
+  opacity: 0.5;
+  cursor: pointer;
+  transition:
+    opacity var(--fixlip-duration) var(--fixlip-ease),
+    border-color var(--fixlip-duration) var(--fixlip-ease),
+    transform 120ms var(--fixlip-ease);
+}
+
+.fixlip-figure-photo-button img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fixlip-figure-photo-button:hover,
+.fixlip-figure-photo-button[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.fixlip-figure-photo-button[aria-pressed="true"] {
+  border-color: var(--fixlip-ink);
+}
+
+.fixlip-figure-photo-button:active {
+  transform: scale(0.95);
+}
+
+.fixlip-figure :is(.fixlip-figure-photo-button, .fixlip-figure-dot-button):focus-visible {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
+}
+
+/* on a narrow page, dots under the figure in place of the thumbnails, the one shown dark (as the
+   orders demo's examples) */
+.fixlip-figure-dots {
+  display: none;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+/* what the first figure says under its dots, on a touch screen, until it was swiped */
+.fixlip-figure-hint {
+  display: none;
+  margin: 0;
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
+  text-align: center;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-dot-button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.fixlip-figure-dot-button::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fixlip-gray);
+  opacity: 0.55;
+  transition:
+    background var(--fixlip-duration) var(--fixlip-ease),
+    scale var(--fixlip-duration) var(--fixlip-ease);
+}
+
+.fixlip-figure-dot-button[aria-pressed="true"]::before {
+  background: var(--fixlip-ink);
+  opacity: 1;
+  scale: 1.3;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-photos {
+    display: none;
+  }
+
+  .fixlip-figure-dots {
+    display: flex;
+  }
+
+  @media (hover: none) {
+    .fixlip-figure-hint {
+      display: block;
+    }
+  }
+
+  .fixlip-figure .fixlip-figure-shown-photo {
+    display: block;
+  }
+
+  /* the header keeps the room of a label of two lines, so that it has one height for all pairs */
+  .fixlip-figure-bar {
+    gap: 0.6rem;
+    min-height: calc(2 * 1.3 * 0.8rem * var(--fixlip-type, 1));
+    margin-bottom: 0.6rem;
+  }
+
+  /* On a phone, the small texts of a figure are read at arm's length: labels, tokens, legends and
+     the texts of the charts are an eighth larger (figures.js gives the charts wider margins), and
+     the caption comes close to the text of the page. */
+  .fixlip-figure > * {
+    --fixlip-type: 1.12;
+  }
+
+  .fixlip-figure > figcaption {
+    --fixlip-type: 1.07;
+  }
+}
+
+/* -- a photo with its patches, and the tokens of its text ---------------------------------------- */
+
+.fixlip-figure-pair {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* room under the tokens for the arcs between two of them */
+.fixlip-figure-pair.fixlip-figure-arcs {
+  padding-bottom: 0.9rem;
+}
+
+/* the arcs between two tokens run in the gaps between the rows of the text */
+.fixlip-figure-arcs .fixlip-figure-tokens {
+  row-gap: 13px;
+}
+
+.fixlip-figure-photo {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--fixlip-masked);
+}
+
+.fixlip-figure-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fixlip-figure-cells {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--fixlip-grid), 1fr);
+  grid-template-rows: repeat(var(--fixlip-grid), 1fr);
+}
+
+.fixlip-figure-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fixlip-figure-lined .fixlip-figure-cell {
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.6);
+}
+
+.fixlip-figure-cell.fixlip-figure-masked {
+  background: var(--fixlip-masked);
+}
+
+.fixlip-figure-cell.fixlip-figure-rest {
+  background: var(--fixlip-veil);
+}
+
+/* the patch a figure points at, and the patches of a clique: an amber frame, on a dark edge so
+   that it shows on every photo */
+.fixlip-figure-cell:is(.fixlip-figure-framed, .fixlip-figure-member) {
+  z-index: 1;
+  box-shadow:
+    inset 0 0 0 2.5px var(--shapiq-amber),
+    0 0 0 1px rgba(17, 19, 24, 0.75);
+}
+
+.fixlip-figure-tokens {
+  position: relative;
+  z-index: 1; /* over the lines of the interactions */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start; /* the block keeps the height of the longest text (figures.js) */
+  gap: 3px;
+  font-size: calc(0.78rem * var(--fixlip-type, 1));
+  line-height: 1.3;
+}
+
+/* a punctuation mark stays on the line of the token before it */
+.fixlip-figure-glued {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.fixlip-figure-token {
+  padding: 0.08em 0.4em;
+  border-radius: 5px;
+  background-color: var(--fixlip-raised);
+  box-shadow: inset 0 0 0 1px var(--fixlip-line);
+  color: var(--fixlip-ink);
+  white-space: nowrap;
+}
+
+/* a token takes the room of its bold form, so that a frame around it moves no other token */
+.fixlip-figure-token[data-word] {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fixlip-figure-token[data-word]::after {
+  content: attr(data-word);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 700;
+  user-select: none;
+}
+
+.fixlip-figure-token.fixlip-figure-masked {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--fixlip-line);
+  color: var(--fixlip-muted);
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.fixlip-figure-token.fixlip-figure-rest {
+  opacity: 0.45;
+}
+
+.fixlip-figure-token:is(.fixlip-figure-framed, .fixlip-figure-member) {
+  box-shadow: inset 0 0 0 2px var(--shapiq-amber);
+  font-weight: 700;
+}
+
+.fixlip-figure-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* -- panels side by side -------------------------------------------------------------------------- */
+
+.fixlip-figure-columns {
+  display: grid;
+  gap: 1.1rem 1.2rem;
+  align-items: start;
+}
+
+.fixlip-figure-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fixlip-figure-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fixlip-figure-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fixlip-figure-five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.1rem 0.8rem;
+}
+
+.fixlip-figure-narrow {
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.fixlip-figure-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.fixlip-figure-title {
+  margin: 0;
+  font-size: calc(0.82rem * var(--fixlip-type, 1));
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--fixlip-ink);
+}
+
+.fixlip-figure-reading {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.fixlip-figure-reading span {
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-reading strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-reading.fixlip-figure-second {
+  margin-top: -0.35rem;
+}
+
+.fixlip-figure-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 1.1rem;
+  margin: 0.6rem 0 0;
+  font-size: calc(0.78rem * var(--fixlip-type, 1));
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-swatch {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.55rem;
+  margin-right: 0.4rem;
+  border-radius: 2px;
+}
+
+.fixlip-figure-swatch.fixlip-figure-amber {
+  background: var(--shapiq-amber);
+}
+
+.fixlip-figure-swatch.fixlip-figure-gray {
+  background: var(--fixlip-gray);
+}
+
+.fixlip-figure-swatch.fixlip-figure-ink {
+  background: var(--fixlip-ink);
+}
+
+.fixlip-figure-swatch.fixlip-figure-round {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--fixlip-ink);
+}
+
+.fixlip-figure-swatch:is(.fixlip-figure-solid, .fixlip-figure-dashed) {
+  height: 0;
+  border-top: 2px solid var(--fixlip-muted);
+  border-radius: 0;
+  vertical-align: middle;
+}
+
+.fixlip-figure-swatch.fixlip-figure-dashed {
+  border-top-style: dashed;
+}
+
+@container (max-width: 34rem) {
+  /* three panels under each other */
+  .fixlip-figure-three {
+    grid-template-columns: minmax(0, 17rem);
+    justify-content: center;
+    gap: 1.6rem;
+  }
+
+  .fixlip-figure-four,
+  .fixlip-figure-five {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fixlip-figure-two:not(.fixlip-figure-narrow) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* -- from an image–text pair to a similarity ------------------------------------------------------ */
+
+/* Each branch lies in two rows of one height, with a row of room between the branches. The bracket
+   of the similarity starts in the second row of the upper branch and ends in the first row of the
+   lower one, so it runs from the middle of one branch to the middle of the other. */
+.fixlip-figure-encoders {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) auto auto auto auto;
+  grid-template-rows: auto auto 2.6rem auto auto;
+  justify-content: center;
+  align-items: center;
+  gap: 0 2rem;
+  padding-bottom: 2.2rem; /* the labels of the lower branch hang under its rows */
+}
+
+.fixlip-figure-encoders > :nth-child(-n + 3) {
+  grid-row: 1 / span 2;
+}
+
+.fixlip-figure-encoders > :nth-child(n + 4) {
+  grid-row: 4 / span 2;
+}
+
+/* An input lies in the middle of its branch, on the line of the arrows. Its label hangs under it
+   and is no part of the height. The room of the longest text is kept around the text (figures.js). */
+.fixlip-figure-input {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.fixlip-figure-held {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.fixlip-figure-held > .fixlip-figure-pair {
+  width: min(100%, 8.5rem);
+}
+
+.fixlip-figure-held > .fixlip-figure-tokens {
+  align-self: stretch;
+  align-content: center;
+}
+
+.fixlip-figure-held > small {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fixlip-figure-encoders small {
+  font-size: calc(0.72rem * var(--fixlip-type, 1));
+  color: var(--fixlip-muted);
+}
+
+/* the notation of the text in the figure, with the modality as a script letter */
+.fixlip-figure-encoders .fixlip-figure-symbol {
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Noto Sans Math", serif;
+  font-size: 1.15em;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.fixlip-figure-encoders .fixlip-figure-symbol :is(sub, sup) {
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+.fixlip-figure-encoder {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: var(--shapiq-amber-soft);
+  font-size: calc(0.82rem * var(--fixlip-type, 1));
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* the arrows into an encoder and out of it */
+.fixlip-figure-encoder::before,
+.fixlip-figure-encoder::after {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  font-weight: 400;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-encoder::before {
+  right: calc(100% + 0.6rem);
+}
+
+.fixlip-figure-encoder::after {
+  left: calc(100% + 0.6rem);
+}
+
+.fixlip-figure-vector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* the vector lies on the line of the arrow, and its label hangs under it */
+.fixlip-figure-vector {
+  position: relative;
+}
+
+.fixlip-figure-vector small {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  width: 6rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* an embedding as a column vector between two brackets */
+.fixlip-figure-embedding {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 4px 8px;
+  font-size: calc(0.72rem * var(--fixlip-type, 1));
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.fixlip-figure-embedding::before,
+.fixlip-figure-embedding::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border: 1.5px solid var(--fixlip-muted);
+}
+
+.fixlip-figure-embedding::before {
+  left: 0;
+  border-right: 0;
+}
+
+.fixlip-figure-embedding::after {
+  right: 0;
+  border-left: 0;
+}
+
+.fixlip-figure-embedding span {
+  padding: 0 0.4rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--shapiq-amber) var(--fixlip-share, 0%), transparent);
+  text-align: right;
+  color: var(--fixlip-ink);
+}
+
+.fixlip-figure-embedding .fixlip-figure-more {
+  background: none;
+  line-height: 1;
+  text-align: center;
+  color: var(--fixlip-muted);
+}
+
+/* both embeddings meet in the similarity */
+.fixlip-figure-encoders > .fixlip-figure-join {
+  grid-column: 4;
+  grid-row: 2 / span 3;
+  align-self: stretch;
+  width: 0.8rem;
+  margin: 0 -1rem 0 -1.2rem;
+  border: 1.5px solid var(--fixlip-line);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+}
+
+.fixlip-figure-encoders > .fixlip-figure-similarity {
+  grid-column: 5;
+  grid-row: 2 / span 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.fixlip-figure-similarity span {
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-similarity strong {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* on a narrow page, both branches run down the page, side by side */
+@container (max-width: 34rem) {
+  .fixlip-figure-encoders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto auto;
+    grid-auto-flow: column;
+    align-items: start;
+    justify-items: center;
+    gap: 1.9rem 1rem;
+    padding-bottom: 0;
+  }
+
+  .fixlip-figure-encoders > :nth-child(n) {
+    grid-row: auto;
+  }
+
+  /* both encoders are of one width, and each name stays on one line */
+  .fixlip-figure-encoder {
+    box-sizing: border-box;
+    width: 100%;
+    padding-inline: 0.4rem;
+    white-space: nowrap;
+  }
+
+  .fixlip-figure-encoder::before,
+  .fixlip-figure-encoder::after {
+    content: "↓";
+    left: 50%;
+    right: auto;
+    translate: -50% 0;
+  }
+
+  .fixlip-figure-encoder::before {
+    top: auto;
+    bottom: calc(100% + 0.4rem);
+  }
+
+  .fixlip-figure-encoder::after {
+    top: calc(100% + 0.4rem);
+  }
+
+  .fixlip-figure-vector small {
+    position: static;
+  }
+
+  /* the labels of both inputs share a line, and the shorter input lies in the middle over its label */
+  .fixlip-figure-input {
+    align-self: stretch;
+    justify-content: space-between;
+  }
+
+  .fixlip-figure-held {
+    display: contents;
+  }
+
+  .fixlip-figure-held > :first-child {
+    margin-block: auto;
+  }
+
+  .fixlip-figure-held > small {
+    position: static;
+  }
+
+  /* the bracket runs from the middle of one branch to the middle of the other */
+  .fixlip-figure-encoders > .fixlip-figure-join {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    justify-self: stretch;
+    width: auto;
+    height: 0.8rem;
+    margin: -0.9rem calc(25% - 0.25rem) 0;
+    border: 1.5px solid var(--fixlip-line);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .fixlip-figure-encoders > .fixlip-figure-similarity {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    flex-direction: row;
+    align-items: baseline;
+    justify-self: stretch;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: -1.5rem;
+  }
+}
+
+/* -- an interaction measured on the model: bars -------------------------------------------------- */
+
+.fixlip-figure-players {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 400;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-thumb {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px var(--shapiq-amber);
+}
+
+.fixlip-figure-players .fixlip-figure-token {
+  box-shadow: inset 0 0 0 2px var(--shapiq-amber);
+  font-weight: 700;
+}
+
+.fixlip-figure-bars {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  margin-top: 0.3rem;
+  font-size: calc(0.8rem * var(--fixlip-type, 1));
+}
+
+.fixlip-figure-label {
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-track {
+  position: relative;
+  height: 0.9rem;
+}
+
+.fixlip-figure-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+}
+
+.fixlip-figure-fill-gray {
+  background: var(--fixlip-gray);
+}
+
+.fixlip-figure-fill-ink {
+  background: var(--fixlip-ink);
+}
+
+.fixlip-figure-fill-up {
+  background: rgb(255, 13, 87);
+}
+
+.fixlip-figure-fill-down {
+  background: rgb(30, 136, 229);
+}
+
+.fixlip-figure-origin {
+  position: absolute;
+  top: -0.25rem;
+  bottom: -0.25rem;
+  width: 1px;
+  background: var(--fixlip-muted);
+}
+
+.fixlip-figure-number {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* -- the explanation with its list ----------------------------------------------------------------- */
+
+.fixlip-figure-explained {
+  grid-template-columns: minmax(0, 19rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 1.75rem;
+}
+
+.fixlip-figure-list p:not(.fixlip-figure-title) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: calc(2.05rem * var(--fixlip-type, 1)); /* a row with a patch or a token is as high as a row without one */
+  gap: 1rem;
+  margin: 0;
+  padding: 0.24rem 0;
+  border-bottom: 1px solid var(--fixlip-line);
+  font-size: calc(0.84rem * var(--fixlip-type, 1));
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-names {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  min-width: 0;
+}
+
+.fixlip-figure-names .fixlip-figure-thumb {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--fixlip-line);
+}
+
+.fixlip-figure-list .fixlip-figure-title {
+  margin: 0.9rem 0 0.2rem;
+  text-align: left;
+}
+
+.fixlip-figure-list .fixlip-figure-title:first-child {
+  margin-top: 0;
+}
+
+.fixlip-figure-curves .fixlip-figure-legend {
+  margin: 0 0 0.4rem;
+}
+
+/* the two subsets of the size that the slider sets, side by side under the chart */
+.fixlip-figure-subsets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+  margin-top: 1rem;
+}
+
+/* a subset: its name and the prediction over the photo, which has its text at its right */
+.fixlip-figure-subset {
+  display: grid;
+  grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  gap: 0.3rem 0.9rem;
+  align-items: start;
+}
+
+.fixlip-figure-subset .fixlip-figure-title {
+  grid-area: 1 / 1;
+  align-self: baseline;
+  text-align: left;
+}
+
+.fixlip-figure-subset .fixlip-figure-reading {
+  grid-area: 1 / 2;
+  align-self: baseline;
+  justify-content: flex-end;
+}
+
+.fixlip-figure-subset .fixlip-figure-pair {
+  display: contents;
+}
+
+.fixlip-figure-subset .fixlip-figure-photo {
+  grid-area: 2 / 1 / 4 / 2;
+}
+
+.fixlip-figure-count {
+  grid-area: 2 / 2;
+  margin: 0;
+  font-size: calc(0.75rem * var(--fixlip-type, 1));
+  line-height: 1.3;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-subset .fixlip-figure-tokens {
+  grid-area: 3 / 2;
+  justify-content: flex-start;
+  font-size: calc(0.68rem * var(--fixlip-type, 1));
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-explained {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fixlip-figure-subsets {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* -- the pointing game ------------------------------------------------------------------------------ */
+
+.fixlip-figure-pointed {
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 1.75rem;
+}
+
+.fixlip-figure-pointing {
+  position: relative;
+}
+
+/* the four photos of the game: a cross in the page's color between them */
+.fixlip-figure-quarters .fixlip-figure-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--fixlip-page), var(--fixlip-page)) center / 3px 100% no-repeat,
+    linear-gradient(var(--fixlip-page), var(--fixlip-page)) center / 100% 3px no-repeat;
+  pointer-events: none;
+}
+
+/* a name that can be chosen */
+.fixlip-figure-name {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fixlip-figure-name:hover {
+  box-shadow: inset 0 0 0 1px var(--fixlip-muted);
+}
+
+.fixlip-figure-name:focus-visible {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-pointed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* wide enough for the four names on one line */
+  .fixlip-figure-pointed > .fixlip-figure-panel:first-child {
+    width: min(100%, 19rem);
+    margin: 0 auto;
+  }
+}
+
+/* -- the plots of the paper -------------------------------------------------------------------------- */
+
+/* four small plots in a row, and a last row that is not full lies in the middle */
+.fixlip-figure-multiples {
+  --fixlip-row: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.fixlip-figure-multiples > * {
+  box-sizing: border-box;
+  flex: none;
+  width: calc((100% - (var(--fixlip-row) - 1) * 0.6rem) / var(--fixlip-row));
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-multiples {
+    --fixlip-row: 2;
+  }
+}
+
+/* the plot that overlays the ticked methods, and what it reads off under the pointer */
+.fixlip-figure-compared {
+  position: relative;
+  touch-action: pan-y pinch-zoom;
+}
+
+.fixlip-figure-tip {
+  position: absolute;
+  top: 0.5rem;
+  z-index: 1;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--fixlip-line);
+  border-radius: 6px;
+  background: var(--fixlip-page);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  font-size: calc(0.72rem * var(--fixlip-type, 1));
+  line-height: 1.45;
+  color: var(--fixlip-ink);
+  pointer-events: none;
+}
+
+.fixlip-figure-tip table {
+  margin: 0;
+  border-collapse: collapse;
+}
+
+.fixlip-figure-tip :is(th, td) {
+  padding: 0 0 0 0.7rem;
+  border: 0;
+  background: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fixlip-figure-tip th {
+  padding-left: 0;
+  text-align: left;
+}
+
+.fixlip-figure-tip td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-tip thead :is(th, td) {
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure[data-figure="paper-curves"] .fixlip-figure-legend {
+  margin: 0.4rem 0 0.9rem;
+}
+
+.fixlip-figure-method-1 {
+  --fixlip-series: var(--fixlip-method-1);
+}
+
+.fixlip-figure-method-2 {
+  --fixlip-series: var(--fixlip-method-2);
+}
+
+.fixlip-figure-method-3 {
+  --fixlip-series: var(--fixlip-method-3);
+}
+
+.fixlip-figure-method-4 {
+  --fixlip-series: var(--fixlip-method-4);
+}
+
+.fixlip-figure-method-5 {
+  --fixlip-series: var(--fixlip-method-5);
+}
+
+.fixlip-figure-method-6 {
+  --fixlip-series: var(--fixlip-method-6);
+}
+
+.fixlip-figure-method-7 {
+  --fixlip-series: var(--fixlip-method-7);
+}
+
+.fixlip-figure-swatch[class*="fixlip-figure-method-"] {
+  background: var(--fixlip-series);
+}
+
+.fixlip-figure-series {
+  transition: opacity var(--fixlip-duration) var(--fixlip-ease);
+}
+
+.fixlip-figure-series .fixlip-figure-line {
+  stroke: var(--fixlip-series);
+}
+
+.fixlip-figure-chart circle[class*="fixlip-figure-method-"] {
+  fill: var(--fixlip-series);
+}
+
+/* while a card is pointed at, the other methods step back */
+.fixlip-figure-series.fixlip-figure-dimmed {
+  opacity: 0.16;
+}
+
+/* a method's own small plot is its tick: gray until it is ticked, then in the method's color */
+.fixlip-figure-tick {
+  padding: 0.55rem 0.45rem 0.5rem;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--fixlip-line);
+  cursor: pointer;
+  transition: box-shadow var(--fixlip-duration) var(--fixlip-ease);
+}
+
+.fixlip-figure-tick:hover {
+  box-shadow: inset 0 0 0 1px var(--fixlip-muted);
+}
+
+.fixlip-figure-tick.fixlip-figure-ticked {
+  box-shadow: inset 0 0 0 2px var(--fixlip-series);
+}
+
+.fixlip-figure-tick:has(input:focus-visible) {
+  outline: 2px solid var(--fixlip-ink);
+  outline-offset: 2px;
+}
+
+.fixlip-figure-tick .fixlip-figure-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.fixlip-figure-tick input {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--fixlip-series);
+  cursor: pointer;
+}
+
+.fixlip-figure-tick .fixlip-figure-line {
+  stroke: var(--fixlip-gray);
+}
+
+.fixlip-figure-tick .fixlip-figure-area {
+  fill: color-mix(in srgb, var(--fixlip-gray) 20%, transparent);
+}
+
+.fixlip-figure-ticked .fixlip-figure-line {
+  stroke: var(--fixlip-series);
+}
+
+.fixlip-figure-ticked .fixlip-figure-area {
+  fill: color-mix(in srgb, var(--fixlip-series) 20%, transparent);
+}
+
+.fixlip-figure-multiples .fixlip-figure-title {
+  font-weight: 500;
+  color: var(--fixlip-muted);
+}
+
+.fixlip-figure-multiples .fixlip-figure-ours .fixlip-figure-title {
+  font-weight: 700;
+  color: var(--fixlip-ink);
+}
+
+.fixlip-figure[data-figure="paper-faithfulness"] .fixlip-figure-panel + .fixlip-figure-panel {
+  margin-top: 1.2rem;
+}
+
+.fixlip-figure[data-figure="paper-faithfulness"] .fixlip-figure-title {
+  text-align: left;
+}
+
+/* -- charts ------------------------------------------------------------------------------------------- */
+
+.fixlip-figure-plot {
+  min-width: 0;
+}
+
+.fixlip-figure-chart {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.fixlip-figure-chart text {
+  fill: var(--fixlip-muted);
+  font-size: calc(11.5px * var(--fixlip-type, 1));
+  font-variant-numeric: tabular-nums;
+}
+
+.fixlip-figure-chart .fixlip-figure-strong {
+  fill: var(--fixlip-ink);
+  font-weight: 650;
+}
+
+.fixlip-figure-axis {
+  stroke: var(--fixlip-muted);
+  stroke-width: 1;
+}
+
+.fixlip-figure-grid {
+  stroke: var(--fixlip-line);
+  stroke-width: 1;
+}
+
+.fixlip-figure-mark {
+  stroke: var(--fixlip-muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-amber {
+  fill: var(--shapiq-amber);
+}
+
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-gray {
+  fill: var(--fixlip-gray);
+}
+
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-ink {
+  fill: var(--fixlip-ink);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-amber {
+  stroke: var(--shapiq-amber);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-gray {
+  stroke: var(--fixlip-gray);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-ink {
+  stroke: var(--fixlip-ink);
+}
+
+/* a method next to FIxLIP that a chart does not point at, but that is no weak baseline */
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-dark {
+  fill: var(--fixlip-muted);
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-dark {
+  stroke: var(--fixlip-muted);
+}
+
+/* the variants of FIxLIP that a chart does not point at: a soft amber */
+.fixlip-figure-chart :is(rect, circle, polygon).fixlip-figure-soft {
+  fill: color-mix(in srgb, var(--shapiq-amber) 45%, var(--fixlip-page));
+}
+
+.fixlip-figure-chart :is(line, path).fixlip-figure-soft {
+  stroke: color-mix(in srgb, var(--shapiq-amber) 45%, var(--fixlip-page));
+}
+
+/* how many times faster, between two lines of a chart */
+.fixlip-figure-bracket {
+  stroke: var(--fixlip-ink);
+  stroke-width: 1;
+}
+
+.fixlip-figure-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fixlip-figure-line.fixlip-figure-dashed {
+  stroke-dasharray: 1.5 4.5;
+}
+
+.fixlip-figure-area {
+  fill: var(--shapiq-amber-soft);
+}
+
+/* what a slider points at in a chart */
+.fixlip-figure-guide {
+  stroke: var(--fixlip-ink);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+/* a chart that a press or a drag sets the slider on */
+.fixlip-figure-scrub {
+  cursor: ew-resize;
+  touch-action: pan-y;
+}
+
+/* what a chart points at: an ink dot with a ring in the page's color */
+.fixlip-figure-dot {
+  fill: var(--fixlip-ink);
+  stroke: var(--fixlip-page);
+  stroke-width: 2;
+}
+
+.fixlip-figure-marker {
+  stroke: var(--fixlip-page);
+  stroke-width: 1.5;
+}
+
+.fixlip-figure-point {
+  fill-opacity: 0.5;
+}
+
+/* the median of a box: a gap in the page's color */
+.fixlip-figure-median {
+  stroke: var(--fixlip-page);
+  stroke-width: 2;
+}
+
+/* on a phone, the captions of the tables are as large as those of the figures */
+@media (max-width: 36rem) {
+  article[role="main"] .table-wrapper table.docutils caption {
+    font-size: 0.94rem;
+  }
+}
+
+/* the number of a figure or a table, in front of its caption (shapiq_demos.py) */
+article[role="main"] .caption-number {
+  font-weight: 700;
+  color: var(--shapiq-amber);
+}
+
+/* -- the tables of the page ---------------------------------------------------------------------------- */
+
+/* as the figures: narrower than the text, with a caption in their style */
+article[role="main"] .table-wrapper.container {
+  max-width: var(--fixlip-figure-width, 38rem);
+  margin: 2rem auto 2.25rem;
+  padding-inline: 0; /* the table is as wide as a figure */
+}
+
+article[role="main"] .table-wrapper table.docutils {
+  width: 100%;
+  font-size: 0.88rem;
+}
+
+article[role="main"] .table-wrapper table.docutils caption {
+  caption-side: bottom;
+  margin: 0;
+  padding: 0.7rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--shapiq-text-muted, #5b6275);
+}
+
+/* the lead of the caption, as in the captions of the figures */
+article[role="main"] .table-wrapper table.docutils caption strong {
+  color: var(--color-foreground-primary, #1b1e27);
+}
+
+article[role="main"] .table-wrapper table.docutils th {
+  text-align: left;
+}
+
+/* the cells of a row start on one line */
+article[role="main"] .table-wrapper table.docutils td {
+  vertical-align: top;
+}
+
+/* -- the demo on this page ----------------------------------------------------------------------------- */
+
+/* amber where the demo is lavender or blue elsewhere, as in the figures */
+.fixlip-demo {
+  --shapiq-lavender: var(--shapiq-amber);
+}
+
+.fixlip-demo :is(a, .fixlip-demo-link) {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(1.5px, 0.09em);
+  text-underline-offset: 0.18em;
+}
+
+.fixlip-demo :is(a, .fixlip-demo-link):hover {
+  text-decoration-thickness: max(2.5px, 0.16em);
+  text-shadow: 0.06em 0.06em 0.03em var(--shapiq-amber);
+}
+
+/* -- on paper ------------------------------------------------------------------------------------------ */
+
+@media print {
+  .fixlip-figure {
+    break-inside: avoid;
+  }
+
+  .fixlip-figure-photos,
+  .fixlip-figure-dots {
+    display: none;
+  }
+
+  .fixlip-figure .fixlip-figure-shown-photo {
+    display: block;
+  }
+}
+
+/* -- the summary of the page ---------------------------------------------------------------------------- */
+
+/* The summary is set like the abstract of a paper: in a box of its own, in the amber of the docs. */
+article[role="main"] section:is(.fixlip-summary, .fixlip-citation) {
+  margin: 2rem 0 2.5rem;
+  padding: 1.1rem 1.4rem 0.6rem;
+  border: 1.5px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius, 12px);
+  background: var(--shapiq-amber-soft);
+  font-size: 0.95em;
+}
+
+article[role="main"] section:is(.fixlip-summary, .fixlip-citation) > h2 {
+  margin: 0 0 0.6rem;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--shapiq-amber-ink);
+}
+
+article[role="main"] section:is(.fixlip-summary, .fixlip-citation) > p {
+  margin: 0 0 0.75rem;
+}
+
+/* the box at the end of the page that says how to cite the method */
+article[role="main"] section.fixlip-citation {
+  margin-bottom: 1rem;
+}
+
+article[role="main"] section.fixlip-citation div[class*="highlight-"] {
+  margin: 0 0 0.75rem;
+}
+
+/* -- the title of the page ----------------------------------------------------------------------------- */
+
+/* The title stands over the demo like the title of a talk: in the middle, a little tighter than the
+   headings of the write-up, over a short amber bar. From the width of a tablet on it stays on one
+   line, for which its size follows the width of the text (the title is about 24 times as wide as
+   its font size, and figures.js makes it smaller where a font runs wider). It starts under the
+   buttons that the docs keep in the corner of the page, which would lie on its end. The mark of the
+   heading link takes no room, so that the words are in the middle. */
+article[role="main"] section:has(> .fixlip-opening) > h1 {
+  position: relative;
+  clear: both;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  text-align: center;
+  text-wrap: balance;
+  letter-spacing: -0.02em;
+}
+
+article[role="main"] section:has(> .fixlip-opening) > h1::after {
+  content: "";
+  display: block;
+  width: 2.25rem;
+  height: 3px;
+  margin: 0.7rem auto 0;
+  border-radius: 2px;
+  background: var(--shapiq-amber);
+}
+
+article[role="main"] section:has(> .fixlip-opening) > h1 > a.headerlink {
+  position: absolute;
+  margin-left: 0.3em;
+}
+
+@media (min-width: 40rem) {
+  article[role="main"] section:has(> .fixlip-opening) > h1 {
+    font-size: min(1.9rem, calc((100vw - 2rem) / 24.8));
+    white-space: nowrap;
+  }
+}
+
+/* -- the first screen of the page ---------------------------------------------------------------------- */
+
+/* The demo has the first screen for itself. Its block reaches down to the end of the screen, with the
+   demo in the middle of the room that is left and a link to the write-up at its end, so the write-up
+   starts below the screen. --fixlip-opening-top is where the block starts on the page, measured by
+   figures.js. Where the demo is higher than the screen, the link follows it. */
+.fixlip-opening {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--fixlip-opening-top, 8rem));
+  min-height: calc(100svh - var(--fixlip-opening-top, 8rem));
+}
+
+.fixlip-opening > .fixlip-demo {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+article[role="main"] .fixlip-opening > p.fixlip-more {
+  margin: 0;
+  padding: 1rem 0 0.6rem;
+  text-align: center;
+}
+
+/* Where the demo is higher than the screen, the link stays at the lower edge of the screen until the
+   end of the demo is reached, over a ground that fades into the page. Only the link takes the
+   pointer, so the demo under the ground can still be used. On a phone, where the demo is several
+   screens long, the link waits at the end of the demo. */
+@media (min-width: 40rem) {
+  article[role="main"] .fixlip-opening > p.fixlip-more {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-top: 2rem;
+    background: linear-gradient(to bottom, transparent, var(--color-background-primary, #ffffff) 55%);
+    pointer-events: none;
+  }
+
+  article[role="main"] .fixlip-opening > p.fixlip-more a.reference {
+    pointer-events: auto;
+  }
+}
+
+/* the link to the write-up: a small, light label over a thin arrow that points down the page */
+article[role="main"] p.fixlip-more a.reference,
+article[role="main"] p.fixlip-more a.reference:hover {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-shadow: none;
+  color: var(--shapiq-text-muted, #5b6275);
+  transition: color 0.2s ease;
+}
+
+article[role="main"] p.fixlip-more a.reference:hover,
+article[role="main"] p.fixlip-more a.reference:focus-visible {
+  color: var(--shapiq-amber-ink);
+}
+
+article[role="main"] p.fixlip-more a::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid var(--shapiq-amber);
+  border-bottom: 1.5px solid var(--shapiq-amber);
+  transform: rotate(45deg);
+  animation: fixlip-more 2.4s ease-in-out infinite;
+}
+
+@keyframes fixlip-more {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 0.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  article[role="main"] p.fixlip-more a::after {
+    animation: none;
+  }
+}
+
+/* the box that the link leads to keeps a distance from the upper edge of the screen, and from the
+   bar that the docs keep there on a narrow page */
+article[role="main"] section.fixlip-summary,
+article[role="main"] section.fixlip-summary > span[id] {
+  scroll-margin-top: 1.25rem;
+}
+
+@media (max-width: 67em) {
+  article[role="main"] section.fixlip-summary,
+  article[role="main"] section.fixlip-summary > span[id] {
+    scroll-margin-top: 4.5rem;
+  }
+}
+
+/* on paper there is no screen to fill and nothing to scroll to */
+@media print {
+  .fixlip-opening {
+    display: block;
+    min-height: 0;
+  }
+
+  article[role="main"] .fixlip-opening > p.fixlip-more {
+    display: none;
+  }
+}
+
+/* the divider between the demo and the write-up */
+article[role="main"] hr.docutils {
+  margin: 2.25rem 0;
+}
+
+/* -- the first page and the second page -------------------------------------------------------------- */
+
+/* The title and the demo are the first page, and the write-up is the second. While the page is
+   scrolled, the first page stays where it is, and the second slides up over it like a sheet. The
+   first page recedes under it: it shrinks a little and dims. figures.js marks the section of the
+   page with fixlip-staged and measures the places: where the title and the block of the demo lie
+   on the page (--fixlip-title-top, --fixlip-opening-top), by how much the first page is higher than
+   the screen (--fixlip-over, the page scrolls by this much before the first page stays), and where
+   the sheet starts in the section (--fixlip-sheet-top). While it measures, the section has the
+   class fixlip-placing, and nothing is held. The first page lies under the section's own content
+   (the negative layers stay inside the section, which keeps its layers to itself), so the write-up
+   needs no layer of its own. Without the script, the page scrolls as one, and so it does on a
+   narrow screen, where the docs scroll the text column sideways and nothing can be held in it. */
+@media screen and (min-width: 48.1em) {
+  article[role="main"] section.fixlip-staged {
+    position: relative;
+    isolation: isolate;
+  }
+
+  article[role="main"] section.fixlip-staged:not(.fixlip-placing) > h1,
+  article[role="main"] section.fixlip-staged:not(.fixlip-placing) > .fixlip-opening {
+    position: sticky;
+    z-index: -2;
+  }
+
+  article[role="main"] section.fixlip-staged:not(.fixlip-placing) > h1 {
+    top: calc(var(--fixlip-title-top, 0px) - var(--fixlip-over, 0px));
+    /* both parts shrink towards the same point, a little above the middle of the screen */
+    transform-origin: 50% calc(45vh - var(--fixlip-title-top, 0px) + var(--fixlip-over, 0px));
+  }
+
+  article[role="main"] section.fixlip-staged:not(.fixlip-placing) > .fixlip-opening {
+    top: calc(var(--fixlip-opening-top, 0px) - var(--fixlip-over, 0px));
+    transform-origin: 50% calc(45vh - var(--fixlip-opening-top, 0px) + var(--fixlip-over, 0px));
+  }
+
+  /* the sheet: the ground of the write-up, from a little under the end of the first page (so that
+     its shadow does not show there) to the end of the section, a little wider than the text */
+  article[role="main"] section.fixlip-staged::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: calc(var(--fixlip-sheet-top, 100vh) + 2rem);
+    right: calc(-1 * var(--fixlip-sheet-bleed));
+    bottom: 0;
+    left: calc(-1 * var(--fixlip-sheet-bleed));
+    border-top: 1px solid var(--color-background-border, #eeebee);
+    border-radius: 1.25rem 1.25rem 0 0;
+    background: var(--color-background-primary, #ffffff);
+    box-shadow: 0 -1.5rem 2.5rem -1.75rem rgba(15, 18, 30, 0.35);
+    --fixlip-sheet-bleed: 1rem;
+  }
+
+  /* the edge of the sheet is the divider */
+  article[role="main"] section.fixlip-staged > .fixlip-opening + hr.docutils {
+    display: none;
+  }
+
+  article[role="main"] section.fixlip-staged > .fixlip-opening + hr.docutils + section.fixlip-summary {
+    margin-top: 4.5rem;
+  }
+}
+
+@media screen and (min-width: 67.1em) {
+  article[role="main"] section.fixlip-staged::before {
+    --fixlip-sheet-bleed: 2rem;
+  }
+}
+
+/* The first page recedes with the scroll position of the page, from where it starts to stay until
+   the sheet has covered most of the screen. The browser runs this with the scrolling itself. A
+   browser that cannot leaves the first page as it is under the sheet, and so does a reader who
+   asked for less motion. */
+@supports (animation-timeline: scroll()) {
+  @media screen and (min-width: 48.1em) and (prefers-reduced-motion: no-preference) {
+    article[role="main"] section.fixlip-staged:not(.fixlip-placing) > h1,
+    article[role="main"] section.fixlip-staged:not(.fixlip-placing) > .fixlip-opening {
+      animation: fixlip-recede linear both;
+      animation-timeline: scroll(root block);
+      animation-range: var(--fixlip-over, 0px) calc(var(--fixlip-over, 0px) + 85vh);
+    }
+  }
+}
+
+@keyframes fixlip-recede {
+  to {
+    opacity: 0.2;
+    scale: 0.93;
+  }
+}
+
+/* -- the colors that the text names -------------------------------------------------------------------- */
+
+/* Where the text or a caption names the red and the blue of the figures, the word is set in that
+   color (RED and BLUE of figures.js and demo.js). The roles fixlip-red and fixlip-blue mark it. */
+article[role="main"] .fixlip-red {
+  font-weight: 700;
+  color: rgb(255, 13, 87);
+}
+
+article[role="main"] .fixlip-blue {
+  font-weight: 700;
+  color: rgb(30, 136, 229);
+}
+
+/* -- the equations of the page ------------------------------------------------------------------------ */
+
+/* The number of an equation keeps its place at the right. On a small screen, a wide equation
+   scrolls in its own box next to it, and not under it. */
+article[role="main"] div.math:has(> .eqno) {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+article[role="main"] div.math > span.eqno {
+  position: relative;
+  inset: auto;
+  flex: none;
+  transform: none;
+}
+
+/* the link to an equation shows up in the gap left of its number, so that nothing moves */
+article[role="main"] div.math > span.eqno > .headerlink {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  margin: 0 0.15rem 0 0;
+  translate: 0 -50%;
+}
+
+article[role="main"] div.math > mjx-container {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.25rem 0;
+  overflow: auto hidden;
+}
+
+/* A brace under a part of an equation is amber, and what it spans and its label keep the color of
+   the text. The classes are set in the equation with \class. MathJax colors its SVG output with
+   fill and stroke and its HTML output with color, so each rule sets all three. */
+article[role="main"] mjx-container .fixlip-brace {
+  color: var(--shapiq-amber);
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+article[role="main"] mjx-container .fixlip-braced {
+  color: var(--color-foreground-primary);
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* -- the links of the page ----------------------------------------------------------------------------- */
+
+/* This stylesheet is loaded only by pages with these figures. Their links are underlined in amber,
+   and on hover the underline grows and the text casts a soft offset shadow in amber. */
+article[role="main"] :is(p, li, td, figcaption) a.reference {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(1.5px, 0.09em);
+  text-underline-offset: 0.18em;
+  transition:
+    text-decoration-thickness var(--shapiq-duration) var(--shapiq-ease),
+    text-shadow var(--shapiq-duration) var(--shapiq-ease);
+}
+
+article[role="main"] :is(p, li, td, figcaption) a.reference:hover {
+  color: inherit;
+  text-decoration-color: var(--shapiq-amber);
+  text-decoration-thickness: max(2.5px, 0.16em);
+  text-shadow: 0.06em 0.06em 0.03em var(--shapiq-amber);
+}
+
+article[role="main"] :is(p, li, td, figcaption) a.reference code {
+  color: inherit;
+}
+
+/* -- a slider of a figure ---------------------------------------------------------------------------- */
+
+.fixlip-figure-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  font-size: calc(0.78rem * var(--fixlip-type, 1));
+  color: var(--fixlip-muted);
+}
+
+/* The slider is drawn here and not by the browser, which darkens its own while it is pressed. */
+.fixlip-figure-slider input {
+  --fixlip-at: calc(8px + var(--fixlip-part, 0) * (100% - 16px)); /* the middle of the thumb */
+  flex: 1;
+  min-width: 0;
+  height: 1.75rem; /* a target for a finger */
+  margin: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fixlip-figure-slider input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber) var(--fixlip-at),
+    var(--fixlip-line) var(--fixlip-at)
+  );
+}
+
+.fixlip-figure-slider input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--shapiq-amber) var(--fixlip-at),
+    var(--fixlip-line) var(--fixlip-at)
+  );
+}
+
+.fixlip-figure-slider input::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fixlip-figure-slider input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber);
+}
+
+.fixlip-figure-slider input:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--shapiq-amber);
+  outline-offset: 2px;
+}
+
+.fixlip-figure-slider output {
+  min-width: 1.6em;
+  font-size: 0.95rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--fixlip-ink);
+}
+
+/* a slider under the axis of a chart, with its label under it */
+.fixlip-figure-under {
+  display: grid;
+  grid-template-columns: 1fr auto auto 1fr;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  margin-top: 0;
+}
+
+/* the track ends where the axis ends, under the middle of the thumb at its first and last place */
+.fixlip-figure-under input {
+  --fixlip-track: linear-gradient(
+      to right,
+      var(--shapiq-amber) calc(var(--fixlip-part, 0) * 100%),
+      var(--fixlip-line) 0
+    )
+    8px 0 / calc(100% - 16px) 100% no-repeat;
+  grid-area: 1 / 1 / 2 / -1;
+  margin: 0 var(--fixlip-right, 0) 0 var(--fixlip-left, 0);
+}
+
+.fixlip-figure-under input::-webkit-slider-runnable-track {
+  border-radius: 0;
+  background: var(--fixlip-track);
+}
+
+.fixlip-figure-under input::-moz-range-track {
+  border-radius: 0;
+  background: var(--fixlip-track);
+}
+
+.fixlip-figure-under span {
+  grid-area: 2 / 2;
+}
+
+/* the value keeps the room of two digits, so that its label stays in place */
+.fixlip-figure-under output {
+  grid-area: 2 / 3;
+  min-width: 2ch;
+  text-align: left;
+}
+
+/* a clique of the size that the slider sets, next to the chart of all sizes */
+.fixlip-figure-sized {
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 1.75rem;
+}
+
+/* the legend is as high as the title over the photo, so that the plot starts where the photo starts */
+.fixlip-figure-sized .fixlip-figure-legend {
+  margin: 0;
+  line-height: 1.42;
+}
+
+/* readings under each other: their labels end on one line, and their values start on one */
+.fixlip-figure-readings {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.15rem 0.4rem;
+}
+
+.fixlip-figure-readings .fixlip-figure-reading {
+  display: contents;
+}
+
+.fixlip-figure-readings span {
+  justify-self: end;
+}
+
+@container (max-width: 34rem) {
+  .fixlip-figure-sized {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fixlip-figure-sized > .fixlip-figure-panel:first-child {
+    width: min(100%, 17rem);
+    margin: 0 auto;
+  }
+}
+
+/* on a narrow page, parts that lie under each other have one distance in all figures */
+@container (max-width: 34rem) {
+  .fixlip-figure-two:not(.fixlip-figure-narrow),
+  .fixlip-figure-three,
+  .fixlip-figure-sized,
+  .fixlip-figure-pointed,
+  .fixlip-figure-explained {
+    row-gap: 1.6rem;
+  }
+}
