@@ -758,3 +758,35 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
 .shapiq-deck--scroll .shapiq-deck-count {
   display: none;
 }
+
+/* ---- two columns: code beside a demo ------------------------------------------------------------ */
+
+.shapiq-talk-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.7fr);
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  align-items: start;
+}
+
+.shapiq-talk-column > :first-child {
+  margin-top: 0;
+}
+
+.shapiq-talk-column .highlight pre {
+  font-size: 0.78em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.shapiq-talk-libraries {
+  color: var(--shapiq-text-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 900px) {
+  .shapiq-talk-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

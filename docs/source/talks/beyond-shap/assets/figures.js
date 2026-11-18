@@ -7,6 +7,9 @@
 
    same-shap   Three models of two features, with the same Shapley values. Step 0 shows the
                Shapley values only, step 1 what the models do, step 2 their Shapley interactions.
+   effects     The same three models, with the pure, partial and full effect of each feature
+               [Fumagalli et al., 2025]. Step 0 shows the partial effects (the Shapley values),
+               step 1 the pure and the full effects around them.
    framework   The unified framework of feature-based explanations [Fumagalli et al., 2025]: how
                much the feature distribution and the higher-order interactions influence an
                explanation, with the methods that fall into each cell. Steps 0 to 2 are the three
@@ -58,6 +61,7 @@
       0.5 * (v["2"] - v[""]) + 0.5 * (v["12"] - v["1"]),
     ];
     model.main = [v["1"] - v[""], v["2"] - v[""]];
+    model.full = [v["12"] - v["2"], v["12"] - v["1"]];
     model.pair = v["12"] - v["1"] - v["2"] + v[""];
   }
 
@@ -126,7 +130,12 @@
       return card;
     });
 
-    // on a phone, the cards are a row to swipe through, with a dot for each
+    swipe(figure, row, cards);
+    return { cards };
+  }
+
+  // on a phone, the cards are a row to swipe through, with a dot for each
+  function swipe(figure, row, cards) {
     const dots = make("div", { class: "talk-same-dots", role: "tablist", "aria-label": "Models" }, figure);
     const marks = cards.map((card, index) => {
       const dot = make("button", { type: "button", role: "tab", "aria-label": `Model ${"ABC"[index]}` }, dots);
@@ -145,6 +154,53 @@
     };
     row.addEventListener("scroll", mark, { passive: true });
     mark();
+  }
+
+  // ---- pure, partial and full effects ------------------------------------------------------------
+  // Fumagalli et al. (2025): an individual explanation takes in none of a feature's interactions
+  // (pure, its main effect), a share of them (partial, the Shapley value) or all of them (full,
+  // what the prediction loses when the feature alone is removed).
+  const EFFECTS = [
+    { key: "main", name: "Pure", says: "on its own", from: 1 },
+    { key: "shapley", name: "Partial", says: "shared", from: 0 },
+    { key: "full", name: "Full", says: "when removed", from: 1 },
+  ];
+  const VERDICTS = ["All three agree", "Alone nothing, removed everything", "Alone everything, removed nothing"];
+
+  function effects(figure) {
+    const row = make("div", { class: "talk-same talk-effects" }, figure);
+    const cards = MODELS.map((model, index) => {
+      const card = make("div", { class: "talk-same-card" }, row);
+      const head = make("div", { class: "talk-same-head" }, card);
+      make("div", { class: "talk-same-model" }, head, `Model ${"ABC"[index]}`);
+      const named = make("div", { class: "talk-same-name" }, head);
+      make("strong", {}, named, model.name);
+      make("span", {}, named, model.formula);
+
+      const part = make("div", { class: "talk-same-part" }, card);
+      const bars = make("svg:svg", { viewBox: "0 0 260 196", class: "talk-same-bars", "aria-hidden": "true" }, part);
+      const x0 = 110;
+      const scale = 60;
+      make("svg:line", { x1: x0, x2: x0, y1: 2, y2: 182, class: "talk-axis" }, bars);
+      EFFECTS.forEach((effect, rank) => {
+        const top = 6 + rank * 60;
+        const group = make("svg:g", { class: `talk-from-${effect.from}` }, bars);
+        make("svg:text", { x: 0, y: top + 17, class: "talk-effect-name" }, group, effect.name);
+        make("svg:text", { x: 0, y: top + 36, class: "talk-tick" }, group, effect.says);
+        model[effect.key].forEach((value, feature) => {
+          const y = top + feature * 24;
+          make("svg:text", { x: x0 - 6, y: y + 14, class: "talk-feature", "text-anchor": "end" }, group, `x${"₁₂"[feature]}`);
+          if (value) make("svg:rect", { x: x0, y, width: value * scale, height: 19, rx: 3, class: value > 0 ? "talk-pos" : "talk-neg" }, group);
+          make("svg:text", { x: x0 + value * scale + 6, y: y + 14, class: value ? "talk-value" : "talk-value talk-muted" }, group, format(value));
+        });
+      });
+      [0, 1, 2].forEach((tick) => {
+        make("svg:text", { x: x0 + tick * scale, y: 195, class: "talk-tick", "text-anchor": "middle" }, bars, tick);
+      });
+      make("div", { class: "talk-same-says talk-from-1" }, card, VERDICTS[index]);
+      return card;
+    });
+    swipe(figure, row, cards);
     return { cards };
   }
 
@@ -266,7 +322,7 @@
 
   // ---- steps ---------------------------------------------------------------------------------
 
-  const FIGURES = { "same-shap": sameShap, framework };
+  const FIGURES = { "same-shap": sameShap, effects, framework };
 
   for (const figure of document.querySelectorAll(".shapiq-talk-figure")) {
     const draw = FIGURES[figure.dataset.figure];

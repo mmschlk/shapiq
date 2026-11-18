@@ -404,3 +404,21 @@
 .talk-zero + .talk-node {
   fill: #1b1e27 !important;
 }
+
+/* ---- pure, partial and full effects ---------------------------------------------------------- */
+
+.talk-effects {
+  grid-template-rows: repeat(3, auto);
+}
+
+.talk-effects .talk-same-card {
+  grid-row: span 3;
+}
+
+.talk-effect-name {
+  font-weight: 700;
+}
+
+.shapiq-deck .talk-effects {
+  font-size: clamp(14px, 0.75vw + 0.75vh, 26px);
+}
