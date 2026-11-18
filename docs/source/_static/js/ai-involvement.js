@@ -87,9 +87,21 @@
     return part.target;
   }
 
-  // the two axes of a part: its own, or those of its level
-  function humanOf(part) { return part.human_level != null ? part.human_level : (byLevel[part.level].human || 0); }
-  function aiOf(part) { return part.ai_level != null ? part.ai_level : (byLevel[part.level].ai || 0); }
+  // the two axes of a part: its own, or those of its level. A quoted part reports no level of its
+  // own and keeps the place of the part around it (its host).
+  function humanOf(part) {
+    if (part.quoted) return part.host ? humanOf(part.host) : 0;
+    return part.human_level != null ? part.human_level : (byLevel[part.level].human || 0);
+  }
+  function aiOf(part) {
+    if (part.quoted) return part.host ? aiOf(part.host) : 0;
+    return part.ai_level != null ? part.ai_level : (byLevel[part.level].ai || 0);
+  }
+
+  // what a part's level is called and means
+  var QUOTED = { name: "Quoted", summary: "Taken from the work of others, as the sources say. How that work was written is not known, so it has no level." };
+  function levelOf(part) { return part.quoted ? QUOTED : byLevel[part.level]; }
+  function keyOf(part) { return part.quoted ? "quoted" : String(part.level); }
 
   // -- colors ------------------------------------------------------------------------------------
 
@@ -117,7 +129,10 @@
   // the place of a part, from its two inputs
   function placeOf(part) { return (aiOf(part) - humanOf(part) + axisTop) / (2 * axisTop); }
   function colorOf(level) { return colorAt(placeOf({ level: level })); }
-  function partColor(part) { return colorAt(placeOf(part)); }
+  function partColor(part) {
+    if (part.quoted) return dark() ? "hsl(220 8% 62%)" : "hsl(220 8% 66%)";
+    return colorAt(placeOf(part));
+  }
 
   // -- the widget --------------------------------------------------------------------------------
 
@@ -126,7 +141,6 @@
   // the tag that sticks to the top of the line: the level of the part being read
   var label = el("button", { class: "shapiq-ai-label", type: "button", "aria-expanded": "false" });
   var labelText = el("span", { class: "shapiq-ai-label-text" });
-  label.appendChild(el("span", { class: "shapiq-ai-label-ai" }, "AI"));
   label.appendChild(labelText);
   var svg = el("svg:svg", { class: "shapiq-ai-svg", "aria-hidden": "true" });
   var defs = el("svg:defs");
@@ -173,6 +187,16 @@
           top: Math.max(0, rect.top - box.top), bottom: Math.min(height, rect.bottom - box.top),
         });
       });
+    });
+    // a quoted part keeps the place of the innermost part around it that has a level
+    items.forEach(function (item) {
+      if (!item.part.quoted) return;
+      var host = items[0];
+      items.forEach(function (other) {
+        if (other.part.quoted || other.depth >= item.depth) return;
+        if (other.top <= item.top + 0.5 && item.bottom <= other.bottom + 0.5 && other.depth > host.depth) host = other;
+      });
+      item.part = Object.assign({}, item.part, { host: host.part });
     });
     var cuts = [];
     items.forEach(function (item) { cuts.push(item.top, item.bottom); });
@@ -349,8 +373,8 @@
       var button = el("button", { type: "button", class: "shapiq-ai-hit", "aria-expanded": "false" });
       button.style.top = segment.top + "px";
       button.style.height = Math.max(8, segment.bottom - segment.top) + "px";
-      button.setAttribute("aria-label", name + ": level " + part.level + ", " + byLevel[part.level].name + ". Show details.");
-      button.title = name + " · " + byLevel[part.level].name;
+      button.setAttribute("aria-label", name + ": " + levelOf(part).name + ". Show details.");
+      button.title = name + " · " + levelOf(part).name;
       button.addEventListener("focus", function () { if (!button.matches(":hover")) point(segment); });
       button.addEventListener("blur", function () { point(null); });
       button.addEventListener("click", function (event) {
@@ -417,14 +441,14 @@
     var y = window.innerHeight * 0.33 - article.getBoundingClientRect().top;
     var segment = segmentAt(Math.max(HEAD, y));
     var part = segment.item.part;
-    var key = part.level + "|" + partColor(part);
+    var key = keyOf(part) + "|" + partColor(part);
     if (current === key) return;
     current = key;
-    labelText.textContent = byLevel[part.level].name;
+    labelText.textContent = levelOf(part).name;
     label.style.setProperty("--shapiq-ai-tag", partColor(part));
-    label.setAttribute("aria-label", "AI involvement here: level " + part.level + ", " + byLevel[part.level].name
+    label.setAttribute("aria-label", "AI involvement here: " + levelOf(part).name
       + ". Show the page's AI involvement.");
-    label.title = byLevel[part.level].summary;
+    label.title = levelOf(part).summary;
   }
 
   // -- the card ----------------------------------------------------------------------------------
@@ -471,20 +495,22 @@
     segments.forEach(function (segment) {
       var size = segment.bottom - segment.top;
       total += size;
-      by[segment.item.part.level] = (by[segment.item.part.level] || 0) + size;
+      var key = keyOf(segment.item.part);
+      by[key] = (by[key] || 0) + size;
     });
     var list = el("ul", { class: "shapiq-ai-shares" });
-    levels.forEach(function (level) {
-      if (!by[level.level]) return;
+    levels.map(function (level) { return { level: level.level }; }).concat([{ quoted: true }]).forEach(function (part) {
+      var key = keyOf(part);
+      if (!by[key]) return;
       var item = el("li");
       var bar = el("span", { class: "bar" });
-      bar.style.width = Math.max(2, Math.round(100 * by[level.level] / total)) + "%";
-      bar.style.background = partColor({ level: level.level });
-      item.appendChild(el("span", { class: "name" }, level.level + " · " + level.name));
+      bar.style.width = Math.max(2, Math.round(100 * by[key] / total)) + "%";
+      bar.style.background = partColor(part);
+      item.appendChild(el("span", { class: "name" }, levelOf(part).name));
       var track = el("span", { class: "track" });
       track.appendChild(bar);
       item.appendChild(track);
-      item.appendChild(el("span", { class: "share" }, Math.round(100 * by[level.level] / total) + "%"));
+      item.appendChild(el("span", { class: "share" }, Math.round(100 * by[key] / total) + "%"));
       list.appendChild(item);
     });
     return list;
@@ -492,23 +518,23 @@
 
   function fill(part, name) {
     clear(card);
-    var level = byLevel[part.level];
+    var level = levelOf(part);
     card.style.setProperty("--shapiq-ai-card", partColor(part));
     var head = el("div", { class: "shapiq-ai-card-head" });
-    head.appendChild(scale(part.level));
-    head.appendChild(el("span", { class: "shapiq-ai-card-level" }, "Level " + part.level + " · " + level.name));
+    if (!part.quoted) head.appendChild(scale(part.level));
+    head.appendChild(el("span", { class: "shapiq-ai-card-level" }, level.name));
     var shut = el("button", { type: "button", class: "shapiq-ai-card-close", "aria-label": "Close" }, "×");
     shut.addEventListener("click", function () { close(true); });
     head.appendChild(shut);
     card.appendChild(head);
     card.appendChild(el("p", { class: "shapiq-ai-card-name" }, name));
     card.appendChild(el("p", { class: "shapiq-ai-card-meaning" }, level.summary));
-    if (humanSteps.length && aiSteps.length) card.appendChild(axes(part));
+    if (humanSteps.length && aiSteps.length && !part.quoted) card.appendChild(axes(part));
     if (part.whole && part.summary) card.appendChild(el("p", { class: "shapiq-ai-card-summary" }, part.summary));
     var list = el("dl");
     row(list, "Written by", part.written);
     row(list, "Models", part.models);
-    row(list, "Human role", part.human);
+    row(list, "Person", part.human);
     row(list, "Sources", part.sources);
     row(list, "Last checked", date(part.checked));
     if (list.firstChild) card.appendChild(list);

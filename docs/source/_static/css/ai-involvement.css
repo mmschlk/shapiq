@@ -170,11 +170,6 @@ body[data-theme="dark"] {
     color var(--shapiq-duration) var(--shapiq-ease);
 }
 
-.shapiq-ai-label-ai {
-  font-size: 8.5px;
-  font-weight: 700;
-  opacity: 0.75;
-}
 
 .shapiq-ai-label:hover,
 .shapiq-ai-label[aria-expanded="true"] {
@@ -360,10 +355,6 @@ a.shapiq-ai-card-more {
     gap: 4px;
     font-size: 8.5px;
     box-shadow: 0 0 5px color-mix(in srgb, var(--shapiq-ai-tag, var(--shapiq-amber)) 40%, transparent);
-  }
-
-  .shapiq-ai-label-ai {
-    font-size: 7.5px;
   }
 }
 
@@ -931,7 +922,6 @@ ol.shapiq-ai-levels {
 }
 
 .shapiq-ai-level-name {
-  margin-left: -0.3rem;
   font-size: 1.05rem;
   font-weight: 700;
 }

@@ -1,5 +1,5 @@
 # What AI did on this page, part by part, for the line beside the text (see ai-involvement.rst).
-# Levels: 0 Handmade, 1 Polished, 2 Co-written, 3 Vetted, 4 Guided, 5 Autopilot
+# Levels: 0 Handmade, 1 Polished, 2 Co-written, 3 Vetted, 4 Autopilot, and quoted parts without a level
 # (_data/ai-involvement.toml). Self-reported. Change a level here when it no longer holds.
 
 [page]
@@ -8,7 +8,7 @@ summary = "Claude wrote most of this page from the FIxLIP paper. Max directed it
 written = "Claude, directed by Max"
 models = ["Claude Fable 5.2", "Claude Opus 5.5"]
 checked = 2026-11-17
-note = "Max is still reviewing the page. The levels give its state on 17 Nov 2026."
+note = "The levels give the state of the page on 17 Nov 2026. Max is still reviewing the latest round of changes."
 # the panel to try views and colors, for review only (remove before merging into main)
 mixer = true
 
@@ -24,7 +24,7 @@ checked = 2026-11-17
 [[parts]]
 target = ".fixlip-demo"
 name = "Demo"
-level = 4
+level = 3
 written = "Claude, in sessions with Max"
 models = ["Claude Opus 5.5", "Claude Fable 5.2"]
 human = "Max committed it on 26 Oct 2026 and asked for changes since. He checked how it works, not every line of its code."
@@ -33,7 +33,7 @@ note = "Level to be confirmed by Max."
 
 [[parts]]
 target = "#fixlip-sec-summary"
-level = 4
+level = 4  # Autopilot until Max approves it
 written = "Claude"
 human = "Max has not yet approved it."
 
@@ -71,7 +71,7 @@ target = "#fixlip-sec-code"
 # the definitions are the paper's, set in boxes
 [[parts]]
 target = "div.shapiq-statement-definition"
-level = 1
+quoted = true
 written = "Baniecki et al. (2025), set by Claude"
 human = "Max asked for the boxes. The definitions keep the paper's words and notation."
 sources = "Definitions of Baniecki et al. (2025)"
@@ -79,7 +79,7 @@ sources = "Definitions of Baniecki et al. (2025)"
 # all figures are drawn by Claude's script, from values computed for the page
 [[parts]]
 target = "figure.fixlip-figure"
-level = 4
+level = 3
 written = "Claude, drawn by its script figures.js"
 human = "Max checked every figure on the page and asked for changes. He did not check the code or every value."
 sources = "Values computed with shapiq from SigLIP 2 and CLIP"
@@ -87,7 +87,7 @@ sources = "Values computed with shapiq from SigLIP 2 and CLIP"
 # three figures re-render the data of the paper
 [[parts]]
 target = "#fixlip-figure-paper-runtime, #fixlip-figure-paper-faithfulness, #fixlip-figure-paper-curves"
-level = 4
+level = 3
 written = "Claude, drawn by its script figures.js"
 human = "Max checked every figure on the page and asked for changes. He did not check the code or every value."
 sources = "Data of Baniecki et al. (2025), drawn again"

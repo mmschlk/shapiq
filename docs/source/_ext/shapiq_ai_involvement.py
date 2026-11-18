@@ -1,7 +1,7 @@
 """Sphinx extension for the AI involvement of a page: a thin line beside the text, part by part.
 
-The levels are in ``_data/ai-involvement.toml``, from 0 (a person wrote it without AI) to 5 (AI
-wrote it and no person checked it). A page reports its parts in a TOML file next to it and names
+The levels are in ``_data/ai-involvement.toml``, from 0 (a person wrote it without AI) to 4 (AI
+wrote it and no person went through all of it). A page reports its parts in a TOML file next to it and names
 the file in the ``shapiq-ai-involvement`` directive, once, anywhere on the page::
 
     .. shapiq-ai-involvement:: ai-involvement.toml
@@ -24,7 +24,9 @@ A part names the element it covers by a CSS selector, usually the id of a sectio
     checked = 2026-11-17
 
 ``target``, ``level`` and ``written`` are required. ``name`` (default, the part's heading or
-caption number), ``models``, ``human``, ``sources``, ``checked`` and ``note`` are optional. A
+caption number), ``models``, ``human``, ``sources``, ``checked`` and ``note`` are optional.
+``quoted = true`` marks a part taken from the work of others: it has no level and keeps the place
+of the part around it, in gray. A
 ``[defaults]`` table gives every part the fields it does not set itself. A selector that matches
 several elements, e.g. ``"figure.fixlip-figure"``, makes each of them a part. A part inside another
 part, e.g. a figure inside a section, shows its own level where it is. Of two parts on the same
@@ -66,7 +68,7 @@ _ABOUT = "ai-involvement"  # the page that explains the levels
 _PAGE = {"level", "summary"}, {"written", "models", "human", "checked", "note", "mixer"}
 _PART = (
     {"target", "level", "written"},
-    {"name", "models", "human", "sources", "checked", "note", "human_level", "ai_level"},
+    {"name", "models", "human", "sources", "checked", "note", "human_level", "ai_level", "quoted"},
 )
 _DEFAULTS = set(), (_PART[1] | {"level", "written"}) - {"name"}
 
@@ -254,7 +256,6 @@ def _cards(scale: dict[str, Any]) -> str:
         cards.append(
             f'<li class="shapiq-ai-level" style="--shapiq-ai-h: {_hue(place)}">'
             f'<div class="shapiq-ai-level-head">{_mini(place, 2 * top + 1)}'
-            f'<span class="shapiq-ai-level-number">{level["level"]}</span>'
             f'<span class="shapiq-ai-level-name">{_esc(level["name"])}</span></div>'
             f'<dl class="shapiq-ai-level-inputs">'
             f'<dt>Person</dt><dd><span class="pips">{pips(h)}</span>{_esc(human.get(h, h))}</dd>'
@@ -389,7 +390,7 @@ def _figure_map(scale: dict[str, Any]) -> tuple[str, str]:
     top, rows = _places(scale)
     human = {step["step"]: step["name"] for step in scale["human"]}
     ai = {step["step"]: step["name"] for step in scale["ai"]}
-    cell, x0, y0 = 58, 92, 34
+    cell, x0, y0 = 174 / top, 92, 34
 
     def gx(a: int) -> float:
         return x0 + a * cell
