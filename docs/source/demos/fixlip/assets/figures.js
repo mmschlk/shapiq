@@ -1566,6 +1566,39 @@
       target.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
       history.replaceState(null, "", event.currentTarget.hash);
     });
+
+    // The way into the write-up: the divider after the block is a line down an empty stretch of the
+    // page, and the box of the summary follows it. While the page is scrolled, the line is drawn
+    // down to the lower part of the screen, and the box comes up into its place as it enters the
+    // screen (figures.css reads both shares). The places come from the layout, which the two
+    // effects do not change. A reader who asked for less motion sees both from the start.
+    const thread = opening.nextElementSibling;
+    const arrival = thread?.nextElementSibling;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (thread?.matches("hr") && arrival?.matches("section")) {
+      const share = (value) => Math.min(1, Math.max(0, value));
+      let waiting = false;
+      const follow = () => {
+        waiting = false;
+        const screen = window.innerHeight;
+        const end = opening.getBoundingClientRect().bottom;
+        const boxTop = end + arrival.offsetTop - opening.offsetTop - opening.offsetHeight;
+        const drawn = still.matches ? 1 : share((screen * 0.9 - end) / thread.offsetHeight);
+        const arrived = still.matches ? 1 : share((screen * 0.96 - boxTop) / (screen * 0.3));
+        thread.style.setProperty("--fixlip-thread", drawn.toFixed(3));
+        arrival.style.setProperty("--fixlip-arrive", arrived.toFixed(3));
+        arrival.classList.toggle("fixlip-arriving", arrived < 1);
+      };
+      const ask = () => {
+        if (waiting) return;
+        waiting = true;
+        requestAnimationFrame(follow);
+      };
+      follow();
+      window.addEventListener("scroll", ask, { passive: true });
+      window.addEventListener("resize", ask);
+      still.addEventListener("change", ask);
+    }
   }
 
   const load = (name, file) =>

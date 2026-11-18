@@ -1617,7 +1617,7 @@ article[role="main"] section.fixlip-citation div[class*="highlight-"] {
 
 article[role="main"] .fixlip-opening > p.fixlip-more {
   margin: 0;
-  padding: 1.25rem 0 0.9rem;
+  padding: 1rem 0 0.6rem;
   text-align: center;
 }
 
@@ -1630,7 +1630,7 @@ article[role="main"] .fixlip-opening > p.fixlip-more {
     position: sticky;
     bottom: 0;
     z-index: 2;
-    padding-top: 2.5rem;
+    padding-top: 2rem;
     background: linear-gradient(to bottom, transparent, var(--color-background-primary, #ffffff) 55%);
     pointer-events: none;
   }
@@ -1640,16 +1640,16 @@ article[role="main"] .fixlip-opening > p.fixlip-more {
   }
 }
 
-/* the link to the write-up: a small label over an arrow that points down the page */
+/* the link to the write-up: a small, light label over a thin arrow that points down the page */
 article[role="main"] p.fixlip-more a.reference,
 article[role="main"] p.fixlip-more a.reference:hover {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   text-decoration: none;
   text-shadow: none;
@@ -1664,11 +1664,10 @@ article[role="main"] p.fixlip-more a.reference:focus-visible {
 
 article[role="main"] p.fixlip-more a::after {
   content: "";
-  width: 0.7rem;
-  height: 0.7rem;
-  border-right: 2.5px solid var(--shapiq-amber);
-  border-bottom: 2.5px solid var(--shapiq-amber);
-  border-radius: 1px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid var(--shapiq-amber);
+  border-bottom: 1.5px solid var(--shapiq-amber);
   transform: rotate(45deg);
   animation: fixlip-more 2.4s ease-in-out infinite;
 }
@@ -1719,6 +1718,69 @@ article[role="main"] section.fixlip-summary > span[id] {
 /* the divider between the demo and the write-up */
 article[role="main"] hr.docutils {
   margin: 2.25rem 0;
+}
+
+/* -- the way from the demo into the write-up ---------------------------------------------------------- */
+
+/* After its first screen, the demo keeps a stretch of empty page to itself. The divider is a thin
+   line down the middle of this stretch, from nothing to the amber of the box that it ends at. With
+   figures.js, the line is drawn as the page is scrolled (--fixlip-thread, from 0 to 1), and the
+   box of the summary comes up into its place while it enters the screen (--fixlip-arrive, from 0 to
+   1, on the box while it has the class fixlip-arriving). Without the script, and for a reader who
+   asked for less motion, both are there from the start. */
+article[role="main"] .fixlip-opening + hr.docutils {
+  width: 1.5px;
+  height: clamp(9rem, 42vh, 24rem);
+  height: clamp(9rem, 42svh, 24rem);
+  margin: 0.5rem auto 0;
+  border: 0;
+  border-radius: 1px;
+  background: linear-gradient(to bottom, transparent, var(--shapiq-amber));
+  transform: scaleY(var(--fixlip-thread, 1));
+  transform-origin: top;
+}
+
+article[role="main"] .fixlip-opening + hr.docutils + section.fixlip-summary {
+  margin-top: 0;
+}
+
+article[role="main"] section.fixlip-summary.fixlip-arriving {
+  opacity: var(--fixlip-arrive, 1);
+  translate: 0 calc((1 - var(--fixlip-arrive, 1)) * 1.75rem);
+}
+
+/* a link to the box leads to where the box will lie, so its distance to the edge of the screen
+   grows by what the box still has to come up */
+article[role="main"] section.fixlip-summary.fixlip-arriving,
+article[role="main"] section.fixlip-summary.fixlip-arriving > span[id] {
+  scroll-margin-top: calc(1.25rem + (1 - var(--fixlip-arrive, 1)) * 1.75rem);
+}
+
+@media (max-width: 67em) {
+  article[role="main"] section.fixlip-summary.fixlip-arriving,
+  article[role="main"] section.fixlip-summary.fixlip-arriving > span[id] {
+    scroll-margin-top: calc(4.5rem + (1 - var(--fixlip-arrive, 1)) * 1.75rem);
+  }
+}
+
+/* on paper the divider is a plain line again, and the box is in its place */
+@media print {
+  article[role="main"] .fixlip-opening + hr.docutils {
+    width: auto;
+    height: 1px;
+    margin: 2.25rem 0;
+    background: var(--color-background-border, #d5d8de);
+    transform: none;
+  }
+
+  article[role="main"] .fixlip-opening + hr.docutils + section.fixlip-summary {
+    margin-top: 2rem;
+  }
+
+  article[role="main"] section.fixlip-summary.fixlip-arriving {
+    opacity: 1;
+    translate: none;
+  }
 }
 
 /* -- the colors that the text names -------------------------------------------------------------------- */
