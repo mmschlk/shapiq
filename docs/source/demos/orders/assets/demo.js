@@ -21,7 +21,11 @@
 // California, a dot each); the same house valued by TabPFN, a black box, explained exactly over all subsets of its
 // features with shapiq's TabPFNImputer; and how SigLIP 2, a black box, matches a photo and its
 // caption of the FIxLIP demo, explained by ProxySHAP through an XGBoost proxy, without adjustment
-// (three photos behind one tab: a picker under the input chooses among them).
+// (three photos behind one tab: a picker under the input chooses among them). Two more, a bank's
+// applicants for credit card credit, show only where a demo names them (data-examples): one
+// applicant and 2,000 applicants of the Taiwanese "Default of credit card clients" data, explained
+// as the houses are, for an XGBoost model of the log-odds of default (the 2,000 applicants on a
+// plane of the R^2 of their Shapley values and their predicted probability of default, a dot each).
 // The full decomposition is the interactions of order n, the number of players (or of the trees'
 // depth, which already are); the orders above the highest one with an interaction (the trees'
 // depth, the network's receptive field, the proxy's depth) all equal it. The explanations are
@@ -389,7 +393,7 @@
     const words = PLAYERS[example.kind];
     const text =
       example.says?.[sheet.order]?.[key] ??
-      (target.group ? `Together these ${players.length} ${words.players} move ${OF[example.kind]} by {sum}.` : `Alone this ${words.one} moves ${OF[example.kind]} by {sum}.`);
+      (target.group ? `Together these ${players.length} ${words.players} move ${ofOutput(example)} by {sum}.` : `Alone this ${words.one} moves ${ofOutput(example)} by {sum}.`);
     // (brought out with it: a group's shape; of a player, which stands alone, none)
     return { keys: new Set(target.group ? [key] : []), text, sum: sumOf(sheet, players) };
   };
@@ -692,7 +696,7 @@
     const labels = new Map();
     for (const node of marks ? [...nodes].sort((a, b) => Math.abs(b.value) - Math.abs(a.value)) : []) {
       if (ratioOf(node.value) < 0.25) continue;
-      const text = dollars(node.value);
+      const text = written(example, node.value);
       const width = text.length * 1.5; // (of its font, demo.css)
       const sides = [
         [node.x + node.r + 1, node.x + node.r + 1 + width, "start"],
@@ -781,6 +785,10 @@
     pixels: 720, // the side of the canvas the dots are painted on
     rows: { top: 8.8, step: 3.9, name: 78.6, bar: 79.8, width: 9.2, value: 97.6 },
   };
+  // many applicants: not on a map but on a plane (example.plane), its axes' room on the face, left
+  // of the rows: across, the R^2 of their Shapley values, and up, their predicted probability of
+  // default
+  const PLANE = { left: 13, right: 50, top: 15, bottom: 80 };
   // the houses' numbers, written as text (../compute/pack.py): a character of this alphabet for a
   // whole number from 0 on (a row's value, from -45 to 45 of its sheet's scale), or two for a
   // larger one (a coordinate, in hundredths of a degree)
@@ -795,17 +803,46 @@
   // an example's houses, read once: where each is (longitude, latitude), and of every sheet, its
   // rows' values (whole numbers from -45 to 45)
   const mapsRead = new WeakMap();
+  // (on a plane, where each is in thousandths of its axes, from the left and the bottom)
   const readMap = (example) => {
     if (!mapsRead.has(example)) {
-      const { west, south, lon, lat } = example.coords;
-      const [lons, lats] = [read(lon, 2), read(lat, 2)];
+      let coords;
+      if (example.plane) {
+        const [xs, ys] = [read(example.coords.x, 2), read(example.coords.y, 2)];
+        coords = xs.map((value, k) => [value / 1000, ys[k] / 1000]);
+      } else {
+        const { west, south, lon, lat } = example.coords;
+        const [lons, lats] = [read(lon, 2), read(lat, 2)];
+        coords = lons.map((value, house) => [west + value / 100, south + lats[house] / 100]);
+      }
       mapsRead.set(example, {
-        coords: lons.map((value, house) => [west + value / 100, south + lats[house] / 100]),
+        coords,
         values: new Map(example.sheets.map((sheet) => [sheet, sheet.rows.map((row) => read(row[1]).map((value) => value - LEVELS))])),
       });
     }
     return mapsRead.get(example);
   };
+  // a point of the plane (its axes' shares) on the face
+  const onPlane = ([x, y]) => [roundTo(PLANE.left + x * (PLANE.right - PLANE.left), 2), roundTo(PLANE.bottom - y * (PLANE.bottom - PLANE.top), 2)];
+  // the plane's axes: a frame, the ticks and their labels, and the axes' names, below and left of it
+  function planeAxes(svg, plane) {
+    const axes = add(svg, "g", { class: "orders-demo-plane-axes" });
+    const { left, right, top, bottom } = PLANE;
+    add(axes, "path", { class: "orders-demo-plane-frame", d: `M${left} ${top}V${bottom}H${right}` });
+    for (const [at, label] of plane.x.ticks) {
+      const [x] = onPlane([at, 0]);
+      add(axes, "path", { d: `M${x} ${bottom}v1.2` });
+      add(axes, "text", { x, y: bottom + 4, "text-anchor": "middle" }, label);
+    }
+    for (const [at, label] of plane.y.ticks) {
+      const [, y] = onPlane([0, at]);
+      add(axes, "path", { d: `M${left} ${y}h-1.2` });
+      add(axes, "text", { x: left - 2, y: roundTo(y + 1, 2), "text-anchor": "end" }, label);
+    }
+    add(axes, "text", { class: "orders-demo-plane-name", x: roundTo((left + right) / 2, 2), y: bottom + 8.6, "text-anchor": "middle" }, plane.x.name);
+    const middle = roundTo((top + bottom) / 2, 2);
+    add(axes, "text", { class: "orders-demo-plane-name", x: 2.6, y: middle, "text-anchor": "middle", transform: `rotate(-90 2.6 ${middle})` }, plane.y.name);
+  }
   // dots painted on a canvas, as an image of the face (its 100 x 100): each a place, a color and
   // how opaque it is
   const painted = (dots) => {
@@ -827,13 +864,18 @@
   // (dollars without a sign: a size)
   const sized = (value) => `$${Math.round(Math.abs(value) * 100)}k`;
   function mapFace(svg, example, sheet, layer = "all") {
-    const west = Math.min(...example.outline.map(([lon]) => lon));
-    const north = Math.max(...example.outline.map(([, lat]) => lat));
-    const at = ([lon, lat]) => [roundTo(MAP.left + (lon - west) * MAP.shrink * MAP.scale, 2), roundTo(MAP.top + (north - lat) * MAP.scale, 2)];
+    const { plane } = example;
+    const words = subjectOf(example);
+    const west = plane ? 0 : Math.min(...example.outline.map(([lon]) => lon));
+    const north = plane ? 0 : Math.max(...example.outline.map(([, lat]) => lat));
+    const at = plane ? onPlane : ([lon, lat]) => [roundTo(MAP.left + (lon - west) * MAP.shrink * MAP.scale, 2), roundTo(MAP.top + (north - lat) * MAP.scale, 2)];
     const { coords, values } = readMap(example);
     const spots = coords.map(at);
     const picture = (dots) => add(svg, "image", { class: "orders-demo-map-dots", x: 0, y: 0, width: 100, height: 100, href: dots });
-    if (shows(layer, "input")) {
+    if (plane && shows(layer, "input")) {
+      planeAxes(svg, plane);
+      picture(painted(spots.map(([x, y]) => [x, y, "rgb(122, 130, 152)", 0.42])));
+    } else if (shows(layer, "input")) {
       add(svg, "path", { class: "orders-demo-map-land", d: `M${example.outline.map((point) => at(point).join(" ")).join("L")}Z` });
       // the houses, gray (a gray that shows on a light page and on a dark one)
       picture(painted(spots.map(([x, y]) => [x, y, "rgb(122, 130, 152)", 0.42])));
@@ -867,14 +909,14 @@
     const counts = add(caption, "text", { x: MAP.left, y: 8.3 });
     // the rows: a name, a bar by the mean of its absolute values, and that mean
     const list = add(svg, "g", { class: "orders-demo-map-rows" });
-    add(list, "text", { class: "orders-demo-map-head", x: MAP.rows.value, y: 4.6 }, "moves a house's value by, on average");
+    add(list, "text", { class: "orders-demo-map-head", x: MAP.rows.value, y: 4.6 }, `moves ${words.each} by, on average`);
     const most = Math.max(...sheet.rows.map((row) => row[2]));
     const rows = sheet.rows.map(([players, , mean], r) => {
       const y = roundTo(MAP.rows.top + r * MAP.rows.step, 2);
       const row = add(list, "g", { class: "orders-demo-map-row" });
       add(row, "text", { class: "orders-demo-map-name", x: MAP.rows.name, y }, nameOf(players));
       add(row, "rect", { x: MAP.rows.bar, y: roundTo(y - 1.1, 2), width: roundTo(Math.max(0.5, (mean / most) * MAP.rows.width), 2), height: 2.2, rx: 0.6 });
-      add(row, "text", { class: "orders-demo-map-mean", x: MAP.rows.value, y }, sized(mean));
+      add(row, "text", { class: "orders-demo-map-mean", x: MAP.rows.value, y }, words.size(mean));
       return row;
     });
     // the colors' scale, under the rows, east of the state: from what lowers a house's value the
@@ -884,9 +926,9 @@
     for (let k = -steps; k <= steps; k++) {
       add(scale, "rect", { x: roundTo(middle + (k - 0.5) * cell, 2), y: 64.6, width: cell + 0.05, height: 2.2, fill: solid(k), "fill-opacity": roundTo((Math.abs(k) / steps) ** 0.85, 3) });
     }
-    add(scale, "text", { x: middle, y: 62.3, "text-anchor": "middle" }, "added to a house's value");
-    add(scale, "text", { x: roundTo(middle - (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "start" }, `−${sized(sheet.scale)}`);
-    add(scale, "text", { x: roundTo(middle + (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "end" }, `+${sized(sheet.scale)}`);
+    add(scale, "text", { x: middle, y: 62.3, "text-anchor": "middle" }, `added to ${words.each}`);
+    add(scale, "text", { x: roundTo(middle - (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "start" }, `−${words.size(sheet.scale)}`);
+    add(scale, "text", { x: roundTo(middle + (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "end" }, `+${words.size(sheet.scale)}`);
     let showing = -1;
     const paint = (r) => {
       if (r === showing) return;
@@ -895,7 +937,7 @@
       rows.forEach((row, k) => row.classList.toggle("orders-demo-map-row-on", k === r));
       shown.textContent = nameOf(sheet.rows[r][0]);
       const [up, down] = [valuesOf[r].filter((value) => value > 0).length, valuesOf[r].filter((value) => value < 0).length];
-      counts.textContent = `raises ${up.toLocaleString("en")} houses' values, lowers ${down.toLocaleString("en")}`;
+      counts.textContent = `raises ${up.toLocaleString("en")} ${words.their}, lowers ${down.toLocaleString("en")}`;
     };
     const rest = mapRow(sheet);
     paint(rest);
@@ -915,7 +957,8 @@
         return null;
       }
       // a house: where it is, what the model predicts for it, and the strongest of its values
-      // (in steps of a 45th of the scale, as the data has them)
+      // (in steps of a 45th of the scale, as the data has them); an applicant: whether it
+      // defaulted, the probability of default predicted, and its values
       paint(rest);
       const [lon, lat] = coords[target.house];
       const strongest = valuesOf
@@ -923,14 +966,16 @@
         .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
         .slice(0, 4);
       return {
-        title: ["A house", `at ${lat.toFixed(2)}°N, ${(-lon).toFixed(2)}°W`],
+        title: plane
+          ? [words.one, example.outcomes?.[target.house] === "1" ? "who defaulted" : "who paid"]
+          : [words.one, `at ${lat.toFixed(2)}°N, ${(-lon).toFixed(2)}°W`],
         rows: [
-          ["predicted value", null, sized(example.predictions[target.house])],
+          [words.predicted, null, words.prediction(example.predictions[target.house])],
           // (a value at the end of the scale is that large at the least)
           ...strongest.map(([players, value, r]) => [
             nameOf(players),
             valueOf(r, target.house),
-            Math.abs(value) === LEVELS ? `${dollars(valueOf(r, target.house))} or more` : undefined,
+            Math.abs(value) === LEVELS ? `${words.value(valueOf(r, target.house))} or more` : undefined,
           ]),
         ],
       };
@@ -998,18 +1043,52 @@
   const signed = (value, digits) => (Number(Math.abs(value).toFixed(digits)) === 0 ? (0).toFixed(digits) : `${value < 0 ? "−" : "+"}${Math.abs(value).toFixed(digits)}`);
   const VALUE = { graph: (value) => signed(value, 2), tree: (value) => dollars(value), map: (value) => dollars(value), "image-text": (value) => signed(value, 3) };
   const OF = { graph: "the logit of the prediction", tree: "the house's predicted value", map: "the house's predicted value", "image-text": "the similarity" };
+  // what the tabular examples (a tree's, a map's) are, by the data's subject (houses without one):
+  // a house, valued in dollars, or a bank's applicant, whose model predicts the log-odds of
+  // default. Their words: one of them, as the tip's title names it; what a value is added to, of
+  // one and of many; what the model predicts, and how it is written; a value with its sign, and
+  // a size without one
+  const SUBJECTS = {
+    house: {
+      one: "A house",
+      of: "the house's predicted value",
+      each: "a house's value",
+      their: "houses' values",
+      point: "a house or a row",
+      predicted: "predicted value",
+      prediction: (value) => sized(value),
+      value: (value) => dollars(value),
+      size: (value) => sized(value),
+    },
+    applicant: {
+      one: "An applicant",
+      of: "the log-odds of default",
+      each: "an applicant's log-odds",
+      their: "applicants' risk",
+      point: "an applicant or a row",
+      predicted: "probability of default",
+      prediction: (value) => `${Math.round(value * 100)}%`,
+      value: (value) => signed(value, 2),
+      size: (value) => Math.abs(value).toFixed(2),
+    },
+  };
+  const subjectOf = (example) => SUBJECTS[example.subject ?? "house"] ?? SUBJECTS.house;
+  const tabular = (example) => example.kind === "tree" || example.kind === "map";
+  // a value of an example, as it writes it, and what its values are added to
+  const written = (example, value) => (tabular(example) ? subjectOf(example).value(value) : VALUE[example.kind](value));
+  const ofOutput = (example) => (tabular(example) ? subjectOf(example).of : OF[example.kind]);
   // the strongest of an explanation, for the card to say and to bring out: of the Shapley values,
   // a player; of an order with groups, its strongest group; of many houses, the row their map
   // shows (its players, and the mean of its absolute values)
   const strongestOf = (example, sheet) => {
     if (example.kind === "map") {
       const [players, , mean] = sheet.rows[mapRow(sheet)];
-      return { players, text: `±${sized(mean)}`, sign: 0 };
+      return { players, text: `±${subjectOf(example).size(mean)}`, sign: 0 };
     }
     const [players, value] = sheet.groups.length
       ? sheet.groups[0]
       : sheet.first.map((own, player) => [[player], own]).reduce((best, next) => (Math.abs(next[1]) > Math.abs(best[1]) ? next : best));
-    return { players, text: VALUE[example.kind](value), sign: Math.sign(value) };
+    return { players, text: written(example, value), sign: Math.sign(value) };
   };
   // an example whose full decomposition is estimated (from a proxy of the model): it falls short of
   // R^2 = 1, the estimation gap
@@ -1045,9 +1124,9 @@
   let plots = 0; // the demos' plots on the page, for ids of their own
 
   // the examples a demo shows, one per tab: those data-examples names (their ids, apart by commas
-  // or spaces), in its order; without it, or where it names none the data knows, all of them. An
-  // example that is another one of a tab (its `of` names the tab's first: another photo and
-  // caption) has no tab of its own
+  // or spaces), in its order; without it, or where it names none the data knows, all of them but
+  // those shown only where named (`named`: the bank's applicants). An example that is another one
+  // of a tab (its `of` names the tab's first: another photo and caption) has no tab of its own
   function examplesOf(root, all) {
     const tabs = all.examples.filter((example) => !example.of);
     const ids = (root.dataset.examples ?? "").split(/[\s,]+/).filter(Boolean);
@@ -1056,7 +1135,7 @@
       const ours = tabs.map((example) => example.id).join(", ");
       console.warn(`The explanation of every order has no example ${ids.filter((id) => !known.includes(id)).join(", ")} (it has ${ours}).`);
     }
-    return known.length ? [...new Set(known)].map((id) => tabs.find((example) => example.id === id)) : tabs;
+    return known.length ? [...new Set(known)].map((id) => tabs.find((example) => example.id === id)) : tabs.filter((example) => !example.named);
   }
 
   function start(root, all, life) {
@@ -1216,7 +1295,7 @@
     // house or a row; where the name leaves no room for it, no invitation)
     const tagFace = (name) => {
       planTagText.textContent = name;
-      const what = PLAYERS[current().kind].point;
+      const what = current().kind === "map" ? subjectOf(current()).point : PLAYERS[current().kind].point;
       for (const [node, word] of planTagWords) node.textContent = `· ${word} ${what}`;
       if (name.length * 2.55 + (what.length + 8) * 1.5 <= 88) planTagText.append(planTagHint);
     };
@@ -1967,7 +2046,7 @@
       root.classList.add("orders-demo-inspected");
       cardTip.classList.toggle("orders-demo-tip-on", Boolean(said));
       if (!said) return;
-      const kind = current().kind;
+      const example = current();
       // a value's color: the red of what raises f(x) or the blue of what lowers it; what has no
       // sign, as a house's prediction, or shows as zero, neither
       const toneOf = (value, shown) => (value === null || !/[1-9]/.test(shown) ? "" : value > 0 ? "orders-demo-plan-raises" : "orders-demo-plan-lowers");
@@ -1975,7 +2054,7 @@
         // an insight: its one sentence, and in it, at the number's place, the sum, in its color
         // (an amount that raises or lowers has no sign: the sentence says which)
         const [before, place, after] = said.text.split(/\{(up|down|sum)\}/);
-        const shown = VALUE[kind](said.sum);
+        const shown = written(example, said.sum);
         const sentence = el("div", "orders-demo-tip-says", before);
         sentence.append(el("b", toneOf(said.sum, shown), place === "sum" ? shown : shown.replace(/^[+−]/, "")), after);
         cardTip.replaceChildren(sentence);
@@ -1985,11 +2064,11 @@
         title.append(el("strong", "", said.title[0]), ` ${said.title[1]}`);
         const rows = said.rows.map(([name, value, text]) => {
           const row = el("div", "orders-demo-tip-row");
-          const shown = text ?? VALUE[kind](value);
+          const shown = text ?? written(example, value);
           row.append(el("span", "", name), el("b", toneOf(value, shown), shown));
           return row;
         });
-        cardTip.replaceChildren(title, ...rows, el("div", "orders-demo-tip-note", `added to ${OF[kind]}`));
+        cardTip.replaceChildren(title, ...rows, el("div", "orders-demo-tip-note", `added to ${ofOutput(example)}`));
       }
       placeTip(target);
     }

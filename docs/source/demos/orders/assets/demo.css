@@ -1779,6 +1779,23 @@ body[data-theme="dark"] .orders-demo {
   text-anchor: end;
 }
 
+/* many applicants: not on a map but on a plane, its frame, its ticks and its axes' names */
+.orders-demo-plane-axes path {
+  fill: none;
+  stroke: var(--orders-edge);
+  stroke-width: 0.35;
+}
+
+.orders-demo-plane-axes text {
+  fill: var(--orders-muted);
+  font-size: 2.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.orders-demo-plane-axes .orders-demo-plane-name {
+  font-size: 2.3px;
+}
+
 /* (the houses' dots, a picture: demo.js) */
 .orders-demo-map-dots {
   pointer-events: none;

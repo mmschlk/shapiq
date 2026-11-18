@@ -22,9 +22,10 @@ to the full decomposition, which falls short of 1 by the estimation gap the demo
 | `faithfulness.py` | What the other scripts share: the Shapley distribution (its sizes' probabilities, all its coalitions of 8 players with their probabilities, and coalitions drawn from it), an explanation's prediction of a coalition (the sum of its subsets' values, the empty one's included), the weighted R^2 beyond size, and FSII of an order. |
 | `molecule.py` | Trains a GCN on Mutagenicity and explains the molecule of GraphSHAP-IQ's Figure 1 exactly, at every order, with each order's R^2 on 10,000 coalitions drawn from the Shapley distribution (their values from the exact Möbius transform): `results/molecule.json`. |
 | `housing.py` | Trains an XGBoost model of depth 5 on California housing and explains one house in Los Angeles (test house 837) and 2,000 random test houses exactly (interventional), at every order, with each order's R^2 exactly over all 254 coalitions but the empty and the full one, weighted by the Shapley distribution: `results/house.json`, `results/houses.json` (with the 2,000 houses' features, of which the demo's map uses the latitude and the longitude). |
+| `credit.py` | Trains an XGBoost classifier of depth 5 on 8 features of "Default of credit card clients" (credit limit, age, repayment status of September, August and July 2005, the September bill, the September and August payments) and explains one applicant (test applicant 4650, picked by a rule: of the defaults the model gives a probability above 0.7, whose Shapley values have a positive R^2, the one whose fit gains the most at order 2) and 2,000 random test applicants exactly (interventional, the log-odds of default), at every order, with each order's R^2 as `housing.py` scores it: `results/applicant.json`, `results/applicants.json` (with each applicant's features, predicted probability of default, whether it defaulted, and the R^2 of its Shapley values, by which the demo places it). It imports `explain()` from `housing.py`. |
 | `house_tabpfn.py` | Explains the same house with TabPFN, a black box, exactly over all 256 subsets of its features with shapiq's `TabPFNImputer` (remove and contextualize), at every order, with the R^2 of `housing.py`: `results/house_tabpfn.json`. TabPFN makes one pass without randomness, so that the game is the same on every run. |
 | `fixlip.py` | Explains how SigLIP 2 matches the FIxLIP demo's elephant and caption with ProxySHAP (an XGBoost proxy whose trees may grow 10 deep, no adjustment, read off its trees as a Möbius transform) from 10,000 coalitions drawn from the Shapley distribution, at every order, scored on 512 more drawn from it: `results/fixlip.json`, the evaluations in `results/fixlip_coalitions.npz`. With `--photo`, another photo of the FIxLIP demo, in the same way (the demo's giraffe and sign): `results/fixlip_<photo>.json`. |
-| `pack.py` | Writes the demo's data, `../assets/data.js`: the index (FSII), the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 2,000 houses, where each is on the map of California, and the 12 strongest features and groups of features of every order, each with its value for every house, as text, and the mean of its absolute values), and the R^2 of every order. It also writes the examples' words and their picks: what the demo marks on its card, and the sentence its tip says of each. With `--examples`, it packs only the examples named, and keeps the others as the data has them. |
+| `pack.py` | Writes the demo's data, `../assets/data.js`: the index (FSII), the orders 1 to 4 and the full decomposition (order n), with the 300 strongest interactions of each (for the molecule, with the centers of its groups where shapiq's SI graph plot places them; for the 2,000 houses, where each is on the map of California, and the 12 strongest features and groups of features of every order, each with its value for every house, as text, and the mean of its absolute values), and the R^2 of every order (for the 2,000 applicants, the same as for the houses, but on a plane of the R^2 of their Shapley values and their predicted probability of default instead of a map). It also writes the examples' words and their picks: what the demo marks on its card, and the sentence its tip says of each. With `--examples`, it packs only the examples named, and keeps the others as the data has them. |
 | `california.json` | The outline of California on the houses' map: the state's mainland from Natural Earth's 1:50m states and provinces (public domain), simplified to 114 points. |
 
 ## Run
@@ -35,7 +36,7 @@ the dependencies of the FIxLIP demo's scripts (for SigLIP 2, which `fixlip.py` i
 `../../fixlip/compute`):
 
 ```bash
-pip install -e "../../../../..[graph,tree,games]" rdkit xgboost scikit-learn tabpfn
+pip install -e "../../../../..[graph,tree,games]" rdkit xgboost scikit-learn tabpfn xlrd
 
 python molecule.py  # downloads Mutagenicity; trains the GCN in about four minutes on four CPU cores
 python housing.py   # downloads California housing; explains 4,128 houses in under a minute
@@ -43,18 +44,22 @@ python house_tabpfn.py  # downloads TabPFN's weights; evaluates the house's 256 
 python fixlip.py    # downloads SigLIP 2; evaluates 10,512 coalitions in about nine minutes
 python fixlip.py --photo giraffe-tree  # the other photos of "Describing images", as long each
 python fixlip.py --photo juice-theory
+python credit.py    # downloads Default of credit card clients; explains 6,000 applicants in about a minute
 python pack.py
 ```
 
 To change one example without computing the others again, run its script and pack it alone: the
 other examples stay as `../assets/data.js` has them (their words, the tabs' names and the models',
 and their picks are written anew). The examples are `molecule`, `house`, `tabpfn`, `houses`,
-`fixlip` (the elephant), and the other photos of its tab, `giraffe` and `sign`. The houses' model is the same on every run with the versions below, to the last
+`fixlip` (the elephant), and the other photos of its tab, `giraffe` and `sign`, and the bank's
+`applicant` and `applicants`, which a demo shows only where its `:examples:` names them. The houses' model is the same on every run with the versions below, to the last
 digit of the data:
 
 ```bash
 python housing.py
 python pack.py --examples house houses
+python credit.py
+python pack.py --examples applicant applicants
 ```
 
 `molecule.py` saves the trained GCN to `results/gcn.pt` and does not train it again; with it, a run
@@ -62,12 +67,39 @@ takes about 20 seconds. The intermediate results (`results/`) are not part of th
 
 The data of the docs was computed with Python 3.12, shapiq from the repository (after release
 1.8.0), torch 2.14, torch_geometric 2.8, RDKit 2026.09, XGBoost 3.4, scikit-learn 1.9 and
-woodelf-explainer 0.4. The GCN classifies 78.2 % of the test molecules correctly; GraphSHAP-IQ needs
+woodelf-explainer 0.4. The applicants were computed later, with XGBoost 3.4.1, scikit-learn 1.9.1,
+xlrd 2.0.2 and pandas. The GCN classifies 78.2 % of the test molecules correctly; GraphSHAP-IQ needs
 7,693 evaluations of it. The XGBoost model reaches R^2 = 0.848 on the test houses.
 
 The three photos (`fixlip.py`, and `--photo` for the giraffe and the sign) were computed later,
 with torch 2.9 and transformers 5.3. The giraffe and the sign have the elephant's proxy: its depth
 was not chosen anew for them. Their full decompositions fit SigLIP 2 with R^2 = 0.78 and 0.77.
+
+## The bank's applicants
+
+The applicants are "Default of credit card clients" (Yeh, I.-C. and Lien, C.-h., 2009, The
+comparisons of data mining techniques for the predictive accuracy of probability of default of
+credit card clients, Expert Systems with Applications 36(2), 2473-2480), from the UCI Machine
+Learning Repository (https://doi.org/10.24432/C55S3H), under CC BY 4.0: 30,000 credit card
+holders of a bank in Taiwan in 2005, 23 features, and whether each defaulted on the next month's
+payment (6,636 did). UCI is not reachable from every machine, so `credit.py` downloads the UCI file
+(`default of credit card clients.xls`, 5,539,328 bytes) from a mirror on GitHub, pinned to a commit
+(`MatteoM95/Default-of-Credit-Card-Clients-Dataset-Analisys`, `dataset/`), and refuses it unless
+its SHA-256 is the one the script names and it has 30,000 rows, 25 columns (an id, 23 features and
+the default) and 6,636 defaults. Another mirror (`robertofranceschi/Default-Credit-Card-Prediction`)
+has the same file, byte for byte, and a third (`wangzongyan/Default-of-credit-card-clients-Data-Project`)
+the same values. Reading the `.xls` needs `xlrd`. Adult census income was not used on purpose: it
+is overused.
+
+The model sees 8 of the features, as the demo explains every coalition of them exactly. On the
+6,000 test applicants (a split of 20 %, stratified by default) it reaches an AUC of 0.775 and an
+accuracy of 0.820 (all 23 features give 0.781). The applicant has a limit of NT$420k, a September
+bill of NT$390k, paid NT$15 in August, and was 1, 2 and 2 months late. Its Shapley values fit with
+R^2 = 0.24 (2.5 % of the test applicants fit worse), order 2 with 0.980, order 3 with 0.999, and
+order 5 is exact. The 2,000 applicants' mean R^2 is 0.776 for the Shapley values, 0.990 at order
+2, 0.9996 at order 3. The quartiles of the Shapley values' R^2 of all test applicants are 0.73,
+0.83 and 0.89. `pack.py` writes the applicants' values as log-odds of default (`subject:
+"applicant"`, which `demo.js` reads for their words), and marks both examples `named`.
 
 What the demo marks on its card, and what it says of it, is picked by hand in `pack.py`
 (`*_PICKS`): a player or a group, the orders it is picked on, and its sentence. The demo's tip

@@ -151,7 +151,7 @@ says, and code reproduces what the slide shows.
    :cite: Tsai.2022 Bordt.2023
 
    .. shapiq-demo:: orders
-      :examples: house, tabpfn
+      :examples: house, applicant, tabpfn
 
    .. shapiq-notes::
 
@@ -160,8 +160,11 @@ says, and code reproduces what the slide shows.
       decomposition, which is the model itself :cite:p:`Bordt.2023`. Faithfulness measures how
       well each order predicts what the model does when only some features are present
       :cite:p:`Tsai.2022`. For the house, the Shapley values reach an R² of 0.36. With the pair of
-      latitude and longitude, the explanation fits almost exactly. TabPFN, a tabular foundation
-      model, values the same house, and its Shapley values explain close to nothing.
+      latitude and longitude, the explanation fits almost exactly. An XGBoost model of credit
+      default shows the same for an applicant who defaulted. The Shapley values reach 0.24 there, and
+      the pairs of the credit limit with the bill, and of the bill with the last payment, lift the
+      fit to 0.98. TabPFN, a tabular foundation model, values the house of before, and its Shapley
+      values explain close to nothing.
 
    .. shapiq-try::
 
@@ -172,12 +175,12 @@ says, and code reproduces what the slide shows.
    :layout: wide
 
    .. shapiq-demo:: orders
-      :examples: houses
+      :examples: houses, applicants
 
    .. shapiq-notes::
 
-      Across 2,000 houses, the Shapley values fit with an R² of 0.79 on average. For many houses,
-      SHAP is a good explanation. The house of the previous slide fits worse than most of its
+      Across 2,000 houses, the Shapley values fit with an R² of 0.79 on average, and across 2,000
+      applicants with 0.78. For many predictions, SHAP is a good explanation. The house of the previous slide fits worse than most of its
       neighbours. Whether interactions are worth it thus depends on the prediction, and it can be
       measured instead of guessed.
 

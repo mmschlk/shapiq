@@ -1,15 +1,17 @@
 """Write the orders demo's data, ``../assets/data.js``, from the results of the other scripts.
 
 Reads the explanations of the molecule (molecule.py), of the houses of California housing
-(housing.py), of the same house by TabPFN (house_tabpfn.py), and of how SigLIP 2 matches the FIxLIP
-demo's elephant and its caption (fixlip.py). Every order is FSII, which the data names as its
+(housing.py), of the same house by TabPFN (house_tabpfn.py), of how SigLIP 2 matches the FIxLIP
+demo's elephant and its caption (fixlip.py), and of the applicants of a bank's credit card
+(credit.py). Every order is FSII, which the data names as its
 ``index`` for the demo's labels. It keeps what the demo draws on its sheets, rounded: the orders 1
 to 4 and the full decomposition (FSII of order n, the number of players, which equals the Möbius
 transform; for the houses, of order 5, the trees' depth, which equals it already and is exact),
 every main effect, and the 300 strongest interactions of each order (of the molecule, with the
 centers of its groups where shapiq's SI graph plot places them); for the many houses, where each
 is on the map of California, and the strongest features and groups of features with their value for
-every house. For every example, also its problem in words: its input, and its model's
+every house (for the many applicants, the same, with where each is on a plane of its predicted
+probability of default and the R^2 of its Shapley values). For every example, also its problem in words: its input, and its model's
 prediction. And the R^2 (beyond size, under the Shapley distribution) and the number of values of
 every order up to the highest with an interaction, and of order n, for the plot of the fit by
 order. It writes them as a script that sets ``window.SHAPIQ_ORDERS`` (a script loads from disk too,
@@ -23,7 +25,9 @@ Usage::
 With ``--examples``, only those examples are packed anew, from their results; the others are kept
 as the data file has them (but for their words and their picks, which are written anew), so that
 one example can change without computing all of them again. The examples are the demo's tabs
-(molecule, house, tabpfn, houses, fixlip) and the other photos of the last one (giraffe, sign).
+(molecule, house, tabpfn, houses, fixlip, applicant, applicants) and the other photos of fixlip
+(giraffe, sign). The applicants of the bank are shown only where a demo names them
+(``:examples:``): a demo that names none shows the first five tabs.
 """
 
 from __future__ import annotations
@@ -74,6 +78,19 @@ PLACES = [
 # the income and the occupancy, with which it interacts the most
 TREE_NAMES = ["Income", "Age", "Rooms", "Beds", "Pop.", "Occup.", "Lat", "Long"]
 TREE_LAYOUT = [1, 3, 0, 6, 7, 5, 2, 4]
+# the applicant's features as the demo names them (credit.py: the credit limit, the age, the
+# repayment status of September, August and July 2005, the bill of September, and the payments of
+# September and August), and as its tree shows them, left to right: the bill in the middle, between
+# the limit and the payments, with which it interacts the most, and the three months' status
+# together
+APPLICANT_NAMES = ["Limit", "Age", "Status Sep", "Status Aug", "Status Jul", "Bill Sep"]
+APPLICANT_NAMES += ["Paid Sep", "Paid Aug"]
+APPLICANT_LAYOUT = [1, 6, 0, 5, 7, 2, 3, 4]
+# the many applicants' plane: the R^2 of their Shapley values (from 0, where those below 0 lie
+# too, to 1) and their predicted probability of default, on a logit scale from LOW to HIGH, with
+# its ticks
+LOW, HIGH = 0.005, 0.95
+RISK_TICKS = (0.01, 0.05, 0.2, 0.5, 0.9)
 # the models, as the demo shows them: its icon, kind, details, what it was explained with and how,
 # and its name
 MODELS = {
@@ -268,20 +285,15 @@ def encode(numbers: np.ndarray, width: int = 1) -> str:
     return "".join(ALPHABET[digit] for number in zip(*digits, strict=True) for digit in number)
 
 
-def houses_map(result: dict[str, Any], full: int) -> dict[str, Any]:
-    """Return the map of the houses: where they are, their predictions and, per sheet, their rows.
+def population(result: dict[str, Any], full: int, columns: np.ndarray) -> list[dict[str, Any]]:
+    """Return the sheets of many examples (houses or applicants): per sheet, its rows.
 
-    The houses are sorted by their prediction, each with its longitude and latitude, in hundredths
-    of a degree from the westernmost and the southernmost house, two characters each. A row is a
-    feature or a group of features, of a sheet's strongest by the mean of its absolute values: its
-    players, its value for every house, a character each, for a whole number from -45 to 45 of the
-    sheet's scale (the 98th percentile of its absolute values), and the mean of its absolute
-    values, how much it moves a house's value on average. The last sheet is the full
-    decomposition, of order ``full``. With them, the state's outline and the cities the map names.
+    A row is a feature or a group of features, of a sheet's strongest by the mean of its absolute
+    values: its players, its value for every example (in the order of ``columns``), a character
+    each, for a whole number from -45 to 45 of the sheet's scale (the 98th percentile of its
+    absolute values), and the mean of its absolute values, how much it moves an example's output
+    on average. The last sheet is the full decomposition, of order ``full``.
     """
-    columns = np.argsort(result["predictions"])
-    x = np.array(result["x"])[columns]
-    west, south = float(x[:, 7].min()), float(x[:, 6].min())
 
     def rows(values: dict[str, list[float]]) -> tuple[float, list[Any]]:
         """Return the scale and the strongest rows of values."""
@@ -312,6 +324,21 @@ def houses_map(result: dict[str, Any], full: int) -> dict[str, Any]:
                 "rows": strongest,
             }
         )
+    return out
+
+
+def houses_map(result: dict[str, Any], full: int) -> dict[str, Any]:
+    """Return the map of the houses: where they are, their predictions and, per sheet, their rows.
+
+    The houses are sorted by their prediction, each with its longitude and latitude, in hundredths
+    of a degree from the westernmost and the southernmost house, two characters each. The rows are
+    ``population``'s, how much each moves a house's value on average. With them, the state's
+    outline and the cities the map names.
+    """
+    columns = np.argsort(result["predictions"])
+    x = np.array(result["x"])[columns]
+    west, south = float(x[:, 7].min()), float(x[:, 6].min())
+    out = population(result, full, columns)
     return {
         "predictions": [round(result["predictions"][i], 2) for i in columns],
         # (longitude and latitude are the last two features)
@@ -324,6 +351,51 @@ def houses_map(result: dict[str, Any], full: int) -> dict[str, Any]:
         "outline": json.loads(OUTLINE.read_text(encoding="utf-8"))["outline"],
         "places": PLACES,
         "sheets": out,
+        "fits": fits(result, full),
+        "quartiles": [round(q, 3) for q in result["shapley_r2_quartiles"]],
+    }
+
+
+def logit(p: float | np.ndarray) -> float | np.ndarray:
+    """Return the log-odds of a probability."""
+    return np.log(p / (1 - p))
+
+
+def applicants_plane(result: dict[str, Any], full: int) -> dict[str, Any]:
+    """Return the plane of the applicants: where they are, their predictions and, per sheet, rows.
+
+    The applicants are sorted by their prediction. Each lies on a plane of the R^2 of its Shapley
+    values (from 0 to 1, those below 0 at 0) and its predicted probability of default (on a logit
+    scale from ``LOW`` to ``HIGH``), both in thousandths of the axis, two characters each, from
+    the left and the bottom. With them, the axes' names and ticks, and whether each defaulted (a
+    character each, 1 or 0). The rows are ``population``'s, how much each moves an applicant's
+    log-odds of default on average.
+    """
+    columns = np.argsort(result["predictions"])
+    probability = np.array(result["probabilities"])[columns]
+    shapley = np.clip(np.array(result["shapley_r2"])[columns], 0, 1)
+    risk = (logit(np.clip(probability, LOW, HIGH)) - logit(LOW)) / (logit(HIGH) - logit(LOW))
+    return {
+        "predictions": [round(result["probabilities"][i], 3) for i in columns],
+        "outcomes": "".join(str(result["defaulted"][i]) for i in columns),
+        "plane": {
+            "x": {"name": "R² of the Shapley values", "ticks": [[0, "0"], [0.5, "0.5"], [1, "1"]]},
+            "y": {
+                "name": "predicted probability of default",
+                "ticks": [
+                    [
+                        round(float((logit(p) - logit(LOW)) / (logit(HIGH) - logit(LOW))), 4),
+                        f"{p:.0%}",
+                    ]
+                    for p in RISK_TICKS
+                ],
+            },
+        },
+        "coords": {
+            "x": encode(np.round(shapley * 1000).astype(int), width=2),
+            "y": encode(np.round(risk * 1000).astype(int), width=2),
+        },
+        "sheets": population(result, full, columns),
         "fits": fits(result, full),
         "quartiles": [round(q, 3) for q in result["shapley_r2_quartiles"]],
     }
@@ -342,6 +414,25 @@ def house_values(x: list[float]) -> list[str]:
         f"{latitude:.2f}°N",
         f"{-longitude:.2f}°W",
     ]
+
+
+def money(value: float) -> str:
+    """Return an amount of New Taiwan dollars, in thousands from 1,000 on."""
+    return f"NT${value / 1000:,.0f}k" if value >= 1000 else f"NT${value:,.0f}"
+
+
+def status(months: float) -> str:
+    """Return a month's repayment status as the data codes it, in words."""
+    words = {-2: "no use", -1: "paid in full", 0: "revolving"}
+    return words.get(int(months), f"{months:.0f} mo late")
+
+
+def applicant_values(x: list[float]) -> list[str]:
+    """Return the features of an applicant as its tree shows them, under their names."""
+    limit, age, september, august, july, bill, paid_september, paid_august = x
+    months = [status(september), status(august), status(july)]
+    payments = [money(paid_september), money(paid_august)]
+    return [money(limit), f"{age:.0f} yrs", *months, money(bill), *payments]
 
 
 def pack_molecule(molecule: dict[str, Any]) -> dict[str, Any]:
@@ -427,6 +518,48 @@ def pack_houses(houses: dict[str, Any]) -> dict[str, Any]:
         "features": TREE_NAMES,  # as the one house names them
         "largest": houses["largest_order"],
         **houses_map(houses, full=houses["largest_order"]),
+    }
+
+
+def pack_applicant(applicant: dict[str, Any]) -> dict[str, Any]:
+    """Return the applicant's example: its features, and its sheets up to the trees' depth."""
+    return {
+        "kind": "tree",
+        "subject": "applicant",  # (its words and values in demo.js: log-odds of default)
+        "problem": problem(
+            input="An applicant",
+            output="Default" if applicant["probability"] > 0.5 else "No default",
+            value=f"p = {applicant['probability']:.2f}, log-odds {applicant['prediction']:.2f}",
+        ),
+        "features": APPLICANT_NAMES,
+        "values": applicant_values(applicant["x"]),
+        "layout": APPLICANT_LAYOUT,
+        "prediction": round(applicant["prediction"], 4),
+        "probability": round(applicant["probability"], 3),
+        "baseline": round(applicant["baseline"], 4),
+        "auc": round(applicant["test_auc"], 3),
+        "accuracy": round(applicant["test_accuracy"], 3),
+        "largest": applicant["largest_order"],
+        # the trees' depth: FSII of that order is already the full decomposition, exact
+        "sheets": sheets(applicant, strongest=None, full=applicant["largest_order"]),
+        "fits": fits(applicant, full=applicant["largest_order"]),
+    }
+
+
+def pack_applicants(applicants: dict[str, Any]) -> dict[str, Any]:
+    """Return the many applicants' example: their plane, and the rows of their sheets."""
+    low, high = min(applicants["probabilities"]), max(applicants["probabilities"])
+    return {
+        "kind": "map",
+        "subject": "applicant",
+        "problem": problem(
+            input=f"{len(applicants['probabilities']):,} applicants",
+            output=f"{low:.0%} to {high:.0%}",
+            value="their probabilities of default",
+        ),
+        "features": APPLICANT_NAMES,  # as the one applicant names them
+        "largest": applicants["largest_order"],
+        **applicants_plane(applicants, full=applicants["largest_order"]),
     }
 
 
@@ -732,6 +865,56 @@ TABPFN_PICKS: Picks = [
     ([INCOME, AGE, ROOMS, BEDS, POP, LAT, LONG], [7, FULL], MANY.format("seven")),
 ]
 
+# the applicant's features, as the picks below name them
+LIMIT, STATUS_SEP, STATUS_AUG, STATUS_JUL, BILL, PAID_SEP, PAID_AUG = 0, 2, 3, 4, 5, 6, 7
+# what is picked on the applicant, by hand: a bill of nearly all of its credit limit, almost nothing
+# paid in August, and late in all three months. Its Shapley values give most of the risk to the
+# bill; from order 2 on, the bill adds it with the limit and with the payments, and alone the high
+# limit lowers the risk. A few on every order
+LOG_ODDS = "the log-odds of default"
+APPLICANT_PICKS: Picks = [
+    (
+        [BILL],
+        [1],
+        f"The bill of September raises {LOG_ODDS} by {{up}}, the most of all features.",
+    ),
+    ([STATUS_JUL], [1], f"Being two months late in July raises {LOG_ODDS} by {{up}}."),
+    ([PAID_AUG], [1], f"Paying almost nothing in August raises {LOG_ODDS} by {{up}}."),
+    ([LIMIT], [1], f"The high credit limit lowers {LOG_ODDS} by only {{down}}."),
+    (
+        [LIMIT, BILL],
+        [2, 3, 4, ABOVE],
+        f"Together the limit and a bill of nearly all of it raise {LOG_ODDS} by {{up}}.",
+    ),
+    (
+        [BILL, PAID_AUG],
+        [2, 3, 4, ABOVE],
+        f"Together a large bill and almost no payment in August raise {LOG_ODDS} by {{up}}.",
+    ),
+    (
+        [STATUS_SEP, STATUS_AUG],
+        [2],
+        f"Together the delays of September and August raise {LOG_ODDS} by {{up}}.",
+    ),
+    (
+        [LIMIT],
+        [2, 3, 4, ABOVE],
+        f"Alone the high limit lowers {LOG_ODDS} by {{down}}, which its pair with the bill takes "
+        "back.",
+    ),
+    ([BILL], [2], f"Alone the bill raises {LOG_ODDS} by only {{up}}."),
+    (
+        [BILL, PAID_SEP],
+        [3, 4, ABOVE],
+        f"Together the bill and the small payment of September raise {LOG_ODDS} by {{up}}.",
+    ),
+    (
+        [STATUS_SEP, STATUS_AUG, STATUS_JUL],
+        [3, 4, ABOVE],
+        f"Together the delays of the last three months raise {LOG_ODDS} by {{up}}.",
+    ),
+]
+
 # what is picked on the photos, by the photo's id: on a photo, only what is picked can be pointed
 # at. A row names its players as a word of the caption or a patch (its row and column in the
 # photo, from 1), the orders it is picked on, and its sentence: what the patch shows, and what the
@@ -974,6 +1157,21 @@ EXAMPLES: dict[str, tuple[str, dict[str, Any], Any, Any]] = {
         {**photo_words("juice-theory"), "of": "fixlip"},
         pack_photo,
         curated_photo,
+    ),
+    # a bank's applicants for credit (``named``: shown only where a demo names them, so that a demo
+    # without ``:examples:`` keeps its five tabs)
+    "applicant": (
+        "applicant",
+        {"label": "One applicant", "detail": "XGBoost", "named": True, "model": model("tree")},
+        pack_applicant,
+        partial(curated, table=APPLICANT_PICKS),
+    ),
+    # (the same model as the applicant's, with the same average)
+    "applicants": (
+        "applicants",
+        {"label": "All applicants", "detail": "XGBoost", "named": True, "model": model("tree")},
+        pack_applicants,
+        None,
     ),
 }
 HEADER = "// The orders demo's explanations (see demo.js), written by ../compute/pack.py.\n"

@@ -15,7 +15,9 @@ says, in one sentence with one number, what a player or an interaction adds. The
 examples: a
 molecule (GCN), one house (XGBoost), the same house (TabPFN), 2,000 houses on the map of
 California, and an image and caption (SigLIP 2), with two more images and captions behind the same
-tab.
+tab. Two more are shown only where a demo names them (`:examples:`): one applicant for credit of a
+bank (XGBoost, the log-odds of default) and 2,000 applicants on a plane of the R^2 of their Shapley
+values and their predicted probability of default.
 
 The demo is plain JavaScript and CSS, with no build step and no dependencies. A single
 self-contained script fills every container on a page.
@@ -56,7 +58,7 @@ All options are optional:
 | `:alt:` | the image's `alt` | text | The fallback image's alt text. |
 | `:step:` | `data-step` | `problem`, `mechanism`, `shapley`, `interactions`, `full` | Shows one step of the step-by-step figure (see below). Without it, the demo shows everything. |
 | `:select:` | `data-select` | `none`, `mechanism`, `full`, or an order (`1`, `2`, ...) | What the demo points at while the reader points at nothing. |
-| `:examples:` | `data-examples` | example ids, apart by commas or spaces: `molecule`, `house`, `tabpfn`, `houses`, `fixlip` | The examples the demo shows, in that order (see below). Without it, all five. |
+| `:examples:` | `data-examples` | example ids, apart by commas or spaces: `molecule`, `house`, `tabpfn`, `houses`, `fixlip`, `applicant`, `applicants` | The examples the demo shows, in that order (see below). Without it, the first five (not the applicants). |
 
 The directive writes the container below, and adds `demo.css` and `demo.js` to the page once:
 
@@ -110,6 +112,14 @@ what the previous one showed, plus:
    :examples: house, houses
 ```
 
+The bank's examples are marked `named` in the data: a demo shows them only where `:examples:`
+names them, so that the landing page and the guide keep their five tabs.
+
+```rst
+.. shapiq-demo:: orders
+   :examples: applicant, applicants
+```
+
 Everything the demo does then counts only its own examples: its tabs (or its stepper and dots on
 a phone), its height (the most layers of its examples), and its card's size. With a single
 example, it has no tabs, no stepper, no dots, and no swipe (`orders-demo-single`). Ids it does not
@@ -142,7 +152,8 @@ document.addEventListener("orders-demo-example", (event) => console.log(event.de
 ```
 
 The example ids, in the order of their tabs, are `molecule`, `house`, `tabpfn`, `houses` and
-`fixlip`; behind the last tab are also `giraffe` and `sign`.
+`fixlip`; behind the last tab are also `giraffe` and `sign`. The bank's `applicant` and
+`applicants` come after them, where a demo names them.
 
 ## Layout
 
@@ -298,6 +309,11 @@ Written by `compute/pack.py`. Shape, in short:
   index: "FSII",                       // the interaction index of every order
   examples: [{
     id, label, detail,                 // the tab: "molecule", "Molecule", "GCN"
+    named,                             // optional: true for an example shown only where
+                                       // data-examples names it (the bank's applicants)
+    subject,                           // optional, of a tree's or a map's: "applicant" for the
+                                       // bank's (log-odds of default, its words: SUBJECTS in
+                                       // demo.js); without it, a house's (dollars)
     of,                                // optional: the id of its tab's first example, for another
                                        // example of that tab (which the picker under the input shows)
     photo,                             // optional: { title }, the picker's name of it
@@ -329,7 +345,9 @@ Written by `compute/pack.py`. Shape, in short:
     // and, by kind: atoms, bonds, coords (graph); features, values, layout (tree); image, grid,
     // tokens (image-text); features, predictions, coords (the houses' longitudes and
     // latitudes as text, two characters each: hundredths of a degree from `west` and `south`),
-    // outline, places, quartiles (map)
+    // outline, places, quartiles (map); on a plane instead of a map (the applicants): plane (its
+    // axes' names and ticks, as shares of the axis), coords { x, y } (thousandths of the axes, two
+    // characters each), predictions (probabilities), outcomes (a character each, 1 for a default)
   }],
 }
 ```
