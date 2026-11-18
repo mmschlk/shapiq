@@ -87,16 +87,10 @@
     return part.target;
   }
 
-  // the two axes of a part: its own, or those of its level. A quoted part reports no level of its
-  // own and keeps the place of the part around it (its host).
-  function humanOf(part) {
-    if (part.quoted) return part.host ? humanOf(part.host) : 0;
-    return part.human_level != null ? part.human_level : (byLevel[part.level].human || 0);
-  }
-  function aiOf(part) {
-    if (part.quoted) return part.host ? aiOf(part.host) : 0;
-    return part.ai_level != null ? part.ai_level : (byLevel[part.level].ai || 0);
-  }
+  // the two inputs of a level, what a person did and what AI did
+  function humanOf(part) { return byLevel[part.level].human || 0; }
+  function aiOf(part) { return byLevel[part.level].ai || 0; }
+  var kinds = data.kinds || {};
 
   // what a part's level is called and means
   var QUOTED = { name: "Quoted", summary: "Taken from the work of others, as the sources say. How that work was written is not known, so it has no level." };
@@ -126,8 +120,14 @@
     return hsl(SPECTRUM[0] + (SPECTRUM[SPECTRUM.length - 1] - SPECTRUM[0]) * t, settings.saturation, l);
   }
 
-  // the place of a part, from its two inputs
-  function placeOf(part) { return (aiOf(part) - humanOf(part) + axisTop) / (2 * axisTop); }
+  // The place of a part, from 0 (a person did it all) to 1 (AI did it all): the weighted mean of
+  // its answers (computed by the extension), or else the balance of its level's two inputs. A
+  // quoted part keeps the place of the part around it (its host).
+  function placeOf(part) {
+    if (part.quoted) return part.host ? placeOf(part.host) : 0;
+    if (part.place != null) return part.place;
+    return (aiOf(part) - humanOf(part) + axisTop) / (2 * axisTop);
+  }
   function colorOf(level) { return colorAt(placeOf({ level: level })); }
   function partColor(part) {
     if (part.quoted) return dark() ? "hsl(220 8% 62%)" : "hsl(220 8% 66%)";
@@ -159,6 +159,10 @@
   root.appendChild(hits);
   article.appendChild(root);
   article.appendChild(glow);
+  // beside the dot, under the pointer: where the part sits on the scale, and its answers
+  var readout = el("div", { class: "shapiq-ai-readout", "aria-hidden": "true" });
+  article.appendChild(readout);
+  var readoutKey = null;
   article.appendChild(card);
   article.classList.add("shapiq-ai-page");
 
@@ -402,6 +406,7 @@
     if (!show || !visible) {
       tracks.forEach(function (track) { track.dot.classList.remove("on"); });
       glow.classList.remove("on");
+      readout.classList.remove("on");
       return;
     }
     var yy = pointed ? pointedY : (open.y != null ? open.y : (show.top + show.bottom) / 2);
@@ -418,6 +423,20 @@
     glow.style.top = show.top + "px";
     glow.style.height = (show.bottom - show.top) + "px";
     glow.classList.add("on");
+    // the readout follows the pointer only, not an open card
+    if (!pointed) { readout.classList.remove("on"); return; }
+    var part = show.item.part;
+    var key = show.top + "|" + show.bottom;
+    if (readoutKey !== key) {
+      readoutKey = key;
+      clear(readout);
+      readout.appendChild(rail(part, 84));
+      var kind = part.kind && kinds[part.kind] ? kinds[part.kind].name + " · " : "";
+      readout.appendChild(el("span", null, kind + levelOf(part).name));
+    }
+    readout.style.left = (root.offsetLeft + at(tracks[0].list, yy) + 10) + "px";
+    readout.style.top = (yy - 10) + "px";
+    readout.classList.add("on");
   }
 
   hits.addEventListener("mousemove", function (event) {
@@ -465,6 +484,52 @@
       drawing.appendChild(el("svg:circle", { cx: 3 + 6 * i, cy: 5, r: i === level ? 2.8 : 1.5, fill: i <= level ? colorOf(i) : "", class: i === level ? "on" : "" }));
     }
     return drawing;
+  }
+
+  // The scale of the line as a small rail: a tick at each level, a hollow mark for each answer,
+  // and the part's place as a dot. No number, since the place is a rough mean, not a measure.
+  function rail(part, width) {
+    var pad = 4, height = 14, mid = 7;
+    var drawing = el("svg:svg", { class: "shapiq-ai-rail", width: width, height: height, "aria-hidden": "true" });
+    var xAt = function (t) { return pad + t * (width - 2 * pad); };
+    drawing.appendChild(el("svg:line", { class: "base", x1: xAt(0), x2: xAt(1), y1: mid, y2: mid }));
+    for (var k = 0; k <= top; k++) {
+      drawing.appendChild(el("svg:line", { class: "tick", x1: xAt(k / top), x2: xAt(k / top), y1: mid - 3, y2: mid + 3 }));
+    }
+    (part.answers || []).forEach(function (answer) {
+      drawing.appendChild(el("svg:circle", { class: "answer", cx: xAt(answer.level / top), cy: mid, r: 3.2 }));
+    });
+    var dot = el("svg:circle", { class: "place", cx: xAt(placeOf(part)), cy: mid, r: 3.6 });
+    dot.style.fill = partColor(part);
+    drawing.appendChild(dot);
+    return drawing;
+  }
+
+  // the answers of a part to the questions of its kind, one row each
+  function answers(part) {
+    var box = el("div", { class: "shapiq-ai-answers" });
+    var head = el("div", { class: "shapiq-ai-answers-rail" });
+    head.appendChild(el("span", { class: "end" }, "Person"));
+    head.appendChild(rail(part, 150));
+    head.appendChild(el("span", { class: "end" }, "AI"));
+    box.appendChild(head);
+    var total = 0;
+    part.answers.forEach(function (answer) { total += answer.weight; });
+    var list = el("div", { class: "shapiq-ai-answer-rows" });
+    part.answers.forEach(function (answer) {
+      var line = el("div", { class: "shapiq-ai-answer" + (answer.given ? "" : " assumed") });
+      line.title = answer.question;
+      line.appendChild(el("span", { class: "what" }, answer.name));
+      line.appendChild(scale(answer.level));
+      line.appendChild(el("span", { class: "who" }, byLevel[answer.level].who || byLevel[answer.level].name));
+      var weight = el("span", { class: "weight" }, "×" + answer.weight);
+      weight.title = "counts " + answer.weight + " of " + total;
+      line.appendChild(weight);
+      list.appendChild(line);
+    });
+    box.appendChild(list);
+    box.appendChild(el("p", { class: "shapiq-ai-answers-note" }, "Self-reported. The place is a rough mean of these answers."));
+    return box;
   }
 
   // the two axes of a part, as two small bars from the center
@@ -522,14 +587,17 @@
     card.style.setProperty("--shapiq-ai-card", partColor(part));
     var head = el("div", { class: "shapiq-ai-card-head" });
     if (!part.quoted) head.appendChild(scale(part.level));
-    head.appendChild(el("span", { class: "shapiq-ai-card-level" }, level.name));
+    var title = el("span", { class: "shapiq-ai-card-level" }, level.name);
+    if (part.kind && kinds[part.kind]) title.appendChild(el("span", { class: "kind" }, " · " + kinds[part.kind].name));
+    head.appendChild(title);
     var shut = el("button", { type: "button", class: "shapiq-ai-card-close", "aria-label": "Close" }, "×");
     shut.addEventListener("click", function () { close(true); });
     head.appendChild(shut);
     card.appendChild(head);
     card.appendChild(el("p", { class: "shapiq-ai-card-name" }, name));
     card.appendChild(el("p", { class: "shapiq-ai-card-meaning" }, level.summary));
-    if (humanSteps.length && aiSteps.length && !part.quoted) card.appendChild(axes(part));
+    if (part.answers && part.answers.length) card.appendChild(answers(part));
+    else if (humanSteps.length && aiSteps.length && !part.quoted) card.appendChild(axes(part));
     if (part.whole && part.summary) card.appendChild(el("p", { class: "shapiq-ai-card-summary" }, part.summary));
     var list = el("dl");
     row(list, "Written by", part.written);

@@ -67,10 +67,11 @@ _LEVELS = Path("_data") / "ai-involvement.toml"
 _ABOUT = "ai-involvement"  # the page that explains the levels
 _PAGE = {"level", "summary"}, {"written", "models", "human", "checked", "note", "mixer"}
 _PART = (
-    {"target", "level", "written"},
-    {"name", "models", "human", "sources", "checked", "note", "human_level", "ai_level", "quoted"},
+    {"target", "written"},
+    {"level", "name", "models", "human", "sources", "checked", "note", "quoted", "kind", "by"},
 )
-_DEFAULTS = set(), (_PART[1] | {"level", "written"}) - {"name"}
+_KIND = "prose"  # the kind of a part that names none
+_DEFAULTS = set(), (_PART[1] | {"written"}) - {"name"}
 
 
 class InvolvementNode(nodes.General, nodes.Element):
@@ -89,7 +90,43 @@ def _scale(srcdir: str) -> dict[str, Any]:
         "levels": sorted(data["levels"], key=lambda level: level["level"]),
         "human": sorted(data.get("human", []), key=lambda step: step["step"]),
         "ai": sorted(data.get("ai", []), key=lambda step: step["step"]),
+        "kinds": {kind["kind"]: kind for kind in data.get("kinds", [])},
     }
+
+
+def _place(
+    part: dict[str, Any], kinds: dict[str, Any], top: int
+) -> tuple[dict[str, Any], list[str]]:
+    """Return the part with its place, its level and its answers, and what is wrong with it.
+
+    Each question of the part's kind takes the level given in ``by``, or else the part's
+    ``level``. The place is the weighted mean of the answers, from 0 to 1, and the level the
+    nearest one (a tie goes to the higher level). A quoted part has neither.
+    """
+    if part.get("quoted"):
+        return part, []
+    kind = kinds.get(part.get("kind", _KIND))
+    if kind is None:
+        return part, [f"unknown kind {part.get('kind')!r}, use one of {', '.join(kinds)}"]
+    by = part.get("by", {})
+    keys = {criterion["key"] for criterion in kind["criteria"]}
+    problems = [
+        f"kind {kind['kind']!r} asks no question {key!r}" for key in sorted(by.keys() - keys)
+    ]
+    answers, total, weights = [], 0, 0
+    for criterion in kind["criteria"]:
+        level = by.get(criterion["key"], part.get("level"))
+        if not (isinstance(level, int) and 0 <= level <= top):
+            problems.append(f"no level from 0 to {top} for the question {criterion['key']!r}")
+            continue
+        answers.append({**criterion, "level": level, "given": criterion["key"] in by})
+        total += criterion["weight"] * level
+        weights += criterion["weight"]
+    if problems or not weights:
+        return part, problems
+    place = total / (top * weights)
+    level = (2 * top * total + top * weights) // (2 * top * weights)  # floor(top * place + 1/2)
+    return {**part, "level": level, "place": place, "answers": answers, "kind": kind["kind"]}, []
 
 
 def _levels(srcdir: str) -> list[dict[str, Any]]:
@@ -141,17 +178,35 @@ class InvolvementDirective(SphinxDirective):
         except tomllib.TOMLDecodeError as error:
             msg = f"{path.name}: {error}"
             raise self.error(msg) from error
-        top = _levels(self.env.srcdir)[-1]["level"]
-        problems = [f"[page]: {p}" for p in _problems(data.get("page", {}), _PAGE, top)]
+        scale = _scale(self.env.srcdir)
+        top = scale["levels"][-1]["level"]
+        page = data.get("page", {})
+        problems = [f"[page]: {p}" for p in _problems(page, _PAGE, top)]
+        if isinstance(page.get("level"), int):
+            page = {**page, "place": page["level"] / top}
         defaults = data.get("defaults", {})
         problems += [f"[defaults]: {p}" for p in _problems(defaults, _DEFAULTS, top)]
-        parts = [{**defaults, **part} for part in data.get("parts", [])]
-        for number, part in enumerate(parts, start=1):
+        parts = []
+        for number, own in enumerate(data.get("parts", []), start=1):
+            part = {**defaults, **own}
+            # the answers of the defaults hold only for parts of the same kind
+            same = own.get("kind", defaults.get("kind", _KIND)) == defaults.get("kind", _KIND)
+            part["by"] = {**(defaults.get("by", {}) if same else {}), **own.get("by", {})}
+            if not part["by"]:
+                del part["by"]
             label = part.get("target", f"part {number}")
-            problems += [f"[[parts]] {label}: {p}" for p in _problems(part, _PART, top)]
+            found = _problems(part, _PART, top)
+            if not found:
+                part, found = _place(part, scale["kinds"], top)
+                if "by" in own and "level" in own and found == [] and part["level"] != own["level"]:
+                    found = [
+                        f"the answers give level {part['level']}, not the stated {own['level']}"
+                    ]
+            problems += [f"[[parts]] {label}: {p}" for p in found]
+            parts.append(part)
         for problem in problems:
             logger.warning("%s: %s", path.name, problem, location=self.get_location())
-        node = InvolvementNode(page=_plain(data.get("page", {})), parts=_plain(parts))
+        node = InvolvementNode(page=_plain(page), parts=_plain(parts))
         node["source_file"] = path.name
         return [node]
 
@@ -367,6 +422,20 @@ def _figure_page(scale: dict[str, Any]) -> str:
     out.append(
         f'<circle class="dot" cx="{at(4):.1f}" cy="142" r="3.6" style="--shapiq-ai-h: {_hue(place[4])}"/>'
     )
+    # the readout beside the dot: a small scale with the part's place, and its kind and level
+    rx, ry = at(4) + 9, 134
+    out.append(
+        f'<g class="readout"><rect x="{rx:.1f}" y="{ry}" width="112" height="16" rx="8"/>'
+        f'<line class="base" x1="{rx + 7:.1f}" x2="{rx + 39:.1f}" y1="{ry + 8}" y2="{ry + 8}"/>'
+        + "".join(
+            f'<line class="tick" x1="{rx + 7 + 8 * k:.1f}" x2="{rx + 7 + 8 * k:.1f}"'
+            f' y1="{ry + 5.5}" y2="{ry + 10.5}"/>'
+            for k in range(top * 2 + 1)
+        )
+        + f'<circle class="place" cx="{rx + 39:.1f}" cy="{ry + 8}" r="2.6"'
+        f' style="--shapiq-ai-h: {_hue(place[4])}"/>'
+        f'<text x="{rx + 45:.1f}" y="{ry + 10.8}">Figure · {_esc(name[4])}</text></g>'
+    )
     # the tag, which names the level of the part being read
     mid = left + span / 2
     out.append(
@@ -376,7 +445,7 @@ def _figure_page(scale: dict[str, Any]) -> str:
         f"{_esc(name[3])}</text></g>"
     )
     # the numbered marks of the list beside the drawing
-    for number, (x, y) in enumerate(((mid, 12), (95, 99), (at(4) + 11, 133), (95, 214)), start=1):
+    for number, (x, y) in enumerate(((mid, 12), (95, 99), (at(4) + 130, 142), (95, 214)), start=1):
         out.append(
             f'<g class="mark"><circle cx="{x:.1f}" cy="{y}" r="6.5"/>'
             f'<text x="{x:.1f}" y="{y + 3}" text-anchor="middle">{number}</text></g>'
@@ -501,10 +570,69 @@ def _figure_map(scale: dict[str, Any]) -> tuple[str, str]:
     return grid, rail
 
 
+def _figure_kinds(scale: dict[str, Any]) -> str:
+    """Return a figure's answers to the questions of its kind, joined into one place."""
+    levels = scale["levels"]
+    top = levels[-1]["level"]
+    kind = scale["kinds"]["figure"]
+    example = {"design": 3, "code": 4, "check": 3}  # as the figures of the FIxLIP page
+    left, right, base = 112, 404, 104
+
+    def x(t: float) -> float:
+        return left + t * (right - left)
+
+    total = sum(c["weight"] * example[c["key"]] for c in kind["criteria"])
+    weights = sum(c["weight"] for c in kind["criteria"])
+    place = total / (top * weights)
+    level = levels[int(top * place + 0.5)]
+    out = [
+        (
+            '<svg class="shapiq-ai-drawing shapiq-ai-kinds-drawing" viewBox="0 0 430 150" role="img"'
+            ' aria-label="The three answers of a figure and their weighted mean on the scale">'
+        ),
+        '<linearGradient id="shapiq-ai-kinds-band" x1="0" x2="1" y1="0" y2="0">'
+        + "".join(
+            f'<stop offset="{k / top:.3f}" style="--shapiq-ai-h: {_hue(k / top)}"/>'
+            for k in range(top + 1)
+        )
+        + "</linearGradient>",
+        (
+            f'<rect class="band" x="{left - 6}" y="{base - 5}" width="{right - left + 12}"'
+            ' height="10" rx="5" fill="url(#shapiq-ai-kinds-band)"/>'
+        ),
+    ]
+    for k, entry in enumerate(levels):
+        out.append(
+            f'<line class="lane" x1="{x(k / top):.1f}" x2="{x(k / top):.1f}" y1="10"'
+            f' y2="{base + 6}"/><text class="axis" x="{x(k / top):.1f}" y="{base + 22}"'
+            f' text-anchor="middle">{_esc(entry["name"])}</text>'
+        )
+    for i, criterion in enumerate(kind["criteria"]):
+        y = 22 + 22 * i
+        t = example[criterion["key"]] / top
+        out.append(
+            f'<text x="{left - 14}" y="{y + 3.5}" text-anchor="end">{_esc(criterion["name"])}'
+            f'<tspan class="weight"> counts {criterion["weight"]}</tspan></text>'
+            f'<line class="join" x1="{x(t):.1f}" y1="{y + 4}" x2="{x(place):.1f}" y2="{base - 6}"/>'
+            f'<circle class="answer" cx="{x(t):.1f}" cy="{y}" r="{2 + criterion["weight"] * 0.7:.1f}"/>'
+        )
+    out.append(
+        f'<g class="point" style="--shapiq-ai-h: {_hue(place)}">'
+        f'<circle cx="{x(place):.1f}" cy="{base}" r="6.5"/></g>'
+        f'<text class="axis" x="{left - 14}" y="{base + 3.5}" text-anchor="end">Place</text>'
+        f'<text class="result" x="{x(place):.1f}" y="{base + 40}" text-anchor="middle">'
+        f"{_esc(level['name'])}, the nearest level</text></svg>"
+    )
+    return "".join(out)
+
+
 _MARKS = (
     "The tag names the level of the part being read. It stays at the top while the page scrolls.",
     "Where a part changes, the line curves into the place of the new part.",
-    "Pointing at the line shows a dot on it and tints its part. A click opens the card of the part.",
+    (
+        "Pointing at the line shows a dot on it and tints its part. A small scale beside the dot"
+        " shows where the part sits. A click opens the card of the part."
+    ),
     "A figure or a definition inside a section can have its own place. The line swings out and back.",
 )
 
@@ -535,8 +663,10 @@ class FigureDirective(SphinxDirective):
                 f'<div class="shapiq-ai-panel"><p class="shapiq-ai-panel-title">One place</p>{rail}</div>'
                 "</div>"
             )
+        elif kind == "kinds":
+            body = f'<div class="shapiq-ai-figure-kinds">{_figure_kinds(scale)}</div>'
         else:
-            msg = f"unknown drawing {kind!r}, use 'page' or 'levels'"
+            msg = f"unknown drawing {kind!r}, use 'page', 'levels' or 'kinds'"
             raise self.error(msg)
         figure = nodes.container(classes=["shapiq-ai-figure"])
         figure += AboutNode(html=body)
@@ -545,6 +675,39 @@ class FigureDirective(SphinxDirective):
             self.state.nested_parse(self.content, self.content_offset, caption)
             figure += caption
         return [figure]
+
+
+class KindsDirective(SphinxDirective):
+    """List the kinds of content and their questions: ``.. shapiq-ai-kinds::``, as a table."""
+
+    def run(self) -> list[nodes.Node]:
+        """Return a table with a row for each question of each kind."""
+        self.env.note_dependency(str(Path(self.env.srcdir) / _LEVELS))
+        table = nodes.table(classes=["shapiq-ai-kinds"])
+        group = nodes.tgroup(cols=4)
+        table += group
+        for width in (2, 2, 8, 2):
+            group += nodes.colspec(colwidth=width)
+        head = nodes.thead()
+        row = nodes.row()
+        for title in ("Kind", "Question", "Asks", "Counts"):
+            row += nodes.entry("", nodes.paragraph("", title))
+        head += row
+        group += head
+        body = nodes.tbody()
+        for kind in _scale(self.env.srcdir)["kinds"].values():
+            for i, criterion in enumerate(kind["criteria"]):
+                row = nodes.row()
+                name = nodes.paragraph()
+                if i == 0:
+                    name += nodes.strong("", kind["name"])
+                row += nodes.entry("", name)
+                row += nodes.entry("", nodes.paragraph("", criterion["name"]))
+                row += nodes.entry("", nodes.paragraph("", criterion["question"]))
+                row += nodes.entry("", nodes.paragraph("", f"{criterion['weight']} of 10"))
+                body += row
+        group += body
+        return [table]
 
 
 class LevelsDirective(SphinxDirective):
@@ -595,6 +758,7 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     app.add_directive("shapiq-ai-involvement", InvolvementDirective)
     app.add_directive("shapiq-ai-levels", LevelsDirective)
     app.add_directive("shapiq-ai-figure", FigureDirective)
+    app.add_directive("shapiq-ai-kinds", KindsDirective)
     app.connect("doctree-resolved", _resolve_targets)
     app.connect("html-page-context", _add_assets)
     return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}

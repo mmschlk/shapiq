@@ -5,9 +5,14 @@
 #
 # Each level is a pair of two inputs, what a person did and what AI did (``human`` and ``ai``,
 # steps 0 to 2 below). The line runs at the balance of the two.
+#
+# A part can also answer the questions of its kind of content (``[[kinds]]`` at the end), each with
+# a level. Its place is then the weighted mean of its answers, and its level the nearest one. The
+# kinds and weights are a first guess, for a proof of concept.
 
 [[levels]]
 level = 0
+who = "A person"  # as the answer to one question of a kind below
 human = 2
 ai = 0
 name = "Handmade"
@@ -15,6 +20,7 @@ summary = "A person wrote it without AI."
 
 [[levels]]
 level = 1
+who = "A person, AI helped"  # as the answer to one question of a kind below
 human = 2
 ai = 1
 name = "Polished"
@@ -22,6 +28,7 @@ summary = "A person wrote it. AI only fixed wording, grammar or layout."
 
 [[levels]]
 level = 2
+who = "Both"  # as the answer to one question of a kind below
 human = 2
 ai = 2
 name = "Co-written"
@@ -29,6 +36,7 @@ summary = "A person and AI both wrote it. The person edited the text of the AI."
 
 [[levels]]
 level = 3
+who = "AI, a person went through it"  # as the answer to one question of a kind below
 human = 1
 ai = 2
 name = "Vetted"
@@ -36,6 +44,7 @@ summary = "AI wrote it. A person went through all of it, asked for changes and a
 
 [[levels]]
 level = 4
+who = "AI, nobody went through it"  # as the answer to one question of a kind below
 human = 0
 ai = 2
 name = "Autopilot"
@@ -71,3 +80,52 @@ summary = "AI fixed wording, grammar or layout."
 step = 2
 name = "Wrote"
 summary = "AI wrote it, in part or in whole."
+
+# The kinds of content, each with its own questions. A part names its kind (``kind = "figure"``)
+# and answers the questions in ``by``, each with a level (0 a person did it, 4 AI did it and nobody
+# went through it). A question it does not answer takes the part's ``level``. The weights of a kind
+# add up to 10.
+[[kinds]]
+kind = "prose"
+name = "Text"
+criteria = [
+  { key = "content", name = "Content", weight = 3, question = "Who decided what it says and how it is built?" },
+  { key = "words", name = "Words", weight = 5, question = "Who wrote the sentences?" },
+  { key = "check", name = "Check", weight = 2, question = "Who checked its claims? Level 4 if nobody went through them." },
+]
+
+[[kinds]]
+kind = "figure"
+name = "Figure"
+criteria = [
+  { key = "design", name = "Design", weight = 3, question = "Who chose what the figure shows and how?" },
+  { key = "code", name = "Code", weight = 4, question = "Who wrote the drawing or the script behind it?" },
+  { key = "check", name = "Check", weight = 3, question = "Who looked at the result and its values? Level 4 if nobody did." },
+]
+
+[[kinds]]
+kind = "math"
+name = "Math"
+criteria = [
+  { key = "derivation", name = "Derivation", weight = 5, question = "Who derived the statement?" },
+  { key = "notation", name = "Notation", weight = 2, question = "Who set it in its notation?" },
+  { key = "check", name = "Check", weight = 3, question = "Who checked that it holds? Level 4 if nobody did." },
+]
+
+[[kinds]]
+kind = "code"
+name = "Code"
+criteria = [
+  { key = "design", name = "Design", weight = 3, question = "Who decided what the code does and how?" },
+  { key = "code", name = "Code", weight = 5, question = "Who wrote the code?" },
+  { key = "run", name = "Run", weight = 2, question = "Who ran or tested it? Level 4 if nobody did." },
+]
+
+[[kinds]]
+kind = "demo"
+name = "Demo"
+criteria = [
+  { key = "design", name = "Design", weight = 3, question = "Who decided what the demo shows and how it works?" },
+  { key = "code", name = "Code", weight = 4, question = "Who wrote its code?" },
+  { key = "check", name = "Check", weight = 3, question = "Who tried it and checked what it shows? Level 4 if nobody did." },
+]

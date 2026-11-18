@@ -1026,3 +1026,175 @@ ol.shapiq-ai-levels {
     border-bottom: 0;
   }
 }
+
+/* -- the place of a part on the scale: the rail, the readout beside the dot, the answers ------- */
+
+.shapiq-ai-rail {
+  flex: none;
+  overflow: visible;
+}
+
+.shapiq-ai-rail .base {
+  stroke: var(--color-background-border);
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+}
+
+.shapiq-ai-rail .tick {
+  stroke: var(--color-foreground-border);
+  stroke-width: 1px;
+}
+
+.shapiq-ai-rail .answer {
+  fill: var(--color-background-primary);
+  stroke: var(--color-foreground-muted);
+  stroke-width: 1px;
+  opacity: 0.8;
+}
+
+.shapiq-ai-rail .place {
+  stroke: var(--color-background-primary);
+  stroke-width: 1.5px;
+}
+
+.shapiq-ai-readout {
+  position: absolute;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 4px;
+  border: 1px solid var(--color-background-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-background-primary) 92%, transparent);
+  box-shadow: 0 2px 8px rgba(20, 28, 60, 0.08);
+  color: var(--color-foreground-secondary);
+  font: 500 11px/16px var(--font-stack);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-ai-readout.on {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .shapiq-ai-readout {
+    display: none;
+  }
+}
+
+.shapiq-ai-card-level .kind {
+  color: var(--color-foreground-muted);
+  font-weight: 400;
+}
+
+.shapiq-ai-answers {
+  margin-top: 0.5rem;
+}
+
+.shapiq-ai-answers-rail {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+  color: var(--color-foreground-muted);
+  font-size: 0.72rem;
+}
+
+.shapiq-ai-answer-rows {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 0.2rem 0.5rem;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.shapiq-ai-answer {
+  display: contents;
+}
+
+.shapiq-ai-answer .what {
+  color: var(--color-foreground-secondary);
+}
+
+.shapiq-ai-answer .who {
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-ai-answer.assumed .who {
+  color: var(--color-foreground-muted);
+}
+
+.shapiq-ai-answer .weight {
+  color: var(--color-foreground-muted);
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.shapiq-ai-answers-note {
+  margin: 0.4rem 0 0;
+  color: var(--color-foreground-muted);
+  font-size: 0.72rem;
+}
+
+/* the readout in the drawing of a page, and the drawing of a figure's answers */
+.shapiq-ai-drawing .readout rect {
+  fill: var(--color-background-primary);
+  stroke: var(--color-background-border);
+}
+
+.shapiq-ai-drawing .readout .base {
+  stroke: var(--color-background-border);
+  stroke-width: 1.2px;
+}
+
+.shapiq-ai-drawing .readout .tick {
+  stroke: var(--color-foreground-border);
+  stroke-width: 0.8px;
+}
+
+.shapiq-ai-drawing .readout .place {
+  fill: var(--shapiq-ai-c);
+}
+
+.shapiq-ai-drawing .readout text {
+  font-size: 7px;
+}
+
+.shapiq-ai-figure-kinds {
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.shapiq-ai-kinds-drawing .band {
+  opacity: 0.18;
+}
+
+.shapiq-ai-kinds-drawing .answer {
+  fill: var(--color-background-primary);
+  stroke: var(--color-foreground-muted);
+  stroke-width: 1.2px;
+}
+
+.shapiq-ai-kinds-drawing .join {
+  stroke: var(--color-foreground-border);
+  stroke-width: 1px;
+  stroke-dasharray: 2 3;
+}
+
+.shapiq-ai-kinds-drawing .weight {
+  fill: var(--color-foreground-muted);
+  font-size: 9px;
+}
+
+.shapiq-ai-kinds-drawing text.result {
+  fill: var(--color-foreground-primary);
+  font-weight: 600;
+}
+
+table.shapiq-ai-kinds td:first-child {
+  white-space: nowrap;
+}

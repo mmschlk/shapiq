@@ -44,6 +44,26 @@ work of other people, such as a definition from a paper, is *Quoted*. How that w
 not known, so a quoted part has no level. The line keeps its place there and turns gray, and the
 card of the part names the source.
 
+Kinds of Content
+----------------
+
+A level can also answer a single question about a part. Each kind of content asks its own
+questions. A figure asks who chose what it shows, who wrote the code that draws it and who looked
+at the result. The answer to each question is one of the five levels. The place of the part is the
+weighted mean of its answers, and its level is the nearest one. A part that gives a single level
+sits on the lane of that level.
+
+.. shapiq-ai-figure:: kinds
+
+   **From answers to one place.** A figure of the FIxLIP demo answers three questions. AI wrote
+   the code, and a person went through the design and the result. The mean lies between the lanes,
+   and its nearest level is *Vetted*.
+
+.. shapiq-ai-kinds::
+
+The kinds, their questions and their weights are a first guess. They show how a part could be split
+into questions. They are not a final rule, and the place is not a measurement.
+
 Reading the Line
 ----------------
 
@@ -75,7 +95,8 @@ Limitations
 The levels are self-reported. Nobody verifies them, and they cannot be verified from the page. A
 level is also coarse. A section that is Vetted may contain a sentence that a person wrote word for
 word. A part can change after its level was set, which is why each card gives the date of the last
-check. Finally, the names of the models are those that the tools reported. A long piece of work may
+check. The kinds and their weights are a proof of concept, and two maintainers may answer the same
+question differently. Finally, the names of the models are those that the tools reported. A long piece of work may
 have involved other models at times. The line is meant as an honest summary, not as a record of
 every edit.
 
@@ -90,7 +111,8 @@ A page reports its parts in a TOML file next to it and names it once, anywhere o
 
 The file has a table for the page as a whole, defaults for all parts, and one table per part. A part
 names its element by a CSS selector, usually the label of a section. A quoted part sets
-``quoted = true`` instead of a level.
+``quoted = true`` instead of a level. A part may name its ``kind`` and answer its questions in
+``by``. A question it does not answer takes its ``level``.
 
 .. code-block:: toml
 
@@ -103,6 +125,12 @@ names its element by a CSS selector, usually the label of a section. A quoted pa
    level = 1
    written = "Max"
    human = "Max wrote it. Claude changed a few words where he asked."
+
+   [[parts]]
+   target = "figure.fixlip-figure"
+   kind = "figure"
+   by = { design = 3, code = 4, check = 3 }
+   written = "Claude"
 
    [[parts]]
    target = "div.shapiq-statement-definition"
