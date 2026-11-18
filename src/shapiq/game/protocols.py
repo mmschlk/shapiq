@@ -19,7 +19,12 @@ class KAdditive(Protocol):
 
 
 class Additive(KAdditive, Protocol):
-    """A zero-empty game whose coalition values sum its singleton values."""
+    """A 1-additive game, allowing a nonzero empty-coalition value.
+
+    Coalition values equal the empty-coalition value plus the participating
+    players' singleton Möbius coefficients. This project's convention includes
+    a constant offset; zero-empty is a separate guarantee.
+    """
 
     @property
     def additivity(self) -> Literal[1]:

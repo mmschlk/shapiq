@@ -34,7 +34,7 @@ Thus `g2({i})` is exactly the Shapley value, without a baseline offset. The sour
 | `Players[C]` | JAX-like batch of player sets accepting coalition representation `C` |
 | `Game[C, V]` | JAX-like batch with `players: Players[C]` and `__call__(coalition: C) -> V` |
 | `KAdditive` | Semantic capability declaring `additivity: int` as an upper bound |
-| `Additive` | K-additivity bound one, additionally guaranteeing zero empty value |
+| `Additive` | K-additivity bound one, allowing a nonzero empty value |
 | `Partial[Params, Out]` | Deferred callable with a positional/keyword parameter signature and declared result; partial games eventually produce a game |
 | `PartialShape` | Known/unknown dimensions of the eventual game batch, or unknown rank |
 | `Transformation[A, B]` | Public transformation of concrete `A` to `B`, also lifted over partial inputs |
@@ -72,7 +72,7 @@ Future storage families:    Game + JaxAxisProtected + applicable capabilities
 Deferred construction:      Partial (separate from Game)
 ```
 
-`KAdditive` promises that Möbius coefficients above its declared order vanish. The bound is not necessarily tight. A k-additive representation may contain a constant coefficient; `Additive` additionally promises normalization, so singleton values directly determine every coalition value. These guarantees apply to suitable additive value spaces, not arbitrary `Value` objects.
+`KAdditive` promises that Möbius coefficients above its declared order vanish. The bound is not necessarily tight. `Additive` fixes that bound to one and permits a constant coefficient: the empty-coalition value plus singleton Möbius contributions determine every coalition value. Zero-empty is a separate property, guaranteed by the Shapley transformation above. These guarantees apply to suitable additive value spaces, not arbitrary `Value` objects.
 
 Capability protocols describe mathematical promises, not proofs or layouts. An `additivity` attribute alone is not evidence that an arbitrary game satisfies the mathematics. The protocols are used alongside `Game`, not as replacements for its array/evaluation contract, and are not structural runtime dispatch tests.
 

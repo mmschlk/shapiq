@@ -40,6 +40,7 @@ def test_runtime_checks_do_not_require_typeguard():
             pack_bool_coalition,
             unpack_bool_coalition,
         )
+        from shapiq.game import TableGame
         from shapiq.players import FinitePlayers
 
         # Check overloads without the import hook, which rewrites their registry keys.
@@ -66,6 +67,33 @@ def test_runtime_checks_do_not_require_typeguard():
                 pass
             else:
                 raise AssertionError("A runtime coalition contract was not enforced")
+
+        # Both union branches must retain jaxtyping's custom diagnostics.
+        game = TableGame(jnp.arange(8, dtype=float), FinitePlayers(3))
+        assert float(game(jnp.ones((3,), dtype=bool))) == 7
+        assert float(game(jnp.array([7], dtype=jnp.uint8))) == 7
+        for invalid, details in (
+            (
+                jnp.zeros((4,), dtype=bool),
+                ("dimension size 4", "{self.n_players}=3", "dtype bool"),
+            ),
+            (
+                jnp.zeros((2,), dtype=jnp.uint8),
+                ("dimension size 2", "({self.n_players}+7)//8=1", "dtype uint8"),
+            ),
+            (
+                jnp.zeros((3,), dtype=jnp.float32),
+                ("dtype float32", "('bool', 'bool_')", "not uint8"),
+            ),
+        ):
+            try:
+                game(invalid)
+            except TypeCheckError as error:
+                message = str(error)
+                for detail in details:
+                    assert detail in message, message
+            else:
+                raise AssertionError("An invalid union member was accepted")
 
         # Importing shapiq must not enable checking for unrelated functions.
         def unchecked(value: BoolCoalition) -> BoolCoalition:

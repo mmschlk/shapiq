@@ -49,7 +49,7 @@ assert_allclose(g.eval(S), f.eval(S))
 m.coefficient(T)  # Möbius dividend for T
 ```
 
-Mathematical capabilities such as `KAdditive` and normalized `Additive` are independent of storage. The exact Shapley transformation produces an additive game with the same players:
+Mathematical capabilities such as `KAdditive` and `Additive` are independent of storage. `Additive` means Möbius order at most one, including a possible empty-coalition coefficient. The exact Shapley transformation specifically produces a zero-empty additive game with the same players:
 
 ```text
 h(S) = sum(phi_i(g) for i in S)

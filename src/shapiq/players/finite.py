@@ -391,23 +391,21 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected["FinitePlayers
         for argument in args:
             if argument is None:
                 continue
-            if isinstance(argument, (LatentPlayers, list, tuple, np.ndarray)) or (
-                not isinstance(argument, jax.Array) and isinstance(argument, (JaxLike, NumpyLike))
-            ):
-                if players is not None:
-                    msg = "players was supplied more than once."
+            if isinstance(argument, jax.Array):
+                if ids is not None:
+                    msg = "ids was supplied more than once."
                     raise TypeError(msg)
-                players = argument
+                ids = argument
             elif isinstance(argument, int):
                 if n_players is not None:
                     msg = "n_players was supplied more than once."
                     raise TypeError(msg)
                 n_players = argument
             else:
-                if ids is not None:
-                    msg = "ids was supplied more than once."
+                if players is not None:
+                    msg = "players was supplied more than once."
                     raise TypeError(msg)
-                ids = argument
+                players = argument
 
         explicit_ids = ids is not None
         if explicit_ids:

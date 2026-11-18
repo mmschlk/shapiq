@@ -187,7 +187,7 @@ wheels = [
 [[package]]
 name = "beartype"
 version = "0.23.2"
-source = { git = "https://github.com/Cortys/beartype.git?branch=feat%2Funion-instancecheck-str#cfde10c0ec554eabef83951934e3c4f40fc50b41" }
+source = { git = "https://github.com/beartype/beartype.git?rev=afeb77dcfacd954e27de5f4befd1ce032a566003#afeb77dcfacd954e27de5f4befd1ce032a566003" }
 
 [[package]]
 name = "beautifulsoup4"
@@ -3356,7 +3356,7 @@ test-typeguard = [
 [package.metadata]
 requires-dist = [
     { name = "array-api-compat", specifier = ">=1.14.0" },
-    { name = "beartype", git = "https://github.com/Cortys/beartype.git?branch=feat%2Funion-instancecheck-str" },
+    { name = "beartype", git = "https://github.com/beartype/beartype.git?rev=afeb77dcfacd954e27de5f4befd1ce032a566003" },
     { name = "colour" },
     { name = "flextype", specifier = ">=0.3.0" },
     { name = "jax", specifier = ">=0.10.1" },
