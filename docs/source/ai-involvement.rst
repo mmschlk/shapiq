@@ -7,6 +7,11 @@ Some pages of this documentation show a thin line left of their text. The line r
 AI was involved in each part of the page. The people who maintain the page report it themselves.
 It is meant to make readers aware, not to certify anything.
 
+.. shapiq-ai-figure:: page
+
+   **The line beside a page.** AI wrote this section and a person reviewed it. A figure inside it
+   was only checked, and a definition comes from a person's own text. The line swings out for both.
+
 Why a Line
 ----------
 
@@ -24,6 +29,12 @@ have written the part, reviewed every line, only checked the result, or done not
 written the part, drafted pieces of it, only fixed its wording, or done nothing. The two inputs
 together give one of six levels, from *Handmade* to *Autopilot*.
 
+.. shapiq-ai-figure:: levels
+
+   **From two inputs to one place.** Each level is a pair of inputs on the grid. The line runs at
+   their balance, which stays the same along each diagonal of the grid. A person or AI wrote every
+   part, so the middle lane stays empty.
+
 .. shapiq-ai-levels::
 
 Only the writing of the page counts. The models that a page explains, such as SigLIP 2 in the
@@ -35,17 +46,14 @@ Reading the Line
 ----------------
 
 The line runs along the whole page. Its place is the balance of the two inputs. It runs on the
-far left where a person did everything, in the middle where a person and AI did as much, and next
-to the text where AI did everything. Its color follows its place, and the faint shade under it grows
-towards the text. Where a part changes, the line curves into its new place. A part inside a section,
-such as a figure or a definition, can have its own place. The line then swings out and back for the
-length of the part.
+far left where a person did everything and next to the text where AI did everything. Its color
+follows its place, and the faint shade under it grows towards the text. Where a part changes, the
+line curves into its new place. A part inside a section, such as a figure or a definition, can have
+its own place. The line then swings out and back for the length of the part.
 
-A small tag sticks to the top of the line while the page scrolls. It names the level of the part
-being read. Pointing at the line shows a dot on it and tints the part on the page. A click opens a
-card with the details of the part and both of its inputs. A click on the tag opens a card for the
-whole page, with the share of the page at each level. A card can also hide the line, and the tag
-then shows it again. Each card lists the following.
+The tag at the top of the line names the level of the part being read. A click on the tag opens a
+card for the whole page, with the share of the page at each level. A click on the line opens the
+card of a part. A card can also hide the line, and the tag then shows it again. Each card lists the following.
 
 .. list-table::
    :header-rows: 1

@@ -34,8 +34,9 @@ The directive writes the levels, the page's parts and the URL of the page ``ai-i
 JSON into the page, and adds ``_static/js/ai-involvement.js``, which draws the line, and
 ``_static/css/ai-involvement.css``. Outside HTML, it writes nothing.
 
-The ``shapiq-ai-levels`` directive lists the levels, each with the line at its place, for the
-page that explains them.
+For the page that explains them, the ``shapiq-ai-levels`` directive lists the levels as cards,
+and ``shapiq-ai-figure`` draws the line beside a page (``page``) or the levels on their two inputs
+(``levels``), with its content as the caption.
 """
 
 from __future__ import annotations
@@ -44,8 +45,9 @@ import datetime as dt
 import json
 import re
 import tomllib
+from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
 from docutils import nodes
 from sphinx.util import logging
@@ -73,8 +75,8 @@ class InvolvementNode(nodes.General, nodes.Element):
     """The data of the line: the levels and the page's parts, written as JSON."""
 
 
-class LevelGlyphNode(nodes.Inline, nodes.Element):
-    """A small drawing of the line at one level, for the list of levels."""
+class AboutNode(nodes.General, nodes.Element):
+    """A drawing of the line or the cards of the levels, for the page that explains them."""
 
 
 def _scale(srcdir: str) -> dict[str, Any]:
@@ -199,69 +201,362 @@ def _skip(self: nodes.NodeVisitor, node: nodes.Node) -> None:  # noqa: ARG001
     raise nodes.SkipNode
 
 
-def _glyph(level: int, place: float, lanes: int) -> str:
+def _hue(place: float) -> str:
+    """Return the hue of the line's palette "spectrum" at a place from 0 to 1 (as in the JS)."""
+    return f"{160 - 152 * place:.0f}"
+
+
+def _places(scale: dict[str, Any]) -> tuple[int, list[tuple[dict[str, Any], int, int, float]]]:
+    """Return the top step of the two axes and each level with its two inputs and its place."""
+    top = max(len(scale["human"]), len(scale["ai"]), 2) - 1
+    rows = []
+    for level in scale["levels"]:
+        h, a = level.get("human", 0), level.get("ai", 0)
+        rows.append((level, h, a, (a - h + top) / (2 * top)))
+    return top, rows
+
+
+def _esc(text: Any) -> str:  # noqa: ANN401
+    """Return text escaped for HTML."""
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _mini(place: float, lanes: int) -> str:
     """Return the line at a place (0 to 1) as a small SVG: faint lanes, the shade and the line."""
-    width, height = 23, 22
-    step = (width - 3) / (lanes - 1)
+    width, height = 44, 26
+    step = (width - 4) / (lanes - 1)
     drawn = "".join(
-        f'<line class="lane" x1="{1.5 + i * step:.2f}" x2="{1.5 + i * step:.2f}" y1="0" y2="{height}"/>'
+        f'<line class="lane{" mid" if 2 * i == lanes - 1 else ""}" x1="{2 + i * step:.2f}"'
+        f' x2="{2 + i * step:.2f}" y1="2" y2="{height - 2}"/>'
         for i in range(lanes)
     )
-    x = 1.5 + place * (width - 3)
-    # the color of the line's palette "spectrum" at this place (_static/js/ai-involvement.js)
+    x = 2 + place * (width - 4)
     return (
-        f'<svg class="shapiq-ai-glyph" data-level="{level}" width="{width}" height="{height}"'
-        f' style="color: hsl({160 - 152 * place:.0f} 85% 60%)" aria-hidden="true">{drawn}<rect class="shade" x="0" y="0" width="{x:.2f}" height="{height}"'
-        f' fill="currentColor"/><line class="line" x1="{x:.2f}" x2="{x:.2f}" y1="0" y2="{height}"'
-        f' stroke="currentColor"/></svg>'
+        f'<svg class="shapiq-ai-mini" viewBox="0 0 {width} {height}" width="{width}"'
+        f' height="{height}" aria-hidden="true">{drawn}'
+        f'<rect class="shade" x="0" y="0" width="{x:.2f}" height="{height}"/>'
+        f'<line class="halo" x1="{x:.2f}" x2="{x:.2f}" y1="2" y2="{height - 2}"/>'
+        f'<line class="line" x1="{x:.2f}" x2="{x:.2f}" y1="2" y2="{height - 2}"/></svg>'
     )
+
+
+def _cards(scale: dict[str, Any]) -> str:
+    """Return the levels as cards: the line at its place, the name, the two inputs, the meaning."""
+    top, rows = _places(scale)
+    human = {step["step"]: step["name"] for step in scale["human"]}
+    ai = {step["step"]: step["name"] for step in scale["ai"]}
+
+    def pips(value: int) -> str:
+        return "".join(f'<i class="{"on" if i < value else ""}"></i>' for i in range(top))
+
+    cards = []
+    for level, h, a, place in rows:
+        cards.append(
+            f'<li class="shapiq-ai-level" style="--shapiq-ai-h: {_hue(place)}">'
+            f'<div class="shapiq-ai-level-head">{_mini(place, 2 * top + 1)}'
+            f'<span class="shapiq-ai-level-number">{level["level"]}</span>'
+            f'<span class="shapiq-ai-level-name">{_esc(level["name"])}</span></div>'
+            f'<dl class="shapiq-ai-level-inputs">'
+            f'<dt>Person</dt><dd><span class="pips">{pips(h)}</span>{_esc(human.get(h, h))}</dd>'
+            f'<dt>AI</dt><dd><span class="pips">{pips(a)}</span>{_esc(ai.get(a, a))}</dd></dl>'
+            f'<p class="shapiq-ai-level-summary">{_esc(level["summary"])}</p></li>'
+        )
+    return f'<ol class="shapiq-ai-levels">{"".join(cards)}</ol>\n'
+
+
+def _curve(points: list[tuple[float, float, float]], bend: float) -> str:
+    """Return an SVG path down through stretches (x, top, bottom), curving between them."""
+    x, y0, _ = points[0]
+    path = [f"M{x:.1f},{y0:.1f}"]
+    for (x1, _, b1), (x2, t2, _) in pairwise(points):
+        mid = (b1 + t2) / 2
+        path.append(f"L{x1:.1f},{mid - bend:.1f}")
+        path.append(f"C{x1:.1f},{mid:.1f} {x2:.1f},{mid:.1f} {x2:.1f},{mid + bend:.1f}")
+    path.append(f"L{points[-1][0]:.1f},{points[-1][2]:.1f}")
+    return " ".join(path)
+
+
+def _figure_page(scale: dict[str, Any]) -> str:
+    """Return a drawing of the line beside a page, with numbered marks for the list beside it."""
+    top, rows = _places(scale)
+    place = {level["level"]: p for level, _, _, p in rows}
+    name = {level["level"]: level["name"] for level, _, _, _ in rows}
+    lanes, left, span = 2 * top + 1, 14.0, 72.0
+
+    def at(level: int) -> float:
+        return left + place[level] * span
+
+    # the parts of the drawn page: top, bottom and level
+    parts = [(12, 94, 3), (104, 178, 4), (188, 240, 1), (250, 296, 3)]
+    stretches = [(at(level), t, b) for t, b, level in parts]
+    line = _curve(stretches, 9)
+    stops = []
+    for (_, b1, l1), (t2, _, l2) in pairwise(parts):
+        mid = (b1 + t2) / 2
+        stops.append((mid - 9, l1))
+        stops.append((mid + 9, l2))
+    stops = [(parts[0][0], parts[0][2]), *stops, (parts[-1][1], parts[-1][2])]
+    gradient = "".join(
+        f'<stop offset="{y / 310:.4f}" style="--shapiq-ai-h: {_hue(place[level])}"/>'
+        for y, level in stops
+    )
+    out = [
+        (
+            '<svg class="shapiq-ai-drawing" viewBox="0 0 400 316" role="img"'
+            ' aria-label="A page with the line on its left">'
+            '<defs><linearGradient id="shapiq-ai-fig-down" gradientUnits="userSpaceOnUse"'
+            f' x1="0" y1="0" x2="0" y2="310">{gradient}</linearGradient>'
+            '<linearGradient id="shapiq-ai-fig-across" x1="0" x2="1" y1="0" y2="0">'
+            '<stop offset="0" stop-color="#fff" stop-opacity="0.02"/>'
+            '<stop offset="1" stop-color="#fff" stop-opacity="0.22"/></linearGradient>'
+            '<mask id="shapiq-ai-fig-fade" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="316">'
+            '<rect x="0" y="0" width="100" height="316" fill="url(#shapiq-ai-fig-across)"/></mask>'
+            '<filter id="shapiq-ai-fig-blur" x="-50%" y="-5%" width="200%" height="110%">'
+            '<feGaussianBlur stdDeviation="2"/></filter>'
+            f'<linearGradient id="shapiq-ai-fig-tint" x1="0" x2="1" y1="0" y2="0"'
+            f' style="--shapiq-ai-h: {_hue(place[4])}">'
+            '<stop offset="0" class="tint" stop-opacity="0.2"/>'
+            '<stop offset="0.25" class="tint" stop-opacity="0.07"/>'
+            '<stop offset="1" class="tint" stop-opacity="0"/></linearGradient></defs>'
+        )
+    ]
+    # the lanes, the middle one dashed
+    for k in range(lanes):
+        x = left + k * span / (lanes - 1)
+        out.append(
+            f'<line class="lane{" mid" if 2 * k == lanes - 1 else ""}" x1="{x:.1f}" x2="{x:.1f}"'
+            ' y1="10" y2="298"/>'
+        )
+    out.append(
+        f'<text class="axis" x="{left - 4}" y="311" text-anchor="start">Person</text>'
+        f'<text class="axis" x="{left + span + 4}" y="311" text-anchor="end">AI</text>'
+    )
+    # the tint of the part pointed at (the figure)
+    out.append(
+        '<rect x="98" y="100" width="300" height="82" rx="6" fill="url(#shapiq-ai-fig-tint)"/>'
+    )
+    # the page: bars of text, a figure, a definition
+    text = [(0, 18, 150, 9, "head")]
+    for i, w in enumerate((282, 270, 288, 252, 180)):
+        text.append((0, 38 + 12 * i, w, 5, ""))
+    for i, w in enumerate((286, 274, 240)):
+        text.append((0, 256 + 12 * i, w, 5, ""))
+    for _, y, w, hgt, cls in text:
+        out.append(f'<rect class="bar {cls}" x="104" y="{y}" width="{w}" height="{hgt}" rx="2.5"/>')
+    out.append('<rect class="box" x="132" y="108" width="236" height="62" rx="5"/>')
+    for i, hgt in enumerate((18, 30, 24, 40, 34, 46, 28, 38, 22, 44)):
+        out.append(
+            f'<rect class="bars" x="{146 + 21 * i}" y="{162 - hgt}" width="12" height="{hgt}" rx="1.5"/>'
+        )
+    out.append('<rect class="def" x="104" y="190" width="288" height="48" rx="5"/>')
+    out.append('<rect class="def-edge" x="104" y="190" width="3" height="48" rx="1.5"/>')
+    for i, w in enumerate((90, 250, 230)):
+        out.append(
+            f'<rect class="bar{" head" if i == 0 else ""}" x="118" y="{198 + 12 * i}"'
+            f' width="{w}" height="{6 if i == 0 else 5}" rx="2.5"/>'
+        )
+    # the line: its shade, its glow and itself
+    out.append(
+        f'<path class="shade" d="{line} L4,296 L4,12 Z" fill="url(#shapiq-ai-fig-down)"'
+        ' mask="url(#shapiq-ai-fig-fade)"/>'
+        f'<path class="halo" d="{line}" stroke="url(#shapiq-ai-fig-down)" filter="url(#shapiq-ai-fig-blur)"/>'
+        f'<path class="line" d="{line}" stroke="url(#shapiq-ai-fig-down)"/>'
+    )
+    # the dot under the pointer, on the figure's stretch
+    out.append(
+        f'<circle class="dot" cx="{at(4):.1f}" cy="142" r="3.6" style="--shapiq-ai-h: {_hue(place[4])}"/>'
+    )
+    # the tag, which names the level of the part being read
+    mid = left + span / 2
+    out.append(
+        f'<g class="tag" style="--shapiq-ai-h: {_hue(place[3])}">'
+        f'<rect x="{mid - 7.5}" y="22" width="15" height="62" rx="7.5"/>'
+        f'<text transform="translate({mid + 2.6},53) rotate(90)" text-anchor="middle">'
+        f"{_esc(name[3])}</text></g>"
+    )
+    # the numbered marks of the list beside the drawing
+    for number, (x, y) in enumerate(((mid, 12), (95, 99), (at(4) + 11, 133), (95, 214)), start=1):
+        out.append(
+            f'<g class="mark"><circle cx="{x:.1f}" cy="{y}" r="6.5"/>'
+            f'<text x="{x:.1f}" y="{y + 3}" text-anchor="middle">{number}</text></g>'
+        )
+    out.append("</svg>")
+    return "".join(out)
+
+
+def _figure_map(scale: dict[str, Any]) -> tuple[str, str]:
+    """Return the levels on the two inputs (a grid) and at their place on the line (a rail)."""
+    top, rows = _places(scale)
+    human = {step["step"]: step["name"] for step in scale["human"]}
+    ai = {step["step"]: step["name"] for step in scale["ai"]}
+    cell, x0, y0 = 58, 92, 34
+
+    def gx(a: int) -> float:
+        return x0 + a * cell
+
+    def gy(h: int) -> float:
+        return y0 + (top - h) * cell
+
+    size = top * cell
+    out = [
+        (
+            f'<svg class="shapiq-ai-drawing shapiq-ai-grid" viewBox="0 0 {x0 + size + 78} {y0 + size + 52}"'
+            ' role="img" aria-label="The levels on a grid of what a person did and what AI did">'
+        )
+    ]
+    # the balance of the two inputs: one diagonal per place of the line
+    for k in range(-top, top + 1):
+        a1, a2 = max(0, k), min(top, top + k)
+        p = (k + top) / (2 * top)
+        out.append(
+            f'<line class="diagonal{" mid" if k == 0 else ""}" style="--shapiq-ai-h: {_hue(p)}"'
+            f' x1="{gx(a1)}" y1="{gy(a1 - k)}" x2="{gx(a2)}" y2="{gy(a2 - k)}"/>'
+        )
+    steps = range(top + 1)
+    out.extend(
+        f'<circle class="node" cx="{gx(a)}" cy="{gy(h)}" r="1.6"/>' for a in steps for h in steps
+    )
+    out.extend(
+        f'<text class="step" x="{gx(a)}" y="{y0 + size + 20}" text-anchor="middle">'
+        f"{_esc(ai.get(a, a))}</text>"
+        for a in steps
+    )
+    out.extend(
+        f'<text class="step" x="{x0 - 12}" y="{gy(h) + 3.5}" text-anchor="end">'
+        f"{_esc(human.get(h, h))}</text>"
+        for h in steps
+    )
+    out.append(
+        f'<text class="axis" x="{x0 + size / 2}" y="{y0 + size + 42}" text-anchor="middle">'
+        "What AI did</text>"
+        f'<text class="axis" transform="translate(14,{y0 + size / 2}) rotate(-90)"'
+        ' text-anchor="middle">What a person did</text>'
+    )
+    # the path of the levels, from a person alone to AI alone
+    for (_, h1, a1, p1), (_, h2, a2, p2) in pairwise(rows):
+        gid = f"shapiq-ai-map-{a1}{h1}"
+        out.append(
+            f'<linearGradient id="{gid}" gradientUnits="userSpaceOnUse" x1="{gx(a1)}" y1="{gy(h1)}"'
+            f' x2="{gx(a2)}" y2="{gy(h2)}"><stop offset="0" style="--shapiq-ai-h: {_hue(p1)}"/>'
+            f'<stop offset="1" style="--shapiq-ai-h: {_hue(p2)}"/></linearGradient>'
+            f'<line class="path" x1="{gx(a1)}" y1="{gy(h1)}" x2="{gx(a2)}" y2="{gy(h2)}"'
+            f' stroke="url(#{gid})"/>'
+        )
+    for level, h, a, p in rows:
+        x, y = gx(a), gy(h)
+        out.append(
+            f'<g class="point" style="--shapiq-ai-h: {_hue(p)}"><circle cx="{x}" cy="{y}" r="8"/>'
+            f'<text class="number" x="{x}" y="{y + 3.4}" text-anchor="middle">{level["level"]}</text>'
+        )
+        if h == top and a < top:
+            out.append(
+                f'<text x="{x}" y="{y - 14}" text-anchor="middle">{_esc(level["name"])}</text>'
+            )
+        else:
+            out.append(f'<text x="{x + 14}" y="{y + 3.5}">{_esc(level["name"])}</text>')
+        out.append("</g>")
+    out.append("</svg>")
+    grid = "".join(out)
+
+    # the rail: the lanes of the line, each level at its place
+    lanes, width, left = 2 * top + 1, 320, 40
+    step = (width - 2 * left) / (lanes - 1)
+    out = [
+        f'<svg class="shapiq-ai-drawing shapiq-ai-rail" viewBox="0 0 {width} 132" role="img"'
+        ' aria-label="The levels at their places on the line, from a person alone to AI alone">'
+        f'<linearGradient id="shapiq-ai-rail-band" x1="0" x2="1" y1="0" y2="0">'
+        + "".join(
+            f'<stop offset="{k / (lanes - 1):.3f}" style="--shapiq-ai-h: {_hue(k / (lanes - 1))}"/>'
+            for k in range(lanes)
+        )
+        + "</linearGradient>"
+        f'<rect class="band" x="{left - 8}" y="22" width="{width - 2 * left + 16}" height="58" rx="8"'
+        ' fill="url(#shapiq-ai-rail-band)"/>'
+    ]
+    for k in range(lanes):
+        x = left + k * step
+        out.append(
+            f'<line class="lane{" mid" if 2 * k == lanes - 1 else ""}" x1="{x:.1f}" x2="{x:.1f}"'
+            ' y1="26" y2="76"/>'
+        )
+    for i, (level, _, _, p) in enumerate(rows):
+        x = left + p * (lanes - 1) * step
+        y = 98 if i % 2 == 0 else 112
+        out.append(
+            f'<g class="point" style="--shapiq-ai-h: {_hue(p)}">'
+            f'<line class="halo" x1="{x:.1f}" x2="{x:.1f}" y1="30" y2="72"/>'
+            f'<line class="line" x1="{x:.1f}" x2="{x:.1f}" y1="30" y2="72"/>'
+            f'<circle cx="{x:.1f}" cy="14" r="8"/>'
+            f'<text class="number" x="{x:.1f}" y="17.4" text-anchor="middle">{level["level"]}</text>'
+            f'<line class="tick" x1="{x:.1f}" x2="{x:.1f}" y1="80" y2="{y - 9}"/>'
+            f'<text x="{x:.1f}" y="{y}" text-anchor="middle">{_esc(level["name"])}</text></g>'
+        )
+    out.append(
+        f'<text class="axis" x="{left - 8}" y="130" text-anchor="start">A person did it all</text>'
+        f'<text class="axis" x="{width - left + 8}" y="130" text-anchor="end">AI did it all</text>'
+        "</svg>"
+    )
+    rail = "".join(out)
+    return grid, rail
+
+
+_MARKS = (
+    "The tag names the level of the part being read. It stays at the top while the page scrolls.",
+    "Where a part changes, the line curves into the place of the new part.",
+    "Pointing at the line shows a dot on it and tints its part. A click opens the card of the part.",
+    "A figure or a definition inside a section can have its own place. The line swings out and back.",
+)
+
+
+class FigureDirective(SphinxDirective):
+    """Draw the line: ``.. shapiq-ai-figure:: page`` (on a page) or ``levels`` (the levels)."""
+
+    required_arguments = 1
+    has_content = True
+
+    def run(self) -> list[nodes.Node]:
+        """Return the drawing with its caption, the content of the directive."""
+        self.env.note_dependency(str(Path(self.env.srcdir) / _LEVELS))
+        scale = _scale(self.env.srcdir)
+        kind = self.arguments[0]
+        if kind == "page":
+            items = "".join(f"<li>{_esc(text)}</li>" for text in _MARKS)
+            body = (
+                f'<div class="shapiq-ai-figure-page">{_figure_page(scale)}'
+                f'<ol class="shapiq-ai-marks">{items}</ol></div>'
+            )
+        elif kind == "levels":
+            grid, rail = _figure_map(scale)
+            body = (
+                '<div class="shapiq-ai-figure-levels">'
+                f'<div class="shapiq-ai-panel"><p class="shapiq-ai-panel-title">Two inputs</p>{grid}</div>'
+                '<div class="shapiq-ai-arrow" aria-hidden="true"></div>'
+                f'<div class="shapiq-ai-panel"><p class="shapiq-ai-panel-title">One place</p>{rail}</div>'
+                "</div>"
+            )
+        else:
+            msg = f"unknown drawing {kind!r}, use 'page' or 'levels'"
+            raise self.error(msg)
+        figure = nodes.container(classes=["shapiq-ai-figure"])
+        figure += AboutNode(html=body)
+        if self.content:
+            caption = nodes.container(classes=["shapiq-ai-figure-caption"])
+            self.state.nested_parse(self.content, self.content_offset, caption)
+            figure += caption
+        return [figure]
 
 
 class LevelsDirective(SphinxDirective):
-    """List the levels: ``.. shapiq-ai-levels::``, as a table with the line at every level."""
-
-    option_spec: ClassVar[dict[str, Any]] = {}
+    """List the levels: ``.. shapiq-ai-levels::``, as cards with the line at every level."""
 
     def run(self) -> list[nodes.Node]:
-        """Return a table of the levels: the line, the name, the two inputs, what it means."""
+        """Return the cards of the levels."""
         self.env.note_dependency(str(Path(self.env.srcdir) / _LEVELS))
-        scale = _scale(self.env.srcdir)
-        levels = scale["levels"]
-        top = max(len(scale["human"]), len(scale["ai"]), 2) - 1
-        human = {step["step"]: step["name"] for step in scale["human"]}
-        ai = {step["step"]: step["name"] for step in scale["ai"]}
-        table = nodes.table(classes=["shapiq-ai-levels"])
-        group = nodes.tgroup(cols=5)
-        table += group
-        for width in (1, 3, 2, 2, 10):
-            group += nodes.colspec(colwidth=width)
-        head = nodes.thead()
-        row = nodes.row()
-        for title in ("", "Level", "Person", "AI", "What it means"):
-            row += nodes.entry("", nodes.paragraph("", title))
-        head += row
-        group += head
-        body = nodes.tbody()
-        for level in levels:
-            row = nodes.row()
-            h, a = level.get("human", 0), level.get("ai", 0)
-            place = (a - h + top) / (2 * top)
-            row += nodes.entry(
-                "", LevelGlyphNode(level=level["level"], place=place, lanes=2 * top + 1)
-            )
-            name = nodes.paragraph()
-            name += nodes.strong("", f"{level['level']} \N{MIDDLE DOT} {level['name']}")
-            row += nodes.entry("", name)
-            row += nodes.entry("", nodes.paragraph("", human.get(h, str(h))))
-            row += nodes.entry("", nodes.paragraph("", ai.get(a, str(a))))
-            row += nodes.entry("", nodes.paragraph("", level["summary"]))
-            body += row
-        group += body
-        return [table]
+        return [AboutNode(html=_cards(_scale(self.env.srcdir)))]
 
 
-def _visit_glyph(self: HTML5Translator, node: LevelGlyphNode) -> None:
-    self.body.append(_glyph(node["level"], node["place"], node["lanes"]))
+def _visit_about(self: HTML5Translator, node: AboutNode) -> None:
+    self.body.append(node["html"])
     raise nodes.SkipNode
 
 
@@ -278,7 +573,7 @@ def _add_assets(
     if next(iter(doctree.findall(InvolvementNode)), None) is not None:
         app.add_css_file("css/ai-involvement.css", priority=900)
         app.add_js_file("js/ai-involvement.js", loading_method="defer")
-    elif next(iter(doctree.findall(LevelGlyphNode)), None) is not None:
+    elif next(iter(doctree.findall(AboutNode)), None) is not None:
         app.add_css_file("css/ai-involvement.css", priority=900)
 
 
@@ -294,10 +589,11 @@ def setup(app: Sphinx) -> ExtensionMetadata:
         texinfo=skip,
     )
     app.add_node(
-        LevelGlyphNode, html=(_visit_glyph, None), latex=skip, text=skip, man=skip, texinfo=skip
+        AboutNode, html=(_visit_about, None), latex=skip, text=skip, man=skip, texinfo=skip
     )
     app.add_directive("shapiq-ai-involvement", InvolvementDirective)
     app.add_directive("shapiq-ai-levels", LevelsDirective)
+    app.add_directive("shapiq-ai-figure", FigureDirective)
     app.connect("doctree-resolved", _resolve_targets)
     app.connect("html-page-context", _add_assets)
     return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}

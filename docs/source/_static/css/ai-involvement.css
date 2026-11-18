@@ -328,37 +328,6 @@ a.shapiq-ai-card-more {
 }
 
 /* the list of the levels, on the page that explains them */
-.shapiq-ai-glyph {
-  display: block;
-  margin: 0 auto;
-}
-
-.shapiq-ai-glyph .lane {
-  stroke: var(--color-background-border);
-  stroke-width: 1px;
-  stroke-dasharray: 1 3;
-}
-
-.shapiq-ai-glyph .line {
-  stroke-width: 1.1px;
-  stroke-linecap: round;
-}
-
-.shapiq-ai-glyph .shade {
-  opacity: 0.14;
-}
-
-.shapiq-ai-glyph[data-level="0"] { color: var(--shapiq-ai-0); }
-.shapiq-ai-glyph[data-level="1"] { color: var(--shapiq-ai-1); }
-.shapiq-ai-glyph[data-level="2"] { color: var(--shapiq-ai-2); }
-.shapiq-ai-glyph[data-level="3"] { color: var(--shapiq-ai-3); }
-.shapiq-ai-glyph[data-level="4"] { color: var(--shapiq-ai-4); }
-.shapiq-ai-glyph[data-level="5"] { color: var(--shapiq-ai-5); }
-
-table.shapiq-ai-levels td:first-child {
-  vertical-align: middle;
-}
-
 /* On a narrow page, the text has only 1em of room on its left. */
 @media (max-width: 67em) {
   :root {
@@ -405,9 +374,6 @@ table.shapiq-ai-levels td:first-child {
   }
 }
 
-table.shapiq-ai-levels td:nth-child(2) {
-  white-space: nowrap;
-}
 
 /* On a narrow page, the theme lets the content scroll sideways, which would keep the tag from
    sticking. Clipping keeps the content in its column without making it a scroll container. */
@@ -595,4 +561,478 @@ table.shapiq-ai-levels td:nth-child(2) {
 
 .shapiq-ai-mixer-out:empty {
   display: none;
+}
+
+/* -- the page that explains the line: drawings and the cards of the levels ------------------- */
+
+/* Every drawn color comes from a hue (--shapiq-ai-h, set where it is drawn) of the palette
+   "spectrum", a little lighter in the dark theme, as the line draws it. */
+:root {
+  --shapiq-ai-l: 60%;
+}
+
+body[data-theme="dark"] {
+  --shapiq-ai-l: 68%;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --shapiq-ai-l: 68%;
+  }
+}
+
+.shapiq-ai-figure,
+.shapiq-ai-levels {
+  --shapiq-ai-c: hsl(var(--shapiq-ai-h, 45) 85% var(--shapiq-ai-l));
+}
+
+.shapiq-ai-figure stop[style],
+.shapiq-ai-figure [style] {
+  --shapiq-ai-c: hsl(var(--shapiq-ai-h) 85% var(--shapiq-ai-l));
+}
+
+.shapiq-ai-figure stop[style] {
+  stop-color: var(--shapiq-ai-c);
+}
+
+.shapiq-ai-figure {
+  margin: 1.5rem 0 1.75rem;
+}
+
+.shapiq-ai-drawing {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  font-family: var(--font-stack);
+}
+
+.shapiq-ai-drawing text {
+  fill: var(--color-foreground-secondary);
+  font-size: 10.5px;
+}
+
+.shapiq-ai-drawing text.axis {
+  fill: var(--color-foreground-muted);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+}
+
+.shapiq-ai-drawing .lane {
+  stroke: var(--color-background-border);
+  stroke-width: 1px;
+  stroke-dasharray: 1 3.5;
+}
+
+.shapiq-ai-drawing .lane.mid {
+  stroke-dasharray: 3 3;
+}
+
+.shapiq-ai-drawing .line,
+.shapiq-ai-drawing .halo,
+.shapiq-ai-drawing .path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.shapiq-ai-drawing .line {
+  stroke-width: 1.6px;
+}
+
+.shapiq-ai-drawing .halo {
+  stroke-width: 6px;
+  opacity: 0.45;
+}
+
+.shapiq-ai-drawing g.point .line,
+.shapiq-ai-drawing g.point .halo {
+  stroke: var(--shapiq-ai-c);
+}
+
+.shapiq-ai-drawing g.point .halo {
+  filter: blur(2.5px);
+}
+
+.shapiq-ai-drawing .shade {
+  opacity: 1;
+}
+
+/* the drawn page */
+.shapiq-ai-drawing .bar {
+  fill: var(--color-foreground-border);
+  opacity: 0.55;
+}
+
+.shapiq-ai-drawing .bar.head {
+  fill: var(--color-foreground-muted);
+  opacity: 0.6;
+}
+
+.shapiq-ai-drawing .box {
+  fill: var(--color-background-secondary);
+  stroke: var(--color-background-border);
+}
+
+.shapiq-ai-drawing .bars {
+  fill: var(--color-foreground-border);
+  opacity: 0.7;
+}
+
+.shapiq-ai-drawing .def {
+  fill: var(--color-background-secondary);
+}
+
+.shapiq-ai-drawing .def-edge {
+  fill: var(--shapiq-amber);
+  opacity: 0.8;
+}
+
+.shapiq-ai-drawing .tint {
+  stop-color: var(--shapiq-ai-c);
+}
+
+.shapiq-ai-drawing .dot {
+  fill: var(--shapiq-ai-c);
+  stroke: var(--color-background-primary);
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 0 3px var(--shapiq-ai-c));
+}
+
+.shapiq-ai-drawing .tag rect {
+  fill: color-mix(in srgb, var(--shapiq-ai-c) 14%, var(--color-background-primary));
+  stroke: color-mix(in srgb, var(--shapiq-ai-c) 65%, transparent);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--shapiq-ai-c) 50%, transparent));
+}
+
+.shapiq-ai-drawing .tag text {
+  fill: color-mix(in srgb, var(--shapiq-ai-c) 30%, var(--color-foreground-secondary));
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.shapiq-ai-drawing .mark circle {
+  fill: var(--color-foreground-primary);
+}
+
+.shapiq-ai-drawing .mark text {
+  fill: var(--color-background-primary);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+/* the drawing of the page and the list of its marks */
+.shapiq-ai-figure-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 1.25rem 1.75rem;
+  align-items: center;
+}
+
+.shapiq-ai-marks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: shapiq-ai-mark;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-foreground-secondary);
+}
+
+.shapiq-ai-marks li {
+  position: relative;
+  margin: 0 0 0.8rem;
+  padding-left: 1.8rem;
+  counter-increment: shapiq-ai-mark;
+}
+
+.shapiq-ai-marks li::before {
+  content: counter(shapiq-ai-mark);
+  position: absolute;
+  top: 0.12rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--color-foreground-primary);
+  color: var(--color-background-primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+/* the levels on the two inputs and on the line */
+.shapiq-ai-figure-levels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1.5rem minmax(0, 1.05fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.shapiq-ai-panel-title {
+  margin: 0 0 0.5rem;
+  color: var(--color-foreground-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.shapiq-ai-arrow {
+  height: 1px;
+  background: var(--color-background-border);
+  position: relative;
+}
+
+.shapiq-ai-arrow::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -3.5px;
+  border: 4px solid transparent;
+  border-left: 6px solid var(--color-background-border);
+  border-right: 0;
+}
+
+.shapiq-ai-grid .diagonal {
+  stroke: var(--shapiq-ai-c);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+
+.shapiq-ai-grid .diagonal.mid {
+  stroke: var(--color-background-border);
+  stroke-width: 1px;
+  stroke-dasharray: 3 3;
+  opacity: 1;
+}
+
+.shapiq-ai-grid .node {
+  fill: var(--color-foreground-border);
+}
+
+.shapiq-ai-grid .path {
+  stroke-width: 2.5px;
+  opacity: 0.85;
+}
+
+.shapiq-ai-drawing g.point circle {
+  fill: var(--shapiq-ai-c);
+  stroke: var(--color-background-primary);
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--shapiq-ai-c) 70%, transparent));
+}
+
+.shapiq-ai-drawing g.point text {
+  fill: var(--color-foreground-primary);
+  font-weight: 600;
+}
+
+.shapiq-ai-drawing g.point text.number {
+  fill: #1d1f24;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.shapiq-ai-rail .band {
+  opacity: 0.1;
+}
+
+/* On a dark page, faint colors turn muddy: the band and the shades are fainter, the diagonals
+   brighter. */
+body[data-theme="dark"] .shapiq-ai-rail .band {
+  opacity: 0.06;
+}
+
+body[data-theme="dark"] .shapiq-ai-grid .diagonal {
+  opacity: 0.6;
+}
+
+body[data-theme="dark"] .shapiq-ai-mini .shade {
+  opacity: 0.09;
+}
+
+body[data-theme="dark"] .shapiq-ai-drawing .shade {
+  opacity: 0.45;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .shapiq-ai-rail .band {
+    opacity: 0.06;
+  }
+
+  body:not([data-theme="light"]) .shapiq-ai-grid .diagonal {
+    opacity: 0.6;
+  }
+
+  body:not([data-theme="light"]) .shapiq-ai-mini .shade {
+    opacity: 0.09;
+  }
+
+  body:not([data-theme="light"]) .shapiq-ai-drawing .shade {
+    opacity: 0.45;
+  }
+}
+
+.shapiq-ai-rail .tick {
+  stroke: var(--color-background-border);
+  stroke-width: 1px;
+}
+
+.shapiq-ai-figure-caption {
+  margin-top: 1rem;
+  color: var(--color-foreground-secondary);
+  font-size: 0.9rem;
+}
+
+.shapiq-ai-figure-caption p {
+  margin: 0;
+}
+
+/* the cards of the levels */
+ol.shapiq-ai-levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(13.5rem, 100%), 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.shapiq-ai-level {
+  --shapiq-ai-c: hsl(var(--shapiq-ai-h) 85% var(--shapiq-ai-l));
+  margin: 0 !important;
+  padding: 0.75rem 0.85rem 0.8rem;
+  border: 1px solid var(--color-background-border);
+  border-top: 2px solid var(--shapiq-ai-c);
+  border-radius: var(--shapiq-radius-small);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--shapiq-ai-c) 9%, var(--color-background-primary)) 0,
+    var(--color-background-primary) 4.5rem
+  );
+}
+
+.shapiq-ai-level-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.shapiq-ai-level-number {
+  color: var(--color-foreground-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.shapiq-ai-level-name {
+  margin-left: -0.3rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.shapiq-ai-mini {
+  flex: none;
+  overflow: visible;
+}
+
+.shapiq-ai-mini .lane {
+  stroke: var(--color-background-border);
+  stroke-width: 1px;
+  stroke-dasharray: 1 2.5;
+}
+
+.shapiq-ai-mini .lane.mid {
+  stroke-dasharray: 2.5 2;
+}
+
+.shapiq-ai-mini .shade {
+  fill: var(--shapiq-ai-c);
+  opacity: 0.16;
+}
+
+.shapiq-ai-mini .line,
+.shapiq-ai-mini .halo {
+  stroke: var(--shapiq-ai-c);
+  stroke-linecap: round;
+}
+
+.shapiq-ai-mini .line {
+  stroke-width: 1.6px;
+}
+
+.shapiq-ai-mini .halo {
+  stroke-width: 5px;
+  opacity: 0.4;
+  filter: blur(2px);
+}
+
+.shapiq-ai-level-inputs {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.6rem;
+  margin: 0.65rem 0 0.55rem;
+  font-size: 0.8rem;
+}
+
+.shapiq-ai-level-inputs dt {
+  color: var(--color-foreground-muted);
+  font-weight: 400;
+}
+
+.shapiq-ai-level-inputs dd {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--color-foreground-secondary);
+}
+
+.shapiq-ai-level-inputs .pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.shapiq-ai-level-inputs .pips i {
+  width: 14px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--color-background-border);
+}
+
+.shapiq-ai-level-inputs .pips i.on {
+  background: var(--shapiq-ai-c);
+}
+
+.shapiq-ai-level-summary {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 40em) {
+  .shapiq-ai-figure-page,
+  .shapiq-ai-figure-levels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shapiq-ai-arrow {
+    width: 1px;
+    height: 1.25rem;
+    margin: 0 auto;
+  }
+
+  .shapiq-ai-arrow::after {
+    top: auto;
+    right: -3.5px;
+    bottom: -1px;
+    border: 4px solid transparent;
+    border-top: 6px solid var(--color-background-border);
+    border-bottom: 0;
+  }
 }

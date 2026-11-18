@@ -4,7 +4,7 @@
 # file, e.g. ``demos/fixlip/ai-involvement.toml``.
 #
 # Each level is also a point on two neutral axes, how much a person and how much AI did (``human``
-# and ``ai``, steps 0 to 3 below). The line can show the two axes as two lines instead of one.
+# and ``ai``, steps 0 to 3 below). The line runs at the balance of the two.
 
 [[levels]]
 level = 0
