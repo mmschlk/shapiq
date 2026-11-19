@@ -422,3 +422,9 @@
 .shapiq-deck .talk-effects {
   font-size: clamp(14px, 0.75vw + 0.75vh, 26px);
 }
+
+/* a method that only approximates its cell */
+.talk-chip-approx {
+  border-style: dashed;
+  background: none;
+}

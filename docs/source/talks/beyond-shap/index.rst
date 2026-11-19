@@ -338,6 +338,8 @@ says, and code reproduces what the slide shows.
       features. With correlated features, such as income and loan amount, these choices give
       different answers. The second choice is how much of the interactions an explanation takes
       in, as pure, partial or full effects. The variants of SHAP form one row of this grid.
+      Path-dependent TreeSHAP, the default for trees, lets absent features follow the splits of
+      the trees, which approximates the conditional distribution.
       Occlusion, PDP and ICE sit in other cells. These methods do not compete. Each cell answers
       its own question.
 

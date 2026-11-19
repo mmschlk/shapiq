@@ -207,7 +207,9 @@
   // ---- the unified framework -----------------------------------------------------------------
   // Fumagalli et al. (2025), Section 4.1 and Table 2: local feature-based explanations by the
   // fANOVA decomposition they rest on (b, m or c, the columns) and how they summarize the Möbius
-  // transform (pure, partial or full effects, the rows), for each type of explanation.
+  // transform (pure, partial or full effects, the rows), for each type of explanation. One chip is
+  // not in the paper: path-dependent TreeSHAP, shapiq's default for trees, near the conditional
+  // column, marked as an approximation.
   const DISTRIBUTIONS = [
     { key: "b", name: "Baseline", says: "Absent features take a fixed value" },
     { key: "m", name: "Marginal", says: "Averaged over their distribution" },
@@ -221,6 +223,7 @@
         ["b", "partial", "Baseline SHAP"],
         ["m", "partial", "Interventional SHAP"],
         ["c", "partial", "Observational SHAP"],
+        ["c", "partial", "≈ Path-dependent TreeSHAP"],
         ["b", "full", "Occlusion-1"],
         ["b", "full", "ICE"],
       ],
@@ -308,7 +311,15 @@
     element.dataset.content = key;
     const fill = () => {
       element.textContent = "";
-      if (chips) for (const name of content) make("span", { class: "talk-chip" }, element, name);
+      if (chips) {
+        // a chip that starts with "≈" approximates its cell (path-dependent TreeSHAP, whose absent
+        // features follow the splits of the trees, near the conditional distribution)
+        for (const name of content) {
+          const approx = name.startsWith("≈ ");
+          const chip = make("span", { class: approx ? "talk-chip talk-chip-approx" : "talk-chip" }, element, name);
+          if (approx) chip.title = "An approximation: absent features follow the trees' own splits";
+        }
+      }
       else element.textContent = content;
       element.classList.remove("talk-out");
     };
