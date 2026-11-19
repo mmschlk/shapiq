@@ -1,0 +1,611 @@
+/* The lattices of the talk (figure-lattice.js): lattice-sv and lattice-sii. The figure keeps its
+   height in every step and on every hover: the legend, the lattice and the formula box keep their
+   room, and only what is in them changes. */
+
+.tl {
+  container-type: inline-size;
+  display: grid;
+  gap: 0.6em;
+  --tl-hot: var(--shapiq-amber);
+  --tl-ink: var(--color-foreground-primary);
+  --tl-surface: var(--shapiq-surface);
+  --tl-face: 14%;
+  --tl-face-range: 30%;
+}
+
+body[data-theme="dark"] .tl {
+  --tl-face: 24%;
+  --tl-face-range: 42%;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .tl {
+    --tl-face: 24%;
+    --tl-face-range: 42%;
+  }
+}
+
+/* ---- the legend: the photo with its two patches, and the four players ---- */
+
+.tl-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 3.3em;
+  font-size: min(1em, 3cqi);
+}
+
+.tl-photo {
+  position: relative;
+  flex: none;
+  width: 3.3em;
+  height: 3.3em;
+  border-radius: 5px;
+  background-size: cover;
+  box-shadow: 0 0 0 1px var(--shapiq-border);
+}
+
+.tl-photo-mark {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  transition: border-color 200ms var(--shapiq-ease), box-shadow 200ms var(--shapiq-ease);
+}
+
+.tl-photo-mark.tl-hot {
+  border-color: var(--tl-hot);
+  box-shadow: 0 0 0 1.5px var(--tl-hot);
+}
+
+.tl-player {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45em;
+  margin: 0;
+  padding: 0.35em 0.5em;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+  color: var(--tl-ink);
+  font: inherit;
+  cursor: default;
+  transition: border-color 200ms var(--shapiq-ease), box-shadow 200ms var(--shapiq-ease);
+}
+
+.tl-sii .tl-player,
+.tl[data-step="2"] .tl-player {
+  cursor: pointer;
+}
+
+.tl-player.tl-hot {
+  border-color: var(--tl-hot);
+  box-shadow: 0 0 0 1px var(--tl-hot);
+}
+
+.tl-player:focus-visible {
+  outline: 2px solid var(--tl-hot);
+  outline-offset: 2px;
+}
+
+.tl-score {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
+.tl-bar-track {
+  display: block;
+  height: 0.45em;
+  border-radius: 0.25em;
+  background: color-mix(in srgb, var(--shapiq-text-muted) 14%, transparent);
+  overflow: hidden;
+}
+
+.tl-bar {
+  display: block;
+  height: 100%;
+  border-radius: 0.25em;
+}
+
+.tl-bar-pos {
+  background: var(--talk-pos);
+}
+
+.tl-bar-neg {
+  background: var(--talk-neg);
+}
+
+.tl-bar-value {
+  font-size: 0.8em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* the glyphs of the players: a crop of the photo, a word of the caption */
+.tl-chip {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.tl-chip-patch {
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tl-ink) 25%, transparent);
+}
+
+.tl-chip-word {
+  padding: 0.15em 0.55em;
+  border: 1px solid color-mix(in srgb, var(--tl-ink) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tl-ink) 8%, transparent);
+  font-size: 0.9em;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.tl-chip-inline.tl-chip-patch {
+  width: 1.25em;
+  height: 1.25em;
+  margin: 0 0.08em;
+  border-radius: 3px;
+}
+
+.tl-chip-inline.tl-chip-word {
+  margin: 0 0.08em;
+  padding: 0.02em 0.4em;
+  font-size: 0.72em;
+}
+
+.tl-sub .tl-chip-inline.tl-chip-patch {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.tl-sub .tl-chip-inline.tl-chip-word {
+  font-size: 0.85em;
+}
+
+/* ---- the lattice ---- */
+
+.tl-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.shapiq-deck .tl-svg {
+  max-height: 47vh;
+}
+
+.shapiq-talk-figure .tl-svg text {
+  font-family: inherit;
+}
+
+.tl-node-box {
+  fill: color-mix(in srgb, var(--talk-pos) calc(var(--level) * 34%), var(--tl-surface));
+  stroke: var(--talk-line);
+  stroke-width: 1.2;
+  transition: stroke 200ms var(--shapiq-ease), stroke-width 200ms var(--shapiq-ease);
+}
+
+.tl-node-box.tl-neg {
+  fill: color-mix(in srgb, var(--talk-neg) calc(var(--level) * 34% + 6%), var(--tl-surface));
+}
+
+.tl-node.tl-hot .tl-node-box {
+  stroke: var(--tl-hot);
+  stroke-width: 2.6;
+}
+
+.tl-node-value {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.tl-node {
+  transition: opacity 260ms var(--shapiq-ease);
+}
+
+.tl-slot-frame {
+  fill: none;
+  stroke: color-mix(in srgb, var(--tl-ink) 45%, transparent);
+  stroke-width: 0.8;
+}
+
+.tl-slot-pill {
+  fill: color-mix(in srgb, var(--tl-ink) 10%, transparent);
+}
+
+.shapiq-talk-figure .tl-slot-word {
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.tl-off .tl-slot-frame {
+  fill: none;
+  stroke: color-mix(in srgb, var(--tl-ink) 35%, transparent);
+  stroke-dasharray: 2 1.6;
+}
+
+.tl-off .tl-slot-pic {
+  opacity: 0.14;
+}
+
+.shapiq-talk-figure .tl-off .tl-slot-word {
+  fill: var(--talk-muted);
+  opacity: 0.45;
+}
+
+/* the pair of lattice-sii, marked in every node */
+.tl-sii .tl-slot.tl-pair .tl-slot-frame {
+  stroke: var(--tl-hot);
+  stroke-width: 1.4;
+}
+
+/* edges: thin lines in step 0, the marginal contributions from step 1 */
+.tl-edge-line {
+  stroke: var(--talk-line);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  transition: stroke 260ms var(--shapiq-ease), stroke-width 260ms var(--shapiq-ease), opacity 260ms var(--shapiq-ease);
+}
+
+.tl-edge-glow {
+  stroke: var(--tl-hot);
+  stroke-width: 0;
+  stroke-linecap: round;
+  opacity: 0.35;
+  transition: stroke-width 220ms var(--shapiq-ease);
+}
+
+.tl-edge-hit {
+  stroke: transparent;
+  stroke-width: 12;
+  pointer-events: none;
+  outline: none;
+}
+
+.tl-sv[data-step="1"] .tl-edge-hit,
+.tl-sv[data-step="2"] .tl-mine .tl-edge-hit {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.tl-sv:not([data-step="0"]) .tl-edge-pos .tl-edge-line {
+  stroke: var(--talk-pos);
+  stroke-width: calc(1.2px + var(--weight) * 5px);
+  opacity: 0.75;
+}
+
+.tl-sv:not([data-step="0"]) .tl-edge-neg .tl-edge-line {
+  stroke: var(--talk-neg);
+  stroke-width: calc(1.2px + var(--weight) * 5px);
+  opacity: 0.75;
+}
+
+.tl-sv .tl-edge.tl-dim .tl-edge-line {
+  opacity: 0.09;
+}
+
+.tl-sv .tl-edge.tl-mine .tl-edge-line {
+  opacity: 1;
+}
+
+.tl-edge.tl-hot .tl-edge-line {
+  opacity: 1;
+}
+
+.tl-edge.tl-hot .tl-edge-glow,
+.tl-edge:focus-within .tl-edge-glow {
+  stroke-width: 14;
+}
+
+.tl-sv[data-step="2"] .tl-edge.tl-mine .tl-edge-glow {
+  stroke-width: 11;
+  opacity: 0.3;
+}
+
+.tl-sv[data-step="2"] .tl-edge.tl-mine.tl-hot .tl-edge-glow {
+  stroke-width: 15;
+  opacity: 0.4;
+}
+
+.tl-edge-label {
+  opacity: 0;
+  transition: opacity 220ms var(--shapiq-ease);
+}
+
+.tl-edge-label.tl-on {
+  opacity: 1;
+}
+
+.tl-edge-label rect {
+  fill: var(--tl-surface);
+  stroke: var(--talk-line);
+  stroke-width: 1;
+}
+
+.tl-edge-label.tl-hot rect {
+  stroke: var(--tl-hot);
+  stroke-width: 2;
+}
+
+.shapiq-talk-figure .tl-edge-label text {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* tags on nodes: T and T ∪ i, S, and the signs of a square's corners */
+.tl-tag {
+  opacity: 0;
+  transition: opacity 200ms var(--shapiq-ease);
+}
+
+.tl-tag.tl-tag-on {
+  opacity: 1;
+}
+
+.tl-tag rect {
+  fill: var(--tl-hot);
+}
+
+.shapiq-talk-figure .tl-tag text {
+  fill: #1a1c23;
+  font-family: "Times New Roman", "STIX Two Text", serif;
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 700;
+}
+
+/* the squares of lattice-sii: faces of the lattice, from step 1 */
+.tl-square {
+  opacity: 0;
+  transition: opacity 320ms var(--shapiq-ease);
+}
+
+.tl-sii:not([data-step="0"]) .tl-square {
+  opacity: 1;
+}
+
+.tl-sii:not([data-step="0"]) .tl-square.tl-dim {
+  opacity: 0.45;
+}
+
+.tl-square-face {
+  fill: color-mix(in srgb, var(--talk-pos) calc(var(--tl-face) + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+  stroke: color-mix(in srgb, var(--talk-pos) calc(var(--tl-face) + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+  stroke-width: 44;
+  stroke-linejoin: round;
+  transition: stroke 220ms var(--shapiq-ease), fill 220ms var(--shapiq-ease);
+}
+
+.tl-square-face.tl-neg {
+  fill: color-mix(in srgb, var(--talk-neg) calc(var(--tl-face) + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+  stroke: color-mix(in srgb, var(--talk-neg) calc(var(--tl-face) + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+}
+
+.tl-square-hit {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 44;
+  stroke-linejoin: round;
+  pointer-events: none;
+  outline: none;
+}
+
+.tl-sii:not([data-step="0"]) .tl-square-hit {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.tl-square.tl-hot .tl-square-face {
+  fill: color-mix(in srgb, var(--talk-pos) calc(var(--tl-face) + 10% + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+  stroke: color-mix(in srgb, var(--talk-pos) calc(var(--tl-face) + 10% + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+}
+
+.tl-square.tl-hot .tl-square-face.tl-neg {
+  fill: color-mix(in srgb, var(--talk-neg) calc(var(--tl-face) + 10% + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+  stroke: color-mix(in srgb, var(--talk-neg) calc(var(--tl-face) + 10% + var(--weight) * var(--tl-face-range)), var(--tl-surface));
+}
+
+.tl-sii:not([data-step="0"]) .tl-edge-line {
+  opacity: 0.55;
+}
+
+.tl-sii .tl-player {
+  flex: 0 1 auto;
+}
+
+.tl-square-none {
+  display: none;
+}
+
+.tl-square-badge {
+  opacity: 0;
+  transition: opacity 320ms var(--shapiq-ease);
+}
+
+.tl-sii:not([data-step="0"]) .tl-square-badge {
+  opacity: 1;
+}
+
+.tl-square-badge rect {
+  fill: var(--tl-surface);
+  stroke: var(--talk-line);
+  stroke-width: 1;
+}
+
+.tl-square-badge.tl-hot rect {
+  stroke: var(--tl-hot);
+  stroke-width: 2;
+}
+
+.shapiq-talk-figure .tl-square-badge text {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* in step 0, the nodes answer to a pointer */
+.tl[data-step="0"] .tl-node {
+  cursor: default;
+}
+
+/* ---- the formula box: a definition of the deck (talk.css), of a fixed height ---- */
+
+.shapiq-talk-figure .tl-formula {
+  margin: 0;
+}
+
+.shapiq-talk-figure .tl-rubric {
+  box-sizing: border-box;
+  height: 2.1em;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+.tl-rubric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1em;
+  white-space: nowrap;
+}
+
+.tl-aside {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: pre;
+  font-size: min(0.82em, 2.8cqi);
+  font-weight: 600;
+  text-overflow: clip;
+}
+
+.tl-eq {
+  font-size: min(1em, 3.05cqi);
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-line {
+  display: flex;
+  align-items: center;
+  min-height: 2em;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.tl-gap {
+  display: inline-block;
+  width: 1.4em;
+}
+
+.tl-var {
+  font-family: "Times New Roman", "STIX Two Text", serif;
+  font-size: 1.12em;
+  font-style: italic;
+}
+
+.tl-sub {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0.06em;
+  font-size: 0.78em;
+  vertical-align: -0.35em;
+}
+
+.tl-num {
+  display: inline-block;
+  font-weight: 700;
+}
+
+.tl-num.tl-fresh {
+  animation: tl-in 380ms var(--shapiq-ease);
+}
+
+@keyframes tl-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.35em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-num.tl-fresh {
+    animation: none;
+  }
+}
+
+.tl-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 0.1em;
+  font-size: 0.72em;
+  line-height: 1.05;
+  vertical-align: middle;
+}
+
+.tl-frac > :first-child {
+  padding: 0 0.15em;
+  border-bottom: 1px solid currentColor;
+}
+
+.tl-term-hot {
+  border-radius: 4px;
+  background: var(--shapiq-amber-soft);
+  box-shadow: 0 0 0 2px var(--shapiq-amber-soft);
+}
+
+/* ---- narrow: no photo in the legend ---- */
+
+@container (max-width: 430px) {
+  .tl-photo {
+    display: none;
+  }
+
+  .tl-legend {
+    font-size: 3.4cqi;
+  }
+
+  .tl-player {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.3em;
+    padding: 0.35em;
+  }
+
+  .tl-player > .tl-chip {
+    align-self: center;
+  }
+
+  .tl-bar-value {
+    text-align: center;
+  }
+}
+
+/* labels, tags and badges never catch the pointer: the edge or square below them does */
+.tl-labels,
+.tl-badges,
+.tl-tag,
+.tl-node-value,
+.tl-slot {
+  pointer-events: none;
+}

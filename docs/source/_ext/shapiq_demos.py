@@ -133,9 +133,12 @@ class DemoDirective(SphinxDirective):
         "anchor": directives.unchanged_required,  # the container's id, to link to it
         "fallback": directives.unchanged_required,  # an image of _static, shown without scripts
         "alt": directives.unchanged_required,  # the fallback image's text
-        "step": directives.unchanged_required,  # of a demo built up step by step, the one to show
+        "step": directives.unchanged_required,  # a step of a demo built up, or "teaser"
         "select": directives.unchanged_required,  # what the demo points at, at rest
         "examples": directives.unchanged_required,  # of a demo with examples, those it shows
+        "pick": directives.unchanged_required,  # the example or photo it starts with
+        "reveal": directives.unchanged_required,  # "open": start already explained
+        "plan": directives.unchanged_required,  # "above" or "beside": the card's place
     }
 
     def run(self) -> list[nodes.Node]:
@@ -162,6 +165,8 @@ class DemoDirective(SphinxDirective):
         node["step"] = self.options.get("step", "")
         node["select"] = self.options.get("select", "")
         node["examples"] = self.options.get("examples", "")
+        for option in ("pick", "reveal", "plan"):
+            node[option] = self.options.get(option, "")
         if "anchor" in self.options:
             node["ids"].append(self.options["anchor"])
         return [node]
@@ -230,7 +235,7 @@ def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     page = self.builder.get_target_uri(self.builder.current_docname)
     root = relative_uri(page, f"_static/demos/{node['demo']}/")
     attributes = {"data-root": root, "data-version": node.get("version", "")}
-    for option in ("step", "select", "examples"):
+    for option in ("step", "select", "examples", "pick", "reveal", "plan"):
         if node.get(option):
             attributes[f"data-{option}"] = node[option]
     self.body.append(self.starttag(node, "div", CLASS=f"{node['demo']}-demo", **attributes))

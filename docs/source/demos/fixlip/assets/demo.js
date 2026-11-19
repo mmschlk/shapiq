@@ -119,7 +119,13 @@
 
   function start(data) {
     const has = (image, model) => `${image}/${model}` in data.explanations;
-    const first = data.images.find((image) => data.models.some((model) => has(image.id, model.id)));
+    // the photo it starts with: the one data-pick names (its id, "giraffe-tree"), where it has an
+    // explanation; else the first that has one
+    const explained = (image) => data.models.some((model) => has(image.id, model.id));
+    const pick = root.dataset.pick?.trim();
+    const picked = pick ? data.images.find((image) => image.id === pick && explained(image)) : undefined;
+    if (pick && !picked) console.warn(`The interactive explanation has no photo ${pick} to start with.`);
+    const first = picked ?? data.images.find(explained);
     if (!first) throw new Error("no photo has an explanation");
     const state = {
       image: first.id,
@@ -1113,5 +1119,8 @@
     reset();
     setView(state.view);
     started = true;
+    // (a photo picked: the figures of the page show it too, as they show one chosen here, once
+    // they have started; figures.js)
+    if (picked) setTimeout(() => document.dispatchEvent(new CustomEvent(IMAGE_EVENT, { detail: { image: picked.id, source: null } })));
   }
 })();

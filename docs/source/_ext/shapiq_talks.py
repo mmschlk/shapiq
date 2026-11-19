@@ -33,7 +33,10 @@ The ``shapiq-talk-figure`` directive adds a figure that the talk's own script dr
     .. shapiq-talk-figure:: same-shap
        :alt: What the figure shows, for screen readers.
 
-It writes ``<div class="shapiq-talk-figure" data-figure="same-shap" data-root="...">``.
+It writes ``<div class="shapiq-talk-figure" data-figure="same-shap" data-root="...">``. A figure
+can also live in files of its own, ``figure-<name>.js`` and ``figure-<name>.css`` in the same
+folder: they load before ``figures.js``, and the script registers its figures in
+``window.SHAPIQ_TALK_FIGURES`` (``{name: (figure, helpers) => ({show, steps})}``).
 
 For readers after the talk, a slide can carry three more things. They show below the slide on the
 page and on a phone, and not in the deck on a large screen:
@@ -275,7 +278,7 @@ class TalkFigureDirective(SphinxDirective):
         if not talk or (missing := [file for file in _FIGURES if not (assets / file).is_file()]):
             msg = f"the page {self.env.docname!r} is not a talk with {', '.join(_FIGURES)} in assets/"
             raise self.error(msg if not talk else f"{msg} (missing: {', '.join(missing)})")
-        for file in _FIGURES:
+        for file in (*_FIGURES, *(extra.name for extra in sorted(assets.glob("figure-*.*")))):
             self.env.note_dependency(str(assets / file))
         node = TalkFigureNode(talk=talk, figure=self.arguments[0], alt=self.options.get("alt", ""))
         node["classes"] += self.options.get("class", [])
@@ -384,6 +387,12 @@ def _add_assets(
     talk = _talk(pagename)
     if talk and next(iter(doctree.findall(TalkFigureNode)), None) is not None:
         app.add_css_file(f"talks/{talk}/figures.css", priority=901)
+        # figures of their own files (figure-<name>.js and .css), before figures.js, which draws them
+        assets = Path(app.srcdir) / "talks" / talk / "assets"
+        for extra in sorted(assets.glob("figure-*.css")):
+            app.add_css_file(f"talks/{talk}/{extra.name}", priority=902)
+        for extra in sorted(assets.glob("figure-*.js")):
+            app.add_js_file(f"talks/{talk}/{extra.name}", loading_method="defer", priority=549)
         app.add_js_file(f"talks/{talk}/figures.js", loading_method="defer", priority=550)
 
 

@@ -883,12 +883,14 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   width: 6rem;
 }
 
-/* a definition, as in the speaker's thesis defense: a gray box with its name in a bar on top */
+/* a definition, as in the speaker's thesis defense: a box with its name in a bar on top, in the
+   colors of the deck's cards (an amber edge, the raised surface) */
 .shapiq-talk-definition {
   margin: 0 0 0.8em;
   border: 1px solid var(--shapiq-border);
+  border-top: 4px solid var(--shapiq-amber);
   border-radius: var(--shapiq-radius-small);
-  background: color-mix(in srgb, var(--shapiq-text-muted) 6%, transparent);
+  background: var(--shapiq-surface-raised);
   overflow: hidden;
 }
 
@@ -899,8 +901,8 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
 .shapiq-talk-definition > p.rubric {
   margin: 0 0 0.5em;
   padding: 0.3em 0.9em;
-  border-bottom: 1px solid var(--shapiq-border);
-  background: color-mix(in srgb, var(--shapiq-text-muted) 14%, transparent);
+  background: var(--shapiq-amber-soft);
+  color: var(--shapiq-amber-ink);
   font-size: 1em;
   font-weight: 700;
 }
@@ -1018,92 +1020,109 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   overflow-y: hidden;
 }
 
-/* the framework grid becoming shapiq-v2: on the page, a box under the grid; in the deck, at its
-   step, the grid moves into a frame named shapiq-v2, beside what the frame says */
-.shapiq-talk-v2 {
-  margin-top: 1em;
-  padding: 0.8em 1em;
-  border: 2px dashed var(--shapiq-amber);
-  border-radius: var(--shapiq-radius);
+/* shapiq-v2: the logo, its name and the recipe of the framework, and no more */
+.shapiq-talk-v2-hero {
+  display: grid;
+  justify-items: center;
+  gap: 0.6em;
+  text-align: center;
 }
 
-.shapiq-talk-v2-badge {
-  display: inline-block;
-  margin: 0 0 0.4em;
-  padding: 0.1em 0.7em;
-  border-radius: 999px;
-  background: var(--shapiq-amber);
-  color: #1b1e27;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-}
-
-.shapiq-talk-v2-panel > p.rubric {
-  margin: 0 0 0.3em;
-  font-size: 1.15em;
-  font-weight: 700;
-}
-
-.shapiq-talk-v2-panel > p {
-  margin: 0 0 0.5em;
-}
-
-.shapiq-talk-v2-panel .shapiq-talk-properties.line-block {
-  margin: 0.2em 0 0.6em;
-}
-
-.shapiq-deck .shapiq-talk-v2-stage {
+.shapiq-talk-v2-logo {
   position: relative;
 }
 
-.shapiq-deck .shapiq-talk-v2-stage > .shapiq-talk-figure {
-  transform-origin: left center;
-  transition: transform 600ms var(--shapiq-ease), opacity 600ms var(--shapiq-ease);
+.shapiq-talk-v2-logo .shapiq-hero-logo {
+  display: block;
+  width: 9rem;
+  height: auto;
+  margin: 0 auto;
 }
 
-.shapiq-deck .shapiq-slide[data-talk-step="3"] .shapiq-talk-v2-stage > .shapiq-talk-figure {
-  transform: translate(3%, 4%) scale(0.6);
-  opacity: 0.55;
-}
-
-.shapiq-deck .shapiq-talk-v2 {
+/* "v2", a badge in the logo's gradient on its lower right */
+.shapiq-talk-v2-mark {
   position: absolute;
-  inset: -0.6em -0.6em -0.6em -0.6em;
+  right: -1.3em;
+  bottom: 1.3em;
   margin: 0;
-  pointer-events: none;
+  padding: 0.08em 0.32em;
+  border-radius: 0.28em;
+  background: var(--shapiq-gradient);
+  box-shadow: var(--shapiq-shadow-hover);
+  color: #fff;
+  font-size: 2.2em;
+  font-weight: 800;
+  line-height: 1.1;
+  transform: rotate(-6deg);
+}
+
+.shapiq-talk-v2-blocks {
+  color: var(--shapiq-text-muted);
+}
+
+/* in the deck: no title, the logo in the middle of the slide */
+.shapiq-deck .shapiq-talk-v2-slide .shapiq-slide-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.shapiq-deck .shapiq-talk-v2-slide .shapiq-slide-title::before {
+  display: none;
+}
+
+.shapiq-deck .shapiq-talk-v2-slide .shapiq-talk-v2-logo .shapiq-hero-logo {
+  width: clamp(9rem, 36vmin, 26rem);
+}
+
+.shapiq-deck .shapiq-talk-v2-slide .shapiq-talk-v2-mark {
+  font-size: clamp(2.4rem, 8vmin, 6.5rem);
+}
+
+.shapiq-deck .shapiq-talk-v2-slide .shapiq-talk-v2-blocks {
+  font-size: clamp(16px, 1vw + 1.2vh, 34px);
+}
+
+.shapiq-deck--scroll .shapiq-talk-v2-slide .shapiq-talk-v2-logo .shapiq-hero-logo {
+  width: 9rem;
+}
+
+.shapiq-deck--scroll .shapiq-talk-v2-slide .shapiq-talk-v2-mark {
+  font-size: 2.2rem;
+}
+
+/* theory: definitions beside the lattice that pictures them */
+.shapiq-talk-columns-theory {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: start;
+}
+
+.shapiq-deck .shapiq-talk-columns-theory {
   font-size: clamp(15px, 0.72vw + 0.85vh, 28px);
 }
 
-.shapiq-deck .shapiq-talk-v2-panel {
-  position: absolute;
-  top: 50%;
-  right: 1em;
-  width: 36%;
-  transform: translateY(-50%);
-  pointer-events: auto;
-}
-
-.shapiq-deck .shapiq-slide-body .shapiq-talk-v2-panel p {
+.shapiq-deck .shapiq-slide-body .shapiq-talk-columns-theory p {
   max-width: none;
 }
 
-.shapiq-deck--scroll .shapiq-talk-v2 {
-  position: static;
+/* the opening: two examples side by side, each a black box and its Shapley values */
+.shapiq-talk-teaser {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
 }
 
-.shapiq-deck--scroll .shapiq-talk-v2-panel {
-  position: static;
-  width: auto;
-  transform: none;
-}
-
-.shapiq-deck--scroll .shapiq-slide .shapiq-talk-v2-stage > .shapiq-talk-figure {
-  transform: none;
-  opacity: 1;
+@media (max-width: 900px) {
+  .shapiq-talk-columns-theory,
+  .shapiq-talk-teaser {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* the outlook: a package's logo and line beside its workflow */
-.shapiq-talk-columns--probly {
+.shapiq-talk-columns-probly {
   grid-template-columns: minmax(0, 0.55fr) minmax(0, 2fr);
   align-items: center;
 }
@@ -1141,16 +1160,21 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
 }
 
 .shapiq-deck .shapiq-slide-body .shapiq-talk-lessons,
-.shapiq-deck .shapiq-slide-body .shapiq-talk-columns--probly p {
+.shapiq-deck .shapiq-slide-body .shapiq-talk-columns-probly p {
   max-width: none;
 }
 
-.shapiq-deck .shapiq-talk-columns--probly {
+.shapiq-deck .shapiq-talk-columns-probly {
   font-size: clamp(15px, 0.72vw + 0.85vh, 28px);
 }
 
 @media (max-width: 900px) {
-  .shapiq-talk-columns--probly {
+  .shapiq-talk-columns-probly {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* beside the lattice, a formula of a definition a little smaller, so that it fits its box */
+.shapiq-talk-columns-theory div.math mjx-container {
+  font-size: 92%;
 }

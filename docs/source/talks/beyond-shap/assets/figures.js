@@ -13,11 +13,16 @@
    faithfulness  How well an explanation predicts the model: for the credit applicant of the orders
                demo, what the model predicts for each coalition of features against what the
                explanation of an order predicts, with its R². Step 0 shows the Shapley values,
-               step 1 the explanation of order 2. The reader can pick any order.
+               step 1 the explanation of order 2. The reader can pick any order. With the class
+               talk-faith-first, the Shapley values alone; with talk-faith-climb, one order a step,
+               with the R² of every order shown so far.
    framework   The unified framework of feature-based explanations [Fumagalli et al., 2025]: how
                much the feature distribution and the higher-order interactions influence an
                explanation, with the methods that fall into each cell. Steps 0 to 2 are the three
-               types of explanations (individual, joint, interaction); the reader can pick one too. */
+               types of explanations (individual, joint, interaction); the reader can pick one too.
+   choices     A picture of each option of the three choices (masking, behavior, interaction).
+
+   The figures of figure-*.js (feature-xai, lattice-sv, lattice-sii) are drawn here too. */
 (function () {
   "use strict";
 
@@ -228,10 +233,16 @@
 
   function faithfulness(figure) {
     const data = FAITHFULNESS;
-    const orders = Object.keys(data.orders);
+    const every = Object.keys(data.orders);
+    // talk-faith-first: the Shapley values alone; talk-faith-climb: order by order, one a step,
+    // with the R² of every order shown so far; else the Shapley values, then the pairs
+    const first = figure.classList.contains("talk-faith-first");
+    const climb = figure.classList.contains("talk-faith-climb");
+    const orders = first ? every.slice(0, 1) : every;
     const n = data.features.length;
     figure.classList.add("talk-faith");
     const switcher = make("div", { class: "talk-frame-types talk-faith-orders", role: "radiogroup", "aria-label": "Order of the explanation" }, figure);
+    if (first) switcher.classList.add("talk-faith-orders-one");
     const buttons = orders.map((order) => {
       const button = make("button", { type: "button", role: "radio", "aria-checked": "false" }, switcher, order === "1" ? "Shapley values" : `Order ${order}`);
       button.addEventListener("click", () => show(orders.indexOf(order)));
@@ -257,7 +268,8 @@
     math(how, "\\hat{\\nu}_k(S) \\;=\\; \\sum_{T \\subseteq S,\\; |T| \\le k} \\phi_k(T)");
 
     // the sum, order by order (a waterfall from the baseline φ(∅) = ν(∅)), against the model
-    const WW = 520, WH = 236, wl = 92, wr = 66, wt = 8, row = 27;
+    const WW = 520, wl = 92, wr = 66, wt = 8, row = 27;
+    const WH = wt + (orders.length + 2) * row + 48;
     const waterfall = make("svg:svg", { viewBox: `0 0 ${WW} ${WH}`, class: "talk-faith-svg talk-faith-waterfall", role: "img", "aria-label": "The explanation added up over the kept features, order by order, against the model" }, how);
     const ticks = make("svg:g", {}, waterfall);
     const labels = ["φ(∅)"].concat(orders.map((order) => (order === "1" ? "single features" : order === "2" ? "pairs" : `groups of ${order}`)));
@@ -286,8 +298,8 @@
     // ---- every coalition: the model against the explanation, and the R²
     const right = make("div", { class: "talk-faith-all" }, figure);
     make("div", { class: "talk-faith-step" }, right, "3  Repeat for all coalitions, and compare");
-    const W = 520, H = 330, left = 58, rightPad = 16, top = 14, bottom = 46;
-    const all = data.model.concat(...orders.map((order) => data.orders[order].y));
+    const W = 520, H = climb ? 300 : 330, left = 58, rightPad = 16, top = 14, bottom = 46;
+    const all = data.model.concat(...every.map((order) => data.orders[order].y));
     const lo = Math.floor(Math.min(...all)), hi = Math.ceil(Math.max(...all));
     const x = (v) => left + ((v - lo) / (hi - lo)) * (W - left - rightPad);
     const y = (v) => H - bottom - ((v - lo) / (hi - lo)) * (H - top - bottom);
@@ -319,7 +331,9 @@
     // the values of every order, as bit masks of their groups
     const terms = Object.fromEntries(orders.map((order) => [order, data.orders[order].values.map(([group, value]) => [group.reduce((m, i) => m | (1 << i), 0), group, value])]));
     const name = (group) => group.map((i) => data.features[i]).join(" × ");
-    const model = (m) => data.baseline + terms[orders[orders.length - 1]].reduce((sum, [g, , value]) => sum + ((g & m) === g ? value : 0), 0);
+    const deepest = every[every.length - 1];
+    if (!terms[deepest]) terms[deepest] = data.orders[deepest].values.map(([group, value]) => [group.reduce((m, i) => m | (1 << i), 0), group, value]);
+    const model = (m) => data.baseline + terms[deepest].reduce((sum, [g, , value]) => sum + ((g & m) === g ? value : 0), 0);
 
     let shown = 0;
     function show(step) {
@@ -381,10 +395,37 @@
       const r2 = data.orders[order].r2;
       fill.style.transform = `scaleX(${Math.max(0, r2)})`;
       score.textContent = r2.toFixed(2);
+      if (ladder) ladder(shown);
+    }
+    // the R² of every order shown so far, rising with the order
+    let ladder = null;
+    if (climb) {
+      const LW = 520, LH = 112, ll = 58, lr = 30, lt = 16, lb = 24;
+      const box = make("div", { class: "talk-faith-ladder" }, right);
+      const chart = make("svg:svg", { viewBox: `0 0 ${LW} ${LH}`, class: "talk-faith-svg", role: "img", "aria-label": "The R² of every order" }, box);
+      const lx = (j) => ll + 24 + (j / Math.max(1, orders.length - 1)) * (LW - ll - lr - 24);
+      const ly = (v) => LH - lb - Math.max(0, v) * (LH - lt - lb);
+      for (const v of [0, 0.5, 1]) {
+        make("svg:line", { x1: ll, x2: LW - lr, y1: ly(v), y2: ly(v), class: "talk-grid" }, chart);
+        make("svg:text", { x: ll - 6, y: ly(v) + 4, class: "talk-tick", "text-anchor": "end" }, chart, v);
+      }
+      orders.forEach((order, j) => make("svg:text", { x: lx(j), y: LH - 8, class: "talk-tick", "text-anchor": "middle" }, chart, order === "1" ? "SV" : `order ${order}`));
+      make("svg:text", { x: 20, y: (lt + LH - lb) / 2, class: "talk-axis-name", "text-anchor": "middle", transform: `rotate(-90 20 ${(lt + LH - lb) / 2})` }, chart, "R²");
+      const values = orders.map((order, j) => make("svg:text", { x: lx(j), y: ly(data.orders[order].r2) - 10, class: "talk-tick talk-faith-ladder-value", "text-anchor": "middle" }, chart, data.orders[order].r2.toFixed(2)));
+      const path = make("svg:polyline", { class: "talk-faith-ladder-line" }, chart);
+      const dots = orders.map((order, j) => make("svg:circle", { cx: lx(j), cy: ly(data.orders[order].r2), r: 4.5, class: "talk-faith-ladder-dot" }, chart));
+      ladder = (upto) => {
+        path.setAttribute("points", orders.slice(0, upto + 1).map((order, j) => `${lx(j)},${ly(data.orders[order].r2)}`).join(" "));
+        dots.forEach((dot, j) => {
+          dot.style.opacity = j <= upto ? 1 : 0;
+          dot.classList.toggle("talk-faith-ladder-now", j === upto);
+          values[j].style.opacity = j <= upto ? 1 : 0;
+        });
+      };
     }
     draw();
-    // (the slide's steps show the Shapley values and the pairs, its last step the pairs too)
-    return { show, steps: 2 };
+    // (the slide's steps: the Shapley values alone, every order, or the Shapley values and the pairs)
+    return { show, steps: first ? 1 : climb ? orders.length : 2 };
   }
 
   // ---- the unified framework -----------------------------------------------------------------
@@ -539,94 +580,6 @@
       clearTimeout(element.shapiqSwap);
       element.shapiqSwap = setTimeout(fill, 160);
     }
-  }
-
-  // ---- feature-based explainable AI: what features are, and what explanations look like ------
-  // Two rows of small pictures: features of five kinds of data (one of each marked), and four
-  // shapes an explanation takes. The second row shows from step 1.
-  function featureXai(figure) {
-    figure.classList.add("talk-xai");
-    const row = (title, from) => {
-      const block = make("div", { class: from ? `talk-xai-row talk-from-${from}` : "talk-xai-row" }, figure);
-      make("div", { class: "talk-xai-title" }, block, title);
-      return make("div", { class: "talk-xai-cards" }, block);
-    };
-    const card = (parent, name, note, draw, tag) => {
-      const element = make("div", { class: "talk-xai-card" }, parent);
-      const svg = make("svg:svg", { viewBox: "0 0 120 80", class: "talk-xai-svg", "aria-hidden": "true" }, element);
-      draw(svg);
-      const caption = make("div", { class: "talk-xai-caption" }, element);
-      make("strong", {}, caption, name);
-      make("span", {}, caption, note);
-      if (tag) make("em", { class: `talk-xai-tag talk-xai-tag-${tag}` }, caption, tag);
-    };
-    const rect = (svg, x, y, w, h, cls, rx = 2) => make("svg:rect", { x, y, width: w, height: h, rx, class: cls }, svg);
-    const text = (svg, x, y, value, cls = "talk-xai-text", anchor = "middle") => make("svg:text", { x, y, class: cls, "text-anchor": anchor }, svg, value);
-
-    const data = row("Features: the language every model speaks");
-    card(data, "Tabular", "columns", (svg) => {
-      ["Age", "Limit", "Bill"].forEach((name, c) => {
-        rect(svg, 8 + c * 36, 8, 32, 14, c === 2 ? "talk-xai-mark" : "talk-xai-head");
-        text(svg, 24 + c * 36, 18.5, name);
-        for (let r = 0; r < 3; r++) rect(svg, 8 + c * 36, 26 + r * 15, 32, 12, c === 2 ? "talk-xai-mark-soft" : "talk-xai-cell");
-      });
-    });
-    card(data, "Image", "patches", (svg) => {
-      const shades = ["#9cc7e8", "#9cc7e8", "#b4d6ee", "#9cc7e8", "#c9a46a", "#a7c97f", "#c9a46a", "#b4d6ee", "#8fb86a", "#c9a46a", "#8fb86a", "#8fb86a"];
-      shades.forEach((fill, k) => {
-        const [c, r] = [k % 4, Math.floor(k / 4)];
-        make("svg:rect", { x: 20 + c * 20, y: 8 + r * 21, width: 19, height: 20, fill, class: k === 5 ? "talk-xai-patch talk-xai-patch-mark" : "talk-xai-patch" }, svg);
-      });
-    });
-    card(data, "Text", "tokens", (svg) => {
-      [["a", 8, 18, 12], ["very", 24, 18, 26], ["cute", 54, 18, 26], ["dog", 84, 18, 24], ["is", 8, 40, 14], ["running", 26, 40, 40], ["on", 70, 40, 16], ["grass", 8, 62, 32]].forEach(([word, x, y, w]) => {
-        rect(svg, x, y - 11, w, 15, word === "cute" ? "talk-xai-mark" : "talk-xai-head", 7);
-        text(svg, x + w / 2, y, word);
-      });
-    });
-    card(data, "Time series", "windows", (svg) => {
-      for (let k = 0; k < 4; k++) rect(svg, 8 + k * 26, 8, 25, 62, k === 2 ? "talk-xai-mark-soft" : "talk-xai-cell", 0);
-      const points = Array.from({ length: 53 }, (_, k) => {
-        const t = k / 52;
-        return `${8 + t * 103},${40 - 18 * Math.sin(t * 9) * Math.exp(-t) - 8 * Math.sin(t * 23) * t}`;
-      }).join(" ");
-      make("svg:polyline", { points, class: "talk-xai-line" }, svg);
-    });
-    card(data, "Graph", "nodes", (svg) => {
-      const nodes = [[60, 14], [80, 26], [80, 50], [60, 62], [40, 50], [40, 26], [100, 14], [20, 62]];
-      [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [1, 6], [4, 7]].forEach(([a, b]) => make("svg:line", { x1: nodes[a][0], y1: nodes[a][1], x2: nodes[b][0], y2: nodes[b][1], class: "talk-xai-edge" }, svg));
-      nodes.forEach(([x, y], k) => make("svg:circle", { cx: x, cy: y, r: 6, class: k === 2 ? "talk-xai-node talk-xai-node-mark" : "talk-xai-node" }, svg));
-    });
-
-    const shapes = row("Explanations: many shapes, for one prediction or the whole model", 1);
-    card(shapes, "A score per feature", "SHAP", (svg) => {
-      [[0.9, "Bill"], [-0.5, "Limit"], [0.35, "Age"], [-0.2, "Paid"]].forEach(([value, name], k) => {
-        const y = 10 + k * 16;
-        text(svg, 34, y + 9, name, "talk-xai-text", "end");
-        const w = Math.abs(value) * 44;
-        rect(svg, value > 0 ? 62 : 62 - w, y, w, 11, value > 0 ? "talk-pos" : "talk-neg", 1.5);
-      });
-      make("svg:line", { x1: 62, x2: 62, y1: 6, y2: 74, class: "talk-xai-axis" }, svg);
-    }, "local");
-    card(shapes, "A curve per feature", "PDP", (svg) => {
-      for (let k = 0; k < 5; k++) {
-        const d = Array.from({ length: 30 }, (_, j) => `${j ? "L" : "M"}${12 + j * 3.4},${60 - 34 / (1 + Math.exp(-(j - 14 + k * 2 - 4) / 3)) - k * 3 + 4}`).join(" ");
-        make("svg:path", { d, class: "talk-xai-ice" }, svg);
-      }
-      const d = Array.from({ length: 30 }, (_, j) => `${j ? "L" : "M"}${12 + j * 3.4},${60 - 34 / (1 + Math.exp(-(j - 14) / 3)) + 0}`).join(" ");
-      make("svg:path", { d, class: "talk-xai-curve" }, svg);
-      make("svg:polyline", { points: "12,8 12,70 112,70", class: "talk-xai-axis" }, svg);
-    }, "global");
-    card(shapes, "A score per group", "Shapley interactions", (svg) => {
-      const nodes = [[60, 12, 7], [96, 40, 5], [60, 68, 6], [24, 40, 4]];
-      [[0, 1, 4, "pos"], [1, 2, 2, "neg"], [0, 2, 1.5, "pos"], [2, 3, 3, "pos"], [3, 0, 1.2, "neg"]].forEach(([a, b, w, sign]) => make("svg:line", { x1: nodes[a][0], y1: nodes[a][1], x2: nodes[b][0], y2: nodes[b][1], class: `talk-${sign}-line`, "stroke-width": w, "stroke-opacity": 0.7 }, svg));
-      nodes.forEach(([x, y, r], k) => make("svg:circle", { cx: x, cy: y, r, class: k % 2 ? "talk-neg" : "talk-pos" }, svg));
-    }, "local");
-    card(shapes, "Importance for the model", "PFI", (svg) => {
-      [56, 40, 26, 18, 10].forEach((h, k) => rect(svg, 16 + k * 19, 70 - h, 14, h, k === 0 ? "talk-xai-mark" : "talk-xai-bar", 1.5));
-      make("svg:polyline", { points: "10,8 10,70 112,70", class: "talk-xai-axis" }, svg);
-    }, "global");
-    return { steps: 2 };
   }
 
   // ---- what each of the three choices means -----------------------------------------------
@@ -792,13 +745,19 @@
 
   // ---- steps ---------------------------------------------------------------------------------
 
-  const FIGURES = { "same-shap": sameShap, effects, faithfulness, framework, "feature-xai": featureXai, choices };
+  // the figures of this file, and those of figure-*.js, which load before it and register theirs in
+  // window.SHAPIQ_TALK_FIGURES as (figure, helpers) => ({ show, steps })
+  const FIGURES = { "same-shap": sameShap, effects, faithfulness, framework, choices };
+  const helpers = { SVG, make, math, format };
+  for (const [name, draw] of Object.entries(window.SHAPIQ_TALK_FIGURES || {})) {
+    FIGURES[name] = (figure) => draw(figure, helpers);
+  }
 
   for (const figure of document.querySelectorAll(".shapiq-talk-figure")) {
     const draw = FIGURES[figure.dataset.figure];
     if (!draw) continue;
     figure.textContent = "";
-    const api = draw(figure);
+    const api = draw(figure) || {};
     const slide = figure.closest(".shapiq-slide");
     const follow = (step) => {
       figure.dataset.step = String(step);
@@ -806,7 +765,7 @@
         const from = Number(/talk-from-(\d+)/.exec(part.getAttribute("class"))[1]);
         part.classList.toggle("talk-later", from > step);
       }
-      if (api.show) api.show(Math.min(step, api.steps - 1));
+      if (api.show) api.show(Math.min(step, (api.steps || 1) - 1));
     };
     // without a slide that says otherwise, all of it
     follow(slide && slide.dataset.talkStep != null ? Number(slide.dataset.talkStep) : 99);

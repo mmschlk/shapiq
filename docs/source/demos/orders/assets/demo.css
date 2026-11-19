@@ -2965,6 +2965,88 @@ body[data-theme="dark"] .orders-demo {
   touch-action: pan-y pinch-zoom;
 }
 
+/* -- the teaser (data-step="teaser", demo.js), which a talk opens with: the problem, its chip a
+   black box for good, and under it the card of the Shapley values, alone: no tabs, no picker, no
+   layers, no plot. The card is upright, its face above its words, as large as its room lets it be
+   (demo.js sets --orders-teaser-face); it lies on a pack of cards, hidden under it, which a click
+   fans out behind it (orders-demo-fanned) ----------------------------------------------------- */
+
+.orders-demo-teaser :is(.orders-demo-bar, .orders-demo-stage, .orders-demo-dots, .orders-demo-picks, .orders-demo-pick-marks) {
+  display: none;
+}
+
+/* the pack: the card on its cards, and to its right and below it, the room they fan out into, so
+   that the card stays in the middle of what the demo shows, and nothing moves as they do */
+.orders-demo-pack {
+  --orders-fan: 2.6rem;
+  position: relative;
+  display: grid;
+  margin: 0 var(--orders-fan) var(--orders-fan) 0;
+}
+
+/* (the card: its face above its words, in the card's middle) */
+.orders-demo.orders-demo-teaser .orders-demo-why {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 0.8rem;
+  width: calc(var(--orders-teaser-face, 18rem) + 2.2rem + 2px);
+  padding: 1.25rem 1.1rem 1rem;
+  cursor: pointer;
+}
+
+.orders-demo-teaser .orders-demo-plan-view {
+  width: var(--orders-teaser-face, 18rem);
+  cursor: inherit;
+}
+
+.orders-demo-teaser .orders-demo-plan-text {
+  justify-self: stretch;
+  text-align: center;
+}
+
+.orders-demo-teaser .orders-demo-plan-legend {
+  justify-content: center;
+}
+
+.orders-demo-teaser .orders-demo-plan-top {
+  cursor: inherit;
+}
+
+.orders-demo-teaser .orders-demo-why:focus-visible {
+  outline: 2px solid var(--orders-ink);
+  outline-offset: 3px;
+}
+
+/* the cards under it: as large as the card, without words, their paper a little darker the further
+   they lie; at rest, all under the card. Fanned out, each peeks out to the lower right a little
+   further than the one on it, turned a little more, the nearest first; they settle back the
+   furthest first (--orders-ghost: 1, the nearest, to 4) */
+.orders-demo-ghost {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--orders-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--orders-sheet) calc(100% - var(--orders-ghost) * 3.5%), #000);
+  box-shadow: 0 1px 3px var(--orders-shade);
+  pointer-events: none;
+  transform-origin: 0 100%;
+  transition: transform var(--orders-move) var(--orders-settle) calc((4 - var(--orders-ghost)) * 40ms);
+}
+
+.orders-demo-fanned .orders-demo-ghost {
+  transform: translate(calc(var(--orders-ghost) * 0.42rem), calc(var(--orders-ghost) * 0.5rem)) rotate(calc(var(--orders-ghost) * 0.9deg));
+  transition-delay: calc((var(--orders-ghost) - 1) * 70ms);
+}
+
+/* (with a mouse, the card pointed at stirs: the cards under it show their edges) */
+@media (hover: hover) {
+  .orders-demo-teaser:not(.orders-demo-fanned) .orders-demo-pack:hover .orders-demo-ghost {
+    transform: translate(calc(var(--orders-ghost) * 2px), calc(var(--orders-ghost) * 2px));
+    transition-delay: 0ms;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orders-demo *,
   .orders-demo *::before,

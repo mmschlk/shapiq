@@ -121,6 +121,33 @@
   // height is the whole page's, and the window's own is what there is
   const viewportHeight = () =>
     (document.compatMode === "CSS1Compat" && document.documentElement.clientHeight) || window.innerHeight;
+  // pixels: in a talk's slide, the room left below the demo, inside the slide's own safe area
+  const FRAME_MARGIN = 8;
+  // the demo's size on the screen, of its size in the page: below 1 where a talk's deck scales the
+  // slide it is on down to fit (talk.js), which the demo's measures of the screen are read through
+  const scaleOf = (node) => node.getBoundingClientRect().width / node.offsetWidth || 1;
+  // in a talk presented one slide at a time (talk.js: .shapiq-deck, but not one scrolled through on a
+  // phone, .shapiq-deck--scroll), the slide's body that holds the demo; elsewhere none
+  const slideBodyOf = (root) => {
+    const body = root.closest(".shapiq-slide-body");
+    return body?.closest(".shapiq-deck:not(.shapiq-deck--scroll)") ? body : null;
+  };
+  // the room the demo has, from its top down, in pixels of the page: on a slide, what the slide's
+  // safe area leaves below its title (as talk.js measures it) and above the demo in its body, which
+  // nothing scrolls, so that the deck need not scale the slide down; elsewhere the window's height,
+  // as the page scrolls the demo into view
+  const frameOf = (root) => {
+    const body = slideBodyOf(root);
+    if (!body) return viewportHeight();
+    const slide = body.parentElement;
+    const style = getComputedStyle(slide);
+    const title = slide.querySelector(":scope > .shapiq-slide-title");
+    const above = title ? title.offsetHeight + parseFloat(getComputedStyle(title).marginBottom) : 0;
+    const room = slide.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - above;
+    const offset = (root.getBoundingClientRect().top - body.getBoundingClientRect().top) / scaleOf(body);
+    // (and the demo's own margin below it, which the body holds)
+    return room - offset - parseFloat(getComputedStyle(root).marginBottom) - FRAME_MARGIN;
+  };
   // milliseconds: how long a layer takes to move to its place (demo.css: --orders-move)
   const MOVE = 640;
   // beside the stack, the edges of the light out of the chip: their angle from the vertical
@@ -1115,8 +1142,11 @@
 
   // -- the demo -------------------------------------------------------------------------------------
 
-  // the steps of the figure, as a post builds it up (without one, a demo shows all of it)
-  const PARTS = ["problem", "mechanism", "shapley", "interactions", "full"];
+  // the steps of the figure, as a post builds it up (without one, a demo shows all of it); and the
+  // teaser, which a talk opens with: the problem, its chip a black box for good, and the card of
+  // the Shapley values under it, with a stack of explanations hidden behind the card (a click shows
+  // that they are there)
+  const PARTS = ["problem", "mechanism", "shapley", "interactions", "full", "teaser"];
   // the example chosen, on the document: every demo of the page hears it, and follows
   const EXAMPLE_EVENT = "orders-demo-example";
   // the explanations' index, as the sheets' tags name it: FSII (2-FSII), or k-SII (2-SII)
@@ -1154,16 +1184,33 @@
       life?.addEventListener("abort", () => observer.disconnect(), { once: true });
       return observer;
     };
+    // the example it starts with (data-pick): the first of the ids it names (apart by commas or
+    // spaces) that is one of its examples, also one behind a tab (another photo: "giraffe"); and
+    // every one it names is what its tab shows when that tab is chosen ("houses giraffe" starts with
+    // the houses, and the tab of the photos shows the giraffe). Without one, or where it names none
+    // of its examples, its first tab's. An id the data does not know is left out, with a warning;
+    // one the data knows but this demo does not show is left out quietly, as a choice made in
+    // another demo of the page is (the demos of a page can name the same pick)
+    const picked = (root.dataset.pick ?? "").split(/[\s,]+/).filter(Boolean);
+    const unknown = picked.filter((id) => !all.examples.some((example) => example.id === id));
+    if (unknown.length) console.warn(`The explanation of every order has no example ${unknown.join(", ")} to start with.`);
+    const starts = picked.map((id) => data.every.find((example) => example.id === id)).filter(Boolean);
+    for (const example of [...starts].reverse()) shownOf.set(tabOf(example).id, example);
     // what is pointed at: a layer (its index), or the blank layer of an order between
-    const state = { example: data.examples[0].id, active: null, blank: null, pinned: false };
+    const state = { example: (starts[0] ?? data.examples[0]).id, active: null, blank: null, pinned: false };
     // the step of the figure it shows (data-step), or all of it ("all", as the docs show it, or
     // "full", as the last step of a post)
     const part = PARTS.includes(root.dataset.step) ? root.dataset.step : "all";
     const whole = part === "all" || part === "full";
+    // the teaser: no layers, no plot, no tabs, only the problem and the card of the Shapley values,
+    // and the chip a black box that never clears, whatever the model is (demo.css: its stage, bar,
+    // dots and picker take no room)
+    const teaser = part === "teaser";
+    root.classList.toggle("orders-demo-teaser", teaser);
     // of an example, the layers a step shows: how many of its sheets, from the top (none, the
     // Shapley values, all but the full decomposition, or all), and the blank layers between them
     const shownSheets = (example) =>
-      ({ problem: 0, mechanism: 0, shapley: 1, interactions: example.sheets.filter((sheet) => !sheet.full).length })[part] ??
+      ({ problem: 0, mechanism: 0, teaser: 0, shapley: 1, interactions: example.sheets.filter((sheet) => !sheet.full).length })[part] ??
       example.sheets.length;
     const shownBlanks = (example) => (whole ? between(example) : []);
     // what a demo points at, at rest (data-select): nothing ("none"), the mechanism ("mechanism"), the
@@ -1174,6 +1221,8 @@
     const restPick = (example) => {
       // (unexplained, nothing: the chip stays dark, the problem alone)
       if (!revealed) return null;
+      // (the teaser's card shows the Shapley values, which it has no layer of)
+      if (teaser) return { index: 0 };
       if (select === "mechanism") return { mechanism: true };
       const index =
         select === "full"
@@ -1184,6 +1233,7 @@
     // and as the layers do: its index (the sheets shown are the first ones, and the mechanism after
     // them)
     const restActive = () => {
+      if (teaser) return null;
       const pick = restPick(current());
       return !pick ? null : pick.mechanism ? sheetItems().findIndex((item) => item.mechanism) : pick.index;
     };
@@ -1304,7 +1354,37 @@
     cardTip.setAttribute("aria-hidden", "true");
     const planText = el("figcaption", "orders-demo-plan-text");
     const why = el("div", "orders-demo-why");
-    plan.append(flow, cast, why);
+    // the teaser's card lies on a pack of cards just like it, hidden under it: the explanations of
+    // the orders above, which it does not name. A click on the card (or Enter or Space on it) fans
+    // them out behind it, a little darker, each peeking out further to the lower right; another
+    // settles them back under it (demo.css: orders-demo-fanned)
+    const GHOSTS = 4;
+    const pack = el("div", "orders-demo-pack");
+    if (teaser) {
+      // (the furthest first: each nearer one lies on it, and the card on them all)
+      for (let k = GHOSTS; k >= 1; k--) {
+        const ghost = el("span", "orders-demo-ghost");
+        ghost.style.setProperty("--orders-ghost", String(k));
+        ghost.setAttribute("aria-hidden", "true");
+        pack.append(ghost);
+      }
+      pack.append(why);
+      why.tabIndex = 0;
+      why.setAttribute("role", "button");
+      why.setAttribute("aria-pressed", "false");
+      why.setAttribute("aria-label", "The Shapley values: show what lies under them");
+      const fan = () => {
+        const fanned = root.classList.toggle("orders-demo-fanned");
+        why.setAttribute("aria-pressed", String(fanned));
+      };
+      why.addEventListener("click", fan);
+      why.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        fan();
+      });
+    }
+    plan.append(flow, cast, teaser ? pack : why);
     // the problem's parts, made once: as the examples change, they stay where they are, and only what
     // they show changes, flipping in as on a board of departures (the input, the model's chip, the
     // prediction), their words running through letters before they settle
@@ -1329,7 +1409,7 @@
     function showPicker(example) {
       const tab = tabOf(example);
       const examples = family(tab);
-      picker.hidden = examples.length < 2;
+      picker.hidden = examples.length < 2 || teaser; // (the teaser shows one example alone)
       root.classList.toggle("orders-demo-has-picks", !picker.hidden); // (room for it: demo.css)
       if (pickerOf !== tab.id) {
         pickerOf = tab.id;
@@ -1506,7 +1586,12 @@
       // the room holds the layers, and air beside them; beside the card, the window holds them too,
       // and with the card above them, the window holds them but for a little room (on a phone on
       // its side, the stack is not taller than the screen)
-      const windowSide = besides ? tallSide : (viewportHeight() - WINDOW_ROOM) / (TILT * spread + layers + DEPTH);
+      // (on a slide, the room below what is above the stage holds all of it: the stack and its edges)
+      const windowSide = besides
+        ? tallSide
+        : slideBodyOf(root)
+          ? (frameOf(root) - stage.offsetTop - 2 * THICKNESS - 16) / (TILT * spread + layers + DEPTH)
+          : (viewportHeight() - WINDOW_ROOM) / (TILT * spread + layers + DEPTH);
       const side = Math.max(110, Math.min(360, room / ((1 + (besides ? ROOMY_BESIDE : ROOMY)) * spread), windowSide));
       const sheetHeight = side * TILT * spread;
       const stack = sheetHeight + (layers + DEPTH) * side;
@@ -1534,8 +1619,10 @@
       const n = Math.max(...data.every.map(shownSheets));
       const blanks = Math.max(...data.every.map((example) => shownBlanks(example).length));
       const layers = n ? (n - 1) * STRIP + blanks * BLANK_STRIP + AIR : 0;
-      const above = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
-      const tall = viewportHeight() - above - WINDOW_MARGIN - 2 * THICKNESS - 16;
+      // (in the page's pixels, not the screen's: a deck may scale the slide; on a slide, the room is
+      // the slide's, whose margin is in it already)
+      const above = stage.offsetTop;
+      const tall = frameOf(root) - above - (slideBodyOf(root) ? 0 : WINDOW_MARGIN) - 2 * THICKNESS - 16;
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
       const free = root.clientWidth - 1.25 * rem;
       const need = (layersWidth, lead, gap, plot) => {
@@ -1549,7 +1636,20 @@
       };
       const faceFor = (side) => FACE_BESIDE * side * spread;
       const columnFor = (side) => Math.max(WORDS_BESIDE * rem, faceFor(side));
-      const fits = (side) => stageFor(side) + columnFor(side) <= free;
+      const fits = (side) => stageFor(side) + columnFor(side) <= free && cardFits(side);
+      // (and the card, its face above its words, as tall as that room at the most: beside a short
+      // stack, a step's, the card is the taller. Its words grow with its column, as settleCard
+      // grows them, up to a third larger: as tall as they are now, at the size they have now, in
+      // the column they have now, and where they have none yet, as tall as they can be)
+      const fitNow = parseFloat(planWords.style.getPropertyValue("--orders-words-fit")) || 1;
+      const columnNow = root.classList.contains("orders-demo-beside") ? why.clientWidth : 0;
+      const wordsAt = (column) =>
+        planText.offsetHeight && columnNow
+          ? (planText.offsetHeight / fitNow) * Math.min(1.3, (fitNow * column) / columnNow)
+          : planText.offsetHeight
+            ? (planText.offsetHeight / fitNow) * 1.3
+            : 11 * rem;
+      const cardFits = (side) => faceFor(side) + wordsAt(columnFor(side)) + 0.6 * rem + 4 <= tall + 2 * THICKNESS + 16;
       let side = Math.max(110, Math.min(360, tall / (TILT * spread + layers + DEPTH)));
       // (the stage and the card both grow with the layers: the largest that fit, found by halves)
       if (!fits(side)) {
@@ -1921,8 +2021,9 @@
       xFace.replaceChildren(...inputFitting(example));
       showPicker(example);
       say(xName, problem.input, flip);
-      chip.classList.toggle("orders-demo-chip-black", model.icon === "box");
-      chip.classList.toggle("orders-demo-chip-gray", model.icon !== "box");
+      // (the teaser's chip is a black box, whatever the model: what is in it is the question)
+      chip.classList.toggle("orders-demo-chip-black", model.icon === "box" || teaser);
+      chip.classList.toggle("orders-demo-chip-gray", model.icon !== "box" && !teaser);
       chip.title = `${model.title}: ${model.detail}`;
       chipIcon.replaceChildren(icon(model.icon, "orders-demo-wire-icon"));
       say(chipName, model.short, flip);
@@ -2025,7 +2126,8 @@
     // says it in a sentence, over the face. With a mouse, by hovering; on a touch screen, by a tap (a
     // tap elsewhere lets go). The face's inspector (demo.js: inspectorOf) knows its targets ------
     let inspected = null; // the inspector and its target, while one is inspected
-    const inspectorNow = () => inspectors.get(planView.firstChild) ?? null;
+    // (the teaser's face is not inspected: a click on its card fans out the pack under it)
+    const inspectorNow = () => (teaser ? null : (inspectors.get(planView.firstChild) ?? null));
     function letGo() {
       if (!inspected) return;
       inspected.inspector.clear();
@@ -2233,6 +2335,7 @@
       // (on a phone, "gap" alone)
       if (gap) judged.append(el("span", "orders-demo-plan-long", "estimation "), `gap ${fit2(gap)}`);
       fit.append(el("span", "orders-demo-r2", fit2(r2)), judged);
+      // (the teaser's card does not say how well it fits: no bar, no R^2, no verdict)
       const method = el("span", "orders-demo-plan-method");
       method.append("Explained with ", el("strong", "", example.model.method), el("span", "orders-demo-plan-how", `, ${example.model.how}`));
       const legend = el("span", "orders-demo-plan-legend");
@@ -2261,7 +2364,30 @@
         });
         top.addEventListener("click", () => inspect(inspectorNow()?.find(players) ?? null));
       } else top.append("\u00a0");
-      return { nodes: [title, what, fit, top, method, legend], r2 };
+      return { nodes: teaser ? [title, what, top, method, legend] : [title, what, fit, top, method, legend], r2 };
+    }
+
+    // the teaser's card: its face as large as the demo's width and its room's height let it be (on a
+    // slide, the slide's room: both teasers side by side, each in a column), above the card's words
+    // and the room the pack fans out into (--orders-fan, demo.css), within 9 and 32 rem
+    // (--orders-teaser-face). It is set only where it changes, so that the card's resizing, which
+    // calls it again, settles at once
+    let teaserFace = 0;
+    function fitTeaser() {
+      if (!teaser || !why.isConnected) return;
+      const style = getComputedStyle(why);
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const fan = parseFloat(getComputedStyle(pack).marginRight) || 0;
+      const sides = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 2;
+      const scale = scaleOf(root);
+      const top = (why.getBoundingClientRect().top - root.getBoundingClientRect().top) / scale;
+      const rest = why.offsetHeight - planView.offsetHeight; // (its words, padding and gap)
+      const tall = frameOf(root) - top - rest - fan - 6; // (and its shadow)
+      const wide = root.clientWidth - sides - fan - 2;
+      const face = Math.floor(Math.max(9 * rem, Math.min(32 * rem, tall, wide)));
+      if (Math.abs(face - teaserFace) < 2) return;
+      teaserFace = face;
+      root.style.setProperty("--orders-teaser-face", `${face}px`);
     }
 
     // the card keeps its place and its size whatever it shows, in every example: its words take a
@@ -2290,9 +2416,11 @@
       // (and how wide their text is, the lines being as wide as the column: beside, their block)
       let [natural, naturalWhat] = [0, 0];
       const range = document.createRange();
+      // (on the screen, in pixels of the page: a talk's deck may scale the slide down)
+      const scale = scaleOf(root);
       const textWidth = (line) => {
         range.selectNodeContents(line);
-        return range.getBoundingClientRect().width;
+        return range.getBoundingClientRect().width / scale;
       };
       // (every explanation's words in a block of their own, all in the probe at once: laid out once,
       // then read, not laid out anew for every one)
@@ -2372,14 +2500,15 @@
 
       // the chip clears as far as the explanation pointed at fits (at rest, none is): opaque, it is
       // the black box; clear, the explanation has opened it
-      const clear = lit ? Math.max(0, Math.min(1, r2)) : 0;
+      // (the teaser's never clears: its card does not say how much of the box it opens)
+      const clear = lit && !teaser ? Math.max(0, Math.min(1, r2)) : 0;
       flow.style.setProperty("--orders-clear", roundTo(clear, 3));
       plan.classList.toggle("orders-demo-plan-lit", lit);
       inkChip(clear);
       // its R^2 in two decimals, or >.99 short of 1: as wide whatever it is, so that the chip, whose
       // words shrink to fit it, does not change its size from one to the next
       const short = r2 >= EXACT ? "1.00" : r2 >= 0.995 ? ">.99" : r2.toFixed(2);
-      const note = lit ? `R² ${short} explained` : example.model.title;
+      const note = lit && !teaser ? `R² ${short} explained` : example.model.title;
       if (chipNote.textContent !== note) {
         // (refit only where the note's shape changes: its digits are as wide as each other)
         const shape = (text) => text.replace(/\d/g, "0");
@@ -2458,8 +2587,12 @@
     function castLightOut() {
       // (beside, the plan is no box of its own: the light is drawn in the demo's)
       const besides = root.classList.contains("orders-demo-beside");
-      const box = (besides ? root : plan).getBoundingClientRect();
-      const [from, to] = [chip.getBoundingClientRect(), why.getBoundingClientRect()];
+      // (what the screen shows, in pixels of the page: a talk's deck may scale the slide down, and
+      // the light is drawn in the page's pixels, which it scales as well)
+      const scale = scaleOf(root);
+      const page = (rect) => ({ left: rect.left / scale, right: rect.right / scale, top: rect.top / scale, bottom: rect.bottom / scale, width: rect.width / scale, height: rect.height / scale });
+      const box = page((besides ? root : plan).getBoundingClientRect());
+      const [from, to] = [page(chip.getBoundingClientRect()), page(why.getBoundingClientRect())];
       const f = (x, y) => `${roundTo(x - box.left, 1)},${roundTo(y - box.top, 1)}`;
       // halfway round the rounded corners of the chip's bottom and of the card's top
       const round = (node) => parseFloat(getComputedStyle(node).borderTopLeftRadius) * (1 - Math.SQRT1_2);
@@ -2618,6 +2751,7 @@
       drawSide();
       showPlan();
       settleCard();
+      fitTeaser();
       castLightOut();
       if (revealed && unfoldAfter === Infinity) unfoldAfter = 0;
       unfold();
@@ -3277,11 +3411,17 @@
       if (!state.pinned && !ladder.contains(event.relatedTarget)) point(null, null);
     });
 
-    // the card beside the layers (demo.css): wide, the full stack, explained, unless data-plan="above"
+    // the card beside the layers (demo.css): wide, the full stack, explained, unless data-plan="above".
+    // A step with layers stands beside them too where data-plan="beside" asks for it, and on a
+    // talk's slide, whose height is all the room there is: there the card above the layers would
+    // leave them a strip, and the slide's width would go unused (the problem alone, and the
+    // teaser, have no layers to stand beside)
     function wideEnough() {
       const wide = root.clientWidth >= 640;
+      const plan = root.dataset.plan;
+      const stands = whole || (part !== "problem" && !teaser && (plan === "beside" || (part !== "mechanism" && slideBodyOf(root) !== null)));
       root.classList.toggle("orders-demo-wide", wide);
-      root.classList.toggle("orders-demo-beside", wide && whole && revealed && root.dataset.plan !== "above");
+      root.classList.toggle("orders-demo-beside", wide && stands && revealed && plan !== "above");
     }
     // the stage's width, and the window's height (both hold the layers), and beside the card, the
     // demo's width, whose columns are fit to it, laid out anew
@@ -3296,12 +3436,15 @@
       }
       wideEnough();
       const besides = root.classList.contains("orders-demo-beside");
-      if (stage.clientWidth !== width || viewportHeight() !== tall || (besides && root.clientWidth !== demoWidth)) {
-        [width, tall, demoWidth] = [stage.clientWidth, viewportHeight(), root.clientWidth];
+      // (the room's height: the window's, or on a slide, what it leaves below what is above the stage)
+      const room = slideBodyOf(root) ? Math.round(frameOf(root) - stage.offsetTop) : viewportHeight();
+      if (stage.clientWidth !== width || room !== tall || (besides && root.clientWidth !== demoWidth)) {
+        [width, tall, demoWidth] = [stage.clientWidth, room, root.clientWidth];
         geometry = measure();
         place(state.active);
         drawSide();
       }
+      fitTeaser();
       settleCard();
       castLightOut();
     }
@@ -3316,6 +3459,7 @@
     // the light out of the chip follows the plan's layout (its width, its fonts)
     watch(
       new ResizeObserver(() => {
+        fitTeaser();
         settleCard();
         castLightOut();
         for (const node of [xShows, chipShows, outShows]) fitPart(node);

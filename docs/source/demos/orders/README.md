@@ -56,9 +56,12 @@ All options are optional:
 | `:anchor:` | `id` | any id | An id, to link to the demo. |
 | `:fallback:` | `<noscript><img>` | a path under `_static/` | The image shown without JavaScript, and when the demo fails. Without it, the demo shows nothing then. (The write-up's first four steps have none, on purpose: the last step shows the whole figure.) |
 | `:alt:` | the image's `alt` | text | The fallback image's alt text. |
-| `:step:` | `data-step` | `problem`, `mechanism`, `shapley`, `interactions`, `full` | Shows one step of the step-by-step figure (see below). Without it, the demo shows everything. |
+| `:step:` | `data-step` | `problem`, `mechanism`, `shapley`, `interactions`, `full`, `teaser` | Shows one step of the step-by-step figure, or the teaser (see below). Without it, the demo shows everything. |
 | `:select:` | `data-select` | `none`, `mechanism`, `full`, or an order (`1`, `2`, ...) | What the demo points at while the reader points at nothing. |
 | `:examples:` | `data-examples` | example ids, apart by commas or spaces: `molecule`, `house`, `tabpfn`, `houses`, `fixlip`, `applicant`, `applicants` | The examples the demo shows, in that order (see below). Without it, the first five (not the applicants). |
+| `:pick:` | `data-pick` | example ids, apart by commas or spaces, also one behind a tab (`giraffe`, `sign`) | The example the demo starts with: the first of them that it shows. Every one named is also what its tab shows when chosen (see below). |
+| `:reveal:` | `data-reveal` | `open` | Start already explained (see below). |
+| `:plan:` | `data-plan` | `above`, `beside` | Where the explanation's card stands on a wide screen (see below). |
 
 The directive writes the container below, and adds `demo.css` and `demo.js` to the page once:
 
@@ -69,15 +72,24 @@ The directive writes the container below, and adds `demo.css` and `demo.js` to t
 </div>
 ```
 
-Two more attributes are read by the script, but have no directive option. To use them, add them to
-`DemoDirective.option_spec` and `_visit_demo` in `_ext/shapiq_demos.py`, or write the container as
-raw HTML:
+Of the last three:
 
 - `data-reveal="open"`: start already explained. By default, a demo without a step starts with
   the problem alone, and a click on the chip explains it. (The `problem` step always shows the
   problem alone; the other steps start explained.)
 - `data-plan="above"`: on a wide screen, keep the explanation card above the layers instead of
-  beside them. The script watches this attribute, so it can be changed live.
+  beside them. `data-plan="beside"`: let a step with layers (`mechanism`, `shapley`,
+  `interactions`) stand its card beside them too, as the whole demo does. On a talk's slide (below),
+  the steps `shapley` and `interactions` stand beside without it, unless `data-plan="above"`. The
+  script watches this attribute, so it can be changed live.
+- `data-pick`: the example the demo starts with, also one behind a tab: `:pick: giraffe` starts on
+  the giraffe, its tab "Describing images" chosen. Every id named is also what its tab shows when it
+  is chosen, and the first that the demo shows is the one it starts with: `:pick: houses giraffe`
+  starts on the houses, and the tab of the photos then shows the giraffe, not the elephant. An id
+  the demo does not show is left out quietly (several demos of a page can share a pick: each starts
+  on it, where it has it, and the others are unaffected); an id the data does not know, with a
+  warning in the console. The pick is not announced to the page: from then on, a choice made in
+  any demo is followed by all, as before.
 
 The directive also adds `data.js` to the page, deferred, just before `demo.js`, so that both load
 at once. When the script runs and `window.SHAPIQ_ORDERS` is already defined, it loads nothing.
@@ -98,6 +110,37 @@ what the previous one showed, plus:
 | `shapley` | The Shapley values above, and the plot of their fit. | Order 1. |
 | `interactions` | The explanations of orders 1 to 4. | Order 2. |
 | `full` | Everything, as with no step. | Nothing. |
+
+The `teaser` is not a step of the build-up but the eye-catcher of a talk: the problem, its chip
+black for good (a black box, whatever the model: it never clears, and says the model's name, not an
+R^2), and under it only the card of the Shapley values, upright, its face above its words (no bar,
+no R^2, no verdict). No tabs, no picker, no layers, no plot (`orders-demo-teaser`); the face is not
+inspected. It shows one example: give it one (`:examples: houses`, or `:examples: fixlip` with
+`:pick: giraffe`). The card's face is as large as the demo's width and its room's height let it be
+(`fitTeaser()`, `--orders-teaser-face`, 9 to 32 rem). The card lies on a pack of four cards like it,
+hidden under it (`.orders-demo-ghost`, without words, their paper a little darker the further they
+lie): a click on the card, or Enter or Space on it (it is a button, `aria-pressed`), fans them out
+behind it, each peeking out to the lower right a little further and turned a little more
+(`orders-demo-fanned`); another settles them back. The room they fan into is kept to the right of and
+below the card (`--orders-fan`, the pack's margin), so nothing moves. With a mouse, hovering the card
+stirs them a little. The talk puts two teasers side by side:
+
+```rst
+.. container:: shapiq-talk-columns shapiq-talk-teaser
+
+   .. container:: shapiq-talk-column
+
+      .. shapiq-demo:: orders
+         :step: teaser
+         :examples: houses
+
+   .. container:: shapiq-talk-column
+
+      .. shapiq-demo:: orders
+         :step: teaser
+         :examples: fixlip
+         :pick: giraffe
+```
 
 ### Only some examples
 
@@ -165,7 +208,7 @@ and vertical margins of its own.
 |---|---|
 | below 40rem | Phone: the problem's parts are compact, and the card is above the layers. |
 | below 45rem | The examples are behind a stepper (arrows, dots below the layers, and a swipe across them) instead of tabs. |
-| 640px and up | `orders-demo-wide`. If the demo shows everything (no step, or `full`), has been explained, and has no `data-plan="above"`, it also gets `orders-demo-beside`: the card stands left of the layers (below). Otherwise the card is above the layers. |
+| 640px and up | `orders-demo-wide`. If the demo shows everything (no step, or `full`), or a step with layers that `data-plan="beside"` or a talk's slide stands beside, has been explained, and has no `data-plan="above"`, it also gets `orders-demo-beside`: the card stands left of the layers (below). Otherwise the card is above the layers. |
 
 With the docs' 16px root font, 40rem is 640px, so the phone layout and the wide one meet there:
 at 640px, which is the width of the docs' column, the layout is the wide one. The style sheet's
@@ -207,6 +250,20 @@ properties on the container:
 The width left over goes to the two outer columns. The tabs and the problem span all four, so they
 keep the demo's full width. Do not let the tabs wrap: a taller bar pushes the stage down, and the
 layers shrink to fit the window.
+
+### On a talk's slide
+
+In a talk presented one slide at a time (`talk.js`: in `.shapiq-deck`, but not
+`.shapiq-deck--scroll`, the phone's), the room the demo has is the slide's, not the window's:
+`frameOf()` measures it as `talk.js` does (the slide's height, less its padding and its title), less
+what is above the demo in the slide's body and the demo's bottom margin (and `FRAME_MARGIN`, 8px).
+Everything that the window's height bounds elsewhere is bounded by it there: the layers beside the
+card, the layers below the card (all of the demo, not only the stack), the card beside the layers
+(its face and its words, `cardFits` in `fitColumns()`), and the teaser's card. So the deck does not
+scale the slide down (`data-fit` on the slide's body stays unset). The measures read off the screen
+(`settleCard()`'s words, the light out of the chip, the teaser's card) are divided by the slide's
+scale (`scaleOf()`), should the deck scale it anyway (a very short window). On a slide, the steps
+`shapley` and `interactions` stand their card beside the layers (above).
 
 ### Theme and motion
 

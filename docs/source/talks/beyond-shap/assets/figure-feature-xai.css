@@ -1,0 +1,369 @@
+/* feature-xai: see figure-feature-xai.js. Red raises a prediction and blue lowers it, amber marks
+   one feature of each kind of data (MedInc in the table and in the explanations). */
+
+.talk-fx {
+  container-type: inline-size;
+  display: grid;
+  gap: 0.8em;
+}
+
+.talk-fx-title {
+  margin: 0 0 0.35em;
+  color: var(--talk-muted);
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.talk-fx-cards {
+  display: grid;
+  gap: 0.6em;
+}
+
+/* the widths follow what each card shows */
+.talk-fx-data .talk-fx-cards {
+  grid-template-columns: max-content minmax(0, 1.3fr) minmax(0, 1.85fr) minmax(0, 1.7fr) minmax(0, 1.25fr);
+}
+
+.talk-fx-shapes .talk-fx-cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.talk-fx-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.45em 0.55em 0.4em;
+  border: 1px solid var(--talk-line);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+}
+
+.talk-fx-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 6.1em;
+  min-width: 0;
+}
+
+.talk-fx-shapes .talk-fx-visual {
+  height: 6.6em;
+}
+
+.talk-fx-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.talk-fx-caption {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0.1em 0.4em;
+  margin-top: auto;
+  padding-top: 0.3em;
+  font-size: 0.76em;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.talk-fx-caption span {
+  color: var(--talk-muted);
+}
+
+.talk-fx-tag {
+  margin-left: auto;
+  padding: 0 0.5em;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.talk-fx-tag-local {
+  background: color-mix(in srgb, var(--shapiq-amber) 25%, transparent);
+  color: var(--shapiq-amber-ink);
+}
+
+.talk-fx-tag-global {
+  background: color-mix(in srgb, var(--talk-muted) 18%, transparent);
+  color: var(--talk-muted);
+}
+
+/* the table */
+.talk-fx-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.55em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  table-layout: auto;
+}
+
+.talk-fx-table th,
+.talk-fx-table td {
+  padding: 0.3em 0.35em;
+  border: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.talk-fx-table th {
+  border-bottom: 1px solid var(--talk-line);
+  color: var(--talk-ink);
+  font-weight: 700;
+}
+
+.talk-fx-table .talk-fx-other td {
+  color: var(--talk-muted);
+}
+
+.talk-fx-table .talk-fx-gap td {
+  padding-block: 0;
+  color: var(--talk-muted);
+  line-height: 1;
+}
+
+.talk-fx-table .talk-fx-house td {
+  border-top: 1px solid var(--talk-line);
+  color: var(--talk-ink);
+  font-weight: 700;
+}
+
+.talk-fx-table .talk-fx-col-mark {
+  background: var(--shapiq-amber-soft);
+}
+
+.talk-fx-table th.talk-fx-col-mark {
+  background: color-mix(in srgb, var(--shapiq-amber) 55%, transparent);
+}
+
+/* the photo and its patches */
+.talk-fx .talk-fx-cut {
+  stroke: var(--shapiq-surface-raised);
+  stroke-width: 1;
+}
+
+.talk-fx-patch-mark,
+.talk-fx-patch-on {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-width: 2;
+}
+
+.talk-fx-patch-on {
+  stroke: var(--talk-pos);
+  stroke-width: 1.5;
+}
+
+/* the tokens */
+.talk-fx-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 0.3em 0.24em;
+  font-size: 0.66em;
+  line-height: 1.2;
+}
+
+.talk-fx-token {
+  padding: 0.12em 0.42em;
+  border: 1px solid var(--talk-line);
+  border-radius: 999px;
+  background: var(--shapiq-surface);
+  color: var(--talk-ink);
+  white-space: nowrap;
+}
+
+.talk-fx-token-mark {
+  border-color: var(--shapiq-amber);
+  background: color-mix(in srgb, var(--shapiq-amber) 55%, transparent);
+  font-weight: 700;
+}
+
+/* the time series */
+.talk-fx-window {
+  fill: color-mix(in srgb, var(--talk-muted) 10%, transparent);
+}
+
+.talk-fx-window-mark {
+  fill: color-mix(in srgb, var(--shapiq-amber) 32%, transparent);
+}
+
+.talk-fx-series-line {
+  fill: none;
+  stroke: var(--talk-ink);
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+
+/* the molecule */
+.talk-fx-bond {
+  stroke: var(--talk-muted);
+  stroke-width: 1.3;
+}
+
+.talk-fx-atom {
+  fill: var(--shapiq-surface);
+  stroke: var(--talk-ink);
+  stroke-width: 1;
+}
+
+.talk-fx-atom-H {
+  fill: var(--talk-line);
+  stroke: var(--talk-muted);
+  stroke-width: 0.6;
+}
+
+.talk-fx-atom-mark {
+  fill: var(--shapiq-amber);
+  stroke: var(--shapiq-amber-ink);
+}
+
+.talk-fx .talk-fx-atom-name {
+  font-size: 6.4px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* the plots */
+.talk-fx .talk-fx-label {
+  font-size: 8px;
+}
+
+.talk-fx .talk-fx-label-mark {
+  fill: var(--shapiq-amber-ink);
+  font-weight: 700;
+}
+
+.talk-fx .talk-fx-tick {
+  fill: var(--talk-muted);
+  font-size: 7.4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.talk-fx .talk-fx-tick-large {
+  font-size: 9px;
+}
+
+.talk-fx .talk-fx-axis-name {
+  fill: var(--talk-muted);
+  font-size: 7.4px;
+}
+
+.talk-fx-axis,
+.talk-fx-zero {
+  stroke: var(--talk-muted);
+  stroke-width: 0.8;
+}
+
+.talk-fx-zero {
+  stroke: var(--talk-ink);
+}
+
+.talk-fx-grid {
+  stroke: var(--talk-line);
+  stroke-width: 0.6;
+}
+
+.talk-fx-bar {
+  fill: color-mix(in srgb, var(--talk-muted) 40%, transparent);
+}
+
+.talk-fx-bar-mark {
+  fill: var(--shapiq-amber);
+}
+
+.talk-fx-curve {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-linecap: round;
+  stroke-width: 2.2;
+}
+
+.talk-fx-rug {
+  stroke: var(--talk-muted);
+  stroke-opacity: 0.45;
+  stroke-width: 0.6;
+}
+
+.talk-fx-house-dot {
+  fill: var(--talk-ink);
+  stroke: var(--shapiq-surface-raised);
+  stroke-width: 1.2;
+}
+
+.talk-fx-link {
+  fill: none;
+  opacity: 0.8;
+}
+
+.talk-fx-chip {
+  fill: var(--shapiq-surface);
+  stroke: var(--talk-line);
+  stroke-width: 0.8;
+}
+
+.talk-fx-chip-mark {
+  fill: color-mix(in srgb, var(--shapiq-amber) 55%, var(--shapiq-surface));
+  stroke: var(--shapiq-amber);
+}
+
+.talk-fx .talk-fx-word {
+  font-size: 8.5px;
+}
+
+.shapiq-deck .talk-fx {
+  font-size: clamp(14px, 0.7vw + 0.8vh, 26px);
+}
+
+/* on a slide the rows scale with the figure's width too, so that a wide window that is not tall
+   enough (1920 x 1080) keeps the proportions of 1440 x 900 */
+.shapiq-deck .talk-fx > .talk-fx-row {
+  font-size: min(1em, 1.5cqw);
+}
+
+/* a narrow page: the cards wrap, and the pictures keep their proportions */
+@container (max-width: 760px) {
+  .talk-fx-data .talk-fx-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talk-fx-data .talk-fx-tabular {
+    grid-column: 1 / -1;
+  }
+
+  .talk-fx-tabular .talk-fx-visual {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .talk-fx-shapes .talk-fx-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 520px) {
+  .talk-fx-shapes .talk-fx-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .talk-fx-shapes .talk-fx-visual {
+    height: auto;
+  }
+
+  .talk-fx-shapes .talk-fx-svg {
+    height: auto;
+    max-height: 10em;
+  }
+
+  .talk-fx-table {
+    font-size: 0.6em;
+  }
+}

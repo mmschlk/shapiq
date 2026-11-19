@@ -714,151 +714,6 @@ a.talk-chip:focus-visible {
   }
 }
 
-/* feature-based XAI: features of five kinds of data, and four shapes of explanations */
-.talk-xai {
-  display: grid;
-  gap: 0.9em;
-}
-
-.talk-xai-title {
-  margin: 0 0 0.4em;
-  color: var(--talk-muted);
-  font-size: 0.8em;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.talk-xai-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5em, 1fr));
-  gap: 0.7em;
-}
-
-.talk-xai-card {
-  padding: 0.5em 0.6em 0.45em;
-  border: 1px solid var(--talk-line);
-  border-radius: var(--shapiq-radius-small);
-  background: var(--shapiq-surface-raised);
-}
-
-.talk-xai-svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 5.5em;
-}
-
-.talk-xai-caption {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.15em 0.45em;
-  margin-top: 0.3em;
-  font-size: 0.8em;
-}
-
-.talk-xai-caption span {
-  color: var(--talk-muted);
-}
-
-.talk-xai-tag {
-  margin-left: auto;
-  padding: 0 0.5em;
-  border-radius: 999px;
-  font-size: 0.85em;
-  font-style: normal;
-  font-weight: 600;
-}
-
-.talk-xai-tag-local {
-  background: color-mix(in srgb, var(--shapiq-amber) 25%, transparent);
-  color: var(--shapiq-amber-ink);
-}
-
-.talk-xai-tag-global {
-  background: color-mix(in srgb, var(--talk-muted) 18%, transparent);
-  color: var(--talk-muted);
-}
-
-.talk-xai .talk-xai-text {
-  font-size: 7.5px;
-  fill: var(--talk-ink);
-}
-
-.talk-xai-head,
-.talk-xai-cell,
-.talk-xai-bar {
-  fill: color-mix(in srgb, var(--talk-muted) 18%, transparent);
-}
-
-.talk-xai-cell {
-  fill: color-mix(in srgb, var(--talk-muted) 9%, transparent);
-}
-
-.talk-xai-mark {
-  fill: color-mix(in srgb, var(--shapiq-amber) 70%, transparent);
-}
-
-.talk-xai-mark-soft {
-  fill: color-mix(in srgb, var(--shapiq-amber) 30%, transparent);
-}
-
-.talk-xai-patch {
-  stroke: var(--shapiq-surface-raised);
-  stroke-width: 1;
-}
-
-.talk-xai-patch-mark {
-  stroke: var(--shapiq-amber);
-  stroke-width: 2.5;
-}
-
-.talk-xai-line,
-.talk-xai-curve {
-  fill: none;
-  stroke: var(--talk-ink);
-  stroke-width: 1.6;
-}
-
-.talk-xai-curve {
-  stroke: var(--shapiq-amber-ink);
-  stroke-width: 2.4;
-}
-
-.talk-xai-ice {
-  fill: none;
-  stroke: var(--talk-muted);
-  stroke-width: 0.8;
-  stroke-opacity: 0.5;
-}
-
-.talk-xai-axis {
-  fill: none;
-  stroke: var(--talk-muted);
-  stroke-width: 1;
-}
-
-.talk-xai-edge {
-  stroke: var(--talk-muted);
-  stroke-width: 1.5;
-}
-
-.talk-xai-node {
-  fill: var(--shapiq-surface-raised);
-  stroke: var(--talk-ink);
-  stroke-width: 1.2;
-}
-
-.talk-xai-node-mark {
-  fill: var(--shapiq-amber);
-  stroke: var(--shapiq-amber-ink);
-}
-
-.shapiq-deck .talk-xai {
-  font-size: clamp(14px, 0.7vw + 0.8vh, 26px);
-}
-
 /* the three choices: the option the pointer is on, pictured under the cards */
 .talk-choices {
   box-sizing: border-box;
@@ -1012,4 +867,45 @@ a.talk-chip:focus-visible {
   .talk-choices {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* faithfulness of the Shapley values alone: no orders to switch between */
+.talk-faith-orders-one {
+  display: none !important;
+}
+
+/* faithfulness order by order: the R² of every order shown so far */
+.talk-faith-ladder {
+  margin-top: 0.8em;
+}
+
+@media (min-width: 901px) {
+  .talk-faith-climb .talk-faith-readout {
+    flex-wrap: nowrap;
+  }
+
+  .talk-faith-climb .talk-faith-meter {
+    flex: 1 1 6em;
+  }
+}
+
+.talk-faith-ladder-value {
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.talk-faith-ladder-line {
+  fill: none;
+  stroke: var(--shapiq-amber);
+  stroke-width: 2.2;
+}
+
+.talk-faith-ladder-dot {
+  fill: var(--shapiq-surface);
+  stroke: var(--shapiq-amber);
+  stroke-width: 2;
+  transition: opacity var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.talk-faith-ladder-now {
+  fill: var(--shapiq-amber);
 }

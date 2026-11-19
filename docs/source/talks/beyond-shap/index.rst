@@ -57,6 +57,33 @@ says, and code reproduces what the slide shows.
       as Shapley interactions reveal, and when they are worth it. Every demo of the talk is
       computed with ``shapiq``, an open-source Python library for Shapley-based explanations.
 
+.. shapiq-slide:: SHAP Explains Any Model
+   :layout: wide
+   :cite: Lundberg.2017 Baniecki.2025
+
+   .. container:: shapiq-talk-columns shapiq-talk-teaser
+
+      .. container:: shapiq-talk-column
+
+         .. shapiq-demo:: orders
+            :step: teaser
+            :examples: houses
+
+      .. container:: shapiq-talk-column
+
+         .. shapiq-demo:: orders
+            :step: teaser
+            :examples: fixlip
+            :pick: giraffe
+
+   .. shapiq-notes::
+
+      Two models, two black boxes. An XGBoost model values 2,000 houses of California. SigLIP 2
+      matches a photo of a giraffe to its caption. SHAP explains both in the same way
+      :cite:p:`Lundberg.2017`. Every feature gets one score, a house on the map, a patch of the
+      photo or a word of the caption. Red raises the output, and blue lowers it. Yet one score
+      per feature is only the top of a stack of explanations.
+
 .. shapiq-slide:: Feature-Based Explainable AI
    :layout: wide
    :steps: 2
@@ -79,7 +106,7 @@ says, and code reproduces what the slide shows.
       of :math:`f`.
 
    .. shapiq-talk-figure:: feature-xai
-      :alt: Above, features of five kinds of data: the columns of a table, the patches of an image, the tokens of a text, the windows of a time series and the nodes of a graph. Below, four shapes of explanations: a score per feature (SHAP) and a score per group of features (Shapley interactions) for one prediction, a curve per feature (partial dependence) and an importance per feature (permutation feature importance) for the whole model.
+      :alt: Above, features of five kinds of data: the columns of a California housing table, the 64 patches of a photo of a giraffe, the 19 tokens of its caption, the windows of a time series and the atoms of a molecule. Below, four shapes of explanations: the Shapley values of one house (SHAP) and the Shapley interactions of the giraffe's patches and words for one prediction, the partial dependence curve of MedInc and the permutation importance of the features for the whole model.
 
    .. shapiq-notes::
 
@@ -96,101 +123,83 @@ says, and code reproduces what the slide shows.
       and watch what the model does :cite:p:`Covert.2021`. This talk stays with explanations of
       one prediction.
 
-.. shapiq-slide:: From a Prediction to a Game
+.. shapiq-slide:: The Shapley Value Shares a Prediction
    :layout: wide
-   :steps: 2
-   :cite: Shapley.1951 Covert.2021 Fumagalli.2025
+   :steps: 3
+   :cite: Shapley.1951 Lundberg.2017
 
-   .. container:: shapiq-talk-definition
+   .. container:: shapiq-talk-columns shapiq-talk-columns-theory
 
-      .. rubric:: Definition 2 (Cooperative Game).
+      .. container:: shapiq-talk-column
 
-      A **cooperative game** is a pair :math:`(D, \nu)` of a **player set**
-      :math:`D = \{1, \dots, d\}` and a **value function**
-      :math:`\nu: \mathcal{P}(D) \to \mathbb{R}` that assigns a **payoff** to each **coalition**
-      :math:`T \subseteq D`.
+         .. container:: shapiq-talk-definition
 
-   .. container:: shapiq-talk-masking
+            .. rubric:: Definition 2 (Cooperative Game).
 
-      A model needs all :math:`d` features, not a subset. **Masking** turns it into a game. The
-      features in :math:`T` keep the values of :math:`x`, the others are removed,
+            A **cooperative game** is a pair :math:`(D, \nu)` of a **player set**
+            :math:`D = \{1, \dots, d\}` and a **value function**
+            :math:`\nu: \mathcal{P}(D) \to \mathbb{R}` that assigns a **payoff** to each
+            **coalition** :math:`T \subseteq D`.
 
-      .. math::
+         .. container:: shapiq-talk-definition shapiq-from-1
 
-         \nu(T) = \mathbb{E}\big[f(x_T, X_{D \setminus T})\big],
-         \qquad \text{e.g. } \nu(\{\text{Limit}, \text{Bill Sep}\}) = -1.10 .
+            .. rubric:: Definition 3 (Shapley Value).
 
-   .. container:: shapiq-talk-definition shapiq-from-1
+            The Shapley value of a player :math:`i \in D` is a weighted average of its **marginal
+            contributions** :math:`\Delta_i(T) = \nu(T \cup \{i\}) - \nu(T)`,
 
-      .. rubric:: Definition 3 (Shapley Value).
+            .. math::
 
-      The Shapley value of a player :math:`i \in D` is a weighted average of its **marginal
-      contributions** :math:`\Delta_i(T) = \nu(T \cup \{i\}) - \nu(T)`,
+               \phi^{\text{SV}}_i(\nu) = \sum_{T \subseteq D \setminus \{i\}}
+               \frac{1}{d \binom{d-1}{|T|}}\, \Delta_i(T).
 
-      .. math::
+      .. container:: shapiq-talk-column
 
-         \phi^{\text{SV}}_i(\nu) = \sum_{T \subseteq D \setminus \{i\}}
-         \frac{1}{d \binom{d-1}{|T|}} \big[\nu(T \cup \{i\}) - \nu(T)\big].
+         .. shapiq-talk-figure:: lattice-sv
+            :alt: The lattice of all coalitions of four players of the giraffe example, two patches of the photo and two words of the caption. The empty coalition lies at the bottom, the full one at the top, and every edge adds one player, labelled with its marginal contribution. The Shapley value of a player averages the marginal contributions on its edges.
 
    .. shapiq-notes::
 
       Cooperative game theory asks how to share the payoff of a team among its players. A game is
       a set of players and a value function, which gives each coalition of players its payoff
-      :cite:p:`Shapley.1951`. A model is not a game, as it needs all its features. Masking makes
-      it one. The features of a coalition keep the values of the explained input, and the others
-      are removed, for instance by averaging the model over their distribution
-      :cite:p:`Covert.2021`. With only the credit limit and the bill of September, the model
-      predicts −1.10 in log-odds, against −1.56 with no feature at all.
+      :cite:p:`Shapley.1951`. For the giraffe, the players are patches of the photo and words of
+      the caption, and the payoff is how well the photo matches the caption with only these
+      players present. All coalitions form a lattice, from the empty one at the bottom to the full
+      one at the top. Every edge adds one player, and the change of the payoff along it is the
+      player's marginal contribution.
 
-      The Shapley value shares the prediction among the features. It averages what a feature adds
-      to every coalition of the others, weighted so that every size of coalition counts the same.
-      It is the only way to share that is efficient, symmetric, linear and gives nothing to a
-      feature that never adds anything.
+      The Shapley value of a player averages its marginal contributions over all edges that add
+      it, weighted so that every size of coalition counts the same. It is the only way to share
+      that is efficient, symmetric, linear and gives nothing to a player that never adds anything.
+      SHAP computes it for the features of a model :cite:p:`Lundberg.2017`.
 
-.. shapiq-slide:: SHAP Gives One Score per Feature
+.. shapiq-slide:: Below the Scores Lies the Model
    :layout: wide
-   :cite: Lundberg.2017
+   :cite: Lundberg.2017 Baniecki.2025
 
    .. shapiq-demo:: orders
       :step: shapley
-      :examples: applicant
+      :examples: houses, fixlip
+      :pick: giraffe
 
    .. shapiq-notes::
 
-      An XGBoost model predicts whether a credit card client defaults, from eight features of the
-      last months. SHAP splits this prediction among the features. Each feature gets one score,
-      red where it raises the risk and blue where it lowers it. The bill of September raises the
-      risk the most, and the high credit limit lowers it a little. Yet a bill says little without
-      the limit it fills. Only both together say that the client has used nearly all of the
-      credit.
-
-   .. shapiq-try::
-
-      .. code-block:: python
-
-         from sklearn.datasets import fetch_california_housing
-         from xgboost import XGBRegressor
-
-         import shapiq
-
-         X, y = fetch_california_housing(return_X_y=True, as_frame=True)
-         model = XGBRegressor(n_estimators=100, max_depth=4).fit(X, y)
-         x = X.iloc[0].to_numpy()
-
-         # the exact Shapley values of one house
-         explainer = shapiq.TreeExplainer(model, index="SV", max_order=1)
-         shapley_values = explainer.explain(x)
-         shapley_values.plot_force(feature_names=list(X.columns))
+      The Shapley values float above the input as a sheet. Below the input lies the mechanism they
+      explain, the model itself. For the houses, it is a tree ensemble. For the giraffe, it is
+      SigLIP 2, a vision–language encoder. The plot beside the sheet says how much of the model
+      the Shapley values explain. For the houses, that is most of it. For the giraffe, it is much
+      less.
 
 .. shapiq-slide:: What Makes a Good Explanation?
    :layout: wide
-   :steps: 3
+   :steps: 2
    :cite: Tsai.2022 Hedstrom.2023 Agarwal.2022
 
    .. shapiq-talk-figure:: faithfulness
-      :alt: How faithfulness is computed, for a credit applicant. Left, some features are kept and the others removed: the model predicts −1.10 in log-odds with only the credit limit and the bill of September, while the Shapley values add up to −0.57 and the explanation of order 2 to −1.05. Right, the same for all 254 coalitions: with the Shapley values the points scatter widely, with an R² of 0.24, with interactions of order 2 they lie close to the diagonal, with an R² of 0.98.
+      :class: talk-faith-first
+      :alt: How faithfulness is computed, for a credit applicant. Left, some features are kept and the others removed: the model predicts −1.10 in log-odds with only the credit limit and the bill of September, while the Shapley values add up to −0.57. Right, the same for all 254 coalitions: the points scatter widely around the diagonal, with an R² of 0.24.
 
-   .. container:: shapiq-from-2 shapiq-talk-also
+   .. container:: shapiq-from-1 shapiq-talk-also
 
       Other properties, measured by Quantus and OpenXAI:
 
@@ -210,12 +219,10 @@ says, and code reproduces what the slide shows.
       which adds up its values over all groups of kept features, :math:`\hat{\nu}_k(S)`. With
       only the credit limit and the bill of September, the model predicts −1.10 in log-odds. The
       Shapley values add up to −0.57. The value of the bill also holds its shares of interactions
-      with features that were removed, such as the payment of August. The explanation of order 2
-      keeps the pair of the limit and the bill apart, and arrives at −1.05. Third, repeat this
+      with features that were removed, such as the payment of August. Third, repeat this
       for all coalitions and compare. Weighted as the Shapley value weighs coalitions, this gives
       an :math:`R^2` :cite:p:`Tsai.2022`. Here it is measured beyond what the number of kept
-      features alone predicts. For the applicant, the Shapley values reach 0.24 and the pairs
-      0.98.
+      features alone predicts. For the applicant, the Shapley values reach only 0.24.
 
       Faithfulness is one property among several. An explanation can also be robust to small
       changes of the input, simple, localized on the relevant features, and sensitive to the model
@@ -292,171 +299,59 @@ says, and code reproduces what the slide shows.
 .. shapiq-slide:: Shapley Interactions Extend the Shapley Value
    :layout: wide
    :steps: 3
-   :cite: Grabisch.1999 Fujimoto.2006 Harsanyi.1963 Bordt.2023 Tsai.2022
+   :cite: Grabisch.1999 Bordt.2023 Tsai.2022
 
-   .. container:: shapiq-talk-definition
+   .. container:: shapiq-talk-columns shapiq-talk-columns-theory
 
-      .. rubric:: Feature Attribution with Interactions.
+      .. container:: shapiq-talk-column
 
-      An explanation of order :math:`k` summarizes :math:`f` at :math:`x` by values for single
-      features, pairs, and groups of up to :math:`k` features,
+         .. container:: shapiq-talk-definition
 
-      .. math::
+            .. rubric:: Feature Attribution with Interactions.
 
-         f(x) \;\approx\; \phi_\emptyset
-         + \underbrace{\sum_{i \in D} \phi_i}_{\text{order } 1}
-         + \underbrace{\sum_{\{i, j\} \subseteq D} \phi_{ij}}_{\text{order } 2}
-         + \dots
-         + \underbrace{\sum_{S \subseteq D,\, |S| = k} \phi_S}_{\text{order } k} .
+            An explanation of order :math:`k` summarizes :math:`f` at :math:`x` by values for
+            single features, pairs, and groups of up to :math:`k` features,
 
-   .. container:: shapiq-talk-definition shapiq-from-1
+            .. math::
 
-      .. rubric:: Definition 4 (Shapley Interactions).
+               f(x) \;\approx\; \phi_\emptyset + \sum_{i} \phi_i + \sum_{i < j} \phi_{ij}
+               + \dots + \sum_{|S| = k} \phi_S .
 
-      Shapley interactions generalize the Shapley value from marginal contributions to
-      **discrete derivatives** :math:`\Delta_S(T) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\,
-      \nu(T \cup L)`. The Shapley interaction index of a group :math:`S` is
+         .. container:: shapiq-talk-definition shapiq-from-1
 
-      .. math::
+            .. rubric:: Definition 4 (Shapley Interactions).
 
-         \phi^{\text{SII}}_S(\nu) = \sum_{T \subseteq D \setminus S}
-         \frac{1}{(d - |S| + 1) \binom{d - |S|}{|T|}}\, \Delta_S(T).
+            Shapley interactions average **discrete derivatives**
+            :math:`\Delta_S(T) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\, \nu(T \cup L)` instead of
+            marginal contributions. With :math:`s = |S|` and :math:`t = |T|`, the index is
 
-   .. container:: shapiq-talk-definition shapiq-from-2
+            .. math::
 
-      .. rubric:: The Full Decomposition (Möbius Transform).
+               \phi^{\text{SII}}_S(\nu) = \sum_{T \subseteq D \setminus S}
+               \frac{(d - s - t)!\; t!}{(d - s + 1)!}\, \Delta_S(T).
 
-      At order :math:`k = d`, the explanation is exact. Every coalition's value is the sum of the
-      **Möbius transform** :math:`m` over its groups,
+      .. container:: shapiq-talk-column
 
-      .. math::
-
-         \nu(T) = \sum_{S \subseteq T} m(S), \qquad
-         m(S) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\, \nu(L).
+         .. shapiq-talk-figure:: lattice-sii
+            :alt: The lattice of the four players of the giraffe example again. A pair of players spans a square in it at every coalition of the other players. The discrete derivative of the pair is the sum around that square, with alternating signs. The Shapley interaction of the pair averages the discrete derivatives of all its squares.
 
    .. shapiq-notes::
 
       An explanation of order :math:`k` adds to the Shapley values a value for every pair, every
       triple, and so on up to groups of :math:`k` features. Together they approximate the
-      prediction. The Shapley interaction index :cite:p:`Grabisch.1999` replaces the marginal
-      contribution of one feature by the discrete derivative of a group, what the group adds
-      beyond what its members add alone. Its variants k-SII :cite:p:`Bordt.2023`, Shapley-Taylor
-      and Faith-SHAP :cite:p:`Tsai.2022` make the values of each order add up to the prediction.
-      At the highest order, the explanation is the Möbius transform :cite:p:`Harsanyi.1963`, which
-      decomposes the game exactly :cite:p:`Fujimoto.2006`. The order thus moves an explanation
-      from compact to complete.
-
-.. shapiq-slide:: Every Order Explains More of the Model
-   :layout: wide
-   :cite: Tsai.2022 Bordt.2023
-
-   .. shapiq-demo:: orders
-      :examples: applicant, house, tabpfn, applicants, houses
-
-   .. shapiq-notes::
-
-      One prediction can be explained at every order of interaction. The Shapley values sit at
-      the top. Below them follow the interactions of order 2, 3 and so on, down to the full
-      decomposition, which is the model itself :cite:p:`Bordt.2023`. Faithfulness measures how
-      well each order predicts what the model does when only some features are present
-      :cite:p:`Tsai.2022`. For the applicant, who defaulted, the Shapley values reach an R² of
-      0.24. The pairs of the credit limit with the bill, and of the bill with the payment of
-      August, lift the fit to 0.98. A house in Los Angeles shows the same with latitude and
-      longitude. TabPFN, a tabular foundation model, values that house, and its Shapley values
-      explain close to nothing.
-
-      Yet across 2,000 applicants, the Shapley values fit with an R² of 0.78 on average, and
-      across 2,000 houses with 0.79. For many predictions, SHAP is a good explanation. The
-      applicant fits worse than 97 % of them. Whether interactions are worth it thus depends on
-      the prediction, and it can be measured instead of guessed.
-
-   .. shapiq-try::
-
-      The guide :doc:`../../introduction/how-much-explained` builds this figure up step by step,
-      explains how the fit is measured, and ends with the code that computed it.
-
-.. shapiq-slide:: For Tree Ensembles, Interactions Are Exact
-   :layout: wide
-   :steps: 2
-   :cite: Muschalik.2024a Lundberg.2020
-
-   .. container:: shapiq-talk-columns
-
-      .. container:: shapiq-talk-column
-
-         .. code-block:: python
-
-            import shapiq
-
-            explainer = shapiq.TreeExplainer(
-                model, index="k-SII", max_order=2
-            )
-            # one prediction, exactly
-            explanation = explainer.explain(x)
-
-         .. container:: shapiq-from-1
-
-            .. code-block:: python
-
-               # every prediction of a test set
-               explanations = explainer.explain_X(X_test)
-
-               # what "absent" means is an argument
-               shapiq.TreeExplainer(
-                   model, mode="interventional",
-                   reference_dataset=X_ref,
-               )
-
-         .. rst-class:: shapiq-talk-libraries
-
-         XGBoost · LightGBM · CatBoost · scikit-learn
-
-      .. container:: shapiq-talk-column
-
-         .. shapiq-demo:: orders
-            :step: full
-            :examples: applicant
-
-   .. shapiq-notes::
-
-      Every explanation of the house so far was computed exactly, with no sampling and no
-      approximation. A path in a tree of depth 5 splits on at most five features, so no more than
-      five features interact. The layers of the applicant thus end at order 5, where the explanation
-      fits the model exactly. TreeSHAP computes the Shapley values of tree ensembles in
-      polynomial time :cite:p:`Lundberg.2020`. TreeSHAP-IQ uses the same structure for Shapley
-      interactions of any order :cite:p:`Muschalik.2024a`. In ``shapiq``, it takes three lines for
-      XGBoost, LightGBM, CatBoost and scikit-learn models. What it means for a feature to be absent
-      is an argument of the explainer, ``mode``.
-
-   .. shapiq-try::
-
-      .. code-block:: python
-
-         from sklearn.datasets import fetch_california_housing
-         from xgboost import XGBRegressor
-
-         import shapiq
-
-         X, y = fetch_california_housing(return_X_y=True, as_frame=True)
-         model = XGBRegressor(n_estimators=100, max_depth=5).fit(X, y)
-         X_test = X.to_numpy()[:200]
-
-         # the exact Shapley interactions of 200 houses, up to pairs
-         explainer = shapiq.TreeExplainer(model, index="k-SII", max_order=2)
-         portfolio = explainer.explain_X(X_test)
-         print(portfolio[0].get_top_k(5))
-
-         # absent features drawn from 100 houses instead of the trees' own distribution
-         explainer = shapiq.TreeExplainer(
-             model, index="k-SII", max_order=2, mode="interventional", reference_dataset=X_test[:100]
-         )
-         print(explainer.explain(X_test[0]).get_top_k(5))
+      prediction. In the lattice, a pair of players spans a square at every coalition of the
+      others. Going around the square gives the discrete derivative, what the pair adds together
+      beyond what each adds alone. For the patch of the giraffe and the word "giraffe", it is
+      large. The Shapley interaction index averages these squares :cite:p:`Grabisch.1999`, as the
+      Shapley value averages edges. Its variants k-SII :cite:p:`Bordt.2023`, Shapley-Taylor and
+      Faith-SHAP :cite:p:`Tsai.2022` make the values of each order add up to the prediction.
 
 .. shapiq-slide:: Similarity Lives Between Image and Text
    :layout: wide
    :cite: Baniecki.2025 Thies.2026
 
    .. shapiq-demo:: fixlip
+      :pick: giraffe-tree
 
    .. shapiq-notes::
 
@@ -471,6 +366,57 @@ says, and code reproduces what the slide shows.
 
       :doc:`../../demos/fixlip/index` explains FIxLIP step by step and ends with the code of the
       vision–language game and its explanation with ``shapiq``.
+
+.. shapiq-slide:: Latitude and Longitude Act Together
+   :layout: wide
+   :cite: Muschalik.2024a
+
+   .. shapiq-demo:: orders
+      :step: interactions
+      :select: 2
+      :examples: houses
+
+   .. shapiq-notes::
+
+      Back to the houses of California. At order 2, the strongest pair across the map is latitude
+      with longitude. On their own, both say little. Together, they say where a house lies: on the
+      coast around San Francisco and Los Angeles, or inland. A price depends on this location,
+      and no single coordinate captures it. Interactions show it on the map.
+
+.. shapiq-slide:: The Full Decomposition Opens the Black Box
+   :layout: wide
+   :cite: Muschalik.2024a Fujimoto.2006 Baniecki.2025
+
+   .. shapiq-demo:: orders
+      :select: full
+      :reveal: open
+      :examples: houses, fixlip
+      :pick: giraffe
+
+   .. shapiq-notes::
+
+      At the highest order, the explanation is the model. For the tree ensemble, every order is
+      computed exactly, and the full decomposition reproduces the model with an :math:`R^2` of 1
+      :cite:p:`Muschalik.2024a`. The black box opens all the way. For SigLIP 2, the game has too
+      many players to evaluate every coalition. Its explanations are estimated, and what the full
+      decomposition falls short of 1 is the estimation gap. The mechanism stays blurry.
+
+.. shapiq-slide:: Every Order Explains More of the Model
+   :layout: wide
+   :steps: 5
+   :cite: Tsai.2022 Bordt.2023
+
+   .. shapiq-talk-figure:: faithfulness
+      :class: talk-faith-climb
+      :alt: Faithfulness order by order, for a credit applicant. The explanation of each order predicts what the model does with only some features present. The R² rises from 0.24 for the Shapley values to 0.98 for order 2 and to 1 at order 5.
+
+   .. shapiq-notes::
+
+      Faithfulness again, now order by order. The Shapley values reach an :math:`R^2` of 0.24 for
+      the applicant. The pairs lift it to 0.98, as they keep the credit limit and the bill of
+      September apart. Each further order adds what the previous ones missed, and at order 5,
+      the depth of the trees, the explanation is exact. The order thus moves an explanation from
+      compact to complete, and faithfulness says how far to go :cite:p:`Tsai.2022`.
 
 .. shapiq-slide:: Every Explanation Makes Three Choices
    :layout: wide
@@ -579,36 +525,13 @@ says, and code reproduces what the slide shows.
 
 .. shapiq-slide:: For One Prediction, Methods Differ in Two Choices
    :layout: wide
-   :steps: 4
+   :steps: 3
    :cite: Fumagalli.2025 Herbinger.2026 Tsang.2020 Friedman.2001 Apley.2020 Sundararajan.2020a
           Janzing.2020 Lundberg.2017 Lundberg.2020 Zeiler.2014 Goldstein.2015 Zintgraf.2017
           Blucher.2022 Harris.2022 Bordt.2023 Tsai.2022 Sundararajan.2020
 
-   .. container:: shapiq-talk-v2-stage
-
-      .. shapiq-talk-figure:: framework
-         :alt: A grid of local feature-based explanations. Its columns are how absent features are treated, by a baseline, the marginal or the conditional distribution. Its rows are how higher-order interactions enter, as pure, partial or full effects. Each cell lists the methods that fall into it, for individual, joint and interaction explanations.
-
-      .. container:: shapiq-talk-v2 shapiq-from-3
-
-         .. rst-class:: shapiq-talk-v2-badge
-
-         shapiq-v2
-
-         .. container:: shapiq-talk-v2-panel
-
-            .. rubric:: The framework becomes shapiq-v2
-
-            Masking, behavior and interaction as building blocks that combine freely, for any
-            model and any explanation in this grid.
-
-            .. rst-class:: shapiq-talk-properties
-
-            | **Masking** :math:`\mathcal{M}`
-            | **Behavior** :math:`\mathcal{B}`
-            | **Interaction** :math:`\mathcal{I}`
-
-            In active development, with a large team.
+   .. shapiq-talk-figure:: framework
+      :alt: A grid of local feature-based explanations. Its columns are how absent features are treated, by a baseline, the marginal or the conditional distribution. Its rows are how higher-order interactions enter, as pure, partial or full effects. Each cell lists the methods that fall into it, for individual, joint and interaction explanations.
 
    .. The chips of the grid link to these citations, as every citation of the docs links to the
       bibliography (figures.js finds each by its class).
@@ -690,10 +613,6 @@ says, and code reproduces what the slide shows.
       Occlusion, PDP and ICE sit in other cells. These methods do not compete. Each cell answers
       its own question.
 
-      This framework is the core of shapiq-v2, which we are building with a large team. Masking,
-      behavior and interaction become building blocks that combine freely, so that every cell of
-      this grid, and every explanation of the three choices, is one call away.
-
    .. shapiq-try::
 
       .. code-block:: python
@@ -719,11 +638,44 @@ says, and code reproduces what the slide shows.
          for index in ("Moebius", "SII", "Co-Moebius"):
              print(index, computer(index, order=2).get_top_k(3).dict_values)
 
-.. shapiq-slide:: Outlook: Lessons from probly
+.. shapiq-slide:: shapiq-v2
+   :layout: title
+   :class: shapiq-talk-v2-slide
+   :cite: Fumagalli.2025 Herbinger.2026
+
+   .. container:: shapiq-talk-v2-hero
+
+      .. container:: shapiq-talk-v2-logo
+
+         .. image:: /_static/logo/logo_shapiq_light.svg
+            :class: shapiq-hero-logo only-light
+            :alt: The shapiq logo: a network of players, linked by their interactions.
+
+         .. image:: /_static/logo/logo_shapiq_dark.svg
+            :class: shapiq-hero-logo only-dark
+            :alt: The shapiq logo: a network of players, linked by their interactions.
+
+         .. rst-class:: shapiq-talk-v2-mark
+
+         v2
+
+      .. container:: shapiq-talk-v2-blocks
+
+         .. math::
+
+            \phi \;=\; \mathcal{I} \circ \mathcal{B} \circ \mathcal{M}\, f
+
+   .. shapiq-notes::
+
+      This framework is the core of shapiq-v2, which we are building with a large team. Masking,
+      behavior and interaction become building blocks that combine freely, so that every cell of
+      the grid, and every explanation of the three choices, is one call away.
+
+.. shapiq-slide:: A Shoutout to probly
    :layout: wide
    :steps: 2
 
-   .. container:: shapiq-talk-columns shapiq-talk-columns--probly
+   .. container:: shapiq-talk-columns shapiq-talk-columns-probly
 
       .. container:: shapiq-talk-column shapiq-talk-probly
 
@@ -815,6 +767,190 @@ says, and code reproduces what the slide shows.
    .. shapiq-notes::
 
       Slides for questions after the talk.
+
+.. shapiq-slide:: SHAP Gives One Score per Feature
+   :layout: wide
+   :cite: Lundberg.2017
+
+   .. shapiq-demo:: orders
+      :step: shapley
+      :examples: applicant
+
+   .. shapiq-notes::
+
+      An XGBoost model predicts whether a credit card client defaults, from eight features of the
+      last months. SHAP splits this prediction among the features. Each feature gets one score,
+      red where it raises the risk and blue where it lowers it. The bill of September raises the
+      risk the most, and the high credit limit lowers it a little. Yet a bill says little without
+      the limit it fills. Only both together say that the client has used nearly all of the
+      credit.
+
+   .. shapiq-try::
+
+      .. code-block:: python
+
+         from sklearn.datasets import fetch_california_housing
+         from xgboost import XGBRegressor
+
+         import shapiq
+
+         X, y = fetch_california_housing(return_X_y=True, as_frame=True)
+         model = XGBRegressor(n_estimators=100, max_depth=4).fit(X, y)
+         x = X.iloc[0].to_numpy()
+
+         # the exact Shapley values of one house
+         explainer = shapiq.TreeExplainer(model, index="SV", max_order=1)
+         shapley_values = explainer.explain(x)
+         shapley_values.plot_force(feature_names=list(X.columns))
+
+.. shapiq-slide:: Masking Turns a Model into a Game
+   :layout: wide
+   :cite: Covert.2021 Fumagalli.2025
+
+   .. container:: shapiq-talk-masking
+
+      A model needs all :math:`d` features, not a subset. **Masking** turns it into a game. The
+      features in :math:`T` keep the values of :math:`x`, the others are removed,
+
+      .. math::
+
+         \nu(T) = \mathbb{E}\big[f(x_T, X_{D \setminus T})\big],
+         \qquad \text{e.g. } \nu(\{\text{Limit}, \text{Bill Sep}\}) = -1.10 .
+
+   .. shapiq-notes::
+
+      A model is not a game, as it needs all its features. Masking makes it one. The features of
+      a coalition keep the values of the explained input, and the others are removed, for
+      instance by averaging the model over their distribution :cite:p:`Covert.2021`. With only the
+      credit limit and the bill of September, the model predicts −1.10 in log-odds, against −1.56
+      with no feature at all.
+
+.. shapiq-slide:: At the Highest Order, the Explanation Is Exact
+   :layout: wide
+   :cite: Harsanyi.1963 Fujimoto.2006
+
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: The Full Decomposition (Möbius Transform).
+
+      At order :math:`k = d`, the explanation is exact. Every coalition's value is the sum of the
+      **Möbius transform** :math:`m` over its groups,
+
+      .. math::
+
+         \nu(T) = \sum_{S \subseteq T} m(S), \qquad
+         m(S) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\, \nu(L).
+
+   .. shapiq-notes::
+
+      At the highest order, the explanation is the Möbius transform :cite:p:`Harsanyi.1963`,
+      which decomposes the game exactly :cite:p:`Fujimoto.2006`.
+
+.. shapiq-slide:: Every Order, for Five Examples
+   :layout: wide
+   :cite: Tsai.2022 Bordt.2023
+
+   .. shapiq-demo:: orders
+      :examples: applicant, house, tabpfn, applicants, houses
+
+   .. shapiq-notes::
+
+      One prediction can be explained at every order of interaction. The Shapley values sit at
+      the top. Below them follow the interactions of order 2, 3 and so on, down to the full
+      decomposition, which is the model itself :cite:p:`Bordt.2023`. Faithfulness measures how
+      well each order predicts what the model does when only some features are present
+      :cite:p:`Tsai.2022`. For the applicant, who defaulted, the Shapley values reach an R² of
+      0.24. The pairs of the credit limit with the bill, and of the bill with the payment of
+      August, lift the fit to 0.98. A house in Los Angeles shows the same with latitude and
+      longitude. TabPFN, a tabular foundation model, values that house, and its Shapley values
+      explain close to nothing.
+
+      Yet across 2,000 applicants, the Shapley values fit with an R² of 0.78 on average, and
+      across 2,000 houses with 0.79. For many predictions, SHAP is a good explanation. The
+      applicant fits worse than 97 % of them. Whether interactions are worth it thus depends on
+      the prediction, and it can be measured instead of guessed.
+
+   .. shapiq-try::
+
+      The guide :doc:`../../introduction/how-much-explained` builds this figure up step by step,
+      explains how the fit is measured, and ends with the code that computed it.
+
+.. shapiq-slide:: For Tree Ensembles, Interactions Are Exact
+   :layout: wide
+   :steps: 2
+   :cite: Muschalik.2024a Lundberg.2020
+
+   .. container:: shapiq-talk-columns
+
+      .. container:: shapiq-talk-column
+
+         .. code-block:: python
+
+            import shapiq
+
+            explainer = shapiq.TreeExplainer(
+                model, index="k-SII", max_order=2
+            )
+            # one prediction, exactly
+            explanation = explainer.explain(x)
+
+         .. container:: shapiq-from-1
+
+            .. code-block:: python
+
+               # every prediction of a test set
+               explanations = explainer.explain_X(X_test)
+
+               # what "absent" means is an argument
+               shapiq.TreeExplainer(
+                   model, mode="interventional",
+                   reference_dataset=X_ref,
+               )
+
+         .. rst-class:: shapiq-talk-libraries
+
+         XGBoost · LightGBM · CatBoost · scikit-learn
+
+      .. container:: shapiq-talk-column
+
+         .. shapiq-demo:: orders
+            :step: full
+            :examples: applicant
+
+   .. shapiq-notes::
+
+      Every explanation of the house so far was computed exactly, with no sampling and no
+      approximation. A path in a tree of depth 5 splits on at most five features, so no more than
+      five features interact. The layers of the applicant thus end at order 5, where the explanation
+      fits the model exactly. TreeSHAP computes the Shapley values of tree ensembles in
+      polynomial time :cite:p:`Lundberg.2020`. TreeSHAP-IQ uses the same structure for Shapley
+      interactions of any order :cite:p:`Muschalik.2024a`. In ``shapiq``, it takes three lines for
+      XGBoost, LightGBM, CatBoost and scikit-learn models. What it means for a feature to be absent
+      is an argument of the explainer, ``mode``.
+
+   .. shapiq-try::
+
+      .. code-block:: python
+
+         from sklearn.datasets import fetch_california_housing
+         from xgboost import XGBRegressor
+
+         import shapiq
+
+         X, y = fetch_california_housing(return_X_y=True, as_frame=True)
+         model = XGBRegressor(n_estimators=100, max_depth=5).fit(X, y)
+         X_test = X.to_numpy()[:200]
+
+         # the exact Shapley interactions of 200 houses, up to pairs
+         explainer = shapiq.TreeExplainer(model, index="k-SII", max_order=2)
+         portfolio = explainer.explain_X(X_test)
+         print(portfolio[0].get_top_k(5))
+
+         # absent features drawn from 100 houses instead of the trees' own distribution
+         explainer = shapiq.TreeExplainer(
+             model, index="k-SII", max_order=2, mode="interventional", reference_dataset=X_test[:100]
+         )
+         print(explainer.explain(X_test[0]).get_top_k(5))
 
 .. shapiq-slide:: Each Explanation Answers a Different Question
 
