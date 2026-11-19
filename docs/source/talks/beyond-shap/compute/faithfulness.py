@@ -53,8 +53,8 @@ for order in sorted(data["orders"], key=int):
 # every coalition as a bit mask (feature i is bit i), and every order's values by group, so that
 # the figure can add up an explanation over any coalition the reader picks
 masks = [int(sum(1 << i for i in range(n) if row[i])) for row in coalitions]
-for order in orders:
-    orders[order]["values"] = [
+for order, shown in orders.items():
+    shown["values"] = [
         [list(group), round(value, 4)] for group, value in data["orders"][order]["values"]
     ]
 block = {
