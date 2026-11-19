@@ -182,6 +182,7 @@ EXAMPLE_ORDER = {
     "technicalities": (
         "plot_imputers.py",
         "plot_conditional_imputer.py",
+        "plot_causal_shapley_values.py",
         "plot_budgets_and_seeds.py",
         "plot_parallel_computation.py",
     ),
