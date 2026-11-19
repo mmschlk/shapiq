@@ -29,17 +29,17 @@ body[data-theme="dark"] .tl {
 
 .tl-legend {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0.5em;
-  min-height: 3.3em;
   font-size: min(1em, 3cqi);
 }
 
 .tl-photo {
   position: relative;
   flex: none;
-  width: 3.3em;
-  height: 3.3em;
+  align-self: center;
+  width: 3.35em;
+  height: 3.35em;
   border-radius: 5px;
   background-size: cover;
   box-shadow: 0 0 0 1px var(--shapiq-border);
@@ -59,14 +59,21 @@ body[data-theme="dark"] .tl {
   box-shadow: 0 0 0 1.5px var(--tl-hot);
 }
 
+/* a player's card, the same for all four on both slides: its glyph above, its Shapley value
+   (from step 2) below */
 .tl-player {
-  display: flex;
+  display: grid;
   flex: 1 1 0;
   min-width: 0;
-  align-items: center;
-  gap: 0.45em;
+  grid-template-rows: 1.75em 0.95em;
+  align-content: center;
+  justify-items: center;
+  gap: 0.25em;
+  box-sizing: border-box;
+  height: 3.35em;
   margin: 0;
-  padding: 0.35em 0.5em;
+  padding: 0 0.5em;
+  overflow: hidden;
   border: 1px solid var(--shapiq-border);
   border-radius: var(--shapiq-radius-small);
   background: var(--shapiq-surface-raised);
@@ -74,6 +81,10 @@ body[data-theme="dark"] .tl {
   font: inherit;
   cursor: default;
   transition: border-color 200ms var(--shapiq-ease), box-shadow 200ms var(--shapiq-ease);
+}
+
+.tl-player > .tl-chip {
+  align-self: center;
 }
 
 .tl-sii .tl-player,
@@ -93,15 +104,17 @@ body[data-theme="dark"] .tl {
 
 .tl-score {
   display: flex;
-  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.35em;
+  width: 100%;
   min-width: 0;
-  flex-direction: column;
-  gap: 0.2em;
 }
 
 .tl-bar-track {
   display: block;
-  height: 0.45em;
+  flex: 1 1 auto;
+  min-width: 0.8em;
+  height: 0.42em;
   border-radius: 0.25em;
   background: color-mix(in srgb, var(--shapiq-text-muted) 14%, transparent);
   overflow: hidden;
@@ -122,7 +135,8 @@ body[data-theme="dark"] .tl {
 }
 
 .tl-bar-value {
-  font-size: 0.8em;
+  flex: none;
+  font-size: 0.78em;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -138,8 +152,8 @@ body[data-theme="dark"] .tl {
 }
 
 .tl-chip-patch {
-  width: 2.2em;
-  height: 2.2em;
+  width: 1.75em;
+  height: 1.75em;
   border-radius: 4px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tl-ink) 25%, transparent);
 }
@@ -149,7 +163,7 @@ body[data-theme="dark"] .tl {
   border: 1px solid color-mix(in srgb, var(--tl-ink) 30%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--tl-ink) 8%, transparent);
-  font-size: 0.9em;
+  font-size: 0.85em;
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
@@ -233,7 +247,7 @@ body[data-theme="dark"] .tl {
 }
 
 .shapiq-talk-figure .tl-slot-word {
-  font-size: 8px;
+  font-size: 10.5px;
   font-weight: 600;
 }
 
@@ -429,10 +443,6 @@ body[data-theme="dark"] .tl {
   opacity: 0.55;
 }
 
-.tl-sii .tl-player {
-  flex: 0 1 auto;
-}
-
 .tl-square-none {
   display: none;
 }
@@ -586,18 +596,7 @@ body[data-theme="dark"] .tl {
   }
 
   .tl-player {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.3em;
-    padding: 0.35em;
-  }
-
-  .tl-player > .tl-chip {
-    align-self: center;
-  }
-
-  .tl-bar-value {
-    text-align: center;
+    padding: 0 0.35em;
   }
 }
 

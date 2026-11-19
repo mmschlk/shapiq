@@ -1261,3 +1261,45 @@ body[data-theme="dark"] .fixlip-demo-token.fixlip-demo-strong {
     transition: none;
   }
 }
+
+/* -- in a talk presented one slide at a time (talk.js: .shapiq-deck, not .shapiq-deck--scroll):
+   no note on how to use the demo, as a figure presented has none; the note on the models over the
+   photo and the panel instead of in the flow, so that opening it moves nothing (and the deck does
+   not scale the slide down), with a scroll of its own; and in the dark, the legend's red as
+   bright as the tints' and the edges' (demo.js) ---------------------------------------------- */
+
+.shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo-hint {
+  display: none;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo {
+  position: relative;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo-about {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  left: 0;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo-about.fixlip-demo-about-open {
+  margin-bottom: 0;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo-about-card {
+  max-height: min(24rem, 55vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="dark"] .shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo-key-red {
+  background: rgb(255, 72, 122);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo-key-red {
+    background: rgb(255, 72, 122);
+  }
+}

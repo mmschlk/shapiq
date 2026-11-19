@@ -75,13 +75,21 @@
     const decimals = Math.max(3, Math.min(5, 1 - Math.floor(Math.log10(size))));
     return `${value >= 0 ? "+" : "−"}${size.toFixed(decimals)}`;
   };
-  const solid = (value) => `rgb(${(value >= 0 ? RED : BLUE).join(", ")})`;
+  // in a talk presented one slide at a time (talk.js), in the dark, the red is brighter: the tints
+  // and the edges are drawn see-through, and the red, through them on a near-black slide, turned a
+  // dark maroon (2.9:1) where the blue stayed bright. The page itself keeps the demo's red
+  const RED_BRIGHT = [255, 72, 122];
+  const presented = () => Boolean(root.closest(".shapiq-deck:not(.shapiq-deck--scroll)"));
+  const darkTheme = () =>
+    document.body.dataset.theme === "dark" || (document.body.dataset.theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const red = () => (presented() && darkTheme() ? RED_BRIGHT : RED);
+  const solid = (value) => `rgb(${(value >= 0 ? red() : BLUE).join(", ")})`;
   // a value in a text: red or blue by its sign, in shades that read well as text in either theme
   const sign = (value) => (value >= 0 ? "fixlip-demo-up" : "fixlip-demo-down");
   const valued = (value) => el("strong", sign(value), signed(value));
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const tint = (value, largest, strength = 0.85) => {
-    const [r, g, b] = value >= 0 ? RED : BLUE;
+    const [r, g, b] = value >= 0 ? red() : BLUE;
     const alpha = largest > 0 ? Math.min(Math.abs(value) / largest, 1) * strength : 0;
     return { color: `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`, alpha };
   };
@@ -944,7 +952,9 @@
         stroke: solid(value),
         "stroke-linecap": "round",
         "stroke-width": (width[0] + width[1] * strength).toFixed(1),
-        "stroke-opacity": (opacity[0] + opacity[1] * strength).toFixed(2),
+        // (presented in the dark, a little more opaque: through the near-black slide, see-through
+        // edges darken towards it, the red the most)
+        "stroke-opacity": Math.min(1, (opacity[0] + opacity[1] * strength) * (red() === RED_BRIGHT ? 1.4 : 1)).toFixed(2),
       };
       for (const [key, v] of Object.entries(attributes)) node.setAttribute(key, v);
       return node;
@@ -1119,6 +1129,17 @@
     reset();
     setView(state.view);
     started = true;
+    // (its red drawn anew where it changes: the theme changed, or a talk is presented, or no longer,
+    // which talk.js tells the page as a resize)
+    let redNow = red().join();
+    const redraw = () => {
+      if (red().join() === redNow) return;
+      redNow = red().join();
+      show(state.focus);
+    };
+    new MutationObserver(redraw).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", redraw);
+    window.addEventListener("resize", redraw);
     // (a photo picked: the figures of the page show it too, as they show one chosen here, once
     // they have started; figures.js)
     if (picked) setTimeout(() => document.dispatchEvent(new CustomEvent(IMAGE_EVENT, { detail: { image: picked.id, source: null } })));

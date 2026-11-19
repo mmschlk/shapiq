@@ -4,7 +4,7 @@
    (SigLIP 2 matching the photo demos/fixlip/assets/giraffe-tree.jpg with its caption): two patches
    of the photo, the giraffe's head and the dead tree, and two words of the caption, "giraffe" and
    "water". The empty coalition lies at the bottom, the full one at the top, one row per size. A
-   node shows which players are present (the patches above, the words below) and its value ν(T).
+   node shows its value ν(T) and which players are present, a patch and a word in each row.
 
    lattice-sv   Step 0 the lattice. Step 1 the marginal contributions on the edges: an edge adds
                 one player, and pointing at it writes out Δ_i(T) = ν(T ∪ {i}) − ν(T). Step 2 the
@@ -13,7 +13,8 @@
    lattice-sii  Step 0 the lattice with the pair S of the giraffe's head and the word "giraffe".
                 Step 1 the square the pair spans at each coalition T of the other two players, and
                 its discrete derivative Δ_S(T). Step 2 the Shapley interaction, the weighted mean of
-                the four squares. A click on a player in the legend makes another pair.
+                the four squares, with the Shapley values of all four in the legend. A click on a player in the
+                legend makes another pair.
 
    The nodes stand where the squares of the pair are faces of their own: a coalition is T ∪ L, with
    T of the other two players and L within the pair, and lies at x(T) + x(L). The squares of
@@ -148,24 +149,18 @@
     const items = PLAYERS.map((p) => {
       const item = make("button", { type: "button", class: "tl-player", "aria-label": label(p) }, legend);
       chip(p, item);
-      const score = make("span", { class: `tl-score${sii ? "" : " talk-from-2"}` }, item);
-      if (!sii) {
-        const track = make("span", { class: "tl-bar-track" }, score);
-        const bar = make("span", { class: `tl-bar ${shapley[p] >= 0 ? "tl-bar-pos" : "tl-bar-neg"}` }, track);
-        bar.style.width = `${(Math.abs(shapley[p]) / maxShapley) * 100}%`;
-        make("span", { class: "tl-bar-value" }, score, number(shapley[p], { digits: 2 }));
-        item.setAttribute("aria-label", `${label(p)}, Shapley value ${number(shapley[p], { digits: 2 })}`);
-      }
+      // the Shapley values of all four, from step 2 (on both slides, so that their legends match)
+      const score = make("span", { class: "tl-score talk-from-2" }, item);
+      const track = make("span", { class: "tl-bar-track" }, score);
+      const bar = make("span", { class: `tl-bar ${shapley[p] >= 0 ? "tl-bar-pos" : "tl-bar-neg"}` }, track);
+      bar.style.width = `${(Math.abs(shapley[p]) / maxShapley) * 100}%`;
+      make("span", { class: "tl-bar-value" }, score, number(shapley[p], { digits: 2 }));
+      item.setAttribute("aria-label", `${label(p)}, Shapley value ${number(shapley[p], { digits: 2 })}`);
       return item;
     });
 
     // ---- the lattice ----
     const svg = make("svg:svg", { class: "tl-svg", viewBox: `0 0 ${VW} ${VH}`, role: "group" }, root);
-    const defs = make("svg:defs", {}, svg);
-    const clipId = `tl-clip-${kind}-${Math.random().toString(36).slice(2, 7)}`;
-    const clip = make("svg:clipPath", { id: clipId }, defs);
-    make("svg:rect", { x: 0, y: 0, width: 1, height: 1, rx: 0.12 }, clip);
-    clip.setAttribute("clipPathUnits", "objectBoundingBox");
     const squareLayer = make("svg:g", { class: "tl-squares" }, svg);
     const edgeLayer = make("svg:g", { class: "tl-edges" }, svg);
     const labelLayer = make("svg:g", { class: "tl-labels", "aria-hidden": "true" }, svg);
@@ -177,27 +172,28 @@
       return names.length ? names.join(", ") : "no player";
     };
 
-    // a node: its value above, the two patches, then the two words
+    // a node: its value above, then the players, a patch and a word in each row
     const nodes = [];
     for (let mask = 0; mask <= FULL; mask++) {
       const value = nu(mask);
       const g = make("svg:g", { class: "tl-node", "data-mask": mask, "aria-label": `ν of ${describe(mask)} is ${number(value)}` }, nodeLayer);
       const box = make("svg:rect", { class: `tl-node-box ${value < 0 ? "tl-neg" : "tl-pos"}`, x: -NW / 2, y: -NH / 2, width: NW, height: NH, rx: 9 }, g);
       box.style.setProperty("--level", Math.abs(value) / MAX_VALUE);
-      make("svg:text", { class: "tl-node-value", x: 0, y: -10, "text-anchor": "middle" }, g, number(value));
+      make("svg:text", { class: "tl-node-value", x: 0, y: -12, "text-anchor": "middle" }, g, number(value));
       PLAYERS.forEach((p) => {
         const on = (mask >> p) & 1;
         const player = players[p];
         const slot = make("svg:g", { class: `tl-slot ${on ? "tl-on" : "tl-off"}`, "data-player": p }, g);
+        // two rows: a patch and a word in each (the giraffe's head and "giraffe" above)
+        const row = PLAYERS.filter((q) => players[q].kind === player.kind).indexOf(p);
+        const y = row ? 10 : -7;
         if (player.kind === "patch") {
-          const x = p === 0 ? -27 : 11;
-          const pic = make("svg:svg", { x, y: -5, width: 16, height: 16, viewBox: `${player.patch % grid} ${Math.floor(player.patch / grid)} 1 1`, preserveAspectRatio: "none", class: "tl-slot-pic" }, slot);
+          const pic = make("svg:svg", { x: -35, y, width: 15, height: 15, viewBox: `${player.patch % grid} ${Math.floor(player.patch / grid)} 1 1`, preserveAspectRatio: "none", class: "tl-slot-pic" }, slot);
           make("svg:image", { href: photo, x: 0, y: 0, width: grid, height: grid, preserveAspectRatio: "none" }, pic);
-          make("svg:rect", { class: "tl-slot-frame", x: x - 0.5, y: -5.5, width: 17, height: 17, rx: 3 }, slot);
+          make("svg:rect", { class: "tl-slot-frame", x: -35.5, y: y - 0.5, width: 16, height: 16, rx: 3 }, slot);
         } else {
-          const x = p === 2 ? -37 : 1;
-          make("svg:rect", { class: "tl-slot-frame tl-slot-pill", x, y: 14, width: 36, height: 11, rx: 5.5 }, slot);
-          make("svg:text", { class: "tl-slot-word", x: x + 18, y: 22.2, "text-anchor": "middle" }, slot, player.word);
+          make("svg:rect", { class: "tl-slot-frame tl-slot-pill", x: -16, y, width: 52, height: 15, rx: 7.5 }, slot);
+          make("svg:text", { class: "tl-slot-word", x: 10, y: y + 11, "text-anchor": "middle" }, slot, player.word);
         }
       });
       nodes[mask] = g;
@@ -530,7 +526,7 @@
         sum.push(")");
       });
       const value = interaction(pair);
-      formula("Shapley Interaction", [V("φ"), SUB(CHIP(pair[0])), " = ", NUM(shapley[pair[0]], { digits: 2 }), GAP, V("φ"), SUB(CHIP(pair[1])), " = ", NUM(shapley[pair[1]], { digits: 2 })],
+      formula("Shapley Interaction", null,
         [V("φ"), SUB(V("S")), " = ", sum], ["= ", NUM(value, { digits: 2 }, "sii")]);
     }
 

@@ -201,7 +201,7 @@ says, and code reproduces what the slide shows.
 
    .. container:: shapiq-from-1 shapiq-talk-also
 
-      Other properties, measured by Quantus and OpenXAI:
+      Other properties measured by Quantus and OpenXAI
 
       .. rst-class:: shapiq-talk-properties
 
@@ -488,7 +488,7 @@ says, and code reproduces what the slide shows.
       :math:`\mathcal{I}_{\text{partial}} \circ \mathcal{B}_{\text{local}} \circ \mathcal{M}_{\text{marginal}}`. Shapley interactions keep masking and
       behavior, and change only how groups are counted :cite:p:`Enouen.2025`.
 
-.. shapiq-slide:: SHAP Shares Interactions Equally. Other Methods Do Not.
+.. shapiq-slide:: SHAP Shares Interactions Equally. Others Do Not.
    :layout: wide
    :steps: 2
    :cite: Fumagalli.2025
@@ -710,9 +710,9 @@ says, and code reproduces what the slide shows.
 
             .. rubric:: What shapiq-v2 takes from it
 
-            | **Library-agnostic**: PyTorch, JAX, scikit-learn, Hugging Face, in one API
-            | **Composable stages**: each one import, freely combined
-            | **One pipeline, many methods**: comparing methods means changing one line
+            | **Library-agnostic.** PyTorch, JAX, scikit-learn and Hugging Face share one API.
+            | **Composable stages.** Each stage is one import, and they combine freely.
+            | **One pipeline, many methods.** Comparing methods means changing one line.
 
    .. shapiq-notes::
 
@@ -807,10 +807,12 @@ says, and code reproduces what the slide shows.
    :layout: wide
    :cite: Covert.2021 Fumagalli.2025
 
-   .. container:: shapiq-talk-masking
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: Masking.
 
       A model needs all :math:`d` features, not a subset. **Masking** turns it into a game. The
-      features in :math:`T` keep the values of :math:`x`, the others are removed,
+      features in :math:`T` keep the values of :math:`x`, and the others are removed,
 
       .. math::
 

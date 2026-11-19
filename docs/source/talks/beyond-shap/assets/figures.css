@@ -125,10 +125,15 @@
   font-size: 1.15em;
 }
 
-.talk-same-name span {
+.talk-same-name {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.talk-same-name .talk-math {
+  margin: 0;
   color: var(--talk-muted);
-  font-family: var(--font-stack--monospace);
-  font-size: 0.85em;
+  font-size: 0.9em;
 }
 
 .talk-same-label {
@@ -880,12 +885,13 @@ a.talk-chip:focus-visible {
 }
 
 @media (min-width: 901px) {
-  .talk-faith-climb .talk-faith-readout {
+  .talk-faith .talk-faith-readout {
     flex-wrap: nowrap;
   }
 
-  .talk-faith-climb .talk-faith-meter {
-    flex: 1 1 6em;
+  .talk-faith .talk-faith-meter {
+    flex: 1 1 0;
+    min-width: 3em;
   }
 }
 
@@ -908,4 +914,33 @@ a.talk-chip:focus-visible {
 
 .talk-faith-ladder-now {
   fill: var(--shapiq-amber);
+}
+
+/* in the dark, the red of a positive part as bright as the blue of a negative one */
+body[data-theme="dark"] .talk-faith-arrow,
+body[data-theme="dark"] .talk-pos-line,
+body[data-theme="dark"] .talk-neg-line {
+  stroke-opacity: 1;
+  opacity: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .talk-faith-arrow,
+  body:not([data-theme="light"]) .talk-pos-line,
+  body:not([data-theme="light"]) .talk-neg-line {
+    stroke-opacity: 1;
+    opacity: 1;
+  }
+}
+
+/* a label over lines, with a halo of the page's color so that it reads */
+.talk-halo {
+  paint-order: stroke;
+  stroke: var(--color-background-primary, var(--shapiq-surface));
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.talk-effects .talk-same-says {
+  text-wrap: balance;
 }

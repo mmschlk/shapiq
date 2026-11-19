@@ -3047,6 +3047,69 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
+/* -- on a talk's slide (demo.js: orders-demo-deck, in a deck presented one slide at a time): no
+   notes on how to use the demo, as a figure presented has none; the card's map in its large
+   variant, its words read across a room (mapFace); and in the dark, nothing that glares: the chip
+   clears to a slate instead of a pale glass, the gray chip is darker than that, and the pill of
+   the example chosen is a tint of the ink, not the ink ------------------------------------------ */
+
+.orders-demo.orders-demo-deck :is(.orders-demo-tag-hint, .orders-demo-hint, .orders-demo-rail-nudge) {
+  display: none;
+}
+
+/* (and a photo's words on the card, as large as their rows let them be) */
+.orders-demo-deck .orders-demo-plan-face .orders-demo-tokens text {
+  font-size: 3.7px;
+}
+
+.orders-demo-map-large .orders-demo-map-counts {
+  display: none;
+}
+
+.orders-demo-map-large .orders-demo-map-caption .orders-demo-map-shown {
+  font-size: 4.8px;
+}
+
+.orders-demo-map-large .orders-demo-map-row text {
+  font-size: 3.6px;
+}
+
+.orders-demo-map-large .orders-demo-map-scale text {
+  font-size: 3.3px;
+}
+
+body[data-theme="dark"] .orders-demo.orders-demo-deck {
+  --orders-chip-gray: #2b303c;
+  --orders-glass: #4a5367;
+  --orders-glass-ink: #f2f4f8;
+}
+
+body[data-theme="dark"] .orders-demo-deck .orders-demo-pill {
+  background: color-mix(in srgb, var(--orders-ink) 20%, var(--orders-raised));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orders-ink) 30%, transparent);
+}
+
+body[data-theme="dark"] .orders-demo-deck .orders-demo-pill .orders-demo-option {
+  color: var(--orders-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .orders-demo.orders-demo-deck {
+    --orders-chip-gray: #2b303c;
+    --orders-glass: #4a5367;
+    --orders-glass-ink: #f2f4f8;
+  }
+
+  body:not([data-theme="light"]) .orders-demo-deck .orders-demo-pill {
+    background: color-mix(in srgb, var(--orders-ink) 20%, var(--orders-raised));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orders-ink) 30%, transparent);
+  }
+
+  body:not([data-theme="light"]) .orders-demo-deck .orders-demo-pill .orders-demo-option {
+    color: var(--orders-ink);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orders-demo *,
   .orders-demo *::before,

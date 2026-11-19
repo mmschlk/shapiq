@@ -811,6 +811,10 @@
     dot: 0.62, // a house's radius
     pixels: 720, // the side of the canvas the dots are painted on
     rows: { top: 8.8, step: 3.9, name: 78.6, bar: 79.8, width: 9.2, value: 97.6 },
+    // the card's face on a talk's slide (large), where it is seen across a room: its strongest
+    // rows only, a few, in larger words, the bars between the names and the values; the colors'
+    // scale under them, its ends named
+    large: { top: 10.2, step: 5.4, name: 71.6, bar: 73.4, width: 11.4, value: 97.6, count: 6, scale: 47.4 },
   };
   // many applicants: not on a map but on a plane (example.plane), its axes' room on the face, left
   // of the rows: across, the R^2 of their Shapley values, and up, their predicted probability of
@@ -890,8 +894,13 @@
   const mapRow = (sheet) => (sheet.order === 1 ? 0 : Math.max(0, sheet.rows.findIndex(([players]) => players.length > 1)));
   // (dollars without a sign: a size)
   const sized = (value) => `$${Math.round(Math.abs(value) * 100)}k`;
-  function mapFace(svg, example, sheet, layer = "all") {
+  // (large: the card's face on a talk's slide, where words smaller than about 10 pixels do not read
+  // across a room: the map, what it shows, its few strongest rows and the colors' scale, in larger
+  // words; no line of counts, no cities, no head over the rows, no name over the scale)
+  function mapFace(svg, example, sheet, layer = "all", large = false) {
     const { plane } = example;
+    const lines = large ? MAP.large : { ...MAP.rows, count: Infinity, scale: 64.6 };
+    if (large) svg.classList.add("orders-demo-map-large");
     const words = subjectOf(example);
     const west = plane ? 0 : Math.min(...example.outline.map(([lon]) => lon));
     const north = plane ? 0 : Math.max(...example.outline.map(([, lat]) => lat));
@@ -908,7 +917,7 @@
       picture(painted(spots.map(([x, y]) => [x, y, "rgb(122, 130, 152)", 0.42])));
       // the cities, named off the coast
       const places = add(svg, "g", { class: "orders-demo-map-places" });
-      for (const [name, lon, lat] of example.places) {
+      for (const [name, lon, lat] of large ? [] : example.places) {
         const [x, y] = at([lon, lat]);
         add(places, "path", { d: `M${x - 0.9} ${y}H${x + 0.9}M${x} ${y - 0.9}V${y + 0.9}` });
         add(places, "text", { x: roundTo(x - 2, 2), y: roundTo(y + 1.6, 2) }, name);
@@ -933,29 +942,33 @@
     // what the dots show, named over the map, with how many houses it raises and lowers
     const caption = add(svg, "g", { class: "orders-demo-map-caption" });
     const shown = add(caption, "text", { class: "orders-demo-map-shown", x: MAP.left, y: 4.6 });
-    const counts = add(caption, "text", { x: MAP.left, y: 8.3 });
+    const counts = add(caption, "text", { class: "orders-demo-map-counts", x: MAP.left, y: 8.3 });
+    if (large) shown.setAttribute("y", 5.4);
     // the rows: a name, a bar by the mean of its absolute values, and that mean
     const list = add(svg, "g", { class: "orders-demo-map-rows" });
-    add(list, "text", { class: "orders-demo-map-head", x: MAP.rows.value, y: 4.6 }, `moves ${words.each} by, on average`);
+    if (!large) add(list, "text", { class: "orders-demo-map-head", x: lines.value, y: 4.6 }, `moves ${words.each} by, on average`);
     const most = Math.max(...sheet.rows.map((row) => row[2]));
-    const rows = sheet.rows.map(([players, , mean], r) => {
-      const y = roundTo(MAP.rows.top + r * MAP.rows.step, 2);
+    const bar = large ? 2.8 : 2.2;
+    const rows = sheet.rows.slice(0, lines.count).map(([players, , mean], r) => {
+      const y = roundTo(lines.top + r * lines.step, 2);
       const row = add(list, "g", { class: "orders-demo-map-row" });
-      add(row, "text", { class: "orders-demo-map-name", x: MAP.rows.name, y }, nameOf(players));
-      add(row, "rect", { x: MAP.rows.bar, y: roundTo(y - 1.1, 2), width: roundTo(Math.max(0.5, (mean / most) * MAP.rows.width), 2), height: 2.2, rx: 0.6 });
-      add(row, "text", { class: "orders-demo-map-mean", x: MAP.rows.value, y }, words.size(mean));
+      add(row, "text", { class: "orders-demo-map-name", x: lines.name, y }, nameOf(players));
+      add(row, "rect", { x: lines.bar, y: roundTo(y - bar / 2, 2), width: roundTo(Math.max(0.5, (mean / most) * lines.width), 2), height: bar, rx: 0.6 });
+      add(row, "text", { class: "orders-demo-map-mean", x: lines.value, y }, words.size(mean));
       return row;
     });
     // the colors' scale, under the rows, east of the state: from what lowers a house's value the
     // most (the sheet's scale, or more) to what raises it the most
     const scale = add(svg, "g", { class: "orders-demo-map-scale" });
-    const [steps, cell, middle] = [5, 2.2, 84.6];
+    const [steps, cell, middle, high] = [5, large ? 2.4 : 2.2, large ? 85.4 : 84.6, large ? 3 : 2.2];
+    const top = lines.scale;
     for (let k = -steps; k <= steps; k++) {
-      add(scale, "rect", { x: roundTo(middle + (k - 0.5) * cell, 2), y: 64.6, width: cell + 0.05, height: 2.2, fill: solid(k), "fill-opacity": roundTo((Math.abs(k) / steps) ** 0.85, 3) });
+      add(scale, "rect", { x: roundTo(middle + (k - 0.5) * cell, 2), y: top, width: cell + 0.05, height: high, fill: solid(k), "fill-opacity": roundTo((Math.abs(k) / steps) ** 0.85, 3) });
     }
-    add(scale, "text", { x: middle, y: 62.3, "text-anchor": "middle" }, `added to ${words.each}`);
-    add(scale, "text", { x: roundTo(middle - (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "start" }, `−${words.size(sheet.scale)}`);
-    add(scale, "text", { x: roundTo(middle + (steps + 0.5) * cell, 2), y: 69.4, "text-anchor": "end" }, `+${words.size(sheet.scale)}`);
+    if (!large) add(scale, "text", { x: middle, y: 62.3, "text-anchor": "middle" }, `added to ${words.each}`);
+    const ends = roundTo(top + high + (large ? 3.6 : 2.6), 2);
+    add(scale, "text", { x: roundTo(middle - (steps + 0.5) * cell, 2), y: ends, "text-anchor": "start" }, `−${words.size(sheet.scale)}`);
+    add(scale, "text", { x: roundTo(middle + (steps + 0.5) * cell, 2), y: ends, "text-anchor": "end" }, `+${words.size(sheet.scale)}`);
     let showing = -1;
     const paint = (r) => {
       if (r === showing) return;
@@ -971,9 +984,9 @@
     if (layer !== "all") return null;
 
     const targets = [
-      ...sheet.rows.map((_, r) => {
-        const [from, to] = [MAP.rows.name - 24, MAP.rows.value + 1];
-        return { x: (from + to) / 2, y: MAP.rows.top + r * MAP.rows.step, rx: (to - from) / 2, ry: MAP.rows.step / 2, bare: true, row: r };
+      ...rows.map((_, r) => {
+        const [from, to] = [lines.name - (large ? 30 : 24), lines.value + 1];
+        return { x: (from + to) / 2, y: lines.top + r * lines.step, rx: (to - from) / 2, ry: lines.step / 2, bare: true, row: r };
       }),
       ...spots.map(([x, y], house) => ({ x, y, rx: 1.1, ry: 1.1, round: true, house })),
     ];
@@ -1661,10 +1674,30 @@
         }
         side = low;
       }
-      const column = columnFor(side);
+      // on a talk's slide, the card's face as large as the room lets it be, not only as the layers
+      // are: what is on it is read across a room. Its words below it, and the stage beside it,
+      // as they are (up to 32 rem; found by halves)
+      let face = faceFor(side);
+      if (slideBodyOf(root)) {
+        const room = (size) => {
+          const column = Math.max(WORDS_BESIDE * rem, size);
+          return size + wordsAt(column) + 0.6 * rem + 4 <= tall + 2 * THICKNESS + 16 && column + stageFor(side) <= free;
+        };
+        let [low, high] = [face, 32 * rem];
+        if (room(high)) low = high;
+        else {
+          for (let k = 0; k < 20; k++) {
+            const middle = (low + high) / 2;
+            if (room(middle)) low = middle;
+            else high = middle;
+          }
+        }
+        face = low;
+      }
+      const column = Math.max(WORDS_BESIDE * rem, face);
       // (the card's column holds the air before the stage too: demo.css)
       root.style.setProperty("--orders-why-column", `${Math.floor(column + 1.25 * rem)}px`);
-      root.style.setProperty("--orders-why-face", `${Math.floor(faceFor(side))}px`);
+      root.style.setProperty("--orders-why-face", `${Math.floor(face)}px`);
       root.style.setProperty("--orders-stage-column", `${Math.floor(Math.max(0, Math.min(free - column, stageFor(side))))}px`);
       return side;
     }
@@ -1849,14 +1882,14 @@
     // a face of an example's kind, into svg (id names what it defines, as the photo's clip); a
     // face with all of it, the card's, can be inspected: its inspector is kept by it
     const inspectors = new WeakMap();
-    function drawFace(svg, example, sheet, layer, id) {
+    function drawFace(svg, example, sheet, layer, id, large = false) {
       const inspector =
         example.kind === "graph"
           ? moleculeFace(svg, example, sheet, layer)
           : example.kind === "tree"
             ? treeFace(svg, example, sheet, layer)
             : example.kind === "map"
-              ? mapFace(svg, example, sheet, layer)
+              ? mapFace(svg, example, sheet, layer, large)
               : imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer);
       if (inspector) inspectors.set(svg, inspector);
     }
@@ -1917,7 +1950,7 @@
     let [chipColors, chipColorsKey] = [[], ""];
     function inkChip(clear = chipClear) {
       chipClear = clear;
-      const theme = `${chip.classList.contains("orders-demo-chip-gray")} ${document.body.dataset.theme ?? ""} ${darkScheme.matches}`;
+      const theme = `${chip.classList.contains("orders-demo-chip-gray")} ${document.body.dataset.theme ?? ""} ${darkScheme.matches} ${root.classList.contains("orders-demo-deck")}`;
       if (theme !== chipColorsKey) {
         const style = getComputedStyle(chip);
         chipColors = ["--orders-chip", "--orders-glass", "--orders-glass-ink"].map((name) => style.getPropertyValue(name));
@@ -1944,14 +1977,17 @@
     }
     // the plan's faces, drawn once: a sheet's, all of it, on the input; or the input alone (null)
     const plans = new Map();
+    // (on a talk's slide, a map's in its large variant: mapFace; the slide's and the page's are
+    // kept apart, as a talk switches between them)
     function planFace(example, sheet) {
       const name = sheet ? `${sheet.order}${sheet.full ? "-full" : ""}` : "input";
-      const key = `${example.id} ${name}`;
+      const large = root.classList.contains("orders-demo-deck") && example.kind === "map" && !example.plane;
+      const key = `${example.id} ${name}${large ? " large" : ""}`;
       if (!plans.has(key)) {
         const svg = document.createElementNS(SVG, "svg");
         svg.setAttribute("viewBox", "0 0 100 100");
         svg.setAttribute("class", "orders-demo-plan-face");
-        drawFace(svg, example, sheet ?? example.sheets[0], sheet ? "all" : "input", `orders-${plotId}-${example.id}-plan-${name}`);
+        drawFace(svg, example, sheet ?? example.sheets[0], sheet ? "all" : "input", `orders-${plotId}-${example.id}-plan-${name}${large ? "-large" : ""}`, large);
         plans.set(key, svg);
       }
       return plans.get(key);
@@ -3416,7 +3452,11 @@
     // talk's slide, whose height is all the room there is: there the card above the layers would
     // leave them a strip, and the slide's width would go unused (the problem alone, and the
     // teaser, have no layers to stand beside)
+    // (and on a talk's slide, orders-demo-deck: no notes on how to use it, the card's map in its
+    // large variant, and in the dark, the chip, its glass and the tabs' pill in darker colors,
+    // demo.css)
     function wideEnough() {
+      root.classList.toggle("orders-demo-deck", slideBodyOf(root) !== null);
       const wide = root.clientWidth >= 640;
       const plan = root.dataset.plan;
       const stands = whole || (part !== "problem" && !teaser && (plan === "beside" || (part !== "mechanism" && slideBodyOf(root) !== null)));
@@ -3428,6 +3468,7 @@
     let width = 0;
     let tall = 0;
     let demoWidth = 0;
+    let decked = null; // on a talk's slide when last laid out
     function relayout() {
       // (a demo still drawn for the example shown before is drawn anew first)
       if (stale) {
@@ -3435,6 +3476,15 @@
         render();
       }
       wideEnough();
+      // (a talk presented, or no longer: the card shows its face for the slide or for the page, and
+      // everything is measured anew)
+      const deck = root.classList.contains("orders-demo-deck");
+      if (decked !== null && deck !== decked && geometry !== null) {
+        width = 0;
+        settled = "";
+        showPlan();
+      }
+      decked = deck;
       const besides = root.classList.contains("orders-demo-beside");
       // (the room's height: the window's, or on a slide, what it leaves below what is above the stage)
       const room = slideBodyOf(root) ? Math.round(frameOf(root) - stage.offsetTop) : viewportHeight();

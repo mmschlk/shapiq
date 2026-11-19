@@ -962,6 +962,7 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   border: 1px solid var(--shapiq-border);
   border-top: 4px solid var(--shapiq-amber);
   border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
   font-size: 0.85em;
 }
 
@@ -1042,8 +1043,8 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
 /* "v2", a badge in the logo's gradient on its lower right */
 .shapiq-talk-v2-mark {
   position: absolute;
-  right: -1.3em;
-  bottom: 1.3em;
+  right: -1.6em;
+  bottom: 0.2em;
   margin: 0;
   padding: 0.08em 0.32em;
   border-radius: 0.28em;
@@ -1177,4 +1178,27 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
 /* beside the lattice, a formula of a definition a little smaller, so that it fits its box */
 .shapiq-talk-columns-theory div.math mjx-container {
   font-size: 92%;
+}
+
+/* a formula in the words of a definition stays on one line */
+.shapiq-talk-definition mjx-container:not([display="true"]),
+.shapiq-talk-card mjx-container:not([display="true"]) {
+  white-space: nowrap;
+}
+
+/* the recipe above the three cards, large */
+.shapiq-deck .shapiq-slide-body > .math-wrapper:first-child,
+.shapiq-deck .shapiq-slide-body > div.math:first-child {
+  font-size: clamp(18px, 1vw + 1.1vh, 34px);
+  margin: 0 0 0.3em;
+}
+
+/* a display formula in a definition is as wide as the box's content, not as the box */
+.shapiq-talk-definition > .math-wrapper {
+  width: auto;
+}
+
+/* the badge of probly's oral on one line */
+.shapiq-talk-oral {
+  white-space: nowrap;
 }

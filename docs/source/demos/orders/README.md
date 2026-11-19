@@ -265,6 +265,22 @@ scale the slide down (`data-fit` on the slide's body stays unset). The measures 
 scale (`scaleOf()`), should the deck scale it anyway (a very short window). On a slide, the steps
 `shapley` and `interactions` stand their card beside the layers (above).
 
+On a slide the demo also has the class `orders-demo-deck` (set in `wideEnough()`; leaving the deck,
+`relayout()` draws the card for the page again). It changes only what a slide needs, so the docs'
+pages stay as they are:
+
+- **No notes on how to use it**: the face's "· hover ..." after its name, the "Hover a layer to
+  explain" badge and the slider's "Tap"/"Click" are hidden.
+- **Words read across a room** (at least about 10px at 1440 x 900): beside the layers, the card's
+  face is as large as the slide's height and width let it be (`fitColumns()`), not only 0.8 of the
+  layers' width. A photo's words on the card are larger (3.7 units). The map of many houses is
+  drawn in a large variant (`mapFace(..., large)`, `MAP.large`, `orders-demo-map-large`): what it
+  shows named larger, its 6 strongest rows only, in larger words, and the colors' scale with its
+  ends named. It drops the line of counts, the cities, the head over the rows and the name over
+  the scale. (The applicants' plane keeps its usual face.)
+- **Dark mode**: the chip clears to a slate (`--orders-glass`), not a pale glass, and the gray chip
+  is darker than that. The pill of the example chosen is a tint of the ink, not the ink.
+
 ### Theme and motion
 
 - **Colors** come from the docs' tokens (`--color-foreground-primary`, `--shapiq-surface`, ... from

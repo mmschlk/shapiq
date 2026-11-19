@@ -47,6 +47,15 @@
     return element;
   };
   const format = (value) => (value > 0 ? "+" : value < 0 ? "−" : "") + Math.abs(value).toLocaleString("en");
+  // an SVG text with subscripts: parts are strings, or [text] for a subscript ("f", ["S"], "(x)")
+  const label = (parent, attributes, parts) => {
+    const text = make("svg:text", attributes, parent);
+    for (const part of parts) {
+      if (typeof part === "string") text.append(part);
+      else make("svg:tspan", { "baseline-shift": "sub", "font-size": "75%" }, text, part[0]);
+    }
+    return text;
+  };
 
   // ---- three models, one explanation ---------------------------------------------------------
   // Two features explained at x = (1, 1) against the baseline (0, 0). v(S) is the prediction when
@@ -56,18 +65,21 @@
     {
       name: "Additive",
       formula: "f(x) = x₁ + x₂",
+      tex: "f(x) = x_1 + x_2",
       says: "Each feature adds on its own",
       v: { "": 0, "1": 1, "2": 1, "12": 2 },
     },
     {
       name: "Synergy",
       formula: "f(x) = 2 · x₁ · x₂",
+      tex: "f(x) = 2\\, x_1 x_2",
       says: "Only both together count",
       v: { "": 0, "1": 0, "2": 0, "12": 2 },
     },
     {
       name: "Redundancy",
       formula: "f(x) = 2 · max(x₁, x₂)",
+      tex: "f(x) = 2 \\max(x_1, x_2)",
       says: "Either feature is enough",
       v: { "": 0, "1": 2, "2": 2, "12": 2 },
     },
@@ -91,7 +103,7 @@
       make("div", { class: "talk-same-model" }, head, `Model ${"ABC"[index]}`);
       const named = make("div", { class: "talk-same-name talk-from-1" }, head);
       make("strong", {}, named, model.name);
-      make("span", {}, named, model.formula);
+      math(named, model.tex);
 
       // the Shapley values, as bars from 0 to 2
       const shap = make("div", { class: "talk-same-part" }, card);
@@ -193,7 +205,7 @@
       make("div", { class: "talk-same-model" }, head, `Model ${"ABC"[index]}`);
       const named = make("div", { class: "talk-same-name" }, head);
       make("strong", {}, named, model.name);
-      make("span", {}, named, model.formula);
+      math(named, model.tex);
 
       const part = make("div", { class: "talk-same-part" }, card);
       const bars = make("svg:svg", { viewBox: "0 0 260 196", class: "talk-same-bars", "aria-hidden": "true" }, part);
@@ -254,6 +266,19 @@
     make("div", { class: "talk-faith-step" }, how, "1  Keep some features, remove the others");
     const keep = make("div", { class: "talk-faith-keep", role: "group", "aria-label": "Features kept" }, how);
     let mask = data.start.reduce((m, i) => m | (1 << i), 0);
+    if (climb) {
+      // order by order, a coalition of four that holds the start's features and in which groups of
+      // three and more add the most: there, every order adds a row
+      const deep = data.orders[every[every.length - 1]].values.filter(([group]) => group.length >= 3);
+      const bits = (m) => m.toString(2).replace(/0/g, "").length;
+      const start = mask;
+      let best = -1;
+      for (const candidate of data.masks) {
+        if (bits(candidate) !== 4 || (candidate & start) !== start) continue;
+        const weight = deep.reduce((sum, [group, value]) => sum + (group.every((i) => candidate & (1 << i)) ? Math.abs(value) : 0), 0);
+        if (weight > best) { best = weight; mask = candidate; }
+      }
+    }
     const chips = data.features.map((name, i) => {
       const chip = make("button", { type: "button", class: "talk-faith-chip" }, keep, name);
       chip.addEventListener("click", () => {
@@ -378,7 +403,7 @@
         r.line.setAttribute("class", `talk-faith-arrow ${parts[j] >= 0 ? "talk-pos-line" : "talk-neg-line"}`);
         r.head.setAttribute("cx", wx(to));
         r.head.setAttribute("class", j === 0 ? "talk-faith-start" : parts[j] >= 0 ? "talk-pos" : "talk-neg");
-        r.value.textContent = !on ? "" : j === 0 ? cum[0].toFixed(2) : bySize[j - 1].length ? (parts[j] >= 0 ? "+" : "−") + Math.abs(parts[j]).toFixed(2) : "";
+        r.value.textContent = !on ? "" : j === 0 ? (cum[0] < 0 ? "−" : "") + Math.abs(cum[0]).toFixed(2) : bySize[j - 1].length ? (parts[j] >= 0 ? "+" : "−") + Math.abs(parts[j]).toFixed(2) : "";
         r.title.textContent = j === 0 ? "the baseline: the model with all features removed" : bySize[j - 1].map(([, group, value]) => `${name(group)}: ${format(Math.round(value * 100) / 100)}`).join("\n") || "no such groups among the kept features";
       });
       const estimate = cum[k];
@@ -664,12 +689,12 @@
       const labels = preds.map((p, k) => p + 0.45 * Math.sin(k * 2.3));
       const sx = (v) => 270 + Math.max(-2.9, Math.min(2.9, v)) * 55;
       make("svg:line", { x1: 100, x2: 430, y1: 130, y2: 130, class: "talk-axis" }, svg);
-      make("svg:text", { x: 430, y: 146, class: "talk-tick", "text-anchor": "end" }, svg, "prediction f_S(x)");
+      label(svg, { x: 430, y: 146, class: "talk-tick", "text-anchor": "end" }, ["prediction f", ["S"], "(x)"]);
       if (key === "local") {
         preds.forEach((p) => make("svg:circle", { cx: sx(p), cy: 120, r: 3, class: "talk-choices-data" }, svg));
         make("svg:line", { x1: sx(0.9), x2: sx(0.9), y1: 40, y2: 130, class: "talk-choices-guide" }, svg);
         make("svg:circle", { cx: sx(0.9), cy: 120, r: 6, class: "talk-choices-x" }, svg);
-        make("svg:text", { x: sx(0.9) + 10, y: 50, class: "talk-value" }, svg, "f_S(x₀)");
+        label(svg, { x: sx(0.9) + 10, y: 50, class: "talk-value" }, ["f", ["S"], "(x", ["0"], ")"]);
       } else if (key === "sensitivity") {
         const bins = new Array(12).fill(0);
         preds.forEach((p) => bins[Math.max(0, Math.min(11, Math.floor((p + 2) / 4 * 12)))]++);
@@ -677,7 +702,7 @@
         const mean = preds.reduce((a, b) => a + b, 0) / preds.length;
         const sd = Math.sqrt(preds.reduce((a, b) => a + (b - mean) ** 2, 0) / preds.length);
         make("svg:line", { x1: sx(mean - sd), x2: sx(mean + sd), y1: 30, y2: 30, class: "talk-choices-bracket" }, svg);
-        make("svg:text", { x: sx(mean), y: 22, class: "talk-value", "text-anchor": "middle" }, svg, "variance 𝕍[f_S(X)]");
+        label(svg, { x: sx(mean), y: 22, class: "talk-value", "text-anchor": "middle" }, ["variance 𝕍[f", ["S"], "(X)]"]);
       } else {
         preds.slice(0, 14).forEach((p, k) => {
           const y = 34 + k * 6.5;
@@ -713,7 +738,7 @@
       make("svg:circle", { cx: c2[0], cy: c2[1], r, class: "talk-choices-ring talk-choices-ring-other" }, svg);
       make("svg:text", { x: c1[0] - 30, y: c1[1] + 5, class: "talk-value", "text-anchor": "middle" }, svg, "m(1)");
       make("svg:text", { x: c2[0] + 30, y: c2[1] + 5, class: "talk-tick", "text-anchor": "middle" }, svg, "m(2)");
-      make("svg:text", { x: 200, y: c1[1] + 5, class: "talk-value", "text-anchor": "middle" }, svg, key === "partial" ? "½ m(12)" : "m(12)");
+      make("svg:text", { x: 200, y: c1[1] + 5, class: "talk-value talk-halo", "text-anchor": "middle" }, svg, key === "partial" ? "½ m(12)" : "m(12)");
       const formula = { pure: "φ(1) = m(1)", partial: "φ(1) = m(1) + ½ m(12)", full: "φ(1) = m(1) + m(12)" }[key];
       make("svg:text", { x: 350, y: 90, class: "talk-choices-note talk-choices-strong" }, svg, formula);
     }

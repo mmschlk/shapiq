@@ -407,6 +407,9 @@ intersphinx_mapping = {
 
 # -- Options for HTML output -----------------------------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+# MathJax 4 breaks long inline formulas across lines (as "ν(T" and "∪ {i})"): keep each on one line
+mathjax4_config = {"output": {"linebreaks": {"inline": False}}}
+
 html_theme = "furo"
 html_title = "shapiq documentation"
 html_static_path = ["_static"]
