@@ -1573,12 +1573,37 @@
     // label of the section lies inside the box)
     const link = opening.querySelector(".fixlip-more a");
     const summary = link && document.getElementById(link.hash.slice(1))?.closest("section");
+    // The page glides there, slower than the browser scrolls by itself: it starts and ends softly
+    // and takes longer for a longer way. The reader takes over with the wheel, a touch or a key.
+    let glide = 0;
+    const halt = () => cancelAnimationFrame(glide);
+    for (const kind of ["wheel", "touchstart", "keydown", "pointerdown"]) {
+      window.addEventListener(kind, halt, { passive: true });
+    }
     link?.addEventListener("click", (event) => {
       if (!summary) return;
       event.preventDefault();
-      const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      summary.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+      halt();
       history.replaceState(null, "", link.hash);
+      const from = window.scrollY;
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      const margin = parseFloat(getComputedStyle(summary).scrollMarginTop) || 0;
+      const to = Math.min(room, Math.round(summary.getBoundingClientRect().top + from - margin));
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        window.scrollTo({ top: to, behavior: "instant" });
+        return;
+      }
+      const time = Math.min(1700, Math.max(1000, 750 + Math.abs(to - from) * 0.6));
+      let start = 0;
+      const step = (now) => {
+        start ||= now;
+        const share = Math.min(1, (now - start) / time);
+        const eased = share < 0.5 ? 4 * share ** 3 : 1 - (-2 * share + 2) ** 3 / 2;
+        // the docs scroll smoothly by themselves, which would lag behind every step
+        window.scrollTo({ top: from + (to - from) * eased, behavior: "instant" });
+        if (share < 1) glide = requestAnimationFrame(step);
+      };
+      glide = requestAnimationFrame(step);
     });
   }
 
