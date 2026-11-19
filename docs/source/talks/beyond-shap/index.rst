@@ -325,7 +325,7 @@ says, and code reproduces what the slide shows.
 .. shapiq-slide:: Many Methods Differ in Two Choices
    :layout: wide
    :steps: 3
-   :cite: Fumagalli.2025
+   :cite: Fumagalli.2025 Herbinger.2026
 
    .. shapiq-talk-figure:: framework
       :alt: A grid of local feature-based explanations. Its columns are how absent features are treated, by a baseline, the marginal or the conditional distribution. Its rows are how higher-order interactions enter, as pure, partial or full effects. Each cell lists the methods that fall into it, for individual, joint and interaction explanations.
@@ -337,9 +337,11 @@ says, and code reproduces what the slide shows.
       baseline, by their marginal distribution or by their distribution given the present
       features. With correlated features, such as income and loan amount, these choices give
       different answers. The second choice is how much of the interactions an explanation takes
-      in, as pure, partial or full effects. The variants of SHAP form one row of this grid.
-      Path-dependent TreeSHAP, the default for trees, lets absent features follow the splits of
-      the trees, which approximates the conditional distribution.
+      in, as pure, partial or full effects :cite:p:`Herbinger.2026`. The variants of SHAP form one
+      row of this grid. Path-dependent TreeSHAP, the default for trees, lets absent features follow
+      the splits of the trees, which approximates the conditional distribution. Methods defined on
+      any game, such as the k-SVs, Faith-SHAP and the Shapley-Taylor interactions, have a variant
+      for each of the three distributions.
       Occlusion, PDP and ICE sit in other cells. These methods do not compete. Each cell answers
       its own question.
 
@@ -367,8 +369,6 @@ says, and code reproduces what the slide shows.
          computer = shapiq.ExactComputer(game, n_players=X.shape[1])
          for index in ("Moebius", "SII", "Co-Moebius"):
              print(index, computer(index, order=2).get_top_k(3).dict_values)
-
-.. Check the placements against Figure 1 of the paper.
 
 .. shapiq-slide:: Each Explanation Answers a Different Question
 

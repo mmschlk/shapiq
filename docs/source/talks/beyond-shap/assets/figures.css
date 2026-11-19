@@ -428,3 +428,18 @@
   border-style: dashed;
   background: none;
 }
+
+/* a method of any game spans the three distributions */
+.talk-frame-grid > .talk-frame-span {
+  grid-column: span 3;
+  align-items: center;
+}
+
+.talk-frame-grid > .talk-frame-gone {
+  display: none;
+}
+
+.talk-frame-any {
+  color: var(--talk-muted);
+  font-size: 0.8em;
+}

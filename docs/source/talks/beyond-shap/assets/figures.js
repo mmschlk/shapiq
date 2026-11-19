@@ -207,25 +207,32 @@
   // ---- the unified framework -----------------------------------------------------------------
   // Fumagalli et al. (2025), Section 4.1 and Table 2: local feature-based explanations by the
   // fANOVA decomposition they rest on (b, m or c, the columns) and how they summarize the Möbius
-  // transform (pure, partial or full effects, the rows), for each type of explanation. One chip is
-  // not in the paper: path-dependent TreeSHAP, shapiq's default for trees, near the conditional
-  // column, marked as an approximation.
+  // transform (pure, partial or full effects, the rows), for each type of explanation.
   const DISTRIBUTIONS = [
     { key: "b", name: "Baseline", says: "Absent features take a fixed value" },
     { key: "m", name: "Marginal", says: "Averaged over their distribution" },
     { key: "c", name: "Conditional", says: "Averaged given the present features" },
   ];
+  // "*" is a method defined on any game: it has a variant for each of the three distributions, so it
+  // spans the row [Fumagalli et al., 2025, Appendix E; Herbinger et al., 2026]. Global feature
+  // effects (PDP, M plot, ALE) stand where the paper places them. "≈" marks path-dependent
+  // TreeSHAP, which approximates the conditional distribution by the trees' own splits.
   const TYPES = [
     {
       name: "Individual",
       rows: { pure: "Main effect", partial: "Shapley value", full: "All effects with the feature" },
       methods: [
+        ["b", "pure", "ArchAttribute"],
+        ["m", "pure", "PDP"],
+        ["c", "pure", "M plot"],
+        ["c", "pure", "ALE"],
         ["b", "partial", "Baseline SHAP"],
         ["m", "partial", "Interventional SHAP"],
         ["c", "partial", "Observational SHAP"],
         ["c", "partial", "≈ Path-dependent TreeSHAP"],
         ["b", "full", "Occlusion-1"],
         ["b", "full", "ICE"],
+        ["c", "full", "PredDiff-1"],
       ],
     },
     {
@@ -234,8 +241,8 @@
       methods: [
         ["b", "pure", "ArchAttribute"],
         ["m", "pure", "PDP"],
-        ["c", "pure", "M-plot"],
-        ["b", "partial", "Joint Shapley values"],
+        ["c", "pure", "M plot"],
+        ["*", "partial", "Joint Shapley values"],
         ["b", "full", "Occlusion-patch"],
         ["b", "full", "ICE"],
         ["c", "full", "PredDiff-patch"],
@@ -245,11 +252,11 @@
       name: "Interaction",
       rows: { pure: "Möbius transform", partial: "Shapley interaction", full: "Co-Möbius transform" },
       methods: [
-        ["m", "pure", "Shapley-GAM"],
-        ["c", "pure", "Shapley-GAM"],
-        ["b", "partial", "Faith-SHAP"],
-        ["m", "partial", "k-SVs"],
-        ["c", "partial", "k-SVs"],
+        ["*", "pure", "Shapley-GAM"],
+        ["*", "partial", "k-SVs (k-SII)"],
+        ["*", "partial", "Faith-SHAP"],
+        ["*", "partial", "Shapley-Taylor"],
+        ["c", "full", "PredDiff-interaction"],
       ],
     },
   ];
@@ -295,9 +302,18 @@
       const type = TYPES[index];
       buttons.forEach((button, other) => button.setAttribute("aria-checked", String(other === index)));
       for (const row of ROWS) swap(rowNames[row.key], type.rows[row.key]);
-      for (const [key, cell] of Object.entries(cells)) {
-        const names = type.methods.filter(([d, r]) => d + r === key).map(([, , name]) => name);
-        swap(cell, names, true);
+      for (const row of ROWS) {
+        // a method of any game spans the row, with a word that it takes each of the three
+        const any = type.methods.filter(([d, r]) => d === "*" && r === row.key).map(([, , name]) => name);
+        DISTRIBUTIONS.forEach((distribution, column) => {
+          const cell = cells[distribution.key + row.key];
+          cell.classList.toggle("talk-frame-span", any.length > 0 && column === 0);
+          cell.classList.toggle("talk-frame-gone", any.length > 0 && column > 0);
+          const names = any.length
+            ? column === 0 ? [...any, "§ with any of the three distributions"] : []
+            : type.methods.filter(([d, r]) => d === distribution.key && r === row.key).map(([, , name]) => name);
+          swap(cell, names, true);
+        });
       }
     }
     return { show };
@@ -315,6 +331,10 @@
         // a chip that starts with "≈" approximates its cell (path-dependent TreeSHAP, whose absent
         // features follow the splits of the trees, near the conditional distribution)
         for (const name of content) {
+          if (name.startsWith("§ ")) {
+            make("span", { class: "talk-frame-any" }, element, name.slice(2));
+            continue;
+          }
           const approx = name.startsWith("≈ ");
           const chip = make("span", { class: approx ? "talk-chip talk-chip-approx" : "talk-chip" }, element, name);
           if (approx) chip.title = "An approximation: absent features follow the trees' own splits";
