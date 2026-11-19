@@ -713,3 +713,303 @@ a.talk-chip:focus-visible {
     grid-template-areas: "orders" "how" "all";
   }
 }
+
+/* feature-based XAI: features of five kinds of data, and four shapes of explanations */
+.talk-xai {
+  display: grid;
+  gap: 0.9em;
+}
+
+.talk-xai-title {
+  margin: 0 0 0.4em;
+  color: var(--talk-muted);
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.talk-xai-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5em, 1fr));
+  gap: 0.7em;
+}
+
+.talk-xai-card {
+  padding: 0.5em 0.6em 0.45em;
+  border: 1px solid var(--talk-line);
+  border-radius: var(--shapiq-radius-small);
+  background: var(--shapiq-surface-raised);
+}
+
+.talk-xai-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 5.5em;
+}
+
+.talk-xai-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15em 0.45em;
+  margin-top: 0.3em;
+  font-size: 0.8em;
+}
+
+.talk-xai-caption span {
+  color: var(--talk-muted);
+}
+
+.talk-xai-tag {
+  margin-left: auto;
+  padding: 0 0.5em;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.talk-xai-tag-local {
+  background: color-mix(in srgb, var(--shapiq-amber) 25%, transparent);
+  color: var(--shapiq-amber-ink);
+}
+
+.talk-xai-tag-global {
+  background: color-mix(in srgb, var(--talk-muted) 18%, transparent);
+  color: var(--talk-muted);
+}
+
+.talk-xai .talk-xai-text {
+  font-size: 7.5px;
+  fill: var(--talk-ink);
+}
+
+.talk-xai-head,
+.talk-xai-cell,
+.talk-xai-bar {
+  fill: color-mix(in srgb, var(--talk-muted) 18%, transparent);
+}
+
+.talk-xai-cell {
+  fill: color-mix(in srgb, var(--talk-muted) 9%, transparent);
+}
+
+.talk-xai-mark {
+  fill: color-mix(in srgb, var(--shapiq-amber) 70%, transparent);
+}
+
+.talk-xai-mark-soft {
+  fill: color-mix(in srgb, var(--shapiq-amber) 30%, transparent);
+}
+
+.talk-xai-patch {
+  stroke: var(--shapiq-surface-raised);
+  stroke-width: 1;
+}
+
+.talk-xai-patch-mark {
+  stroke: var(--shapiq-amber);
+  stroke-width: 2.5;
+}
+
+.talk-xai-line,
+.talk-xai-curve {
+  fill: none;
+  stroke: var(--talk-ink);
+  stroke-width: 1.6;
+}
+
+.talk-xai-curve {
+  stroke: var(--shapiq-amber-ink);
+  stroke-width: 2.4;
+}
+
+.talk-xai-ice {
+  fill: none;
+  stroke: var(--talk-muted);
+  stroke-width: 0.8;
+  stroke-opacity: 0.5;
+}
+
+.talk-xai-axis {
+  fill: none;
+  stroke: var(--talk-muted);
+  stroke-width: 1;
+}
+
+.talk-xai-edge {
+  stroke: var(--talk-muted);
+  stroke-width: 1.5;
+}
+
+.talk-xai-node {
+  fill: var(--shapiq-surface-raised);
+  stroke: var(--talk-ink);
+  stroke-width: 1.2;
+}
+
+.talk-xai-node-mark {
+  fill: var(--shapiq-amber);
+  stroke: var(--shapiq-amber-ink);
+}
+
+.shapiq-deck .talk-xai {
+  font-size: clamp(14px, 0.7vw + 0.8vh, 26px);
+}
+
+/* the three choices: the option the pointer is on, pictured under the cards */
+.talk-choices {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+  gap: 1.2em;
+  align-items: center;
+  margin-top: 0.6em;
+  padding: 0.5em 0.9em;
+  border: 1px solid var(--talk-line);
+  border-radius: var(--shapiq-radius-small);
+}
+
+.talk-choices-words strong {
+  display: block;
+  margin-bottom: 0.2em;
+  font-size: 1.1em;
+}
+
+.talk-choices-words span {
+  color: var(--talk-muted);
+  font-size: 0.9em;
+}
+
+.talk-choices-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 11em;
+}
+
+.talk-choices-data {
+  fill: var(--talk-muted);
+  fill-opacity: 0.35;
+}
+
+.talk-choices-filled {
+  fill: var(--shapiq-amber);
+  fill-opacity: 0.8;
+  stroke: var(--shapiq-amber-ink);
+  stroke-width: 0.6;
+}
+
+.talk-choices-x {
+  fill: var(--talk-ink);
+}
+
+.talk-choices-guide {
+  stroke: var(--talk-ink);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  stroke-opacity: 0.6;
+}
+
+.talk-choices-bar {
+  fill: color-mix(in srgb, var(--shapiq-amber) 60%, transparent);
+}
+
+.talk-choices-bracket {
+  stroke: var(--talk-ink);
+  stroke-width: 2;
+  marker-start: none;
+}
+
+.talk-choices-error {
+  stroke: var(--talk-pos);
+  stroke-width: 1.5;
+  stroke-opacity: 0.7;
+}
+
+.talk-choices-label {
+  fill: var(--talk-ink);
+}
+
+.talk-choices .talk-choices-note {
+  fill: var(--talk-muted);
+  font-size: 12px;
+}
+
+.talk-choices .talk-choices-note-label {
+  fill: var(--talk-ink);
+}
+
+.talk-choices .talk-choices-strong {
+  fill: var(--talk-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.talk-choices-part {
+  fill: color-mix(in srgb, var(--shapiq-amber) 65%, transparent);
+}
+
+.talk-choices-overlap {
+  fill: color-mix(in srgb, var(--shapiq-amber) 65%, transparent);
+  transition: fill-opacity 300ms var(--shapiq-ease);
+}
+
+.talk-choices-ghost {
+  fill-opacity: 0.12;
+}
+
+.talk-choices-half {
+  fill-opacity: 0.45;
+}
+
+.talk-choices-ring {
+  fill: none;
+  stroke: var(--talk-ink);
+  stroke-width: 1.5;
+}
+
+.talk-choices-ring-other {
+  stroke: var(--talk-muted);
+  stroke-dasharray: 4 3;
+}
+
+/* the options of the cards: each pictured on hover or focus, SHAP's marked */
+.talk-choice {
+  margin: 0 -0.4em;
+  padding-inline: 0.4em !important;
+  border-radius: 6px;
+  cursor: default;
+  transition: background var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.talk-choice.talk-choice-on {
+  background: color-mix(in srgb, var(--shapiq-amber) 20%, transparent);
+}
+
+.talk-choice:focus-visible {
+  outline: 2px solid var(--shapiq-amber);
+}
+
+.talk-shap-badge {
+  margin-left: 0.5em;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  background: var(--shapiq-amber);
+  color: #1b1e27;
+  font-size: 0.72em;
+  font-weight: 700;
+  vertical-align: 0.1em;
+}
+
+.shapiq-deck .talk-choices {
+  font-size: clamp(14px, 0.7vw + 0.8vh, 26px);
+}
+
+@media (max-width: 900px) {
+  .talk-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

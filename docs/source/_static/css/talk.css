@@ -1017,3 +1017,140 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   overflow-x: auto;
   overflow-y: hidden;
 }
+
+/* the framework grid becoming shapiq-v2: on the page, a box under the grid; in the deck, at its
+   step, the grid moves into a frame named shapiq-v2, beside what the frame says */
+.shapiq-talk-v2 {
+  margin-top: 1em;
+  padding: 0.8em 1em;
+  border: 2px dashed var(--shapiq-amber);
+  border-radius: var(--shapiq-radius);
+}
+
+.shapiq-talk-v2-badge {
+  display: inline-block;
+  margin: 0 0 0.4em;
+  padding: 0.1em 0.7em;
+  border-radius: 999px;
+  background: var(--shapiq-amber);
+  color: #1b1e27;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.shapiq-talk-v2-panel > p.rubric {
+  margin: 0 0 0.3em;
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+.shapiq-talk-v2-panel > p {
+  margin: 0 0 0.5em;
+}
+
+.shapiq-talk-v2-panel .shapiq-talk-properties.line-block {
+  margin: 0.2em 0 0.6em;
+}
+
+.shapiq-deck .shapiq-talk-v2-stage {
+  position: relative;
+}
+
+.shapiq-deck .shapiq-talk-v2-stage > .shapiq-talk-figure {
+  transform-origin: left center;
+  transition: transform 600ms var(--shapiq-ease), opacity 600ms var(--shapiq-ease);
+}
+
+.shapiq-deck .shapiq-slide[data-talk-step="3"] .shapiq-talk-v2-stage > .shapiq-talk-figure {
+  transform: translate(3%, 4%) scale(0.6);
+  opacity: 0.55;
+}
+
+.shapiq-deck .shapiq-talk-v2 {
+  position: absolute;
+  inset: -0.6em -0.6em -0.6em -0.6em;
+  margin: 0;
+  pointer-events: none;
+  font-size: clamp(15px, 0.72vw + 0.85vh, 28px);
+}
+
+.shapiq-deck .shapiq-talk-v2-panel {
+  position: absolute;
+  top: 50%;
+  right: 1em;
+  width: 36%;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+.shapiq-deck .shapiq-slide-body .shapiq-talk-v2-panel p {
+  max-width: none;
+}
+
+.shapiq-deck--scroll .shapiq-talk-v2 {
+  position: static;
+}
+
+.shapiq-deck--scroll .shapiq-talk-v2-panel {
+  position: static;
+  width: auto;
+  transform: none;
+}
+
+.shapiq-deck--scroll .shapiq-slide .shapiq-talk-v2-stage > .shapiq-talk-figure {
+  transform: none;
+  opacity: 1;
+}
+
+/* the outlook: a package's logo and line beside its workflow */
+.shapiq-talk-columns--probly {
+  grid-template-columns: minmax(0, 0.55fr) minmax(0, 2fr);
+  align-items: center;
+}
+
+.shapiq-talk-probly {
+  text-align: center;
+}
+
+.shapiq-talk-probly-logo {
+  width: min(11rem, 100%);
+  height: auto;
+  margin: 0 auto 0.6em;
+}
+
+.shapiq-talk-oral {
+  display: inline-block;
+  padding: 0.2em 0.8em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--shapiq-amber) 25%, transparent);
+  color: var(--shapiq-amber-ink);
+  font-weight: 700;
+}
+
+.shapiq-talk-wide-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0.6em 0;
+  border-radius: var(--shapiq-radius-small);
+}
+
+.shapiq-talk-lessons > p.rubric {
+  margin: 0.4em 0 0.2em;
+  font-weight: 700;
+}
+
+.shapiq-deck .shapiq-slide-body .shapiq-talk-lessons,
+.shapiq-deck .shapiq-slide-body .shapiq-talk-columns--probly p {
+  max-width: none;
+}
+
+.shapiq-deck .shapiq-talk-columns--probly {
+  font-size: clamp(15px, 0.72vw + 0.85vh, 28px);
+}
+
+@media (max-width: 900px) {
+  .shapiq-talk-columns--probly {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

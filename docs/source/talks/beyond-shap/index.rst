@@ -3,6 +3,7 @@
    references it cites. "Present" or the key P shows one slide at a time, and a phone scrolls.
    Its own figures are drawn by assets/figures.js. The demos are those of demos/.
    assets/qr-deck.svg opens this page as a deck (?present); README.md says how to make it again.
+   assets/probly/ holds the logo and the workflow figure of probly (MIT, github.com/pwhofman/probly).
 
 One Explanation Does Not Fit All
 ================================
@@ -77,36 +78,14 @@ says, and code reproduces what the slide shows.
       **explanation** :math:`e(S)` describes how the features in :math:`S` **influence** the output
       of :math:`f`.
 
-   .. container:: shapiq-from-1
-
-      .. list-table::
-         :class: shapiq-talk-table
-         :header-rows: 1
-
-         * - Method
-           - Subsets :math:`\mathcal{S}`
-           - Explanation :math:`e(S)`
-           - Scope
-         * - SHAP
-           - single features
-           - a score
-           - one prediction
-         * - Partial dependence (PDP)
-           - single features
-           - a curve
-           - the whole model
-         * - Permutation importance (PFI)
-           - single features
-           - a score
-           - the whole model
-         * - Shapley interactions
-           - all groups up to size :math:`k`
-           - a score
-           - one prediction
+   .. shapiq-talk-figure:: feature-xai
+      :alt: Above, features of five kinds of data: the columns of a table, the patches of an image, the tokens of a text, the windows of a time series and the nodes of a graph. Below, four shapes of explanations: a score per feature (SHAP) and a score per group of features (Shapley interactions) for one prediction, a curve per feature (partial dependence) and an importance per feature (permutation feature importance) for the whole model.
 
    .. shapiq-notes::
 
-      Feature-based explanations describe a model through its input features. They are post-hoc,
+      Feature-based explanations describe a model through its input features: the columns of a
+      table, the patches of an image, the tokens of a text, the windows of a time series, or the
+      nodes of a graph. They are post-hoc,
       applied to a model that is already trained, and they apply to any model, because features
       are the language that every model speaks. Formally, a feature-based explanation maps a
       chosen collection of feature subsets to an explanation space. SHAP gives one score to each
@@ -495,7 +474,7 @@ says, and code reproduces what the slide shows.
 
 .. shapiq-slide:: Every Explanation Makes Three Choices
    :layout: wide
-   :steps: 4
+   :steps: 3
    :cite: Herbinger.2026 Fumagalli.2025 Enouen.2025
 
    .. math::
@@ -546,12 +525,8 @@ says, and code reproduces what the slide shows.
          | **Partial**: :math:`w_T = 1 / |T|`
          | **Full**: :math:`w_T = 1`
 
-   .. container:: shapiq-talk-also shapiq-from-3
-
-      .. math::
-
-         \text{SHAP} \;=\; \mathcal{I}_{\text{partial}} \circ \mathcal{B}_{\text{local}} \circ
-         \mathcal{M}_{\text{marginal}}
+   .. shapiq-talk-figure:: choices
+      :alt: A picture of each option of the three choices. Masking: a cloud of two correlated features, in which the removed feature takes one baseline value, every value of the data, or the values of data with a similar kept feature. Behavior: one prediction, the spread of the predictions, or their errors against the labels. Interaction: two features as overlapping circles, of which feature 1 gets its own part only, its own part and half the overlap, or its whole circle.
 
    .. shapiq-notes::
 
@@ -563,7 +538,8 @@ says, and code reproduces what the slide shows.
       terms of the Möbius transform :math:`m` :cite:p:`Fumagalli.2025`. A pure effect counts only
       the feature alone, a full effect counts every group that holds it, and a partial effect
       shares each group equally among its members, as the Shapley value does. SHAP is the partial
-      effect of a local prediction under marginal masking. Shapley interactions keep masking and
+      effect of a local prediction under marginal masking,
+      :math:`\mathcal{I}_{\text{partial}} \circ \mathcal{B}_{\text{local}} \circ \mathcal{M}_{\text{marginal}}`. Shapley interactions keep masking and
       behavior, and change only how groups are counted :cite:p:`Enouen.2025`.
 
 .. shapiq-slide:: SHAP Shares Interactions Equally. Other Methods Do Not.
@@ -603,13 +579,36 @@ says, and code reproduces what the slide shows.
 
 .. shapiq-slide:: For One Prediction, Methods Differ in Two Choices
    :layout: wide
-   :steps: 3
+   :steps: 4
    :cite: Fumagalli.2025 Herbinger.2026 Tsang.2020 Friedman.2001 Apley.2020 Sundararajan.2020a
           Janzing.2020 Lundberg.2017 Lundberg.2020 Zeiler.2014 Goldstein.2015 Zintgraf.2017
           Blucher.2022 Harris.2022 Bordt.2023 Tsai.2022 Sundararajan.2020
 
-   .. shapiq-talk-figure:: framework
-      :alt: A grid of local feature-based explanations. Its columns are how absent features are treated, by a baseline, the marginal or the conditional distribution. Its rows are how higher-order interactions enter, as pure, partial or full effects. Each cell lists the methods that fall into it, for individual, joint and interaction explanations.
+   .. container:: shapiq-talk-v2-stage
+
+      .. shapiq-talk-figure:: framework
+         :alt: A grid of local feature-based explanations. Its columns are how absent features are treated, by a baseline, the marginal or the conditional distribution. Its rows are how higher-order interactions enter, as pure, partial or full effects. Each cell lists the methods that fall into it, for individual, joint and interaction explanations.
+
+      .. container:: shapiq-talk-v2 shapiq-from-3
+
+         .. rst-class:: shapiq-talk-v2-badge
+
+         shapiq-v2
+
+         .. container:: shapiq-talk-v2-panel
+
+            .. rubric:: The framework becomes shapiq-v2
+
+            Masking, behavior and interaction as building blocks that combine freely, for any
+            model and any explanation in this grid.
+
+            .. rst-class:: shapiq-talk-properties
+
+            | **Masking** :math:`\mathcal{M}`
+            | **Behavior** :math:`\mathcal{B}`
+            | **Interaction** :math:`\mathcal{I}`
+
+            In active development, with a large team.
 
    .. The chips of the grid link to these citations, as every citation of the docs links to the
       bibliography (figures.js finds each by its class).
@@ -691,6 +690,10 @@ says, and code reproduces what the slide shows.
       Occlusion, PDP and ICE sit in other cells. These methods do not compete. Each cell answers
       its own question.
 
+      This framework is the core of shapiq-v2, which we are building with a large team. Masking,
+      behavior and interaction become building blocks that combine freely, so that every cell of
+      this grid, and every explanation of the three choices, is one call away.
+
    .. shapiq-try::
 
       .. code-block:: python
@@ -716,32 +719,68 @@ says, and code reproduces what the slide shows.
          for index in ("Moebius", "SII", "Co-Moebius"):
              print(index, computer(index, order=2).get_top_k(3).dict_values)
 
-.. shapiq-slide:: Each Explanation Answers a Different Question
+.. shapiq-slide:: Outlook: Lessons from probly
+   :layout: wide
+   :steps: 2
 
-   .. container:: shapiq-talk-answers
+   .. container:: shapiq-talk-columns shapiq-talk-columns--probly
 
-      .. list-table::
-         :header-rows: 1
+      .. container:: shapiq-talk-column shapiq-talk-probly
 
-         * - Question
-           - Explanation
-         * - How much does each feature contribute?
-           - Shapley values
-         * - Which features act together?
-           - Shapley interactions
-         * - Is that enough for this prediction?
-           - Faithfulness of the order
-         * - What does a feature do alone, and what if it is removed?
-           - Pure and full effects
-         * - What does it mean that a feature is absent?
-           - Baseline, marginal or conditional
+         .. image:: assets/probly/logo-light.svg
+            :class: only-light shapiq-talk-probly-logo
+            :alt: The probly logo.
+
+         .. image:: assets/probly/logo-dark.svg
+            :class: only-dark shapiq-talk-probly-logo
+            :alt: The probly logo.
+
+         *Turn any model into one that knows what it doesn't know.*
+
+         .. rst-class:: shapiq-talk-oral
+
+         Oral at NeurIPS 2026
+
+      .. container:: shapiq-talk-column
+
+         ``probly`` quantifies the uncertainty of any model. More than 40 methods, from Bayesian
+         networks and deep ensembles to credal and conformal prediction, share one pipeline.
+
+         .. image:: assets/probly/workflow-light.webp
+            :class: only-light shapiq-talk-wide-image
+            :alt: The probly workflow: transform a model to make it uncertainty-aware, represent its predictive uncertainty, quantify and decompose it into total, epistemic and aleatoric parts, decide, and evaluate in a downstream task. Each stage is one import.
+
+         .. image:: assets/probly/workflow-dark.webp
+            :class: only-dark shapiq-talk-wide-image
+            :alt: The probly workflow: transform a model to make it uncertainty-aware, represent its predictive uncertainty, quantify and decompose it into total, epistemic and aleatoric parts, decide, and evaluate in a downstream task. Each stage is one import.
+
+         .. container:: shapiq-from-1 shapiq-talk-lessons
+
+            .. rubric:: What shapiq-v2 takes from it
+
+            | **Library-agnostic**: PyTorch, JAX, scikit-learn, Hugging Face, in one API
+            | **Composable stages**: each one import, freely combined
+            | **One pipeline, many methods**: comparing methods means changing one line
 
    .. shapiq-notes::
 
-      One explanation does not fit all, because each explanation answers a different question.
-      SHAP is a good answer to the first one and no answer to the others. The question thus comes
-      first, and the explanation follows. Where features act together, interactions show how, and
-      faithfulness says how far to go. For tree ensembles, all of this is exact.
+      shapiq is not our only library. probly, developed by Paul Hofman and colleagues, quantifies the uncertainty of
+      any model. It makes a model uncertainty-aware in one line, represents its predictions,
+      quantifies and decomposes the uncertainty into aleatoric and epistemic parts, decides, and
+      evaluates. More than 40 methods share this pipeline, and probly was accepted as an oral at
+      NeurIPS 2026. Its design lessons go into shapiq-v2: it works with any machine learning
+      library, its stages compose freely, and one pipeline runs many methods, so that comparing
+      them means changing one line.
+
+   .. shapiq-try::
+
+      .. code-block:: bash
+
+         pip install probly
+
+      The documentation of probly is at `pwhofman.github.io/probly
+      <https://pwhofman.github.io/probly>`_, its code at `github.com/pwhofman/probly
+      <https://github.com/pwhofman/probly>`_.
 
 .. shapiq-slide:: Thank You
    :layout: title
@@ -769,3 +808,37 @@ says, and code reproduces what the slide shows.
 
    | `github.com/mmschlk/shapiq <https://github.com/mmschlk/shapiq>`_
    | `shapiq.readthedocs.io <https://shapiq.readthedocs.io>`_
+
+.. shapiq-slide:: Appendix
+   :layout: section
+
+   .. shapiq-notes::
+
+      Slides for questions after the talk.
+
+.. shapiq-slide:: Each Explanation Answers a Different Question
+
+   .. container:: shapiq-talk-answers
+
+      .. list-table::
+         :header-rows: 1
+
+         * - Question
+           - Explanation
+         * - How much does each feature contribute?
+           - Shapley values
+         * - Which features act together?
+           - Shapley interactions
+         * - Is that enough for this prediction?
+           - Faithfulness of the order
+         * - What does a feature do alone, and what if it is removed?
+           - Pure and full effects
+         * - What does it mean that a feature is absent?
+           - Baseline, marginal or conditional
+
+   .. shapiq-notes::
+
+      One explanation does not fit all, because each explanation answers a different question.
+      SHAP is a good answer to the first one and no answer to the others. The question thus comes
+      first, and the explanation follows. Where features act together, interactions show how, and
+      faithfulness says how far to go. For tree ensembles, all of this is exact.

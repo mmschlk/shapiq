@@ -541,9 +541,258 @@
     }
   }
 
+  // ---- feature-based explainable AI: what features are, and what explanations look like ------
+  // Two rows of small pictures: features of five kinds of data (one of each marked), and four
+  // shapes an explanation takes. The second row shows from step 1.
+  function featureXai(figure) {
+    figure.classList.add("talk-xai");
+    const row = (title, from) => {
+      const block = make("div", { class: from ? `talk-xai-row talk-from-${from}` : "talk-xai-row" }, figure);
+      make("div", { class: "talk-xai-title" }, block, title);
+      return make("div", { class: "talk-xai-cards" }, block);
+    };
+    const card = (parent, name, note, draw, tag) => {
+      const element = make("div", { class: "talk-xai-card" }, parent);
+      const svg = make("svg:svg", { viewBox: "0 0 120 80", class: "talk-xai-svg", "aria-hidden": "true" }, element);
+      draw(svg);
+      const caption = make("div", { class: "talk-xai-caption" }, element);
+      make("strong", {}, caption, name);
+      make("span", {}, caption, note);
+      if (tag) make("em", { class: `talk-xai-tag talk-xai-tag-${tag}` }, caption, tag);
+    };
+    const rect = (svg, x, y, w, h, cls, rx = 2) => make("svg:rect", { x, y, width: w, height: h, rx, class: cls }, svg);
+    const text = (svg, x, y, value, cls = "talk-xai-text", anchor = "middle") => make("svg:text", { x, y, class: cls, "text-anchor": anchor }, svg, value);
+
+    const data = row("Features: the language every model speaks");
+    card(data, "Tabular", "columns", (svg) => {
+      ["Age", "Limit", "Bill"].forEach((name, c) => {
+        rect(svg, 8 + c * 36, 8, 32, 14, c === 2 ? "talk-xai-mark" : "talk-xai-head");
+        text(svg, 24 + c * 36, 18.5, name);
+        for (let r = 0; r < 3; r++) rect(svg, 8 + c * 36, 26 + r * 15, 32, 12, c === 2 ? "talk-xai-mark-soft" : "talk-xai-cell");
+      });
+    });
+    card(data, "Image", "patches", (svg) => {
+      const shades = ["#9cc7e8", "#9cc7e8", "#b4d6ee", "#9cc7e8", "#c9a46a", "#a7c97f", "#c9a46a", "#b4d6ee", "#8fb86a", "#c9a46a", "#8fb86a", "#8fb86a"];
+      shades.forEach((fill, k) => {
+        const [c, r] = [k % 4, Math.floor(k / 4)];
+        make("svg:rect", { x: 20 + c * 20, y: 8 + r * 21, width: 19, height: 20, fill, class: k === 5 ? "talk-xai-patch talk-xai-patch-mark" : "talk-xai-patch" }, svg);
+      });
+    });
+    card(data, "Text", "tokens", (svg) => {
+      [["a", 8, 18, 12], ["very", 24, 18, 26], ["cute", 54, 18, 26], ["dog", 84, 18, 24], ["is", 8, 40, 14], ["running", 26, 40, 40], ["on", 70, 40, 16], ["grass", 8, 62, 32]].forEach(([word, x, y, w]) => {
+        rect(svg, x, y - 11, w, 15, word === "cute" ? "talk-xai-mark" : "talk-xai-head", 7);
+        text(svg, x + w / 2, y, word);
+      });
+    });
+    card(data, "Time series", "windows", (svg) => {
+      for (let k = 0; k < 4; k++) rect(svg, 8 + k * 26, 8, 25, 62, k === 2 ? "talk-xai-mark-soft" : "talk-xai-cell", 0);
+      const points = Array.from({ length: 53 }, (_, k) => {
+        const t = k / 52;
+        return `${8 + t * 103},${40 - 18 * Math.sin(t * 9) * Math.exp(-t) - 8 * Math.sin(t * 23) * t}`;
+      }).join(" ");
+      make("svg:polyline", { points, class: "talk-xai-line" }, svg);
+    });
+    card(data, "Graph", "nodes", (svg) => {
+      const nodes = [[60, 14], [80, 26], [80, 50], [60, 62], [40, 50], [40, 26], [100, 14], [20, 62]];
+      [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [1, 6], [4, 7]].forEach(([a, b]) => make("svg:line", { x1: nodes[a][0], y1: nodes[a][1], x2: nodes[b][0], y2: nodes[b][1], class: "talk-xai-edge" }, svg));
+      nodes.forEach(([x, y], k) => make("svg:circle", { cx: x, cy: y, r: 6, class: k === 2 ? "talk-xai-node talk-xai-node-mark" : "talk-xai-node" }, svg));
+    });
+
+    const shapes = row("Explanations: many shapes, for one prediction or the whole model", 1);
+    card(shapes, "A score per feature", "SHAP", (svg) => {
+      [[0.9, "Bill"], [-0.5, "Limit"], [0.35, "Age"], [-0.2, "Paid"]].forEach(([value, name], k) => {
+        const y = 10 + k * 16;
+        text(svg, 34, y + 9, name, "talk-xai-text", "end");
+        const w = Math.abs(value) * 44;
+        rect(svg, value > 0 ? 62 : 62 - w, y, w, 11, value > 0 ? "talk-pos" : "talk-neg", 1.5);
+      });
+      make("svg:line", { x1: 62, x2: 62, y1: 6, y2: 74, class: "talk-xai-axis" }, svg);
+    }, "local");
+    card(shapes, "A curve per feature", "PDP", (svg) => {
+      for (let k = 0; k < 5; k++) {
+        const d = Array.from({ length: 30 }, (_, j) => `${j ? "L" : "M"}${12 + j * 3.4},${60 - 34 / (1 + Math.exp(-(j - 14 + k * 2 - 4) / 3)) - k * 3 + 4}`).join(" ");
+        make("svg:path", { d, class: "talk-xai-ice" }, svg);
+      }
+      const d = Array.from({ length: 30 }, (_, j) => `${j ? "L" : "M"}${12 + j * 3.4},${60 - 34 / (1 + Math.exp(-(j - 14) / 3)) + 0}`).join(" ");
+      make("svg:path", { d, class: "talk-xai-curve" }, svg);
+      make("svg:polyline", { points: "12,8 12,70 112,70", class: "talk-xai-axis" }, svg);
+    }, "global");
+    card(shapes, "A score per group", "Shapley interactions", (svg) => {
+      const nodes = [[60, 12, 7], [96, 40, 5], [60, 68, 6], [24, 40, 4]];
+      [[0, 1, 4, "pos"], [1, 2, 2, "neg"], [0, 2, 1.5, "pos"], [2, 3, 3, "pos"], [3, 0, 1.2, "neg"]].forEach(([a, b, w, sign]) => make("svg:line", { x1: nodes[a][0], y1: nodes[a][1], x2: nodes[b][0], y2: nodes[b][1], class: `talk-${sign}-line`, "stroke-width": w, "stroke-opacity": 0.7 }, svg));
+      nodes.forEach(([x, y, r], k) => make("svg:circle", { cx: x, cy: y, r, class: k % 2 ? "talk-neg" : "talk-pos" }, svg));
+    }, "local");
+    card(shapes, "Importance for the model", "PFI", (svg) => {
+      [56, 40, 26, 18, 10].forEach((h, k) => rect(svg, 16 + k * 19, 70 - h, 14, h, k === 0 ? "talk-xai-mark" : "talk-xai-bar", 1.5));
+      make("svg:polyline", { points: "10,8 10,70 112,70", class: "talk-xai-axis" }, svg);
+    }, "global");
+    return { steps: 2 };
+  }
+
+  // ---- what each of the three choices means -----------------------------------------------
+  // Under the three cards of the slide "Every Explanation Makes Three Choices", a picture of the
+  // option that the pointer is on (each option of a card is a line of it). Without one, the
+  // option SHAP takes in the newest card shown: marginal, local, partial.
+  const CHOICES = [
+    [
+      ["baseline", "Baseline", "Absent features take one fixed value b."],
+      ["marginal", "Marginal", "Absent features take every value of the data, whatever the present ones are, also where no data lies."],
+      ["conditional", "Conditional", "Absent features take the values of data like the present ones."],
+    ],
+    [
+      ["local", "Local", "The prediction for one input x₀."],
+      ["sensitivity", "Sensitivity", "How much the predictions vary over the data."],
+      ["risk", "Risk", "How well the predictions match the labels, as a loss."],
+    ],
+    [
+      ["pure", "Pure", "Only what feature 1 does alone, without the interaction."],
+      ["partial", "Partial", "What feature 1 does alone, and an equal share of the interaction."],
+      ["full", "Full", "Everything feature 1 takes part in, the whole interaction too."],
+    ],
+  ];
+  const SHAP_CHOICE = ["marginal", "local", "partial"];
+
+  function choices(figure) {
+    figure.classList.add("talk-choices");
+    const slide = figure.closest(".shapiq-slide") || document;
+    const cards = [...slide.querySelectorAll(".shapiq-talk-card")];
+    const words = make("div", { class: "talk-choices-words" }, figure);
+    const name = make("strong", {}, words);
+    const says = make("span", {}, words);
+    const W = 560, H = 170;
+    const svg = make("svg:svg", { viewBox: `0 0 ${W} ${H}`, class: "talk-choices-svg", role: "img" }, figure);
+
+    // a cloud of two correlated features (a fixed draw), and the explained input
+    let seed = 7;
+    const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const gauss = () => Math.sqrt(-2 * Math.log(random() + 1e-9)) * Math.cos(2 * Math.PI * random());
+    const cloud = Array.from({ length: 70 }, () => {
+      const a = gauss();
+      return [a, 0.85 * a + 0.5 * gauss()];
+    });
+    const x0 = [1.1, 1.0];
+
+    function draw(key) {
+      svg.replaceChildren();
+      const group = CHOICES.findIndex((list) => list.some(([k]) => k === key));
+      const [, label, text] = CHOICES[group].find(([k]) => k === key);
+      name.textContent = label;
+      says.textContent = text;
+      svg.setAttribute("aria-label", `${label}: ${text}`);
+      if (group === 0) drawMasking(key);
+      else if (group === 1) drawBehavior(key);
+      else drawInteraction(key);
+      for (const card of cards) for (const line of card.querySelectorAll(".line")) line.classList.toggle("talk-choice-on", line.dataset.choice === key);
+    }
+
+    function drawMasking(key) {
+      const sx = (v) => 190 + v * 52, sy = (v) => 78 - v * 25;
+      make("svg:polyline", { points: `${sx(-2.6)},${sy(-2.6)} ${sx(-2.6)},${sy(2.6)}`, class: "talk-axis" }, svg);
+      make("svg:polyline", { points: `${sx(-2.6)},${sy(-2.6)} ${sx(2.8)},${sy(-2.6)}`, class: "talk-axis" }, svg);
+      make("svg:text", { x: sx(2.8), y: sy(-2.6) + 13, class: "talk-tick", "text-anchor": "end" }, svg, "x₁ (kept)");
+      make("svg:text", { x: sx(-2.6) - 6, y: sy(2.6) + 8, class: "talk-tick", "text-anchor": "end" }, svg, "x₂ (removed)");
+      for (const [a, b] of cloud.filter(([a, b]) => Math.abs(a) < 2.6 && Math.abs(b) < 2.6)) make("svg:circle", { cx: sx(a), cy: sy(b), r: 2.6, class: "talk-choices-data" }, svg);
+      make("svg:line", { x1: sx(x0[0]), x2: sx(x0[0]), y1: sy(2.6), y2: sy(-2.6), class: "talk-choices-guide" }, svg);
+      let filled = [];
+      if (key === "baseline") filled = [0];
+      else if (key === "marginal") filled = cloud.map(([, b]) => b).filter((b) => Math.abs(b) < 2.6);
+      else filled = cloud.filter(([a]) => Math.abs(a - x0[0]) < 0.45).map(([, b]) => b);
+      for (const b of filled) make("svg:circle", { cx: sx(x0[0]), cy: sy(b), r: 3.4, class: "talk-choices-filled" }, svg);
+      if (key === "baseline") make("svg:text", { x: sx(x0[0]) + 8, y: sy(0) + 4, class: "talk-tick" }, svg, "b");
+      make("svg:circle", { cx: sx(x0[0]), cy: sy(x0[1]), r: 5, class: "talk-choices-x" }, svg);
+      make("svg:text", { x: sx(x0[0]) + 9, y: sy(x0[1]) - 6, class: "talk-value" }, svg, "x");
+      make("svg:text", { x: 400, y: 70, class: "talk-choices-note" }, svg, `${filled.length} value${filled.length === 1 ? "" : "s"} of x₂`);
+      make("svg:text", { x: 400, y: 90, class: "talk-choices-note" }, svg, "replace the removed one");
+    }
+
+    function drawBehavior(key) {
+      // predictions of 40 inputs, and their labels
+      const preds = cloud.slice(0, 40).map(([a, b]) => 0.55 * a + 0.35 * b);
+      const labels = preds.map((p, k) => p + 0.45 * Math.sin(k * 2.3));
+      const sx = (v) => 270 + Math.max(-2.9, Math.min(2.9, v)) * 55;
+      make("svg:line", { x1: 100, x2: 430, y1: 130, y2: 130, class: "talk-axis" }, svg);
+      make("svg:text", { x: 430, y: 146, class: "talk-tick", "text-anchor": "end" }, svg, "prediction f_S(x)");
+      if (key === "local") {
+        preds.forEach((p) => make("svg:circle", { cx: sx(p), cy: 120, r: 3, class: "talk-choices-data" }, svg));
+        make("svg:line", { x1: sx(0.9), x2: sx(0.9), y1: 40, y2: 130, class: "talk-choices-guide" }, svg);
+        make("svg:circle", { cx: sx(0.9), cy: 120, r: 6, class: "talk-choices-x" }, svg);
+        make("svg:text", { x: sx(0.9) + 10, y: 50, class: "talk-value" }, svg, "f_S(x₀)");
+      } else if (key === "sensitivity") {
+        const bins = new Array(12).fill(0);
+        preds.forEach((p) => bins[Math.max(0, Math.min(11, Math.floor((p + 2) / 4 * 12)))]++);
+        bins.forEach((count, k) => make("svg:rect", { x: sx(-2 + k / 3) + 1, y: 130 - count * 9, width: 70 / 3 - 2, height: count * 9, class: "talk-choices-bar" }, svg));
+        const mean = preds.reduce((a, b) => a + b, 0) / preds.length;
+        const sd = Math.sqrt(preds.reduce((a, b) => a + (b - mean) ** 2, 0) / preds.length);
+        make("svg:line", { x1: sx(mean - sd), x2: sx(mean + sd), y1: 30, y2: 30, class: "talk-choices-bracket" }, svg);
+        make("svg:text", { x: sx(mean), y: 22, class: "talk-value", "text-anchor": "middle" }, svg, "variance 𝕍[f_S(X)]");
+      } else {
+        preds.slice(0, 14).forEach((p, k) => {
+          const y = 34 + k * 6.5;
+          make("svg:line", { x1: sx(p), x2: sx(labels[k]), y1: y, y2: y, class: "talk-choices-error" }, svg);
+          make("svg:circle", { cx: sx(p), cy: y, r: 2.6, class: "talk-choices-filled" }, svg);
+          make("svg:circle", { cx: sx(labels[k]), cy: y, r: 2.6, class: "talk-choices-label" }, svg);
+        });
+        make("svg:circle", { cx: 478, cy: 56, r: 3.4, class: "talk-choices-filled" }, svg);
+        make("svg:text", { x: 488, y: 60, class: "talk-choices-note" }, svg, "prediction");
+        make("svg:circle", { cx: 478, cy: 76, r: 3.4, class: "talk-choices-label" }, svg);
+        make("svg:text", { x: 488, y: 80, class: "talk-choices-note" }, svg, "label");
+        make("svg:line", { x1: 472, x2: 484, y1: 96, y2: 96, class: "talk-choices-error" }, svg);
+        make("svg:text", { x: 488, y: 100, class: "talk-choices-note" }, svg, "loss ℓ");
+      }
+    }
+
+    function drawInteraction(key) {
+      // two features as circles, their interaction the overlap
+      const [c1, c2, r] = [[150, 85], [250, 85], 70];
+      const id = `talk-clip-${Math.random().toString(36).slice(2, 8)}`;
+      const defs = make("svg:defs", {}, svg);
+      const clip1 = make("svg:clipPath", { id: `${id}-1` }, defs);
+      make("svg:circle", { cx: c1[0], cy: c1[1], r }, clip1);
+      const mask = make("svg:mask", { id: `${id}-m` }, defs);
+      make("svg:rect", { x: 0, y: 0, width: W, height: H, fill: "white" }, mask);
+      make("svg:circle", { cx: c2[0], cy: c2[1], r, fill: "black" }, mask);
+      // feature 1 alone (its circle without the overlap), and the overlap
+      make("svg:circle", { cx: c1[0], cy: c1[1], r, class: "talk-choices-part", mask: `url(#${id}-m)` }, svg);
+      const overlap = make("svg:circle", { cx: c2[0], cy: c2[1], r, class: "talk-choices-overlap", "clip-path": `url(#${id}-1)` }, svg);
+      if (key === "pure") overlap.classList.add("talk-choices-ghost");
+      if (key === "partial") overlap.classList.add("talk-choices-half");
+      make("svg:circle", { cx: c1[0], cy: c1[1], r, class: "talk-choices-ring" }, svg);
+      make("svg:circle", { cx: c2[0], cy: c2[1], r, class: "talk-choices-ring talk-choices-ring-other" }, svg);
+      make("svg:text", { x: c1[0] - 30, y: c1[1] + 5, class: "talk-value", "text-anchor": "middle" }, svg, "m(1)");
+      make("svg:text", { x: c2[0] + 30, y: c2[1] + 5, class: "talk-tick", "text-anchor": "middle" }, svg, "m(2)");
+      make("svg:text", { x: 200, y: c1[1] + 5, class: "talk-value", "text-anchor": "middle" }, svg, key === "partial" ? "½ m(12)" : "m(12)");
+      const formula = { pure: "φ(1) = m(1)", partial: "φ(1) = m(1) + ½ m(12)", full: "φ(1) = m(1) + m(12)" }[key];
+      make("svg:text", { x: 350, y: 90, class: "talk-choices-note talk-choices-strong" }, svg, formula);
+    }
+
+    // the options of the cards: hover or focus one to see it
+    let current = 0;
+    cards.forEach((card, c) => {
+      card.querySelectorAll(".line").forEach((line, l) => {
+        const choice = CHOICES[c] && CHOICES[c][l];
+        if (!choice) return;
+        line.dataset.choice = choice[0];
+        line.tabIndex = 0;
+        line.classList.add("talk-choice");
+        if (SHAP_CHOICE.includes(choice[0])) make("span", { class: "talk-shap-badge", title: "the choice SHAP makes" }, line, "SHAP");
+        const on = () => draw(choice[0]);
+        line.addEventListener("mouseenter", on);
+        line.addEventListener("focus", on);
+        line.addEventListener("click", on);
+        line.addEventListener("mouseleave", () => draw(SHAP_CHOICE[current]));
+      });
+    });
+    function show(step) {
+      current = step;
+      draw(SHAP_CHOICE[step]);
+    }
+    show(0);
+    return { show, steps: 3 };
+  }
+
   // ---- steps ---------------------------------------------------------------------------------
 
-  const FIGURES = { "same-shap": sameShap, effects, faithfulness, framework };
+  const FIGURES = { "same-shap": sameShap, effects, faithfulness, framework, "feature-xai": featureXai, choices };
 
   for (const figure of document.querySelectorAll(".shapiq-talk-figure")) {
     const draw = FIGURES[figure.dataset.figure];
