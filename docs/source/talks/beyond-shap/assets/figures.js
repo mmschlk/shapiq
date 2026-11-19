@@ -217,8 +217,8 @@
   // spans the row [Fumagalli et al., 2025, Appendix E; Herbinger et al., 2026]. Global feature
   // effects (PDP, M plot, ALE) stand where the paper places them. "≈" marks path-dependent
   // TreeSHAP, which approximates the conditional distribution by the trees' own splits. The last
-  // entry of a method is its key in references.bib: the chip links to the paper as the slide's
-  // references list it (the slide cites them all).
+  // entry of a method is its key in references.bib: the chip links to the bibliography of the
+  // docs, as every citation does (the slide holds a hidden citation of each, .shapiq-cite-<key>).
   const TYPES = [
     {
       name: "Individual",
@@ -338,12 +338,13 @@
             continue;
           }
           const approx = name.startsWith("≈ ");
-          const cited = key && document.querySelector(`.shapiq-slide-references li[data-key="${key}"]`);
-          const href = cited && cited.querySelector("a") && cited.querySelector("a").href;
-          const chip = make(href ? "a" : "span", { class: approx ? "talk-chip talk-chip-approx" : "talk-chip" }, element, name);
-          if (href) Object.assign(chip, { href, target: "_blank", rel: "noopener" });
-          const said = cited ? cited.querySelector("span").firstChild.textContent.trim() : "";
-          chip.title = [approx ? "An approximation: absent features follow the trees' own splits." : "", said].filter(Boolean).join(" ");
+          // the citation of the docs for the key, as the page writes it (to the bibliography)
+          const slug = key && key.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          const cite = slug && document.querySelector(`.shapiq-cite-${slug} a`);
+          const chip = make(cite ? "a" : "span", { class: approx ? "talk-chip talk-chip-approx" : "talk-chip" }, element, name);
+          // (in a new tab, so that a click during the talk does not leave the deck)
+          if (cite) Object.assign(chip, { href: cite.href, target: "_blank", rel: "noopener" });
+          chip.title = [approx ? "An approximation: absent features follow the trees' own splits." : "", cite ? cite.title : ""].filter(Boolean).join(" ");
         }
       }
       else element.textContent = content;

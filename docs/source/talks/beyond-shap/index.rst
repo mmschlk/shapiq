@@ -332,6 +332,71 @@ says, and code reproduces what the slide shows.
    .. shapiq-talk-figure:: framework
       :alt: A grid of local feature-based explanations. Its columns are how absent features are treated, by a baseline, the marginal or the conditional distribution. Its rows are how higher-order interactions enter, as pure, partial or full effects. Each cell lists the methods that fall into it, for individual, joint and interaction explanations.
 
+   .. The chips of the grid link to these citations, as every citation of the docs links to the
+      bibliography (figures.js finds each by its class).
+
+   .. container:: shapiq-talk-cites
+
+      .. container:: shapiq-cite-tsang-2020
+
+         :cite:p:`Tsang.2020`
+
+      .. container:: shapiq-cite-friedman-2001
+
+         :cite:p:`Friedman.2001`
+
+      .. container:: shapiq-cite-apley-2020
+
+         :cite:p:`Apley.2020`
+
+      .. container:: shapiq-cite-sundararajan-2020a
+
+         :cite:p:`Sundararajan.2020a`
+
+      .. container:: shapiq-cite-janzing-2020
+
+         :cite:p:`Janzing.2020`
+
+      .. container:: shapiq-cite-lundberg-2017
+
+         :cite:p:`Lundberg.2017`
+
+      .. container:: shapiq-cite-lundberg-2020
+
+         :cite:p:`Lundberg.2020`
+
+      .. container:: shapiq-cite-zeiler-2014
+
+         :cite:p:`Zeiler.2014`
+
+      .. container:: shapiq-cite-goldstein-2015
+
+         :cite:p:`Goldstein.2015`
+
+      .. container:: shapiq-cite-zintgraf-2017
+
+         :cite:p:`Zintgraf.2017`
+
+      .. container:: shapiq-cite-blucher-2022
+
+         :cite:p:`Blucher.2022`
+
+      .. container:: shapiq-cite-harris-2022
+
+         :cite:p:`Harris.2022`
+
+      .. container:: shapiq-cite-bordt-2023
+
+         :cite:p:`Bordt.2023`
+
+      .. container:: shapiq-cite-tsai-2022
+
+         :cite:p:`Tsai.2022`
+
+      .. container:: shapiq-cite-sundararajan-2020
+
+         :cite:p:`Sundararajan.2020`
+
    .. shapiq-notes::
 
       Many feature-based explanations rest on a common foundation :cite:p:`Fumagalli.2025`. Each

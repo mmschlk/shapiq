@@ -456,3 +456,8 @@ a.talk-chip:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
+
+/* the citations the chips link to stay out of sight */
+.shapiq-talk-cites {
+  display: none;
+}
