@@ -26,6 +26,17 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
+      - id: ty-tests
+        name: ty (test_metrics)
+        entry: >-
+          uv run ty check
+          --config 'src.include=["tests/shapiq_benchmark/test_metrics.py"]'
+          --config 'src.exclude=[]'
+          --no-force-exclude
+          tests/shapiq_benchmark/test_metrics.py
+        language: system
+        pass_filenames: false
+        always_run: true
 
       # the format of the bibliography (docs/source/references.bib), on changed .bib files only
       - id: format-bib
