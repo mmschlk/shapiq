@@ -1098,23 +1098,30 @@
         show(null);
       }
     });
+    // the demo's layout for its width: the room that its texts keep and the place of the excerpt
+    const layOut = () => {
+      setShift();
+      reserveRoom();
+      placeExcerpt();
+      if (state.focus === null) show(null);
+    };
     // a new width lays the demo out again (in the next frame, outside the observer's callback)
     let width = -1;
     new ResizeObserver(([entry]) => {
       const now = Math.round(entry.contentRect.width);
       if (now === width) return;
+      const first = width < 0;
       width = now;
-      requestAnimationFrame(() => {
-        setShift();
-        reserveRoom();
-        placeExcerpt();
-        if (state.focus === null) show(null);
-      });
+      // the first report is the width that the demo was built for and laid out with below
+      if (!first) requestAnimationFrame(layOut);
     }).observe(root);
 
     root.classList.add("fixlip-demo-ready");
     reset();
     setView(state.view);
+    // laid out before the browser paints the demo for the first time: a frame later, the demo
+    // would first show without the room it keeps, taller, and then move
+    layOut();
     started = true;
   }
 })();

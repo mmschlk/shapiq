@@ -1647,8 +1647,17 @@ article[role="main"] section:has(> .fixlip-opening) > h1 > a.headerlink {
 .fixlip-opening {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - var(--fixlip-opening-top, 8rem));
-  min-height: calc(100svh - var(--fixlip-opening-top, 8rem));
+  min-height: calc(100vh - var(--fixlip-opening-top, var(--fixlip-opening-guess)));
+  min-height: calc(100svh - var(--fixlip-opening-top, var(--fixlip-opening-guess)));
+  /* where the block starts until figures.js has measured it: under the title, and on a narrower
+     page under the bar of the docs too, so that the block does not change its height then */
+  --fixlip-opening-guess: 8.25rem;
+}
+
+@media (max-width: 67em) {
+  .fixlip-opening {
+    --fixlip-opening-guess: 11.3rem;
+  }
 }
 
 .fixlip-opening > .fixlip-demo {
