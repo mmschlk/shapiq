@@ -216,7 +216,9 @@ class SlideDirective(SphinxDirective):
                 raise self.error(msg)
             entry = entries[key]
             bibtex = BibliographyData(entries={key: entry}).to_string("bibtex").strip()
-            node["references"].append((key, _reference(entry), entry.fields.get("url", ""), bibtex))
+            doi = entry.fields.get("doi", "")
+            url = entry.fields.get("url", "") or (f"https://doi.org/{doi}" if doi else "")
+            node["references"].append((key, _reference(entry), url, bibtex))
         return node
 
 

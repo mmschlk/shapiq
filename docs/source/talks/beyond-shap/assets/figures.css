@@ -443,3 +443,16 @@
   color: var(--talk-muted);
   font-size: 0.8em;
 }
+
+/* a chip links to its paper */
+a.talk-chip {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.talk-chip:hover,
+a.talk-chip:focus-visible {
+  border-color: var(--shapiq-amber);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}

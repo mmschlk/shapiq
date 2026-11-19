@@ -216,47 +216,49 @@
   // "*" is a method defined on any game: it has a variant for each of the three distributions, so it
   // spans the row [Fumagalli et al., 2025, Appendix E; Herbinger et al., 2026]. Global feature
   // effects (PDP, M plot, ALE) stand where the paper places them. "≈" marks path-dependent
-  // TreeSHAP, which approximates the conditional distribution by the trees' own splits.
+  // TreeSHAP, which approximates the conditional distribution by the trees' own splits. The last
+  // entry of a method is its key in references.bib: the chip links to the paper as the slide's
+  // references list it (the slide cites them all).
   const TYPES = [
     {
       name: "Individual",
       rows: { pure: "Main effect", partial: "Shapley value", full: "All effects with the feature" },
       methods: [
-        ["b", "pure", "ArchAttribute"],
-        ["m", "pure", "PDP"],
-        ["c", "pure", "M plot"],
-        ["c", "pure", "ALE"],
-        ["b", "partial", "Baseline SHAP"],
-        ["m", "partial", "Interventional SHAP"],
-        ["c", "partial", "Observational SHAP"],
-        ["c", "partial", "≈ Path-dependent TreeSHAP"],
-        ["b", "full", "Occlusion-1"],
-        ["b", "full", "ICE"],
-        ["c", "full", "PredDiff-1"],
+        ["b", "pure", "ArchAttribute", "Tsang.2020"],
+        ["m", "pure", "PDP", "Friedman.2001"],
+        ["c", "pure", "M plot", "Apley.2020"],
+        ["c", "pure", "ALE", "Apley.2020"],
+        ["b", "partial", "Baseline SHAP", "Sundararajan.2020a"],
+        ["m", "partial", "Interventional SHAP", "Janzing.2020"],
+        ["c", "partial", "Observational SHAP", "Lundberg.2017"],
+        ["c", "partial", "≈ Path-dependent TreeSHAP", "Lundberg.2020"],
+        ["b", "full", "Occlusion-1", "Zeiler.2014"],
+        ["b", "full", "ICE", "Goldstein.2015"],
+        ["c", "full", "PredDiff-1", "Zintgraf.2017"],
       ],
     },
     {
       name: "Joint",
       rows: { pure: "Effects within the group", partial: "Generalized value", full: "All effects that touch the group" },
       methods: [
-        ["b", "pure", "ArchAttribute"],
-        ["m", "pure", "PDP"],
-        ["c", "pure", "M plot"],
-        ["*", "partial", "Joint Shapley values"],
-        ["b", "full", "Occlusion-patch"],
-        ["b", "full", "ICE"],
-        ["c", "full", "PredDiff-patch"],
+        ["b", "pure", "ArchAttribute", "Tsang.2020"],
+        ["m", "pure", "PDP", "Friedman.2001"],
+        ["c", "pure", "M plot", "Apley.2020"],
+        ["*", "partial", "Joint Shapley values", "Harris.2022"],
+        ["b", "full", "Occlusion-patch", "Zeiler.2014"],
+        ["b", "full", "ICE", "Goldstein.2015"],
+        ["c", "full", "PredDiff-patch", "Zintgraf.2017"],
       ],
     },
     {
       name: "Interaction",
       rows: { pure: "Möbius transform", partial: "Shapley interaction", full: "Co-Möbius transform" },
       methods: [
-        ["*", "pure", "Shapley-GAM"],
-        ["*", "partial", "k-SVs (k-SII)"],
-        ["*", "partial", "Faith-SHAP"],
-        ["*", "partial", "Shapley-Taylor"],
-        ["c", "full", "PredDiff-interaction"],
+        ["*", "pure", "Shapley-GAM", "Bordt.2023"],
+        ["*", "partial", "k-SVs (k-SII)", "Bordt.2023"],
+        ["*", "partial", "Faith-SHAP", "Tsai.2022"],
+        ["*", "partial", "Shapley-Taylor", "Sundararajan.2020"],
+        ["c", "full", "PredDiff-interaction", "Blucher.2022"],
       ],
     },
   ];
@@ -304,14 +306,14 @@
       for (const row of ROWS) swap(rowNames[row.key], type.rows[row.key]);
       for (const row of ROWS) {
         // a method of any game spans the row, with a word that it takes each of the three
-        const any = type.methods.filter(([d, r]) => d === "*" && r === row.key).map(([, , name]) => name);
+        const any = type.methods.filter(([d, r]) => d === "*" && r === row.key).map(([, , name, key]) => [name, key]);
         DISTRIBUTIONS.forEach((distribution, column) => {
           const cell = cells[distribution.key + row.key];
           cell.classList.toggle("talk-frame-span", any.length > 0 && column === 0);
           cell.classList.toggle("talk-frame-gone", any.length > 0 && column > 0);
           const names = any.length
-            ? column === 0 ? [...any, "§ with any of the three distributions"] : []
-            : type.methods.filter(([d, r]) => d === distribution.key && r === row.key).map(([, , name]) => name);
+            ? column === 0 ? [...any, ["§ with any of the three distributions"]] : []
+            : type.methods.filter(([d, r]) => d === distribution.key && r === row.key).map(([, , name, key]) => [name, key]);
           swap(cell, names, true);
         });
       }
@@ -330,14 +332,18 @@
       if (chips) {
         // a chip that starts with "≈" approximates its cell (path-dependent TreeSHAP, whose absent
         // features follow the splits of the trees, near the conditional distribution)
-        for (const name of content) {
+        for (const [name, key] of content) {
           if (name.startsWith("§ ")) {
             make("span", { class: "talk-frame-any" }, element, name.slice(2));
             continue;
           }
           const approx = name.startsWith("≈ ");
-          const chip = make("span", { class: approx ? "talk-chip talk-chip-approx" : "talk-chip" }, element, name);
-          if (approx) chip.title = "An approximation: absent features follow the trees' own splits";
+          const cited = key && document.querySelector(`.shapiq-slide-references li[data-key="${key}"]`);
+          const href = cited && cited.querySelector("a") && cited.querySelector("a").href;
+          const chip = make(href ? "a" : "span", { class: approx ? "talk-chip talk-chip-approx" : "talk-chip" }, element, name);
+          if (href) Object.assign(chip, { href, target: "_blank", rel: "noopener" });
+          const said = cited ? cited.querySelector("span").firstChild.textContent.trim() : "";
+          chip.title = [approx ? "An approximation: absent features follow the trees' own splits." : "", said].filter(Boolean).join(" ");
         }
       }
       else element.textContent = content;

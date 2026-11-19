@@ -325,7 +325,9 @@ says, and code reproduces what the slide shows.
 .. shapiq-slide:: Many Methods Differ in Two Choices
    :layout: wide
    :steps: 3
-   :cite: Fumagalli.2025 Herbinger.2026
+   :cite: Fumagalli.2025 Herbinger.2026 Tsang.2020 Friedman.2001 Apley.2020 Sundararajan.2020a
+          Janzing.2020 Lundberg.2017 Lundberg.2020 Zeiler.2014 Goldstein.2015 Zintgraf.2017
+          Blucher.2022 Harris.2022 Bordt.2023 Tsai.2022 Sundararajan.2020
 
    .. shapiq-talk-figure:: framework
       :alt: A grid of local feature-based explanations. Its columns are how absent features are treated, by a baseline, the marginal or the conditional distribution. Its rows are how higher-order interactions enter, as pure, partial or full effects. Each cell lists the methods that fall into it, for individual, joint and interaction explanations.
