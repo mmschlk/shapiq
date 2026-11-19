@@ -211,24 +211,23 @@ explanation is defined as follows.
 .. shapiq-definition:: Explanation
    :name: fixlip-def-explanation
 
-   An explanation :math:`\mathbf{e}` consists of a constant :math:`\mathbf{e}_0 \in \mathbb{R}`, a
-   *main effect* :math:`\mathbf{e}_i \in \mathbb{R}` for each token, and an *interaction*
-   :math:`\mathbf{e}_{\{i,j\}} \in \mathbb{R}` for each pair of tokens, i.e.
+   An explanation :math:`\mathbf{e} \in \mathbb{R}^{\vert \mathcal{B} \vert}` assigns a constant
+   :math:`\mathbf{e}_0 \in \mathbb{R}`, a *main effect* :math:`\mathbf{e}_i \in \mathbb{R}` to each
+   token, and an *interaction* :math:`\mathbf{e}_{\{i,j\}} \in \mathbb{R}` to each pair of tokens,
+   for an *explanation basis*
 
    .. math::
 
-      \mathbf{e} := \Big(
+      \mathcal{B} :=
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-      \mathbf{e}_0 \vphantom{(\mathbf{e}_{\{i,j\}})_{\{i,j\} \subseteq N_\mathcal{T}: i \neq j}}
-      }}_{\class{fixlip-braced}{\text{constant}\mathstrut}}}, \;
+      \{0\}
+      }}_{\class{fixlip-braced}{\text{constant}\mathstrut}}} \;\cup\;
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-      (\mathbf{e}_i)_{i \in N_\mathcal{I} \cup N_\mathcal{T}}
-      \vphantom{(\mathbf{e}_{\{i,j\}})_{\{i,j\} \subseteq N_\mathcal{T}: i \neq j}}
-      }}_{\class{fixlip-braced}{\text{main effects}\mathstrut}}}, \;
+      \{i: i \in N_\mathcal{I} \cup N_\mathcal{T}\}
+      }}_{\class{fixlip-braced}{\text{individual tokens}\mathstrut}}} \;\cup\;
       \class{fixlip-brace}{\underbrace{\class{fixlip-braced}{
-      (\mathbf{e}_{\{i,j\}})_{\{i,j\} \subseteq N_\mathcal{I} \cup N_\mathcal{T}: i \neq j}
-      }}_{\class{fixlip-braced}{\text{interactions}\mathstrut}}}
-      \Big)
+      \{\{i,j\}: i,j \in N_\mathcal{I} \cup N_\mathcal{T}, i \neq j\}
+      }}_{\class{fixlip-braced}{\text{two-token interaction sets}\mathstrut}}}
 
 :shapiq-statement:`fixlip-def-explanation` fixes the form of an explanation, but not its values. The
 values should describe how the prediction changes when tokens are removed from the input. FIxLIP
