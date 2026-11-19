@@ -22,7 +22,7 @@ jobs:
         include:
           - os: ubuntu-latest
           - os: windows-latest
-          - os: macos-14          # Apple Silicon
+          - os: macos-15          # Apple Silicon (macos-14 image retired)
             cibw_archs_macos: arm64
           - os: macos-15-intel    # Intel x86_64
             cibw_archs_macos: x86_64
