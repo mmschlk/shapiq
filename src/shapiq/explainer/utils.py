@@ -220,6 +220,8 @@ def get_predict_function_and_model_type(
     # default extraction (sklearn api) which tries logits, probabilities, and then predictions
     if _predict_function is None and hasattr(model, "predict_logits"):
         _predict_function = predict_logits
+    elif _predict_function is None and hasattr(model, "decision_function"):
+        _predict_function = predict_decision_function
     elif _predict_function is None and hasattr(model, "predict_proba"):
         _predict_function = predict_proba
     elif _predict_function is None and hasattr(model, "predict"):
@@ -286,6 +288,11 @@ def predict(model: Model, data: np.ndarray) -> np.ndarray:
 def predict_proba(model: Model, data: np.ndarray) -> np.ndarray:
     """Makes predictions with a model that has a ``predict_proba`` method."""
     return model.predict_proba(data)
+
+
+def predict_decision_function(model: Model, data: np.ndarray) -> np.ndarray:
+    """Makes predictions with a model that has a ``decision_function`` method."""
+    return model.decision_function(data)
 
 
 def predict_logits(model: Model, data: np.ndarray) -> np.ndarray:
