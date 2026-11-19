@@ -736,6 +736,7 @@ body[data-theme="dark"] .orders-demo {
 /* its input clear of the symbol in its corner */
 .orders-demo-wire-x {
   justify-items: unsafe center; /* what is wider than the box, as it shrinks to fit it (demo.js) */
+  justify-content: unsafe center; /* (its column too, which is as wide as what it holds) */
   padding: 1.1rem 0.55rem 0.5rem;
   background: var(--orders-sheet);
 }
