@@ -507,6 +507,7 @@ a.talk-chip:focus-visible {
 
 .talk-faith-readout {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.7em;
   margin-top: 0.6em;
@@ -537,4 +538,178 @@ a.talk-chip:focus-visible {
 .talk-faith-readout strong {
   font-size: 1.4em;
   font-variant-numeric: tabular-nums;
+}
+
+/* how faithfulness is computed: one coalition on the left, all of them on the right */
+.talk-faith {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "orders orders" "how all";
+  gap: 0 2.2em;
+  align-items: start;
+}
+
+.talk-faith-orders {
+  grid-area: orders;
+  justify-self: start;
+}
+
+.talk-faith-how {
+  grid-area: how;
+}
+
+.talk-faith-all {
+  grid-area: all;
+}
+
+.talk-faith-step {
+  margin: 0 0 0.45em;
+  color: var(--talk-muted);
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: pre;
+}
+
+.talk-faith-keep {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  margin-bottom: 0.9em;
+}
+
+.talk-faith-chip {
+  padding: 0.18em 0.6em;
+  border: 1px dashed var(--talk-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--talk-muted);
+  font: inherit;
+  font-size: 0.82em;
+  text-decoration: line-through;
+  cursor: pointer;
+  transition: background var(--shapiq-duration) var(--shapiq-ease), color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.talk-faith-chip[aria-pressed="true"] {
+  border: 1px solid var(--shapiq-amber-ink);
+  background: color-mix(in srgb, var(--shapiq-amber) 22%, transparent);
+  color: var(--talk-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.talk-faith .talk-math {
+  margin: 0.2em 0 0.4em;
+  font-size: 0.95em;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.talk-faith-rowname {
+  fill: var(--talk-muted) !important;
+  font-size: 12px;
+}
+
+.talk-faith-strong {
+  fill: var(--talk-ink) !important;
+  font-weight: 700;
+}
+
+.talk-faith-arrow {
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-opacity: 0.75;
+  transition: x1 500ms var(--shapiq-ease), x2 500ms var(--shapiq-ease);
+}
+
+.talk-faith-row circle {
+  transition: cx 500ms var(--shapiq-ease);
+}
+
+.talk-faith-row {
+  transition: opacity 320ms var(--shapiq-ease);
+}
+
+.talk-faith-off {
+  opacity: 0.25;
+}
+
+.talk-faith-start {
+  fill: var(--talk-ink);
+}
+
+.talk-faith-model-rule {
+  stroke: var(--talk-ink);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  stroke-opacity: 0.6;
+  transition: x1 500ms var(--shapiq-ease), x2 500ms var(--shapiq-ease);
+}
+
+.talk-faith-model {
+  fill: var(--talk-ink);
+  transition: transform 500ms var(--shapiq-ease);
+}
+
+.talk-faith-sum {
+  fill: var(--shapiq-amber);
+  stroke: var(--shapiq-amber-ink);
+  stroke-width: 1.2;
+  transition: cx 500ms var(--shapiq-ease);
+}
+
+.talk-faith-gap {
+  stroke: var(--shapiq-amber-ink);
+  stroke-width: 2;
+  stroke-dasharray: 2 3;
+  transition: x1 500ms var(--shapiq-ease), x2 500ms var(--shapiq-ease);
+}
+
+.talk-faith-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1.2em;
+  color: var(--talk-muted);
+  font-size: 0.78em;
+}
+
+.talk-faith-key i {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-right: 0.35em;
+  vertical-align: -0.05em;
+}
+
+.talk-faith-key-model {
+  background: var(--talk-ink);
+  transform: rotate(45deg) scale(0.85);
+}
+
+.talk-faith-key-sum {
+  border: 1px solid var(--shapiq-amber-ink);
+  border-radius: 50%;
+  background: var(--shapiq-amber);
+}
+
+.talk-faith-picked {
+  fill: none;
+  stroke: var(--talk-ink);
+  stroke-width: 2;
+  transition: cx 600ms var(--shapiq-ease), cy 600ms var(--shapiq-ease);
+}
+
+.talk-faith-readout .talk-math {
+  flex: 0 1 auto;
+  margin: 0;
+  font-size: 0.8em;
+}
+
+@media (max-width: 900px) {
+  .talk-faith {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "orders" "how" "all";
+  }
 }

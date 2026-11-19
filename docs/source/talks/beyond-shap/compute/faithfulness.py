@@ -5,7 +5,9 @@ explained exactly at every order. For each of the 254 coalitions of its 8 featur
 and the full one, the figure shows what the model predicts with only these features present
 (the full decomposition, which is the model) against what an explanation of each order predicts
 (the sum of its values over the coalition's subsets), with the coalition's probability under the
-Shapley distribution. Each order's R^2 is the demo's, which this script checks.
+Shapley distribution. Each order's R^2 is the demo's, which this script checks. The values of
+every order go along, so that the figure can add up an explanation over a coalition of the
+reader's choice.
 
 Run from this folder, after ../../../demos/orders/compute/credit.py:
 
@@ -48,8 +50,18 @@ for order in sorted(data["orders"], key=int):
         raise ValueError(msg)
     orders[order] = {"r2": round(score, 4), "y": [round(float(v), 3) for v in y_hat]}
 
+# every coalition as a bit mask (feature i is bit i), and every order's values by group, so that
+# the figure can add up an explanation over any coalition the reader picks
+masks = [int(sum(1 << i for i in range(n) if row[i])) for row in coalitions]
+for order in orders:
+    orders[order]["values"] = [
+        [list(group), round(value, 4)] for group, value in data["orders"][order]["values"]
+    ]
 block = {
     "features": data["features"],
+    "baseline": round(data["baseline"], 4),
+    "start": [0, 5],  # the coalition shown first: the credit limit and the bill of September
+    "masks": masks,
     "probability": [round(float(p) / probabilities.max(), 3) for p in probabilities],
     "model": [round(float(v), 3) for v in model],
     "orders": orders,

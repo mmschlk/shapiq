@@ -32,6 +32,16 @@ says, and code reproduces what the slide shows.
    | **Maximilian Muschalik**
    | LMU Munich and Munich Center for Machine Learning (MCML)
 
+   .. container:: shapiq-talk-logo
+
+      .. image:: /_static/logo/logo_shapiq_light.svg
+         :class: shapiq-hero-logo only-light
+         :alt: The shapiq logo: a network of players, linked by their interactions.
+
+      .. image:: /_static/logo/logo_shapiq_dark.svg
+         :class: shapiq-hero-logo only-dark
+         :alt: The shapiq logo: a network of players, linked by their interactions.
+
    .. container:: shapiq-talk-qr
 
       .. image:: assets/qr-deck.svg
@@ -45,6 +55,118 @@ says, and code reproduces what the slide shows.
       models. This talk asks what one score per feature hides, what higher-order explanations such
       as Shapley interactions reveal, and when they are worth it. Every demo of the talk is
       computed with ``shapiq``, an open-source Python library for Shapley-based explanations.
+
+.. shapiq-slide:: Feature-Based Explainable AI
+   :layout: wide
+   :steps: 2
+   :cite: Lundberg.2017 Friedman.2001 Breiman.2001 Covert.2021
+
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: Definition 1 (Feature-Based Explanation).
+
+      Let :math:`f: \mathcal{X} \to \mathcal{Y}` be a trained model with the features
+      :math:`D = \{1, \dots, d\}`. A feature-based explanation is a mapping
+
+      .. math::
+
+         e: \mathcal{S} \to \mathcal{E}, \qquad S \mapsto e(S),
+
+      where :math:`\mathcal{S} \subseteq 2^D` is a **chosen collection of feature subsets** and
+      :math:`\mathcal{E}` an explanation space. For each :math:`S \in \mathcal{S}`, the
+      **explanation** :math:`e(S)` describes how the features in :math:`S` **influence** the output
+      of :math:`f`.
+
+   .. container:: shapiq-from-1
+
+      .. list-table::
+         :class: shapiq-talk-table
+         :header-rows: 1
+
+         * - Method
+           - Subsets :math:`\mathcal{S}`
+           - Explanation :math:`e(S)`
+           - Scope
+         * - SHAP
+           - single features
+           - a score
+           - one prediction
+         * - Partial dependence (PDP)
+           - single features
+           - a curve
+           - the whole model
+         * - Permutation importance (PFI)
+           - single features
+           - a score
+           - the whole model
+         * - Shapley interactions
+           - all groups up to size :math:`k`
+           - a score
+           - one prediction
+
+   .. shapiq-notes::
+
+      Feature-based explanations describe a model through its input features. They are post-hoc,
+      applied to a model that is already trained, and they apply to any model, because features
+      are the language that every model speaks. Formally, a feature-based explanation maps a
+      chosen collection of feature subsets to an explanation space. SHAP gives one score to each
+      feature of one prediction :cite:p:`Lundberg.2017`. Partial dependence gives each feature a
+      curve over the whole model :cite:p:`Friedman.2001`, and permutation importance a score of
+      how much the model relies on it :cite:p:`Breiman.2001`. Shapley interactions give a score
+      to every group of features up to a size :math:`k`. Many of these methods remove features
+      and watch what the model does :cite:p:`Covert.2021`. This talk stays with explanations of
+      one prediction.
+
+.. shapiq-slide:: From a Prediction to a Game
+   :layout: wide
+   :steps: 2
+   :cite: Shapley.1951 Covert.2021 Fumagalli.2025
+
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: Definition 2 (Cooperative Game).
+
+      A **cooperative game** is a pair :math:`(D, \nu)` of a **player set**
+      :math:`D = \{1, \dots, d\}` and a **value function**
+      :math:`\nu: \mathcal{P}(D) \to \mathbb{R}` that assigns a **payoff** to each **coalition**
+      :math:`T \subseteq D`.
+
+   .. container:: shapiq-talk-masking
+
+      A model needs all :math:`d` features, not a subset. **Masking** turns it into a game. The
+      features in :math:`T` keep the values of :math:`x`, the others are removed,
+
+      .. math::
+
+         \nu(T) = \mathbb{E}\big[f(x_T, X_{D \setminus T})\big],
+         \qquad \text{e.g. } \nu(\{\text{Limit}, \text{Bill Sep}\}) = -1.10 .
+
+   .. container:: shapiq-talk-definition shapiq-from-1
+
+      .. rubric:: Definition 3 (Shapley Value).
+
+      The Shapley value of a player :math:`i \in D` is a weighted average of its **marginal
+      contributions** :math:`\Delta_i(T) = \nu(T \cup \{i\}) - \nu(T)`,
+
+      .. math::
+
+         \phi^{\text{SV}}_i(\nu) = \sum_{T \subseteq D \setminus \{i\}}
+         \frac{1}{d \binom{d-1}{|T|}} \big[\nu(T \cup \{i\}) - \nu(T)\big].
+
+   .. shapiq-notes::
+
+      Cooperative game theory asks how to share the payoff of a team among its players. A game is
+      a set of players and a value function, which gives each coalition of players its payoff
+      :cite:p:`Shapley.1951`. A model is not a game, as it needs all its features. Masking makes
+      it one. The features of a coalition keep the values of the explained input, and the others
+      are removed, for instance by averaging the model over their distribution
+      :cite:p:`Covert.2021`. With only the credit limit and the bill of September, the model
+      predicts −1.10 in log-odds, against −1.56 with no feature at all.
+
+      The Shapley value shares the prediction among the features. It averages what a feature adds
+      to every coalition of the others, weighted so that every size of coalition counts the same.
+      It is the only way to share that is efficient, symmetric, linear and gives nothing to a
+      feature that never adds anything.
 
 .. shapiq-slide:: SHAP Gives One Score per Feature
    :layout: wide
@@ -86,44 +208,35 @@ says, and code reproduces what the slide shows.
    :steps: 3
    :cite: Tsai.2022 Hedstrom.2023 Agarwal.2022
 
-   .. container:: shapiq-talk-columns shapiq-talk-columns--even
+   .. shapiq-talk-figure:: faithfulness
+      :alt: How faithfulness is computed, for a credit applicant. Left, some features are kept and the others removed: the model predicts −1.10 in log-odds with only the credit limit and the bill of September, while the Shapley values add up to −0.57 and the explanation of order 2 to −1.05. Right, the same for all 254 coalitions: with the Shapley values the points scatter widely, with an R² of 0.24, with interactions of order 2 they lie close to the diagonal, with an R² of 0.98.
 
-      .. container:: shapiq-talk-column shapiq-talk-prose
+   .. container:: shapiq-from-2 shapiq-talk-also
 
-         A good explanation is *faithful*. It predicts what the model does when features are
-         removed.
+      Other properties, measured by Quantus and OpenXAI:
 
-         Remove some features and ask the model. Then ask the explanation, which adds up the
-         values of the features that are left. The closer the two answers, the more faithful the
-         explanation.
+      .. rst-class:: shapiq-talk-properties
 
-         .. container:: shapiq-from-2
-
-            Faithfulness is one property among several. Toolkits such as Quantus and OpenXAI
-            measure others as well.
-
-            .. rst-class:: shapiq-talk-properties
-
-            | **Faithfulness**
-            | Robustness
-            | Complexity
-            | Localisation
-            | Randomisation
-            | Axiomatic properties
-
-      .. container:: shapiq-talk-column
-
-         .. shapiq-talk-figure:: faithfulness
-            :alt: A scatter plot of 254 coalitions of the features of a credit applicant. Each point is what the model predicts with only these features against what the explanation predicts. With the Shapley values the points scatter widely, with an R² of 0.24. With interactions of order 2 they lie close to the diagonal, with an R² of 0.98.
+      | Robustness
+      | Complexity
+      | Localisation
+      | Randomisation
+      | Axiomatic properties
 
    .. shapiq-notes::
 
-      An explanation is a claim about the model. A good explanation should therefore predict what
-      the model does. Faithfulness measures this. It removes some features, asks the model for its
-      prediction, and compares it to the prediction of the explanation, the sum of its values over
-      the features that are left. Over many such coalitions, weighted as the Shapley value weighs
-      them, this gives an R² :cite:p:`Tsai.2022`. For the credit applicant, the Shapley values
-      reach 0.24. With the interactions of pairs of features, the explanation reaches 0.98.
+      An explanation is a claim about the model, and a good one predicts what the model does.
+      Faithfulness measures this in three steps. First, keep some features and remove the others,
+      a coalition :math:`S`. Second, ask the model, :math:`\nu(S)`, and ask the explanation,
+      which adds up its values over all groups of kept features, :math:`\hat{\nu}_k(S)`. With
+      only the credit limit and the bill of September, the model predicts −1.10 in log-odds. The
+      Shapley values add up to −0.57. The value of the bill also holds its shares of interactions
+      with features that were removed, such as the payment of August. The explanation of order 2
+      keeps the pair of the limit and the bill apart, and arrives at −1.05. Third, repeat this
+      for all coalitions and compare. Weighted as the Shapley value weighs coalitions, this gives
+      an :math:`R^2` :cite:p:`Tsai.2022`. Here it is measured beyond what the number of kept
+      features alone predicts. For the applicant, the Shapley values reach 0.24 and the pairs
+      0.98.
 
       Faithfulness is one property among several. An explanation can also be robust to small
       changes of the input, simple, localized on the relevant features, and sensitive to the model
@@ -197,12 +310,69 @@ says, and code reproduces what the slide shows.
              print("  Shapley values:      ", computer("SV").dict_values)
              print("  Shapley interactions:", computer("k-SII", order=2).dict_values)
 
+.. shapiq-slide:: Shapley Interactions Extend the Shapley Value
+   :layout: wide
+   :steps: 3
+   :cite: Grabisch.1999 Fujimoto.2006 Harsanyi.1963 Bordt.2023 Tsai.2022
+
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: Feature Attribution with Interactions.
+
+      An explanation of order :math:`k` summarizes :math:`f` at :math:`x` by values for single
+      features, pairs, and groups of up to :math:`k` features,
+
+      .. math::
+
+         f(x) \;\approx\; \phi_\emptyset
+         + \underbrace{\sum_{i \in D} \phi_i}_{\text{order } 1}
+         + \underbrace{\sum_{\{i, j\} \subseteq D} \phi_{ij}}_{\text{order } 2}
+         + \dots
+         + \underbrace{\sum_{S \subseteq D,\, |S| = k} \phi_S}_{\text{order } k} .
+
+   .. container:: shapiq-talk-definition shapiq-from-1
+
+      .. rubric:: Definition 4 (Shapley Interactions).
+
+      Shapley interactions generalize the Shapley value from marginal contributions to
+      **discrete derivatives** :math:`\Delta_S(T) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\,
+      \nu(T \cup L)`. The Shapley interaction index of a group :math:`S` is
+
+      .. math::
+
+         \phi^{\text{SII}}_S(\nu) = \sum_{T \subseteq D \setminus S}
+         \frac{1}{(d - |S| + 1) \binom{d - |S|}{|T|}}\, \Delta_S(T).
+
+   .. container:: shapiq-talk-definition shapiq-from-2
+
+      .. rubric:: The Full Decomposition (Möbius Transform).
+
+      At order :math:`k = d`, the explanation is exact. Every coalition's value is the sum of the
+      **Möbius transform** :math:`m` over its groups,
+
+      .. math::
+
+         \nu(T) = \sum_{S \subseteq T} m(S), \qquad
+         m(S) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\, \nu(L).
+
+   .. shapiq-notes::
+
+      An explanation of order :math:`k` adds to the Shapley values a value for every pair, every
+      triple, and so on up to groups of :math:`k` features. Together they approximate the
+      prediction. The Shapley interaction index :cite:p:`Grabisch.1999` replaces the marginal
+      contribution of one feature by the discrete derivative of a group, what the group adds
+      beyond what its members add alone. Its variants k-SII :cite:p:`Bordt.2023`, Shapley-Taylor
+      and Faith-SHAP :cite:p:`Tsai.2022` make the values of each order add up to the prediction.
+      At the highest order, the explanation is the Möbius transform :cite:p:`Harsanyi.1963`, which
+      decomposes the game exactly :cite:p:`Fujimoto.2006`. The order thus moves an explanation
+      from compact to complete.
+
 .. shapiq-slide:: Every Order Explains More of the Model
    :layout: wide
    :cite: Tsai.2022 Bordt.2023
 
    .. shapiq-demo:: orders
-      :examples: applicant, house, tabpfn
+      :examples: applicant, house, tabpfn, applicants, houses
 
    .. shapiq-notes::
 
@@ -216,28 +386,15 @@ says, and code reproduces what the slide shows.
       longitude. TabPFN, a tabular foundation model, values that house, and its Shapley values
       explain close to nothing.
 
-   .. shapiq-try::
-
-      The guide :doc:`../../introduction/how-much-explained` builds this figure up step by step
-      and ends with the code that computed it.
-
-.. shapiq-slide:: Often the Shapley Values Are Enough
-   :layout: wide
-
-   .. shapiq-demo:: orders
-      :examples: applicants, houses
-
-   .. shapiq-notes::
-
-      Across 2,000 applicants, the Shapley values fit with an R² of 0.78 on average, and across
-      2,000 houses with 0.79. For many predictions, SHAP is a good explanation. The applicant of
-      the previous slide fits worse than 97 % of them. Whether interactions are worth it thus
-      depends on the prediction, and it can be measured instead of guessed.
+      Yet across 2,000 applicants, the Shapley values fit with an R² of 0.78 on average, and
+      across 2,000 houses with 0.79. For many predictions, SHAP is a good explanation. The
+      applicant fits worse than 97 % of them. Whether interactions are worth it thus depends on
+      the prediction, and it can be measured instead of guessed.
 
    .. shapiq-try::
 
-      The guide :doc:`../../introduction/how-much-explained` explains how the fit is measured and
-      how the houses were computed.
+      The guide :doc:`../../introduction/how-much-explained` builds this figure up step by step,
+      explains how the fit is measured, and ends with the code that computed it.
 
 .. shapiq-slide:: For Tree Ensembles, Interactions Are Exact
    :layout: wide
@@ -336,6 +493,79 @@ says, and code reproduces what the slide shows.
       :doc:`../../demos/fixlip/index` explains FIxLIP step by step and ends with the code of the
       vision–language game and its explanation with ``shapiq``.
 
+.. shapiq-slide:: Every Explanation Makes Three Choices
+   :layout: wide
+   :steps: 4
+   :cite: Herbinger.2026 Fumagalli.2025 Enouen.2025
+
+   .. math::
+
+      \phi \;=\; \mathcal{I} \circ \mathcal{B} \circ \mathcal{M}\, f
+
+   .. container:: shapiq-talk-cards
+
+      .. container:: shapiq-talk-card
+
+         .. rubric:: Masking :math:`\mathcal{M}`
+
+         How absent features are removed
+
+         .. math::
+
+            f_S(x) = \mathbb{E}_{X_{-S} \sim P}\big[f(x_S, X_{-S})\big]
+
+         | **Baseline**: :math:`X_{-S} = b_{-S}`
+         | **Marginal**: :math:`P(X_{-S})`
+         | **Conditional**: :math:`P(X_{-S} \mid x_S)`
+
+      .. container:: shapiq-talk-card shapiq-from-1
+
+         .. rubric:: Behavior :math:`\mathcal{B}`
+
+         What is explained
+
+         .. math::
+
+            \nu(S) = \mathcal{B}\big(f_S\big)
+
+         | **Local**: the prediction :math:`f_S(x_0)`
+         | **Sensitivity**: :math:`\mathbb{V}\big[f_S(X)\big]`
+         | **Risk**: :math:`-\mathbb{E}\big[\ell(f_S(X), Y)\big]`
+
+      .. container:: shapiq-talk-card shapiq-from-2
+
+         .. rubric:: Interaction :math:`\mathcal{I}`
+
+         How effects of groups are shared
+
+         .. math::
+
+            \phi(i) = \sum_{T \ni i} w_T\, m(T)
+
+         | **Pure**: :math:`w_T = 1` for :math:`T = \{i\}`, else 0
+         | **Partial**: :math:`w_T = 1 / |T|`
+         | **Full**: :math:`w_T = 1`
+
+   .. container:: shapiq-talk-also shapiq-from-3
+
+      .. math::
+
+         \text{SHAP} \;=\; \mathcal{I}_{\text{partial}} \circ \mathcal{B}_{\text{local}} \circ
+         \mathcal{M}_{\text{marginal}}
+
+   .. shapiq-notes::
+
+      Many explanation methods are one recipe with three choices :cite:p:`Herbinger.2026`.
+      Masking decides how absent features are removed: replaced by a baseline, averaged over
+      their distribution, or averaged given the present features. Behavior decides what is
+      explained: one prediction, how much the prediction varies, or how well the model performs.
+      Interaction decides how the effects of groups of features count for a single feature, in
+      terms of the Möbius transform :math:`m` :cite:p:`Fumagalli.2025`. A pure effect counts only
+      the feature alone, a full effect counts every group that holds it, and a partial effect
+      shares each group equally among its members, as the Shapley value does. SHAP is the partial
+      effect of a local prediction under marginal masking. Shapley interactions keep masking and
+      behavior, and change only how groups are counted :cite:p:`Enouen.2025`.
+
 .. shapiq-slide:: SHAP Shares Interactions Equally. Other Methods Do Not.
    :layout: wide
    :steps: 2
@@ -371,7 +601,7 @@ says, and code reproduces what the slide shows.
          print("partial:", computer("SV").dict_values)  # Shapley values (1, 1)
          print("full:   ", computer("Co-Moebius", order=2).dict_values)  # full effects (2, 2)
 
-.. shapiq-slide:: Many Methods Differ in Two Choices
+.. shapiq-slide:: For One Prediction, Methods Differ in Two Choices
    :layout: wide
    :steps: 3
    :cite: Fumagalli.2025 Herbinger.2026 Tsang.2020 Friedman.2001 Apley.2020 Sundararajan.2020a
@@ -516,6 +746,16 @@ says, and code reproduces what the slide shows.
 .. shapiq-slide:: Thank You
    :layout: title
    :cite: Muschalik.2024
+
+   .. container:: shapiq-talk-logo
+
+      .. image:: /_static/logo/logo_shapiq_light.svg
+         :class: shapiq-hero-logo only-light
+         :alt: The shapiq logo: a network of players, linked by their interactions.
+
+      .. image:: /_static/logo/logo_shapiq_dark.svg
+         :class: shapiq-hero-logo only-dark
+         :alt: The shapiq logo: a network of players, linked by their interactions.
 
    .. rst-class:: shapiq-talk-subtitle
 

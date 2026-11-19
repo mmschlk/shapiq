@@ -827,3 +827,193 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
 .shapiq-talk-properties .line strong {
   color: var(--shapiq-amber-ink);
 }
+
+/* a line under a figure that points further: its words, then its chips, on one row */
+.shapiq-talk-also {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em 0.8em;
+  margin-top: 1em;
+  color: var(--shapiq-text-muted);
+  font-size: 0.9em;
+}
+
+.shapiq-talk-also > p {
+  margin: 0;
+}
+
+.shapiq-talk-also .shapiq-talk-properties.line-block {
+  margin: 0;
+}
+
+/* the shapiq logo on the title and the last slide: the landing page's, whose players wiggle when it
+   is first seen and on hover, and can be pulled (_static/js/logo.js) */
+.shapiq-talk-logo {
+  float: right;
+  margin: 0 0 1rem 1.5rem;
+}
+
+.shapiq-talk-logo .shapiq-hero-logo {
+  display: block;
+  float: none;
+  width: 8rem;
+  height: auto;
+  margin: 0;
+}
+
+.shapiq-deck .shapiq-slide--title .shapiq-talk-logo {
+  position: absolute;
+  top: 6vh;
+  right: max(6vw, 1.5rem);
+  float: none;
+  margin: 0;
+}
+
+.shapiq-deck .shapiq-slide--title .shapiq-talk-logo .shapiq-hero-logo {
+  width: clamp(6rem, 16vmin, 13rem);
+}
+
+.shapiq-deck--scroll .shapiq-slide--title .shapiq-talk-logo {
+  position: static;
+  float: right;
+}
+
+.shapiq-deck--scroll .shapiq-slide--title .shapiq-talk-logo .shapiq-hero-logo {
+  width: 6rem;
+}
+
+/* a definition, as in the speaker's thesis defense: a gray box with its name in a bar on top */
+.shapiq-talk-definition {
+  margin: 0 0 0.8em;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius-small);
+  background: color-mix(in srgb, var(--shapiq-text-muted) 6%, transparent);
+  overflow: hidden;
+}
+
+.shapiq-talk-definition > * {
+  margin-inline: 0.9em;
+}
+
+.shapiq-talk-definition > p.rubric {
+  margin: 0 0 0.5em;
+  padding: 0.3em 0.9em;
+  border-bottom: 1px solid var(--shapiq-border);
+  background: color-mix(in srgb, var(--shapiq-text-muted) 14%, transparent);
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.shapiq-talk-definition > :last-child {
+  margin-bottom: 0.6em;
+}
+
+.shapiq-talk-definition .math,
+.shapiq-talk-masking .math,
+.shapiq-talk-card .math {
+  margin: 0.3em 0;
+}
+
+.shapiq-talk-masking {
+  margin: 0 0 0.8em;
+}
+
+.shapiq-talk-masking > p {
+  margin: 0;
+}
+
+/* a small table of methods */
+.shapiq-talk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.shapiq-talk-table th,
+.shapiq-talk-table td {
+  padding: 0.3em 0.7em;
+  border-bottom: 1px solid var(--shapiq-border);
+  text-align: left;
+}
+
+.shapiq-talk-table th {
+  color: var(--shapiq-text-muted);
+  font-weight: 600;
+}
+
+.shapiq-talk-table td p,
+.shapiq-talk-table th p {
+  margin: 0;
+}
+
+/* three cards side by side, one per choice */
+.shapiq-talk-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.8rem, 1.8vw, 1.8rem);
+  margin: 0.4em 0 0.6em;
+}
+
+.shapiq-talk-card {
+  padding: 0 0.9em 0.6em;
+  border: 1px solid var(--shapiq-border);
+  border-top: 4px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius-small);
+  font-size: 0.85em;
+}
+
+.shapiq-talk-card > p.rubric {
+  margin: 0.5em 0 0.1em;
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+.shapiq-talk-card > p {
+  margin: 0;
+  color: var(--shapiq-text-muted);
+}
+
+.shapiq-talk-card .line-block {
+  margin: 0.4em 0 0;
+}
+
+.shapiq-talk-card .line-block .line {
+  padding: 0.12em 0;
+}
+
+.shapiq-talk-also .math {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .shapiq-talk-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* in the deck: the definitions, cards and tables at the size of the slide's prose, as wide as
+   their box */
+.shapiq-deck .shapiq-talk-definition,
+.shapiq-deck .shapiq-talk-masking,
+.shapiq-deck .shapiq-talk-cards,
+.shapiq-deck .shapiq-talk-table,
+.shapiq-deck .shapiq-talk-also {
+  font-size: clamp(15px, 0.72vw + 0.85vh, 28px);
+}
+
+.shapiq-deck .shapiq-slide-body .shapiq-talk-definition p,
+.shapiq-deck .shapiq-slide-body .shapiq-talk-masking p,
+.shapiq-deck .shapiq-slide-body .shapiq-talk-card p {
+  max-width: none;
+}
+
+.shapiq-deck .shapiq-talk-table {
+  font-size: clamp(14px, 0.62vw + 0.75vh, 24px);
+}
+
+/* on a phone, a formula wider than the screen scrolls on its own */
+.shapiq-deck--scroll .shapiq-slide div.math {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
