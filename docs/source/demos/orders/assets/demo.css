@@ -866,6 +866,8 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-wire-x .orders-demo-wire-shows {
+  /* (as wide as its table, so that it scales down about its own middle, an applicant's too) */
+  width: max-content;
   max-width: none;
 }
 

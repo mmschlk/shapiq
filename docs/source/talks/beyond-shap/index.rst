@@ -52,14 +52,16 @@ says, and code reproduces what the slide shows.
 
    .. shapiq-demo:: orders
       :step: shapley
-      :examples: house
+      :examples: applicant
 
    .. shapiq-notes::
 
-      An XGBoost model predicts the value of a house in Los Angeles from eight features. SHAP
-      splits this prediction among the features. Each feature gets one score, red where it raises
-      the prediction and blue where it lowers it. Longitude lowers the value and latitude raises
-      it, although neither of them locates the house. Only both together do.
+      An XGBoost model predicts whether a credit card client defaults, from eight features of the
+      last months. SHAP splits this prediction among the features. Each feature gets one score,
+      red where it raises the risk and blue where it lowers it. The bill of September raises the
+      risk the most, and the high credit limit lowers it a little. Yet a bill says little without
+      the limit it fills. Only both together say that the client has used nearly all of the
+      credit.
 
    .. shapiq-try::
 
@@ -151,7 +153,7 @@ says, and code reproduces what the slide shows.
    :cite: Tsai.2022 Bordt.2023
 
    .. shapiq-demo:: orders
-      :examples: house, applicant, tabpfn
+      :examples: applicant, house, tabpfn
 
    .. shapiq-notes::
 
@@ -159,12 +161,11 @@ says, and code reproduces what the slide shows.
       the top. Below them follow the interactions of order 2, 3 and so on, down to the full
       decomposition, which is the model itself :cite:p:`Bordt.2023`. Faithfulness measures how
       well each order predicts what the model does when only some features are present
-      :cite:p:`Tsai.2022`. For the house, the Shapley values reach an R² of 0.36. With the pair of
-      latitude and longitude, the explanation fits almost exactly. An XGBoost model of credit
-      default shows the same for an applicant who defaulted. The Shapley values reach 0.24 there, and
-      the pairs of the credit limit with the bill, and of the bill with the last payment, lift the
-      fit to 0.98. TabPFN, a tabular foundation model, values the house of before, and its Shapley
-      values explain close to nothing.
+      :cite:p:`Tsai.2022`. For the applicant, who defaulted, the Shapley values reach an R² of
+      0.24. The pairs of the credit limit with the bill, and of the bill with the payment of
+      August, lift the fit to 0.98. A house in Los Angeles shows the same with latitude and
+      longitude. TabPFN, a tabular foundation model, values that house, and its Shapley values
+      explain close to nothing.
 
    .. shapiq-try::
 
@@ -175,14 +176,14 @@ says, and code reproduces what the slide shows.
    :layout: wide
 
    .. shapiq-demo:: orders
-      :examples: houses, applicants
+      :examples: applicants, houses
 
    .. shapiq-notes::
 
-      Across 2,000 houses, the Shapley values fit with an R² of 0.79 on average, and across 2,000
-      applicants with 0.78. For many predictions, SHAP is a good explanation. The house of the previous slide fits worse than most of its
-      neighbours. Whether interactions are worth it thus depends on the prediction, and it can be
-      measured instead of guessed.
+      Across 2,000 applicants, the Shapley values fit with an R² of 0.78 on average, and across
+      2,000 houses with 0.79. For many predictions, SHAP is a good explanation. The applicant of
+      the previous slide fits worse than 97 % of them. Whether interactions are worth it thus
+      depends on the prediction, and it can be measured instead of guessed.
 
    .. shapiq-try::
 
@@ -229,13 +230,13 @@ says, and code reproduces what the slide shows.
 
          .. shapiq-demo:: orders
             :step: full
-            :examples: house
+            :examples: applicant
 
    .. shapiq-notes::
 
       Every explanation of the house so far was computed exactly, with no sampling and no
       approximation. A path in a tree of depth 5 splits on at most five features, so no more than
-      five features interact. The layers of the house thus end at order 5, where the explanation
+      five features interact. The layers of the applicant thus end at order 5, where the explanation
       fits the model exactly. TreeSHAP computes the Shapley values of tree ensembles in
       polynomial time :cite:p:`Lundberg.2020`. TreeSHAP-IQ uses the same structure for Shapley
       interactions of any order :cite:p:`Muschalik.2024a`. In ``shapiq``, it takes three lines for
@@ -285,28 +286,6 @@ says, and code reproduces what the slide shows.
 
       :doc:`../../demos/fixlip/index` explains FIxLIP step by step and ends with the code of the
       vision–language game and its explanation with ``shapiq``.
-
-.. shapiq-slide:: A Functional Group Is an Interaction
-   :layout: wide
-   :cite: Muschalik.2025
-
-   .. shapiq-demo:: graphshapiq-explorer
-
-   .. shapiq-notes::
-
-      A graph neural network flags molecules that disturb lab tests. Catechol, a ring with two
-      neighbouring OH groups, is flagged. Moving one OH group by one position gives resorcinol,
-      with the same atoms in another arrangement, and the answer drops. No score per atom can
-      express that. GraphSHAP-IQ computes the Shapley interactions of the atoms exactly
-      :cite:p:`Muschalik.2025`. A node only sees its neighbourhood, so the explanation needs far
-      fewer evaluations than all :math:`2^n` coalitions, and a molecule of one's own is explained
-      in the browser.
-
-   .. shapiq-try::
-
-      :class:`~shapiq.graph.GraphExplainer` explains ``torch_geometric`` models with a
-      graph-level output, and ``shapiq.Explainer`` picks it for models with message passing
-      layers. See :doc:`../../demos/graphshapiq-explorer/index`.
 
 .. shapiq-slide:: SHAP Shares Interactions Equally. Other Methods Do Not.
    :layout: wide
