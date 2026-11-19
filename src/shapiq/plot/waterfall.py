@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.offsetbox import AnnotationBbox, HPacker, TextArea
 from matplotlib.transforms import ScaledTranslation
 
 from ._config import BLUE, RED
@@ -251,14 +252,10 @@ def _draw_waterfall_plot(
                 fontsize=12,
             )
 
-    # draw the y-ticks twice, once in gray and then again with just the feature names in black
-    # The 1e-8 is so matplotlib 3.3 doesn't try and collapse the ticks
-    ytick_pos = list(range(num_features)) + list(np.arange(num_features) + 1e-8)
-    plt.yticks(
-        ytick_pos,
-        yticklabels[:-1] + [label.split("=")[-1] for label in yticklabels[:-1]],
-        fontsize=13,
-    )
+    # draw the y-ticks with the full label (used only to size the plot correctly); the
+    # colored rendering (feature names in gray, feature values in black) is done further
+    # below once the final figure size is known.
+    plt.yticks(range(num_features), yticklabels[:-1], fontsize=13)
 
     # Check that the y-ticks are not drawn outside the plot
     max_label_width = (
@@ -345,11 +342,45 @@ def _draw_waterfall_plot(
 
     tick_labels[1].set_color("#999999")
 
-    # color the y tick labels that have the feature values as gray
-    # (these fall behind the black ones with just the feature name)
-    tick_labels = ax.yaxis.get_majorticklabels()
+    # Color every feature value in black, keeping names and interaction separators gray.
+    # Pack the segments at draw time so resizing and export preserve their alignment.
+    ax.set_yticklabels(["" for _ in range(num_features)])
     for i in range(num_features):
-        tick_labels[i].set_color("#999999")
+        parts = yticklabels[i].split(" x ")
+        segments = []
+        for j, part in enumerate(parts):
+            if j > 0:
+                segments.append((" x ", "#999999"))
+            if "=" in part:
+                name_part, value_part = part.split("=", 1)
+                segments.append((name_part + "=", "#999999"))
+                segments.append((value_part, "black"))
+            else:
+                segments.append((part, "black"))
+
+        label_box = HPacker(
+            children=[
+                TextArea(text, textprops={"fontsize": 13, "color": color})
+                for text, color in segments
+            ],
+            align="baseline",
+            pad=0,
+            sep=0,
+        )
+        ax.add_artist(
+            AnnotationBbox(
+                label_box,
+                (0, i),
+                xycoords=ax.get_yaxis_transform(),
+                xybox=(-5, 0),
+                boxcoords="offset points",
+                box_alignment=(1, 0.5),
+                frameon=False,
+                pad=0,
+                annotation_clip=False,
+                clip_on=False,
+            ),
+        )
 
     if show:
         plt.show()
@@ -373,8 +404,9 @@ def waterfall_plot(
     Args:
         interaction_values: The interaction values as an interaction object.
         feature_names: The names of the features. Defaults to ``None``. To display feature values
-            alongside feature names, provide strings in the format ``"value=feature"`` (e.g.,
-            ``"25=Age"``). The plot will show the value in gray and the feature name in black.
+            alongside feature names, provide strings in the format ``"feature=value"`` (e.g.,
+            ``"Age=25"``) and set ``abbreviate=False`` to preserve the full labels. The plot shows
+            feature names and interaction separators in gray and every feature value in black.
         show: Whether to show the plot. Defaults to ``False``.
         max_display: The maximum number of interactions to display. Defaults to ``10``.
         abbreviate: Whether to abbreviate the feature names. Defaults to ``True``.
