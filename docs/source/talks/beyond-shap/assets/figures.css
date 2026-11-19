@@ -461,3 +461,80 @@ a.talk-chip:focus-visible {
 .shapiq-talk-cites {
   display: none;
 }
+
+/* ---- faithfulness ------------------------------------------------------------------------------- */
+
+.talk-faith {
+  font-size: 15px;
+}
+
+.shapiq-deck .talk-faith {
+  font-size: clamp(14px, 0.7vw + 0.7vh, 24px);
+}
+
+.talk-faith-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.talk-faith .talk-grid {
+  stroke: var(--talk-line);
+  stroke-width: 1;
+}
+
+.talk-faith-diagonal {
+  stroke: var(--talk-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.talk-faith-note,
+.talk-faith .talk-axis-name {
+  fill: var(--talk-muted) !important;
+  font-size: 12px;
+}
+
+.talk-faith-point {
+  fill: var(--shapiq-amber);
+  fill-opacity: 0.55;
+  stroke: var(--shapiq-amber-ink);
+  stroke-opacity: 0.5;
+  stroke-width: 0.6;
+  transition: cy 600ms var(--shapiq-ease);
+}
+
+.talk-faith-readout {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-top: 0.6em;
+}
+
+.talk-faith-label {
+  color: var(--talk-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.talk-faith-meter {
+  flex: 0 1 12em;
+  height: 0.5em;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--talk-line);
+}
+
+.talk-faith-meter span {
+  display: block;
+  height: 100%;
+  background: var(--shapiq-green, #2e9e5b);
+  transform-origin: left;
+  transition: transform 600ms var(--shapiq-ease);
+}
+
+.talk-faith-readout strong {
+  font-size: 1.4em;
+  font-variant-numeric: tabular-nums;
+}

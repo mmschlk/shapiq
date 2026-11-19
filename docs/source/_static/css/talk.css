@@ -790,3 +790,40 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* a body taller than the safe area is scaled down about its top (talk.js, fit) */
+.shapiq-deck .shapiq-slide-body[data-fit] {
+  transform-origin: top center;
+}
+
+/* ---- prose beside a figure ---------------------------------------------------------------------- */
+
+.shapiq-talk-columns--even {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  align-items: center;
+}
+
+.shapiq-deck .shapiq-talk-prose {
+  font-size: clamp(16px, 0.8vw + 0.9vh, 30px);
+  line-height: 1.45;
+}
+
+.shapiq-talk-properties .line-block,
+.shapiq-talk-properties.line-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  margin: 0.6em 0 0;
+}
+
+.shapiq-talk-properties .line,
+.shapiq-talk-properties.line-block .line {
+  padding: 0.15em 0.65em;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  font-size: 0.8em;
+}
+
+.shapiq-talk-properties .line strong {
+  color: var(--shapiq-amber-ink);
+}

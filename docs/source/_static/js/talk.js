@@ -283,6 +283,9 @@
     hints();
     if (deck) layout(0);
   });
+  window.addEventListener("resize", () => {
+    if (deck) fit();
+  });
 
   // what the corner, the line and the notes say about the slide that is shown
   function show(index) {
@@ -338,7 +341,57 @@
     setStep(slide, step, true);
     const done = (index + (slide.shapiqStep + 1) / slide.shapiqSteps) / slides.length;
     progress.firstChild.style.transform = `scaleX(${done})`;
-    if (moved) show(index);
+    if (moved) {
+      show(index);
+      watch(slide);
+    }
+  }
+
+  // The safe area of a slide is its padding: what it shows stays above the line and the corner.
+  // A body taller than its room (a demo) is scaled down about its top, to two thirds at most, and
+  // scrolls only beyond that. Its size is watched, as a demo can grow.
+  const MIN_SCALE = 0.66;
+  const sizes = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
+  function watch(slide) {
+    slides.forEach((other) => {
+      if (other !== slide) unfit(other);
+    });
+    if (sizes) {
+      sizes.disconnect();
+      const body = slide.querySelector(":scope > .shapiq-slide-body");
+      if (body) sizes.observe(body);
+    }
+    fit();
+  }
+
+  function unfit(slide) {
+    const body = slide.querySelector(":scope > .shapiq-slide-body");
+    if (!body) return;
+    body.style.transform = "";
+    body.style.marginBottom = "";
+    delete body.dataset.fit;
+  }
+
+  function fit() {
+    if (!deck || scrolling()) {
+      slides.forEach(unfit);
+      return;
+    }
+    const slide = slides[current];
+    const body = slide.querySelector(":scope > .shapiq-slide-body");
+    if (!body) return;
+    const style = getComputedStyle(slide);
+    const title = slide.querySelector(":scope > .shapiq-slide-title");
+    const above = title ? title.offsetHeight + parseFloat(getComputedStyle(title).marginBottom) : 0;
+    const room = slide.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - above;
+    const height = body.offsetHeight;
+    const scale = height > room + 1 ? Math.max(MIN_SCALE, room / height) : 1;
+    const value = scale < 1 ? `scale(${scale.toFixed(4)})` : "";
+    if (body.style.transform === value) return;
+    body.style.transform = value;
+    body.style.marginBottom = scale < 1 ? `${-(height * (1 - scale)).toFixed(1)}px` : "";
+    if (scale < 1) body.dataset.fit = scale.toFixed(2);
+    else delete body.dataset.fit;
   }
 
   function forward() {

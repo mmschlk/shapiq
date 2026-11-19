@@ -81,6 +81,55 @@ says, and code reproduces what the slide shows.
          shapley_values = explainer.explain(x)
          shapley_values.plot_force(feature_names=list(X.columns))
 
+.. shapiq-slide:: What Makes a Good Explanation?
+   :layout: wide
+   :steps: 3
+   :cite: Tsai.2022 Hedstrom.2023 Agarwal.2022
+
+   .. container:: shapiq-talk-columns shapiq-talk-columns--even
+
+      .. container:: shapiq-talk-column shapiq-talk-prose
+
+         A good explanation is *faithful*. It predicts what the model does when features are
+         removed.
+
+         Remove some features and ask the model. Then ask the explanation, which adds up the
+         values of the features that are left. The closer the two answers, the more faithful the
+         explanation.
+
+         .. container:: shapiq-from-2
+
+            Faithfulness is one property among several. Toolkits such as Quantus and OpenXAI
+            measure others as well.
+
+            .. rst-class:: shapiq-talk-properties
+
+            | **Faithfulness**
+            | Robustness
+            | Complexity
+            | Localisation
+            | Randomisation
+            | Axiomatic properties
+
+      .. container:: shapiq-talk-column
+
+         .. shapiq-talk-figure:: faithfulness
+            :alt: A scatter plot of 254 coalitions of the features of a credit applicant. Each point is what the model predicts with only these features against what the explanation predicts. With the Shapley values the points scatter widely, with an R² of 0.24. With interactions of order 2 they lie close to the diagonal, with an R² of 0.98.
+
+   .. shapiq-notes::
+
+      An explanation is a claim about the model. A good explanation should therefore predict what
+      the model does. Faithfulness measures this. It removes some features, asks the model for its
+      prediction, and compares it to the prediction of the explanation, the sum of its values over
+      the features that are left. Over many such coalitions, weighted as the Shapley value weighs
+      them, this gives an R² :cite:p:`Tsai.2022`. For the credit applicant, the Shapley values
+      reach 0.24. With the interactions of pairs of features, the explanation reaches 0.98.
+
+      Faithfulness is one property among several. An explanation can also be robust to small
+      changes of the input, simple, localized on the relevant features, and sensitive to the model
+      it explains. Toolkits such as Quantus :cite:p:`Hedstrom.2023` and OpenXAI
+      :cite:p:`Agarwal.2022` measure these properties.
+
 .. shapiq-slide:: The Same Scores Can Come from Different Models
    :layout: wide
    :steps: 3
