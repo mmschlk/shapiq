@@ -1545,18 +1545,12 @@
     });
   }
 
-  // The first page of the page is its title and the block of the demo (.fixlip-opening), which
-  // reaches to the end of the screen. The write-up is the second page. figures.css keeps the first
-  // page in place while the second slides over it, and needs the places for that: where the title
-  // and the block lie on the page, by how much the first page is higher than the screen, and where
-  // the second page starts in the section. They are measured with nothing held in place.
+  // The first screen of the page: the title and the block of the demo (.fixlip-opening), which
+  // reaches to the end of the screen (figures.css), for which it needs to know where it starts.
   const opening = document.querySelector(".fixlip-opening");
-  const stage = opening?.parentElement;
-  const title = stage?.querySelector(":scope > h1");
+  const title = opening?.parentElement.querySelector(":scope > h1");
   if (opening && title) {
-    stage.classList.add("fixlip-staged");
     const place = () => {
-      stage.classList.add("fixlip-placing");
       // the title stays on one line (figures.css), also in a font that runs wider than expected
       title.style.fontSize = "";
       const look = getComputedStyle(title);
@@ -1567,23 +1561,12 @@
         const room = title.clientWidth;
         if (width > room) title.style.fontSize = `${Math.floor((parseFloat(look.fontSize) * room * 10) / width) / 10}px`;
       }
-      const down = window.scrollY;
-      const top = Math.round(opening.getBoundingClientRect().top + down);
-      stage.style.setProperty("--fixlip-title-top", `${Math.round(title.getBoundingClientRect().top + down)}px`);
-      stage.style.setProperty("--fixlip-opening-top", `${top}px`);
-      // the block now has its height for this place
-      const height = opening.offsetHeight;
-      const over = Math.max(0, top + height - document.documentElement.clientHeight);
-      stage.style.setProperty("--fixlip-over", `${over}px`);
-      const start = top + height - (stage.getBoundingClientRect().top + down);
-      stage.style.setProperty("--fixlip-sheet-top", `${Math.round(start)}px`);
-      stage.classList.remove("fixlip-placing");
+      const top = Math.round(opening.getBoundingClientRect().top + window.scrollY);
+      opening.style.setProperty("--fixlip-opening-top", `${top}px`);
     };
     place();
-    // the title wraps anew at another width, the demo grows with its note, the screen changes
-    const watch = new ResizeObserver(place);
-    watch.observe(stage);
-    watch.observe(opening);
+    // the title wraps anew at another width, the screen changes
+    new ResizeObserver(place).observe(opening.parentElement);
     window.addEventListener("resize", place);
 
     // the link under the demo leads to the write-up, which starts with the box of the summary (the
@@ -1596,12 +1579,6 @@
       const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       summary.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
       history.replaceState(null, "", link.hash);
-    });
-    // a part of the first page that takes the focus while the write-up covers it comes into view
-    opening.addEventListener("focusin", () => {
-      if (window.scrollY > parseFloat(stage.style.getPropertyValue("--fixlip-over")) + 8) {
-        window.scrollTo({ top: 0 });
-      }
     });
   }
 
