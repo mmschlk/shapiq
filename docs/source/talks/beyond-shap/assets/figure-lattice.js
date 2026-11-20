@@ -308,7 +308,9 @@
       const to = geometry.at;
       placeSquares();
       cancelAnimationFrame(animation);
-      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // (at once with reduced motion, and on paper: talk.js, "PDF")
+      const reduce = (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) ||
+        document.documentElement.classList.contains("shapiq-talk-print");
       const start = performance.now();
       const duration = reduce ? 0 : 520;
       const frame = (now) => {

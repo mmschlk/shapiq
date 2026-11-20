@@ -20,6 +20,35 @@ handout, every step shown. "Present" or P moves the slides into a deck that fill
 keys are listed at the top of `talk.js`. The address follows the slide (`#slide-3`), and
 `?present` opens a page as a deck. The deck stays on after a reload (sessionStorage).
 
+## As a PDF
+
+"PDF", beside "Present" and in the corner of the deck (and Ctrl+P or ⌘P in the deck), lays the
+slides out for print and opens the browser's print dialog. "Save as PDF" there makes a PDF of one
+slide a page, 16:9. Not on a phone. It is for venues where the deck cannot run. Nothing else is
+needed for it.
+
+- Every slide is laid out at 1600 x 900 px, the size of its page, as the deck shows it in a window
+  of that size (the docs' text at 16px). The rules that size the deck by the window (`vw`, `vh`)
+  are copied with the page's sizes while it is laid out (`pageSheet()` in `talk.js`), so the
+  demos measure on the screen the room they get on paper, whatever the window.
+- A slide shows its last step, in the light theme, without notes, "Try it", the corner or
+  anything that moves (no transitions or animations). A slide too tall is scaled down, never cut
+  off.
+- The demos and figures hear `shapiq-talk-print` (detail: `printing`), and the root has the class
+  `shapiq-talk-print`. The orders demo explains itself, its layers apart, and leaves out its tabs,
+  its picker of photos and its button in the corner. The FIxLIP demo leaves out its "i" and hint.
+- A slide with a demo or a figure has a line at its foot, "Live" and a link to the slide in the
+  deck, and "Demo" and a link to the demo's own page (`data-page` of the demo's container, from
+  `_ext/shapiq_demos.py`). The canonical URL of the page, where there is one, else its address.
+- `?print` lays the slides out without the dialog, to look at or to test.
+  `html[data-talk-print="ready"]` tells when all of it has settled. Esc goes back to the page.
+
+To make the PDF in a test (Playwright): open `index.html?print`, wait for
+`html[data-talk-print="ready"]`, then `page.emulateMedia({media: "print"})` and
+`page.pdf({printBackground: true, preferCSSPageSize: true})`.
+
+## Text size
+
 The text size of a slide follows the window (`font-size` of `.shapiq-deck`). Slides of the layout
 `wide` keep the docs' text size for the demos. A slide whose content is taller than the window
 scrolls.

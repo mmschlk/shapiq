@@ -1304,3 +1304,17 @@ body[data-theme="dark"] .shapiq-deck:not(.shapiq-deck--scroll) .fixlip-demo-key-
     background: rgb(255, 72, 122);
   }
 }
+
+/* a talk's slides laid out for print (talk.js: "PDF"): nothing moves, and the "i" and the hint, which
+   only invite a click, are left out */
+html.shapiq-talk-print .fixlip-demo *,
+html.shapiq-talk-print .fixlip-demo *::before,
+html.shapiq-talk-print .fixlip-demo *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+html.shapiq-talk-print .fixlip-demo .fixlip-demo-info,
+html.shapiq-talk-print .fixlip-demo .fixlip-demo-hint {
+  visibility: hidden;
+}

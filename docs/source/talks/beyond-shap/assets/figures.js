@@ -676,7 +676,9 @@
       else element.textContent = content;
       element.classList.remove("talk-out");
     };
-    if (first || window.matchMedia("(prefers-reduced-motion: reduce)").matches) fill();
+    // (at once with reduced motion, and on paper: talk.js, "PDF")
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.classList.contains("shapiq-talk-print");
+    if (first || still) fill();
     else {
       element.classList.add("talk-out");
       clearTimeout(element.shapiqSwap);

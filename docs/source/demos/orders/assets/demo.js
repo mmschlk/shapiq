@@ -236,7 +236,9 @@
     node.innerHTML = ICONS[name];
     return node;
   };
-  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // a talk's slides laid out for print (talk.js: "PDF"), where nothing moves
+  const printed = () => document.documentElement.classList.contains("shapiq-talk-print");
+  const reducedMotion = () => printed() || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
   // -- the faces of the sheets: the explanation of one order, in a 100 x 100 square ---------------
@@ -3659,6 +3661,18 @@
     movePill(true);
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("orders-demo-fading")));
     idle(drawAhead);
+
+    // a talk's slides laid out for print (talk.js: "PDF", the event "shapiq-talk-print"; or already,
+    // before the demo started): explained at once, its layers apart, as it reads on paper
+    const toPaper = () => {
+      if (!printed()) return;
+      if (!revealed && calling) reveal();
+      stageInView = true;
+      unfoldAfter = 0;
+      unfold();
+    };
+    document.addEventListener("shapiq-talk-print", toPaper, { signal: life });
+    toPaper();
   }
 
   // -- loading ----------------------------------------------------------------------------------------

@@ -80,6 +80,9 @@
   // dark maroon (2.9:1) where the blue stayed bright. The page itself keeps the demo's red
   const RED_BRIGHT = [255, 72, 122];
   const presented = () => Boolean(root.closest(".shapiq-deck:not(.shapiq-deck--scroll)"));
+  // the demo's size on the screen, of its size in the page: below 1 where a talk's deck scales the
+  // slide down to fit (talk.js), which what is read off the screen is divided by
+  const scaleOf = () => root.getBoundingClientRect().width / root.offsetWidth || 1;
   const darkTheme = () =>
     document.body.dataset.theme === "dark" || (document.body.dataset.theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const red = () => (presented() && darkTheme() ? RED_BRIGHT : RED);
@@ -87,7 +90,9 @@
   // a value in a text: red or blue by its sign, in shades that read well as text in either theme
   const sign = (value) => (value >= 0 ? "fixlip-demo-up" : "fixlip-demo-down");
   const valued = (value) => el("strong", sign(value), signed(value));
-  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // (nor where a talk's slides are laid out for print, talk.js: "PDF")
+  const reducedMotion = () =>
+    document.documentElement.classList.contains("shapiq-talk-print") || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const tint = (value, largest, strength = 0.85) => {
     const [r, g, b] = value >= 0 ? red() : BLUE;
     const alpha = largest > 0 ? Math.min(Math.abs(value) / largest, 1) * strength : 0;
@@ -636,7 +641,8 @@
     // the caption's room: its tallest lines of tokens, of all photos and models, and half a line of
     // the text around them above and below, so that switching photos and models moves nothing
     function reserveCaption(all) {
-      const width = caption.getBoundingClientRect().width;
+      const scale = scaleOf();
+      const width = caption.getBoundingClientRect().width / scale;
       if (!width) return;
       const probe = caption.cloneNode(false);
       // border-box: the width measured includes the caption's side padding, which the copy keeps
@@ -648,7 +654,7 @@
         probe.replaceChildren(content.inner);
         const boxes = content.tokens.map((t) => t.getBoundingClientRect());
         const lines = Math.max(...boxes.map((b) => b.bottom)) - Math.min(...boxes.map((b) => b.top));
-        room = Math.max(room, lines + parseFloat(getComputedStyle(probe).lineHeight));
+        room = Math.max(room, lines / scale + parseFloat(getComputedStyle(probe).lineHeight));
       }
       probe.remove();
       caption.style.setProperty("--fixlip-caption-height", `${Math.ceil(room)}px`);
@@ -656,7 +662,8 @@
 
     // the least height of a node: that of the tallest of the contents, in a hidden copy of it
     function reserve(node, contents) {
-      const width = node.getBoundingClientRect().width;
+      const scale = scaleOf();
+      const width = node.getBoundingClientRect().width / scale;
       if (!width) return; // not laid out (hidden on small screens): keep what it has
       const probe = node.cloneNode(false);
       Object.assign(probe.style, { position: "absolute", visibility: "hidden", width: `${width}px`, minHeight: "0" });
@@ -664,7 +671,7 @@
       let tallest = 0;
       for (const content of contents) {
         probe.replaceChildren(...content);
-        tallest = Math.max(tallest, probe.getBoundingClientRect().height);
+        tallest = Math.max(tallest, probe.getBoundingClientRect().height / scale);
       }
       probe.remove();
       node.style.minHeight = `${Math.ceil(tallest)}px`;
@@ -994,7 +1001,9 @@
       });
       links.replaceChildren();
       graph.replaceChildren(links, ...nodes);
-      const { width, height } = graph.getBoundingClientRect();
+      const scale = scaleOf();
+      const width = graph.getBoundingClientRect().width / scale;
+      const height = graph.getBoundingClientRect().height / scale;
       if (!width) return;
       const halfWidth = Math.max(...nodes.map((node) => node.offsetWidth / 2));
       const halfHeight = Math.max(...nodes.map((node) => node.offsetHeight / 2));

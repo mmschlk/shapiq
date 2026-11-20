@@ -32,8 +32,10 @@ whose ``data-root`` is the URL of the demo's assets relative to the page and ``d
 checksum of its ``data.js`` (for the script to load the data by, past browsers' caches, where the
 page has not loaded it), and adds ``demo.css``, ``data.js`` (if the demo has one) and ``demo.js`` to
 the page, the data deferred just before the script, so that both load at once. Without JavaScript,
-the container shows the fallback image, a file of the built ``_static`` folder. Outside HTML, a demo
-is left out.
+the container shows the fallback image, a file of the built ``_static`` folder. Embedded on another
+page, the container also names the demo's own page in ``data-page`` (relative to the page):
+``demos/<name>/``, or the guide that builds the orders demo up (``_PAGES``). A talk printed as a PDF
+links to it below the slide. Outside HTML, a demo is left out.
 
 A demo can build on a library of code that several demos share: a folder of ``demos/`` without a
 page, whose ``assets/`` hold a ``demo.css`` and a ``demo.js`` too. The demo names the libraries it
@@ -110,6 +112,8 @@ _FIGURES_DATA = "figures-data.js"  # what the figures show beyond the demo's dat
 _STATEMENTS = ("definition",)  # the kinds of statements that get a box, as ``shapiq-<kind>``
 _STATEMENT = "shapiq-statement"  # the class of a box and the name of the role that refers to one
 _REQUIRES = "requires.txt"  # the libraries (folders of demos/) a demo needs before its own assets
+# the page of a demo without one of its own in demos/: the guide that builds it up
+_PAGES = {"orders": "introduction/how-much-explained"}
 
 
 def _requires(srcdir: str | Path, name: str) -> list[str]:
@@ -238,6 +242,10 @@ def _visit_demo(self: HTML5Translator, node: DemoNode) -> None:
     for option in ("step", "select", "examples", "pick", "reveal", "plan"):
         if node.get(option):
             attributes[f"data-{option}"] = node[option]
+    # the demo's own page, where it is embedded elsewhere (a talk's slide links to it on paper)
+    home = _PAGES.get(node["demo"], f"demos/{node['demo']}/index")
+    if home != self.builder.current_docname and home in self.builder.env.all_docs:
+        attributes["data-page"] = relative_uri(page, self.builder.get_target_uri(home))
     self.body.append(self.starttag(node, "div", CLASS=f"{node['demo']}-demo", **attributes))
     if node["fallback"]:
         src = relative_uri(page, f"_static/{node['fallback']}")
@@ -427,7 +435,7 @@ def setup(app: Sphinx) -> ExtensionMetadata:
     app.connect("env-updated", _copy_assets)
     return {
         "version": "1.0",
-        "env_version": 8,  # pages are read again where what the extension writes to them changed
+        "env_version": 9,  # pages are read again where what the extension writes to them changed
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

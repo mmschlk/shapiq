@@ -3285,3 +3285,19 @@ body[data-theme="dark"] .orders-demo-deck .orders-demo-pill .orders-demo-option 
     animation: none !important;
   }
 }
+
+/* a talk's slides laid out for print (talk.js: "PDF"): nothing moves, as with reduced motion, and the
+   buttons that only lead to another example (the tabs, the picker of photos, the button in the
+   corner) are left out */
+html.shapiq-talk-print .orders-demo *,
+html.shapiq-talk-print .orders-demo *::before,
+html.shapiq-talk-print .orders-demo *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+html.shapiq-talk-print .orders-demo > .orders-demo-bar,
+html.shapiq-talk-print .orders-demo .orders-demo-picks,
+html.shapiq-talk-print .orders-demo .orders-demo-flip {
+  display: none !important;
+}

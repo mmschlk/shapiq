@@ -754,6 +754,164 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   }
 }
 
+/* ---- on paper (talk.js: "PDF", and ?print) --------------------------------------------------- */
+
+/* the button beside "Present" on the page, and in the corner of the deck; not on a phone */
+.shapiq-talk-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--color-foreground-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--shapiq-duration) var(--shapiq-ease), background var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-talk-pdf:hover {
+  border-color: var(--shapiq-amber);
+  background: var(--shapiq-amber-soft);
+}
+
+.shapiq-talk-pdf svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+@media (max-width: 720px) {
+  .shapiq-talk-pdf {
+    display: none;
+  }
+}
+
+.shapiq-deck--scroll .shapiq-deck-bar [data-action="pdf"] {
+  display: none;
+}
+
+/* Laid out for print, the slides are all that is on the page, each a page of 1600 x 900 px (talk.js
+   sets the @page). The sizes that follow the window (vw, vh) follow the page instead (talk.js:
+   pageSheet). */
+html.shapiq-talk-print body > :not(.shapiq-deck--print) {
+  display: none !important;
+}
+
+/* (the docs' text a little larger in a window of 97em and more, Furo's: a page is as a window of
+   1440 x 900, whatever the window it is laid out in) */
+html.shapiq-talk-print {
+  font-size: 100%;
+}
+
+html.shapiq-talk-print,
+html.shapiq-talk-print body {
+  overflow: visible;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.shapiq-deck.shapiq-deck--print {
+  position: static;
+  z-index: auto;
+  width: 1600px;
+}
+
+.shapiq-deck.shapiq-deck--print .shapiq-slide {
+  position: relative;
+  inset: auto;
+  box-sizing: border-box;
+  width: 1600px;
+  height: 900px;
+  overflow: hidden;
+  opacity: 1;
+  visibility: visible;
+  transition: none;
+  background: var(--color-background-primary);
+  break-after: page;
+  break-inside: avoid;
+}
+
+.shapiq-deck.shapiq-deck--print .shapiq-slide:last-child {
+  break-after: auto;
+}
+
+/* nothing moves: every figure and demo is drawn as it ends */
+html.shapiq-talk-print *,
+html.shapiq-talk-print *::before,
+html.shapiq-talk-print *::after {
+  animation-delay: 0s !important;
+  animation-duration: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-delay: 0s !important;
+  transition-duration: 0s !important;
+}
+
+/* the foot of a slide on paper: where its demo or figure lives, and its number */
+.shapiq-slide-foot {
+  display: none;
+}
+
+.shapiq-deck--print .shapiq-slide-foot {
+  position: absolute;
+  right: max(6vw, 1.5rem);
+  bottom: max(2.6vh, 0.8rem);
+  left: max(6vw, 1.5rem);
+  display: flex;
+  align-items: baseline;
+  gap: 2rem;
+  max-width: 72rem;
+  margin-inline: auto;
+  color: var(--shapiq-text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.shapiq-slide-live {
+  margin: 0;
+}
+
+.shapiq-slide-live a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--shapiq-border);
+  text-underline-offset: 2px;
+}
+
+.shapiq-slide-page {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* on the screen (?print), the pages one under the other */
+@media screen {
+  html.shapiq-talk-print body {
+    background: var(--color-background-secondary);
+  }
+
+  .shapiq-deck.shapiq-deck--print {
+    margin: 24px auto;
+  }
+
+  .shapiq-deck.shapiq-deck--print .shapiq-slide {
+    margin-bottom: 24px;
+    box-shadow: var(--shapiq-shadow);
+  }
+}
+
+@media print {
+  html.shapiq-talk-print body {
+    margin: 0;
+    background: none;
+  }
+}
+
 /* on a phone, the number of the slide stands above its title, so the corner leaves it out */
 .shapiq-deck--scroll .shapiq-deck-count {
   display: none;

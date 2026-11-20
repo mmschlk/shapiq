@@ -305,6 +305,12 @@ pages stay as they are:
 - **Dark mode**: the chip clears to a slate (`--orders-glass`), not a pale glass, and the gray chip
   is darker than that. The pill of the example chosen is a tint of the ink, not the ink.
 
+- **On paper** (a talk printed as a PDF, `talk.js`: "PDF", the root's class `shapiq-talk-print`
+  and the event `shapiq-talk-print`): the demo is explained at once (`toPaper()`), its layers
+  apart even out of view, nothing moves (as with reduced motion), and its tabs, its picker of
+  photos and its button in the corner are left out (demo.css). The slide's foot links to the
+  guide, its `data-page`.
+
 ### Theme and motion
 
 - **Colors** come from the docs' tokens (`--color-foreground-primary`, `--shapiq-surface`, ... from
