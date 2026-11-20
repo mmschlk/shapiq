@@ -1377,13 +1377,19 @@ html.shapiq-talk-print *::after {
 }
 
 .shapiq-talk-callout {
-  max-width: 32em;
+  flex: 1 1 100%;
   padding: 0.55em 1em;
   border-left: 4px solid var(--shapiq-amber);
   border-radius: var(--shapiq-radius-small);
   background: color-mix(in srgb, var(--shapiq-amber) 14%, var(--shapiq-surface-raised));
   font-size: 0.95em;
   line-height: 1.35;
+}
+
+/* on the page and on a phone the card is as wide as the text, in the deck it sits beside the recipe */
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-callout {
+  flex: 0 1 auto;
+  max-width: 32em;
 }
 
 .shapiq-talk-callout > p.rubric {

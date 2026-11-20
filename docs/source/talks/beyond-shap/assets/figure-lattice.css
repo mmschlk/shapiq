@@ -1,8 +1,6 @@
 /* The lattices of the talk (figure-lattice.js): lattice-sv and lattice-sii. The figure keeps its
-   height in every step and on every hover: the legend, the lattice and the annotation below it keep
-   their room, and only what is in them changes. The annotation draws the step's computation with
-   the lattice's own nodes, edges and value tags, so that it reads as part of the figure and the
-   math stays in the definitions beside it. */
+   height in every step and on every hover: the legend, the lattice and the worked formula below it
+   keep their room, and only what is in them changes. */
 
 .tl {
   container-type: inline-size;
@@ -169,19 +167,6 @@ body[data-theme="dark"] .tl {
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
-}
-
-.tl-chip-inline.tl-chip-patch {
-  width: 1.25em;
-  height: 1.25em;
-  margin: 0 0.08em;
-  border-radius: 3px;
-}
-
-.tl-chip-inline.tl-chip-word {
-  margin: 0 0.08em;
-  padding: 0.02em 0.4em;
-  font-size: 0.72em;
 }
 
 /* ---- the lattice ---- */
@@ -479,81 +464,86 @@ body[data-theme="dark"] .tl {
   cursor: default;
 }
 
-/* ---- the annotation below the lattice, of a fixed height ---- */
+/* ---- the worked formula below the lattice: two lines of a fixed height, in the figure's own
+   type and without a box, so that it reads as part of the figure (the definitions beside it are
+   the boxes) ---- */
 
 .tl-note {
-  position: relative;
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-rows: 2em 2em;
+  align-content: center;
   justify-content: center;
-  height: 4.6em;
-  font-size: min(1em, 3cqi);
+  height: 4.4em;
   color: var(--tl-ink);
+  font-size: min(1.2em, 3.5cqi);
+  font-variant-numeric: tabular-nums;
 }
 
-.tl-note-row {
+.tl-line {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.4em;
-  white-space: nowrap;
+  overflow: hidden;
+  white-space: pre;
 }
 
-/* a node of the lattice, small */
-.tl-mini {
-  display: block;
-  flex: none;
-}
-
-.tl-mini-svg {
-  display: block;
-  width: calc(4em * 88 / 70);
-  height: 4em;
-  overflow: visible;
-}
-
-/* the player an edge adds, outlined in its node */
-.tl-slot.tl-mark .tl-slot-frame {
-  stroke: var(--tl-hot);
-  stroke-width: 1.8;
-}
-
-/* value tags, as on the edges and squares of the lattice */
-.tl-val {
-  --tl-val-line: color-mix(in srgb, var(--talk-pos) 55%, var(--talk-line));
+.tl-gap {
   display: inline-block;
-  padding: 0.1em 0.5em;
-  border-radius: 999px;
-  background: var(--tl-surface);
-  box-shadow: inset 0 0 0 1px var(--tl-val-line);
-  font-size: 0.8em;
-  font-variant-numeric: tabular-nums;
+  width: 1.4em;
+}
+
+.tl-var {
+  font-family: "Times New Roman", "STIX Two Text", serif;
+  font-size: 1.12em;
+  font-style: italic;
+}
+
+/* the empty set round and slashed, from a face of symbols (the text face draws it as ø) */
+.tl-set {
+  font-family: "STIX Two Math", "Cambria Math", "Apple Symbols", "DejaVu Sans", "OpenSymbol", serif;
+}
+
+.tl-sub {
+  margin: 0 0.06em;
+  font-size: 0.72em;
+  line-height: 0;
+  vertical-align: -0.3em;
+}
+
+.tl-muted {
+  display: inline-flex;
+  align-items: center;
+  color: var(--talk-muted);
+  font-size: 0.85em;
+}
+
+.tl-num {
+  display: inline-block;
+  border-radius: 0.3em;
   font-weight: 700;
-  line-height: 1.35;
-  transition: box-shadow 200ms var(--shapiq-ease);
+  transition: background-color 200ms var(--shapiq-ease), box-shadow 200ms var(--shapiq-ease);
 }
 
-.tl-val.tl-neg {
-  --tl-val-line: color-mix(in srgb, var(--talk-neg) 55%, var(--talk-line));
+/* the numbers of the edges and squares, in their colors (with room for the highlight) */
+.tl-num.tl-pos,
+.tl-num.tl-neg {
+  padding: 0 0.12em;
 }
 
-.tl-val.tl-hot {
-  box-shadow: inset 0 0 0 2px var(--tl-hot);
+.tl-num.tl-pos {
+  color: var(--talk-pos);
 }
 
-/* a result: a tag filled like the nodes */
-.tl-val-result {
-  padding: 0.18em 0.65em;
-  background: color-mix(in srgb, var(--talk-pos) 22%, var(--tl-surface));
-  box-shadow: inset 0 0 0 1.5px var(--tl-val-line);
-  font-size: 1em;
+.tl-num.tl-neg {
+  color: var(--talk-neg);
 }
 
-.tl-val-result.tl-neg {
-  background: color-mix(in srgb, var(--talk-neg) 22%, var(--tl-surface));
+/* the number of the edge or square pointed at, highlighted as its tag on the lattice */
+.tl-num.tl-hot {
+  background: var(--shapiq-amber-soft);
+  box-shadow: 0 0 0 1.5px var(--tl-hot);
 }
 
-.tl-val.tl-fresh {
+.tl-num.tl-fresh {
   animation: tl-in 380ms var(--shapiq-ease);
 }
 
@@ -565,115 +555,23 @@ body[data-theme="dark"] .tl {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tl-val.tl-fresh {
+  .tl-num.tl-fresh {
     animation: none;
   }
-}
-
-/* an edge of the lattice, lying down, its tag in its middle */
-.tl-link {
-  position: relative;
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 6.5em;
-  height: 2em;
-}
-
-.tl-link-line {
-  position: absolute;
-  inset-inline: -0.4em;
-  top: 50%;
-  height: calc(1.5px + var(--weight) * 4px);
-  border-radius: 999px;
-  background: var(--talk-pos);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--tl-hot) 35%, transparent);
-  transform: translateY(-50%);
-}
-
-.tl-link.tl-neg .tl-link-line {
-  background: var(--talk-neg);
-}
-
-.tl-link .tl-val {
-  position: relative;
-}
-
-/* the way from the empty coalition to the full one */
-.tl-dots {
-  flex: none;
-  width: 2.2em;
-  border-top: 1.5px dashed var(--talk-line);
-}
-
-.tl-op {
-  color: var(--talk-muted);
-  font-weight: 600;
-}
-
-/* the tags of a weighted sum, grouped by the size of T, with their weight below */
-.tl-group {
-  display: grid;
-  justify-items: center;
-  row-gap: 0.15em;
-}
-
-.tl-group-size,
-.tl-group-weight {
-  color: var(--talk-muted);
-  font-size: 0.75em;
-  line-height: 1.1;
-}
-
-.tl-group-size i {
-  font-family: "Times New Roman", "STIX Two Text", serif;
-  font-size: 1.15em;
-}
-
-.tl-group-tags {
-  display: flex;
-  gap: 0.22em;
-}
-
-.tl-group-weight {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  justify-self: stretch;
-  gap: 0.2em;
-  padding-top: 0.2em;
-  border-top: 1px solid var(--talk-line);
-  font-size: 0.85em;
 }
 
 .tl-frac {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  font-size: 0.95em;
+  margin: 0 0.1em;
+  font-size: 0.72em;
   line-height: 1.05;
 }
 
 .tl-frac > :first-child {
   padding: 0 0.15em;
   border-bottom: 1px solid currentColor;
-}
-
-.tl-result {
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-}
-
-.tl-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 /* ---- narrow: no photo in the legend ---- */
