@@ -374,3 +374,9 @@ the write-up slides over it like a sheet on a wide screen (`stage()` in `demo.js
 end of `demo.css`, copied from `fixlip/assets/figures.js` and `figures.css` with `gsq-` names).
 Until the write-up exists, the figure of the receptive fields stands for it. Section titles are in
 title case.
+
+A twenty-ninth pass followed the FIxLIP page back to plain scrolling (its PR #661). The first page is
+no longer held while the write-up slides over it as a sheet, and it no longer shrinks and dims. The
+title, the first screen with "Read the write-up" and the divider stay. `stage()` in `demo.js` only
+measures where the block starts (with a CSS guess until then) and keeps the title on one line, and
+the link glides to the write-up in 1 to 1.7 s, stopped by the wheel, a touch or a key.

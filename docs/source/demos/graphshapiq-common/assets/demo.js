@@ -553,18 +553,14 @@
     document.head.appendChild(loader);
   }
 
-  // The page's first page is its title and the block of the demo (.graphshapiq-opening), which
-  // reaches to the end of the screen; the write-up is the second page. As on the FIxLIP page
-  // (fixlip/assets/figures.js), demo.css keeps the first page in place while the second slides over
-  // it, and needs the places for that, measured with nothing held: where the title and the block
-  // lie, by how much the first page is higher than the screen, and where the second page starts.
+  // The first screen of the page: the title and the block of the demo (.graphshapiq-opening), which
+  // reaches to the end of the screen (demo.css), for which it needs to know where it starts. As on
+  // the FIxLIP page (fixlip/assets/figures.js), the link under the demo glides to the write-up.
   function stage() {
     const opening = document.querySelector(".graphshapiq-opening");
-    const section = opening?.parentElement, title = section?.querySelector(":scope > h1");
+    const title = opening?.parentElement.querySelector(":scope > h1");
     if (!opening || !title) return;
-    section.classList.add("gsq-staged");
     const place = () => {
-      section.classList.add("gsq-placing");
       // the title stays on one line (demo.css), also in a font that runs wider than expected
       title.style.fontSize = "";
       const look = getComputedStyle(title);
@@ -574,31 +570,40 @@
         const width = words.getBoundingClientRect().width, room = title.clientWidth;
         if (width > room) title.style.fontSize = `${Math.floor((parseFloat(look.fontSize) * room * 10) / width) / 10}px`;
       }
-      const down = window.scrollY, top = Math.round(opening.getBoundingClientRect().top + down);
-      section.style.setProperty("--gsq-title-top", `${Math.round(title.getBoundingClientRect().top + down)}px`);
-      section.style.setProperty("--gsq-opening-top", `${top}px`);
-      const height = opening.offsetHeight; // the block now has its height for this place
-      section.style.setProperty("--gsq-over", `${Math.max(0, top + height - document.documentElement.clientHeight)}px`);
-      section.style.setProperty("--gsq-sheet-top", `${Math.round(top + height - (section.getBoundingClientRect().top + down))}px`);
-      section.classList.remove("gsq-placing");
+      opening.style.setProperty("--gsq-opening-top", `${Math.round(opening.getBoundingClientRect().top + window.scrollY)}px`);
     };
     place();
-    // the title wraps anew at another width, the demo grows with its note, the screen changes
-    const watch = new ResizeObserver(place);
-    watch.observe(section); watch.observe(opening);
+    // the title wraps anew at another width, the screen changes
+    new ResizeObserver(place).observe(opening.parentElement);
     window.addEventListener("resize", place);
-    // the link under the demo glides to the write-up
+    // The page glides to the write-up, slower than the browser scrolls by itself: it starts and
+    // ends softly and takes longer for a longer way. The reader takes over with the wheel, a touch
+    // or a key. With reduced motion it jumps.
     const link = opening.querySelector(".graphshapiq-more a");
     const target = link && document.getElementById(link.hash.slice(1))?.closest("section");
+    let glide = 0;
+    const halt = () => cancelAnimationFrame(glide);
+    for (const kind of ["wheel", "touchstart", "keydown", "pointerdown"]) window.addEventListener(kind, halt, { passive: true });
     link?.addEventListener("click", (event) => {
       if (!target) return;
       event.preventDefault();
-      target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
+      halt();
       history.replaceState(null, "", link.hash);
-    });
-    // a part of the first page that takes the focus while the write-up covers it comes into view
-    opening.addEventListener("focusin", () => {
-      if (window.scrollY > parseFloat(section.style.getPropertyValue("--gsq-over")) + 8) window.scrollTo({ top: 0 });
+      const from = window.scrollY, room = document.documentElement.scrollHeight - window.innerHeight;
+      const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+      const to = Math.min(room, Math.round(target.getBoundingClientRect().top + from - margin));
+      if (reducedMotion()) { window.scrollTo({ top: to, behavior: "instant" }); return; }
+      const time = Math.min(1700, Math.max(1000, 750 + Math.abs(to - from) * 0.6));
+      let start = 0;
+      const step = (now) => {
+        start ||= now;
+        const share = Math.min(1, (now - start) / time);
+        const eased = share < 0.5 ? 4 * share ** 3 : 1 - (-2 * share + 2) ** 3 / 2;
+        // the docs scroll smoothly by themselves, which would lag behind every step
+        window.scrollTo({ top: from + (to - from) * eased, behavior: "instant" });
+        if (share < 1) glide = requestAnimationFrame(step);
+      };
+      glide = requestAnimationFrame(step);
     });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", stage); else stage();

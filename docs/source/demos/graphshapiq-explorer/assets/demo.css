@@ -1,9 +1,18 @@
 /* The GraphSHAP-IQ explorer (demo.js). The shared look is in ../graphshapiq-common/demo.css. */
 
-/* while the scripts build the demo, it keeps about its room, so that the page does not jump */
+/* while the scripts build the demo, it keeps its room, so that the page does not jump on load: its
+   height when built, stacked where the demo is narrower than 42rem (the page is narrower than about
+   44em) and side by side above. In the first screen its margins are the block's (demo.css) */
 @media (scripting: enabled) {
   .graphshapiq-explorer-demo:not(.gsq, .gsq-failed) {
-    min-height: 38rem;
+    clear: both;
+    min-height: 54rem;
+  }
+}
+
+@media (scripting: enabled) and (min-width: 44em) {
+  .graphshapiq-explorer-demo:not(.gsq, .gsq-failed) {
+    min-height: 33.2rem;
   }
 }
 
