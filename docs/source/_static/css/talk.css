@@ -1115,6 +1115,12 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   align-items: start;
 }
 
+/* below the two examples, what they both are */
+.shapiq-talk-attribution {
+  max-width: 46em;
+  margin: 0.8em auto 0;
+}
+
 @media (max-width: 900px) {
   .shapiq-talk-columns-theory,
   .shapiq-talk-teaser {
@@ -1122,10 +1128,14 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   }
 }
 
-/* the outlook: a package's logo and line beside its workflow */
-.shapiq-talk-columns-probly {
-  grid-template-columns: minmax(0, 0.55fr) minmax(0, 2fr);
+/* the outlook: a package's logo, line and badge beside a large QR code of its repository */
+.shapiq-talk-probly-ad {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
+  gap: clamp(2rem, 8vw, 9rem);
+  min-height: 100%;
 }
 
 .shapiq-talk-probly {
@@ -1138,6 +1148,20 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   margin: 0 auto 0.6em;
 }
 
+.shapiq-deck .shapiq-talk-probly-ad {
+  font-size: clamp(18px, 0.9vw + 1.1vh, 34px);
+}
+
+.shapiq-deck .shapiq-talk-probly-logo {
+  width: clamp(12rem, 30vmin, 26rem);
+}
+
+.shapiq-deck .shapiq-slide-body .shapiq-talk-probly p {
+  max-width: 20em;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .shapiq-talk-oral {
   display: inline-block;
   padding: 0.2em 0.8em;
@@ -1147,32 +1171,66 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   font-weight: 700;
 }
 
-.shapiq-talk-wide-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin: 0.6em 0;
+.shapiq-talk-probly-qr {
+  margin-top: 0;
+  font-size: 0.75em;
+}
+
+.shapiq-deck .shapiq-talk-probly-qr img {
+  width: clamp(9rem, 30vmin, 20rem);
+}
+
+/* on a phone, the QR code of probly stays, as it is the slide */
+.shapiq-deck--scroll .shapiq-talk-probly-qr {
+  display: inline-flex;
+}
+
+/* the recipe of the three choices, large, beside a card of the paper it comes from */
+.shapiq-talk-recipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6em 2em;
+  margin: 0 0 0.4em;
+}
+
+.shapiq-talk-recipe > .math-wrapper,
+.shapiq-talk-recipe > div.math {
+  width: auto;
+  margin: 0;
+}
+
+.shapiq-deck .shapiq-talk-recipe > .math-wrapper,
+.shapiq-deck .shapiq-talk-recipe > div.math {
+  font-size: clamp(18px, 1vw + 1.1vh, 34px);
+}
+
+.shapiq-talk-callout {
+  max-width: 32em;
+  padding: 0.55em 1em;
+  border-left: 4px solid var(--shapiq-amber);
   border-radius: var(--shapiq-radius-small);
+  background: color-mix(in srgb, var(--shapiq-amber) 14%, var(--shapiq-surface-raised));
+  font-size: 0.95em;
+  line-height: 1.35;
 }
 
-.shapiq-talk-lessons > p.rubric {
-  margin: 0.4em 0 0.2em;
-  font-weight: 700;
+.shapiq-talk-callout > p.rubric {
+  margin: 0 0 0.15em;
+  color: var(--shapiq-amber-ink);
+  font-size: 0.85em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.shapiq-deck .shapiq-slide-body .shapiq-talk-lessons,
-.shapiq-deck .shapiq-slide-body .shapiq-talk-columns-probly p {
+.shapiq-talk-callout .line-block {
+  margin: 0;
+}
+
+.shapiq-deck .shapiq-slide-body .shapiq-talk-callout p {
   max-width: none;
-}
-
-.shapiq-deck .shapiq-talk-columns-probly {
-  font-size: clamp(15px, 0.72vw + 0.85vh, 28px);
-}
-
-@media (max-width: 900px) {
-  .shapiq-talk-columns-probly {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* beside the lattice, a formula of a definition a little smaller, so that it fits its box */
@@ -1184,13 +1242,6 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
 .shapiq-talk-definition mjx-container:not([display="true"]),
 .shapiq-talk-card mjx-container:not([display="true"]) {
   white-space: nowrap;
-}
-
-/* the recipe above the three cards, large */
-.shapiq-deck .shapiq-slide-body > .math-wrapper:first-child,
-.shapiq-deck .shapiq-slide-body > div.math:first-child {
-  font-size: clamp(18px, 1vw + 1.1vh, 34px);
-  margin: 0 0 0.3em;
 }
 
 /* a display formula in a definition is as wide as the box's content, not as the box */

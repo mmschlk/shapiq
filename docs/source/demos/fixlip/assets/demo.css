@@ -455,10 +455,11 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
    no word: only colors, outlines, and shadows change. Its tint lies under its word, over the edges */
 .fixlip-demo-token {
   position: relative;
+  isolation: isolate; /* (its tint, under its word, over its paper) */
   padding: 0.1rem 0.25rem;
   border: 1px solid var(--shapiq-border);
   border-radius: 3px;
-  background: transparent;
+  background: var(--color-background-primary, #ffffff); /* (the page's paper: the edges pass under it, not through its word) */
   color: var(--color-foreground-primary);
   font: inherit;
   line-height: 1.5;

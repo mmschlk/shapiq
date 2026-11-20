@@ -16,9 +16,9 @@
                step 1 the explanation of order 2. The reader can pick any order. With the class
                talk-faith-first, the Shapley values alone; with talk-faith-climb, one order a step,
                with the R² of every order shown so far. The gap of the picked coalition is the
-               same on both sides (the dashed "off by" in the sum, its distance to the diagonal
-               among all coalitions, where every coalition shows its own). Hovering a point picks its
-               coalition, hovering either gap lights up both, and "Worst fit" picks the farthest.
+               same on both sides (the "off by" in the sum, and its distance to the diagonal among
+               all coalitions), drawn bold. Hovering a point picks its
+               coalition, and hovering either gap lights up both.
    framework   The unified framework of feature-based explanations [Fumagalli et al., 2025]: how
                much the feature distribution and the higher-order interactions influence an
                explanation, with the methods that fall into each cell. Steps 0 to 2 are the three
@@ -336,7 +336,6 @@
     const right = make("div", { class: "talk-faith-all" }, figure);
     const head = make("div", { class: "talk-faith-head" }, right);
     make("div", { class: "talk-faith-step" }, head, "3  Repeat for all coalitions, and compare");
-    const worst = make("button", { type: "button", class: "talk-faith-worst", title: "The coalition the explanation fits worst" }, head, "Worst fit");
     const W = 520, H = climb ? 300 : 330, left = 58, rightPad = 16, top = 14, bottom = 46;
     const all = data.model.concat(...every.map((order) => data.orders[order].y));
     const lo = Math.floor(Math.min(...all)), hi = Math.ceil(Math.max(...all));
@@ -355,18 +354,13 @@
     make("svg:text", { x: x(at), y: y(at) - 6, class: "talk-faith-note", "text-anchor": "middle", transform: `rotate(${-angle} ${x(at)} ${y(at) - 6})` }, svg, "faithful");
     make("svg:text", { x: (left + W - rightPad) / 2, y: H - 6, class: "talk-axis-name", "text-anchor": "middle" }, svg, "the model, ν(S) (log-odds)");
     make("svg:text", { x: 20, y: (top + H - bottom) / 2, class: "talk-axis-name", "text-anchor": "middle", transform: `rotate(-90 20 ${(top + H - bottom) / 2})` }, svg, "the explanation, ν̂ₖ(S)");
-    // how far each coalition lies from the diagonal: what the R² adds up
-    const residuals = make("svg:g", { class: "talk-faith-residuals" }, svg);
-    const bars = data.model.map((value) => make("svg:rect", { x: x(value) - 0.7, width: 1.4, y: y(value), height: 0, class: "talk-faith-residual" }, residuals));
     const points = data.model.map((value, index) => make("svg:circle", {
       cx: x(value), cy: y(value), r: 1.8 + 4.2 * Math.sqrt(data.probability[index]), class: "talk-faith-point",
     }, svg));
     // the picked coalition: its gap, dashed as in the sum on the left, from the model on the diagonal
     // (a diamond) to the explanation (the ring)
-    const dashes = make("svg:pattern", { id: `${uid}-dash`, width: 6, height: 5, patternUnits: "userSpaceOnUse" }, make("svg:defs", {}, svg));
-    make("svg:rect", { width: 6, height: 2, class: "talk-faith-dash" }, dashes);
-    const glow = make("svg:rect", { width: 14, rx: 7, height: 0, class: "talk-faith-glow-bar" }, svg);
-    const gap = make("svg:rect", { width: 2, height: 0, fill: `url(#${uid}-dash)`, class: "talk-faith-gap-bar" }, svg);
+    const glow = make("svg:rect", { width: 28, rx: 14, height: 0, class: "talk-faith-glow-bar" }, svg);
+    const gap = make("svg:rect", { width: 8, rx: 4, height: 0, class: "talk-faith-gap-bar" }, svg);
     const foot = make("svg:path", { d: "M0 -5 L5 0 L0 5 L-5 0 Z", class: "talk-faith-model talk-faith-foot" }, svg);
     const picked = make("svg:circle", { r: 8, class: "talk-faith-picked" }, svg);
     const offBy = make("svg:text", { x: 0, y: 0, class: "talk-value talk-faith-off-by talk-halo" }, svg);
@@ -413,15 +407,6 @@
     svg.addEventListener("focus", () => svg.matches(":focus-visible") && hot(true));
     // (a click leaves the focus to the deck, the pointer stays)
     svg.addEventListener("blur", () => hot(svg.matches(":hover") && svg.classList.contains("talk-faith-near")));
-    // the coalition this order fits worst
-    worst.addEventListener("click", () => {
-      const ys = data.orders[orders[shown]].y;
-      const off = (j) => Math.abs(data.model[j] - ys[j]);
-      pick(data.model.reduce((w, _, j) => (off(j) > off(w) ? j : w), 0));
-      hot(true);
-    });
-    worst.addEventListener("pointerleave", () => hot(false));
-    worst.addEventListener("blur", () => hot(worst.matches(":hover")));
 
     const readout = make("div", { class: "talk-faith-readout" }, right);
     math(readout, "R^2 \\;=\\; 1 - \\frac{\\sum_S \\mu(S)\\,\\big(\\nu(S) - \\hat{\\nu}_k(S)\\big)^2}{\\sum_S \\mu(S)\\,\\big(\\nu(S) - \\bar{\\nu}_{|S|}\\big)^2}");
@@ -492,19 +477,14 @@
       // every coalition with its distance to the diagonal, and this one ringed with its gap
       const at = index.get(mask);
       const ys = data.orders[order].y;
-      ys.forEach((value, j) => {
-        const from = y(data.model[j]), to = y(value);
-        points[j].setAttribute("cy", to);
-        bars[j].setAttribute("y", Math.min(from, to));
-        bars[j].setAttribute("height", Math.abs(from - to));
-        bars[j].classList.toggle("talk-faith-residual-picked", j === at);
-      });
+      ys.forEach((value, j) => points[j].setAttribute("cy", y(value)));
       [picked, glow, gap, foot, offBy].forEach((element) => { element.style.display = at == null ? "none" : ""; });
+      svg.classList.toggle("talk-faith-picking", at != null);
       if (at != null) {
         const px = x(data.model[at]), from = y(data.model[at]), to = y(ys[at]);
         picked.setAttribute("cx", px); picked.setAttribute("cy", to);
-        gap.setAttribute("x", px - 1); gap.setAttribute("y", Math.min(from, to)); gap.setAttribute("height", Math.abs(from - to));
-        glow.setAttribute("x", px - 7); glow.setAttribute("y", Math.min(from, to) - 7); glow.setAttribute("height", Math.abs(from - to) + 14);
+        gap.setAttribute("x", px - 4); gap.setAttribute("y", Math.min(from, to)); gap.setAttribute("height", Math.abs(from - to));
+        glow.setAttribute("x", px - 14); glow.setAttribute("y", Math.min(from, to) - 14); glow.setAttribute("height", Math.abs(from - to) + 28);
         foot.style.transform = `translate(${px}px, ${from}px)`;
         // the value beside the diamond, below the diagonal (left of it near the right edge)
         const flip = px > W - rightPad - 96;
@@ -711,7 +691,7 @@
   const CHOICES = [
     [
       ["baseline", "Baseline", "Absent features take one fixed value b."],
-      ["marginal", "Marginal", "Absent features take every value of the data, whatever the present ones are, also where no data lies."],
+      ["marginal", "Marginal", "Absent features take every value of the data, even where no data lies."],
       ["conditional", "Conditional", "Absent features take the values of data like the present ones."],
     ],
     [
@@ -835,7 +815,7 @@
       make("svg:circle", { cx: c2[0], cy: c2[1], r, class: "talk-choices-ring talk-choices-ring-other" }, svg);
       make("svg:text", { x: c1[0] - 30, y: c1[1] + 5, class: "talk-value", "text-anchor": "middle" }, svg, "m(1)");
       make("svg:text", { x: c2[0] + 30, y: c2[1] + 5, class: "talk-tick", "text-anchor": "middle" }, svg, "m(2)");
-      make("svg:text", { x: 200, y: c1[1] + 5, class: "talk-value talk-halo", "text-anchor": "middle" }, svg, key === "partial" ? "½ m(12)" : "m(12)");
+      make("svg:text", { x: 200, y: c1[1] + 5, class: "talk-value talk-halo", "text-anchor": "middle" }, svg, "m(12)");
       const formula = { pure: "φ(1) = m(1)", partial: "φ(1) = m(1) + ½ m(12)", full: "φ(1) = m(1) + m(12)" }[key];
       make("svg:text", { x: 350, y: 90, class: "talk-choices-note talk-choices-strong" }, svg, formula);
     }

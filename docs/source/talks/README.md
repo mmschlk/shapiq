@@ -42,3 +42,6 @@ The title slide shows `assets/qr-deck.svg`, a QR code of the talk's page on Read
 ```bash
 npx qrcode@1.5.4 -t svg -e M -q 2 -d 1b1e27 -l ffffff -o assets/qr-deck.svg "<url>?present"
 ```
+
+The probly slide shows `assets/probly/qr-probly.svg`, made the same way from
+`"https://github.com/pwhofman/probly"`.

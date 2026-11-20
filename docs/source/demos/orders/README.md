@@ -112,18 +112,26 @@ what the previous one showed, plus:
 | `full` | Everything, as with no step. | Nothing. |
 
 The `teaser` is not a step of the build-up but the eye-catcher of a talk: the problem, its chip
-black for good (a black box, whatever the model: it never clears, and says the model's name, not an
-R^2), and under it only the card of the Shapley values, upright, its face above its words (no bar,
-no R^2, no verdict). No tabs, no picker, no layers, no plot (`orders-demo-teaser`); the face is not
-inspected. It shows one example: give it one (`:examples: houses`, or `:examples: fixlip` with
-`:pick: giraffe`). The card's face is as large as the demo's width and its room's height let it be
-(`fitTeaser()`, `--orders-teaser-face`, 9 to 32 rem). The card lies on a pack of four cards like it,
-hidden under it (`.orders-demo-ghost`, without words, their paper a little darker the further they
-lie): a click on the card, or Enter or Space on it (it is a button, `aria-pressed`), fans them out
-behind it, each peeking out to the lower right a little further and turned a little more
-(`orders-demo-fanned`); another settles them back. The room they fan into is kept to the right of and
-below the card (`--orders-fan`, the pack's margin), so nothing moves. With a mouse, hovering the card
-stirs them a little. The talk puts two teasers side by side:
+black for good (a black box, whatever the model: the cube and "Black box" under the model's name,
+as SigLIP's, also for XGBoost (`modelOf()`); it never clears, and says no R^2), and under it, centered under the chip, only the card of the Shapley values. No tabs, no picker,
+no layers, no plot (`orders-demo-teaser`); the face is not inspected. It starts with the problem
+alone, as the whole demo does: the chip calls, with its "Explain" tab, and a click on it (or Enter or
+Space) explains it with the same build-up (the light pours out of the chip, the card comes out of a
+blur). Unexplained, the card's room is kept, unseen, so nothing on the slide moves. Nothing on the
+teaser is green: the card has a plain card's edge and shadow, the light out of the chip and its
+dashed edges are gray, and the card has no "Why f(x)?" on its edge. The card says
+nothing but which explanation it is and what its colors mean: its face (unframed, the card's edge
+is its frame), and under it the short name ("SV") at the left and the legend (raises, lowers) at the
+right (`.orders-demo-teaser-foot`); the words of the other steps' cards are hidden. It shows one
+example: give it one (`:examples: houses`, or `:examples: fixlip` with `:pick: giraffe`). The card's
+face is as large as the demo's width and its room's height let it be (`fitTeaser()`,
+`--orders-teaser-face`, 9 to 32 rem). The card lies on a pack of four cards like it, hidden under it
+(`.orders-demo-ghost`, without words, their paper a little darker the further they lie): once
+explained, a click on the card, or Enter or Space on it (it is a button, `aria-pressed`), fans them
+out behind it, each peeking out to the lower right a little further and turned a little more
+(`orders-demo-fanned`); another settles them back. The room they fan into is kept around the card
+(`--orders-fan`, the pack's margin: below it, and at both sides, so that the card stays centered),
+so nothing moves. With a mouse, hovering the card stirs them a little. The talk puts two teasers side by side:
 
 ```rst
 .. container:: shapiq-talk-columns shapiq-talk-teaser
@@ -256,7 +264,10 @@ layers shrink to fit the window.
 In a talk presented one slide at a time (`talk.js`: in `.shapiq-deck`, but not
 `.shapiq-deck--scroll`, the phone's), the room the demo has is the slide's, not the window's:
 `frameOf()` measures it as `talk.js` does (the slide's height, less its padding and its title), less
-what is above the demo in the slide's body and the demo's bottom margin (and `FRAME_MARGIN`, 8px).
+what is above the demo in the slide's body (from the top of what the body holds, not of the body,
+whose content sits in its middle: so the room is the same however tall the demo is, and two teasers
+side by side get the same), what is below it (such as a box a later step shows, and the 0.4em it
+waits lower, `.shapiq-later`), and the demo's bottom margin (and `FRAME_MARGIN`, 8px).
 Everything that the window's height bounds elsewhere is bounded by it there: the layers beside the
 card, the layers below the card (all of the demo, not only the stack), the card beside the layers
 (its face and its words, `cardFits` in `fitColumns()`), and the teaser's card. So the deck does not
@@ -277,7 +288,20 @@ pages stay as they are:
   drawn in a large variant (`mapFace(..., large)`, `MAP.large`, `orders-demo-map-large`): what it
   shows named larger, its 6 strongest rows only, in larger words, and the colors' scale with its
   ends named. It drops the line of counts, the cities, the head over the rows and the name over
-  the scale. (The applicants' plane keeps its usual face.)
+  the scale. (The applicants' plane keeps its usual face.) A photo's face has its caption's column a
+  little further from its right edge (`tokensOf(true)`), and the face's name under the photo is
+  narrowed to the room left of the column where it is long ("Full decomposition (83-FSII)"). A
+  layer's name on the stack has a halo of the page, so it reads over the card's words under it.
+- **The whole demo fills its slide from the top** (a demo without `:step:`, alone in the slide's
+  body): unexplained, the problem lies where it lies explained, and the stack, built under it, moves
+  nothing. To start a slide's stack with a layer chosen, give it `:select:` (`1`, `full`, ...).
+- **The plot's axis** keeps its leading zeros (0, 0.5, 1), where the docs drop them on a narrow
+  stage.
+- **Two examples, no tabs**: a demo of exactly two examples (`orders-demo-pair`) hides its bar of
+  tabs, which would take the stack's room, and shows a small button (28px, 13px words) in its lower
+  right corner instead (`.orders-demo-flip`, under the plot's names, where nothing is), which names the other
+  example and goes to it. The stack grows into the room the bar leaves. With more examples, the bar
+  stays.
 - **Dark mode**: the chip clears to a slate (`--orders-glass`), not a pale glass, and the gray chip
   is darker than that. The pill of the example chosen is a tint of the ink, not the ink.
 
@@ -286,6 +310,12 @@ pages stay as they are:
 - **Colors** come from the docs' tokens (`--color-foreground-primary`, `--shapiq-surface`, ... from
   Furo and `_static/css/tokens.css`), with fallbacks, so the demo also works on a page without
   them.
+- **Many houses on the map**: the dots of what lowers a house's value are painted first, and those
+  of what raises it on top of them, each the weakest first (`pictureOf` in `mapFace()`): Lat × Long
+  lowers most houses' values and raises those of a few, in the cities on the coast, which would be
+  covered otherwise. A dot that raises a value is at least 0.75 opaque (`RAISED`): weaker, its red
+  over the blue showed as a purple smudge. On every face of the map, the card's and the layers', on
+  every page.
 - **Words on a tint**: on a photo's card, a word of the caption lies on its value's tint. From
   `ON_TINT` (0.7) of the order's largest value on, the tint is strong and the word is white
   (`.orders-demo-on-tint`); below, it keeps the ink.

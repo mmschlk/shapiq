@@ -3,7 +3,8 @@
    references it cites. "Present" or the key P shows one slide at a time, and a phone scrolls.
    Its own figures are drawn by assets/figures.js. The demos are those of demos/.
    assets/qr-deck.svg opens this page as a deck (?present); README.md says how to make it again.
-   assets/probly/ holds the logo and the workflow figure of probly (MIT, github.com/pwhofman/probly).
+   assets/probly/ holds the logo of probly (MIT, github.com/pwhofman/probly) and a QR code of its
+   repository, made like qr-deck.svg (README.md).
 
 One Explanation Does Not Fit All
 ================================
@@ -59,6 +60,7 @@ says, and code reproduces what the slide shows.
 
 .. shapiq-slide:: SHAP Explains Any Model
    :layout: wide
+   :steps: 2
    :cite: Lundberg.2017 Baniecki.2025
 
    .. container:: shapiq-talk-columns shapiq-talk-teaser
@@ -76,13 +78,20 @@ says, and code reproduces what the slide shows.
             :examples: fixlip
             :pick: giraffe
 
+   .. container:: shapiq-talk-definition shapiq-talk-attribution shapiq-from-1
+
+      .. rubric:: Feature Attribution.
+
+      A feature attribution summarizes :math:`f` at :math:`x` by one score :math:`\phi_i` for each
+      feature :math:`i \in D`, so that :math:`f(x) \approx \phi_\emptyset + \sum_{i \in D} \phi_i`.
+
    .. shapiq-notes::
 
       Two models, two black boxes. An XGBoost model values 2,000 houses of California. SigLIP 2
       matches a photo of a giraffe to its caption. SHAP explains both in the same way
       :cite:p:`Lundberg.2017`. Every feature gets one score, a house on the map, a patch of the
-      photo or a word of the caption. Red raises the output, and blue lowers it. Yet one score
-      per feature is only the top of a stack of explanations.
+      photo or a word of the caption. Red raises the output, and blue lowers it. What SHAP gives is a
+      feature attribution, one score for each feature that adds up to the prediction.
 
 .. shapiq-slide:: Feature-Based Explainable AI
    :layout: wide
@@ -190,16 +199,15 @@ says, and code reproduces what the slide shows.
       the Shapley values explain. For the houses, that is most of it. For the giraffe, it is much
       less.
 
-.. shapiq-slide:: What Makes a Good Explanation?
+.. shapiq-slide:: Evaluating Shapley Value Explanations
    :layout: wide
-   :steps: 2
    :cite: Tsai.2022 Hedstrom.2023 Agarwal.2022
 
    .. shapiq-talk-figure:: faithfulness
       :class: talk-faith-first
       :alt: How faithfulness is computed, for a credit applicant. Left, some features are kept and the others removed: the model predicts −1.10 in log-odds with only the credit limit and the bill of September, while the Shapley values add up to −0.57. Right, the same for all 254 coalitions: the points scatter widely around the diagonal, with an R² of 0.24.
 
-   .. container:: shapiq-from-1 shapiq-talk-also
+   .. container:: shapiq-talk-also
 
       Other properties measured by Quantus and OpenXAI
 
@@ -367,22 +375,6 @@ says, and code reproduces what the slide shows.
       :doc:`../../demos/fixlip/index` explains FIxLIP step by step and ends with the code of the
       vision–language game and its explanation with ``shapiq``.
 
-.. shapiq-slide:: Latitude and Longitude Act Together
-   :layout: wide
-   :cite: Muschalik.2024a
-
-   .. shapiq-demo:: orders
-      :step: interactions
-      :select: 2
-      :examples: houses
-
-   .. shapiq-notes::
-
-      Back to the houses of California. At order 2, the strongest pair across the map is latitude
-      with longitude. On their own, both say little. Together, they say where a house lies: on the
-      coast around San Francisco and Los Angeles, or inland. A price depends on this location,
-      and no single coordinate captures it. Interactions show it on the map.
-
 .. shapiq-slide:: The Full Decomposition Opens the Black Box
    :layout: wide
    :cite: Muschalik.2024a Fujimoto.2006 Baniecki.2025
@@ -423,9 +415,19 @@ says, and code reproduces what the slide shows.
    :steps: 3
    :cite: Herbinger.2026 Fumagalli.2025 Enouen.2025
 
-   .. math::
+   .. container:: shapiq-talk-recipe
 
-      \phi \;=\; \mathcal{I} \circ \mathcal{B} \circ \mathcal{M}\, f
+      .. math::
+
+         \phi \;=\; \mathcal{I} \circ \mathcal{B} \circ \mathcal{M}\, f
+
+      .. container:: shapiq-talk-callout
+
+         .. rubric:: AISTATS 2026
+
+         | **GRANITE.** A Generalized Regional Framework for Identifying Agreement in
+           Feature-Based Explanations
+         | Herbinger, Laberge, Muschalik, Pequignot, Wright and Fumagalli
 
    .. container:: shapiq-talk-cards
 
@@ -673,11 +675,10 @@ says, and code reproduces what the slide shows.
 
 .. shapiq-slide:: A Shoutout to probly
    :layout: wide
-   :steps: 2
 
-   .. container:: shapiq-talk-columns shapiq-talk-columns-probly
+   .. container:: shapiq-talk-probly-ad
 
-      .. container:: shapiq-talk-column shapiq-talk-probly
+      .. container:: shapiq-talk-probly
 
          .. image:: assets/probly/logo-light.svg
             :class: only-light shapiq-talk-probly-logo
@@ -693,36 +694,19 @@ says, and code reproduces what the slide shows.
 
          Oral at NeurIPS 2026
 
-      .. container:: shapiq-talk-column
+      .. container:: shapiq-talk-qr shapiq-talk-probly-qr
 
-         ``probly`` quantifies the uncertainty of any model. More than 40 methods, from Bayesian
-         networks and deep ensembles to credal and conformal prediction, share one pipeline.
+         .. image:: assets/probly/qr-probly.svg
+            :alt: A QR code that opens github.com/pwhofman/probly.
 
-         .. image:: assets/probly/workflow-light.webp
-            :class: only-light shapiq-talk-wide-image
-            :alt: The probly workflow: transform a model to make it uncertainty-aware, represent its predictive uncertainty, quantify and decompose it into total, epistemic and aleatoric parts, decide, and evaluate in a downstream task. Each stage is one import.
-
-         .. image:: assets/probly/workflow-dark.webp
-            :class: only-dark shapiq-talk-wide-image
-            :alt: The probly workflow: transform a model to make it uncertainty-aware, represent its predictive uncertainty, quantify and decompose it into total, epistemic and aleatoric parts, decide, and evaluate in a downstream task. Each stage is one import.
-
-         .. container:: shapiq-from-1 shapiq-talk-lessons
-
-            .. rubric:: What shapiq-v2 takes from it
-
-            | **Library-agnostic.** PyTorch, JAX, scikit-learn and Hugging Face share one API.
-            | **Composable stages.** Each stage is one import, and they combine freely.
-            | **One pipeline, many methods.** Comparing methods means changing one line.
+         github.com/pwhofman/probly
 
    .. shapiq-notes::
 
-      shapiq is not our only library. probly, developed by Paul Hofman and colleagues, quantifies the uncertainty of
-      any model. It makes a model uncertainty-aware in one line, represents its predictions,
-      quantifies and decomposes the uncertainty into aleatoric and epistemic parts, decides, and
-      evaluates. More than 40 methods share this pipeline, and probly was accepted as an oral at
-      NeurIPS 2026. Its design lessons go into shapiq-v2: it works with any machine learning
-      library, its stages compose freely, and one pipeline runs many methods, so that comparing
-      them means changing one line.
+      shapiq is not our only library. probly, developed by Paul Hofman and colleagues, quantifies
+      the uncertainty of any model. More than 40 methods, from Bayesian networks and deep
+      ensembles to credal and conformal prediction, share one pipeline. probly was accepted as an
+      oral at NeurIPS 2026. The QR code opens its repository.
 
    .. shapiq-try::
 
@@ -854,6 +838,7 @@ says, and code reproduces what the slide shows.
 
    .. shapiq-demo:: orders
       :examples: applicant, house, tabpfn, applicants, houses
+      :select: 1
 
    .. shapiq-notes::
 
@@ -876,6 +861,22 @@ says, and code reproduces what the slide shows.
 
       The guide :doc:`../../introduction/how-much-explained` builds this figure up step by step,
       explains how the fit is measured, and ends with the code that computed it.
+
+.. shapiq-slide:: Latitude and Longitude Act Together
+   :layout: wide
+   :cite: Muschalik.2024a
+
+   .. shapiq-demo:: orders
+      :step: interactions
+      :select: 2
+      :examples: houses
+
+   .. shapiq-notes::
+
+      Back to the houses of California. At order 2, the strongest pair across the map is latitude
+      with longitude. On their own, both say little. Together, they say where a house lies: on the
+      coast around San Francisco and Los Angeles, or inland. A price depends on this location,
+      and no single coordinate captures it. Interactions show it on the map.
 
 .. shapiq-slide:: For Tree Ensembles, Interactions Are Exact
    :layout: wide
@@ -918,6 +919,7 @@ says, and code reproduces what the slide shows.
          .. shapiq-demo:: orders
             :step: full
             :examples: applicant
+            :select: 1
 
    .. shapiq-notes::
 

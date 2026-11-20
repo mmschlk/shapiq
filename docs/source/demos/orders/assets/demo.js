@@ -144,9 +144,35 @@
     const title = slide.querySelector(":scope > .shapiq-slide-title");
     const above = title ? title.offsetHeight + parseFloat(getComputedStyle(title).marginBottom) : 0;
     const room = slide.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - above;
-    const offset = (root.getBoundingClientRect().top - body.getBoundingClientRect().top) / scaleOf(body);
+    // (what lies above the demo in the body: from the top of what it holds, not of the body itself,
+    // whose content sits in its middle, so that the room is the same however tall the demo is: else
+    // a demo that grows, its content moving up, finds more room and grows on, and two demos side by
+    // side, each settling where its own history left it, differ by a pixel or two)
+    const flows = (node) => {
+      const nodeStyle = getComputedStyle(node);
+      return nodeStyle.display !== "none" && nodeStyle.position !== "absolute";
+    };
+    const first = [...body.children].find(flows) ?? body;
+    const start = first === body ? body.getBoundingClientRect().top : first.getBoundingClientRect().top - parseFloat(getComputedStyle(first).marginTop) * scaleOf(body);
+    const offset = (root.getBoundingClientRect().top - start) / scaleOf(body);
+    // (and what the body holds below the demo, such as a box after its columns, which a later step
+    // shows in a room kept for it)
+    let part = root;
+    while (part.parentElement && part.parentElement !== body) part = part.parentElement;
+    let below = 0;
+    // (a part a later step shows waits a little lower, 0.4em down (talk.css: .shapiq-later), and the
+    // deck counts it where it waits: so does the room, at every step alike, so that the demo keeps
+    // its size as the part comes up)
+    let lower = 0;
+    for (let next = part.nextElementSibling; next; next = next.nextElementSibling) {
+      if (!flows(next)) continue;
+      const nextStyle = getComputedStyle(next);
+      below += next.offsetHeight + parseFloat(nextStyle.marginTop) + parseFloat(nextStyle.marginBottom);
+      if (/\bshapiq-from-/.test(next.className)) lower = Math.max(lower, 0.4 * parseFloat(nextStyle.fontSize));
+    }
+    below += lower;
     // (and the demo's own margin below it, which the body holds)
-    return room - offset - parseFloat(getComputedStyle(root).marginBottom) - FRAME_MARGIN;
+    return room - offset - below - parseFloat(getComputedStyle(root).marginBottom) - FRAME_MARGIN;
   };
   // milliseconds: how long a layer takes to move to its place (demo.css: --orders-move)
   const MOVE = 640;
@@ -518,12 +544,16 @@
     });
   }
 
+  // the column of a caption's tokens on a photo's face: where it starts, how wide it is, its top and
+  // bottom. On a talk's slide (large), a little further from the face's right edge, which beside the
+  // stack is the card's: the words and the numbers on them clear of it
+  const tokensOf = (large) => (large ? { x: 70, width: 23, top: 5, bottom: 95 } : { x: 72, width: 24, top: 5, bottom: 95 });
   // the photo and its caption: the photo's patches on the left, the caption's tokens on the right
-  function imageTextFace(svg, example, sheet, url, id, layer = "all") {
+  function imageTextFace(svg, example, sheet, url, id, layer = "all", large = false) {
     const photo = { x: 4, y: 11, size: 62 };
     const grid = example.grid;
     const cell = photo.size / grid;
-    const tokens = { x: 72, width: 24, top: 5, bottom: 95 };
+    const tokens = tokensOf(large);
     const row = (tokens.bottom - tokens.top) / example.tokens.length;
     const patches = grid * grid;
     const anchor = (player) =>
@@ -825,6 +855,12 @@
   // larger one (a coordinate, in hundredths of a degree)
   const ALPHABET = Array.from({ length: 92 }, (_, k) => String.fromCharCode(35 + k)).filter((letter) => letter !== "\\").join("");
   const LEVELS = (ALPHABET.length - 1) / 2;
+  // the least opacity of a house's dot that raises its value, on the map
+  const RAISED = 0.75;
+  // a face's name, in its bottom left corner: where it starts, and about how wide a letter of it is
+  // (both in hundredths of the face; demo.css: .orders-demo-tag, 4.6px)
+  const TAG_X = 6;
+  const TAG_LETTER = 2.4;
   const read = (text, width = 1) =>
     Array.from({ length: text.length / width }, (_, k) => {
       let number = 0;
@@ -928,13 +964,20 @@
     const nameOf = (players) => players.map((feature) => example.features[feature]).join(" × ");
     const valuesOf = values.get(sheet);
     const valueOf = (row, house) => (valuesOf[row][house] / LEVELS) * sheet.scale;
-    // the dots in the colors of a row, the strongest on top (a row's picture is painted once)
+    // the dots in the colors of a row: those that lower a house's value first, then those that
+    // raise it, on top of them, each the weakest first. Where a group lowers most houses' values
+    // and raises a few (Lat × Long: most of the state, and the cities on the coast), the few lie in
+    // clusters among the many, and painted by strength alone, they were covered by them (a row's
+    // picture is painted once)
     const pictures = new Map();
     const pictureOf = (r) => {
       if (!pictures.has(r)) {
         const row = valuesOf[r];
-        const order = [...row.keys()].sort((a, b) => Math.abs(row[a]) - Math.abs(row[b]));
-        pictures.set(r, painted(order.map((house) => [...spots[house], solid(row[house]), (Math.abs(row[house]) / LEVELS) ** 0.85])));
+        const order = [...row.keys()].sort((a, b) => (row[a] > 0) - (row[b] > 0) || Math.abs(row[a]) - Math.abs(row[b]));
+        // (and those that raise it at least this opaque: a weak red over the blue under it shows as a
+        // purple smudge, not as the place it is)
+        const opacity = (value) => (Math.abs(value) / LEVELS) ** 0.85;
+        pictures.set(r, painted(order.map((house) => [...spots[house], solid(row[house]), row[house] > 0 ? Math.max(RAISED, opacity(row[house])) : opacity(row[house])])));
       }
       return pictures.get(r);
     };
@@ -1156,9 +1199,9 @@
   // -- the demo -------------------------------------------------------------------------------------
 
   // the steps of the figure, as a post builds it up (without one, a demo shows all of it); and the
-  // teaser, which a talk opens with: the problem, its chip a black box for good, and the card of
-  // the Shapley values under it, with a stack of explanations hidden behind the card (a click shows
-  // that they are there)
+  // teaser, which a talk opens with: the problem, its chip a black box for good, which a click
+  // explains, and then the card of the Shapley values under it, with a stack of explanations hidden
+  // behind the card (a click on the card shows that they are there)
   const PARTS = ["problem", "mechanism", "shapley", "interactions", "full", "teaser"];
   // the example chosen, on the document: every demo of the page hears it, and follows
   const EXAMPLE_EVENT = "orders-demo-example";
@@ -1220,6 +1263,9 @@
     // dots and picker take no room)
     const teaser = part === "teaser";
     root.classList.toggle("orders-demo-teaser", teaser);
+    // the model as its chip shows it: in the teaser, a black box, whatever it is (its cube, black,
+    // "Black box"), as what is in it is the question the talk opens with
+    const modelOf = (example) => (teaser ? { ...example.model, icon: "box", title: "Black box" } : example.model);
     // of an example, the layers a step shows: how many of its sheets, from the top (none, the
     // Shapley values, all but the full decomposition, or all), and the blank layers between them
     const shownSheets = (example) =>
@@ -1259,7 +1305,10 @@
     // the demo starts with the problem alone (unless data-reveal="open"): a click on the model's chip
     // explains it, and the explanation is built under it, from the top down; once explained, every
     // example is. A step shows its part at once (the problem's, the problem alone, for good)
-    let revealed = part !== "problem" && (root.dataset.reveal === "open" || part !== "all");
+    // The teaser starts with the problem alone too, its card's room kept (demo.css), and is explained
+    // as the whole demo is, by a click on its chip
+    const calling = part === "all" || teaser; // (what a click on the chip explains)
+    let revealed = part !== "problem" && (root.dataset.reveal === "open" || !calling);
     // the floating layers unfold for good, once: after the model was clicked to explain it, once they
     // have come in and are in view (or tapped at rest); before, only while one is pointed at
     let unfoldedForGood = false;
@@ -1306,6 +1355,16 @@
     const shown = el("span", "orders-demo-step-shown");
     stepper.append(stepButton(-1, "Previous example", "M10 3.5 5.5 8l4.5 4.5"), shown, stepButton(1, "Next example", "M6 3.5l4.5 4.5L6 12.5"));
     bar.append(switcher, stepper);
+    // on a talk's slide, a demo of two examples has no bar of tabs, which would take the stack's
+    // room: a small button in its lower right corner, over nothing, goes to the other one, and
+    // names it (demo.css: orders-demo-pair, on a slide)
+    const flip = el("button", "orders-demo-flip");
+    flip.type = "button";
+    flip.addEventListener("click", () => {
+      const other = data.examples.find((example) => example !== tabOf(current()));
+      if (other) choose(shownOf.get(other.id) ?? other);
+    });
+    root.classList.toggle("orders-demo-pair", data.examples.length === 2);
 
     // above the stack, the plan: first the problem, as machine learning draws it, the input x wired
     // through the model f, a chip, to its prediction f(x); then, cast out of the chip, why f(x): the
@@ -1347,7 +1406,7 @@
     const planTag = document.createElementNS(SVG, "svg");
     planTag.setAttribute("viewBox", "0 0 100 100");
     planTag.setAttribute("class", "orders-demo-plan-tag");
-    const planTagText = add(planTag, "text", { class: "orders-demo-tag", x: 6, y: 95.5 });
+    const planTagText = add(planTag, "text", { class: "orders-demo-tag", x: TAG_X, y: 95.5 });
     // after a short name, until the face is first inspected, an invitation to (as the layers' own:
     // "tap" on a touch screen, "hover" with a mouse)
     const planTagHint = document.createElementNS(SVG, "tspan");
@@ -1358,6 +1417,18 @@
     // house or a row; where the name leaves no room for it, no invitation)
     const tagFace = (name) => {
       planTagText.textContent = name;
+      // (on a photo's face, the name lies under the photo, left of the caption's words, which reach
+      // down to the bottom: a long name, such as "Full decomposition (83-FSII)", is narrowed to the
+      // room left of them, about 2 % of the face clear of them, its letters as tall)
+      const words = current().kind === "image-text" ? tokensOf(root.classList.contains("orders-demo-deck")).x : null;
+      const room = words === null ? Infinity : words - 2.5 - TAG_X;
+      if (name.length * TAG_LETTER > room) {
+        planTagText.setAttribute("textLength", roundTo(room, 2));
+        planTagText.setAttribute("lengthAdjust", "spacingAndGlyphs");
+      } else {
+        planTagText.removeAttribute("textLength");
+        planTagText.removeAttribute("lengthAdjust");
+      }
       const what = current().kind === "map" ? subjectOf(current()).point : PLAYERS[current().kind].point;
       for (const [node, word] of planTagWords) node.textContent = `· ${word} ${what}`;
       if (name.length * 2.55 + (what.length + 8) * 1.5 <= 88) planTagText.append(planTagHint);
@@ -1460,10 +1531,10 @@
     flow.append(into, chip, onto);
     // unexplained, the chip is a button that explains the example
     chip.addEventListener("click", () => {
-      if (!revealed && part === "all") reveal();
+      if (!revealed && calling) reveal();
     });
     chip.addEventListener("keydown", (event) => {
-      if (revealed || part !== "all" || (event.key !== "Enter" && event.key !== " ")) return;
+      if (revealed || !calling || (event.key !== "Enter" && event.key !== " ")) return;
       event.preventDefault();
       reveal();
     });
@@ -1475,6 +1546,21 @@
     const planWords = el("span", "orders-demo-plan-words");
     planText.append(planWords);
     why.append(whyName, planView, planText);
+    // the teaser's card says nothing but which explanation it is and what its colors mean: under
+    // its face, the explanation's short name at the left ("SV") and red and blue at the right, in
+    // place of its words (demo.css hides them)
+    const teaserName = el("strong", "orders-demo-teaser-name");
+    if (teaser) {
+      const foot = el("div", "orders-demo-teaser-foot");
+      const legend = el("span", "orders-demo-plan-legend");
+      for (const [color, meaning] of [["up", "raises"], ["down", "lowers"]]) {
+        const key = el("span", "orders-demo-plan-key");
+        key.append(el("i", `orders-demo-plan-${color}`), meaning, math("f(x)"));
+        legend.append(key);
+      }
+      foot.append(teaserName, legend);
+      why.append(foot);
+    }
     // its window: swiped aside, it goes out of view, not out of the page
     const planWindow = el("div", "orders-demo-plan-window");
     planWindow.append(plan);
@@ -1557,7 +1643,7 @@
     const blur = add(add(blurs, "defs"), "filter", { id: `orders-blur-${plotId}`, x: "-20%", y: "-20%", width: "140%", height: "140%" });
     add(blur, "feGaussianBlur", { stdDeviation: 1.6 });
     root.style.setProperty("--orders-blur", `url(#orders-blur-${plotId})`);
-    root.append(bar, planWindow, stage, dots, blurs, status, cardTip);
+    root.append(bar, planWindow, stage, dots, blurs, status, cardTip, flip);
     root.classList.add("orders-demo-ready");
 
     // the stack, top to bottom: the sheets of order 1 to 4, a blank sheet for every order up to
@@ -1791,6 +1877,12 @@
     // the side it was stepped to from
     function showStep(example, enter = true) {
       const position = data.examples.indexOf(tabOf(example)) + 1;
+      // (and the button to the other one, of two)
+      const other = data.examples.find((tab) => tab !== tabOf(example));
+      if (other) {
+        flip.replaceChildren(icon(other.model.icon, "orders-demo-option-icon"), el("span", "orders-demo-option-label", other.label));
+        flip.setAttribute("aria-label", `Example: show ${other.label}`);
+      }
       shown.replaceChildren(
         icon(example.model.icon, "orders-demo-option-icon"),
         el("strong", "", example.label),
@@ -1890,7 +1982,7 @@
             ? treeFace(svg, example, sheet, layer)
             : example.kind === "map"
               ? mapFace(svg, example, sheet, layer, large)
-              : imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer);
+              : imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer, large);
       if (inspector) inspectors.set(svg, inspector);
     }
     // every example's layers, drawn once: an example chosen again shows them as they were drawn
@@ -1981,7 +2073,7 @@
     // kept apart, as a talk switches between them)
     function planFace(example, sheet) {
       const name = sheet ? `${sheet.order}${sheet.full ? "-full" : ""}` : "input";
-      const large = root.classList.contains("orders-demo-deck") && example.kind === "map" && !example.plane;
+      const large = root.classList.contains("orders-demo-deck") && ((example.kind === "map" && !example.plane) || example.kind === "image-text");
       const key = `${example.id} ${name}${large ? " large" : ""}`;
       if (!plans.has(key)) {
         const svg = document.createElementNS(SVG, "svg");
@@ -2052,14 +2144,14 @@
     // structure the explanation uses), and the prediction, in the red of what raises it
     function showProblem(example, flip = false) {
       problemOf = example.id;
-      const { problem, model } = example;
+      const { problem } = example;
+      const model = modelOf(example);
       xFace.className = example.kind === "tree" ? "orders-demo-wire-face orders-demo-wire-table" : "orders-demo-wire-face";
       xFace.replaceChildren(...inputFitting(example));
       showPicker(example);
       say(xName, problem.input, flip);
-      // (the teaser's chip is a black box, whatever the model: what is in it is the question)
-      chip.classList.toggle("orders-demo-chip-black", model.icon === "box" || teaser);
-      chip.classList.toggle("orders-demo-chip-gray", model.icon !== "box" && !teaser);
+      chip.classList.toggle("orders-demo-chip-black", model.icon === "box");
+      chip.classList.toggle("orders-demo-chip-gray", model.icon !== "box");
       chip.title = `${model.title}: ${model.detail}`;
       chipIcon.replaceChildren(icon(model.icon, "orders-demo-wire-icon"));
       say(chipName, model.short, flip);
@@ -2085,7 +2177,7 @@
     function showCall() {
       const model = current().model;
       // (the problem alone, as a step, does not call)
-      const calls = !revealed && part === "all";
+      const calls = !revealed && calling;
       chip.classList.toggle("orders-demo-chip-call", calls);
       // (and, once explained, no animation left on it, whatever a browser keeps running)
       chip.style.animation = calls ? "" : "none";
@@ -2094,7 +2186,8 @@
         const focused = document.activeElement === chip;
         for (const name of ["role", "tabindex", "aria-label"]) chip.removeAttribute(name);
         explainTab.remove();
-        if (focused) requestAnimationFrame(() => thumb.focus({ preventScroll: true }));
+        // (the teaser's, which has no slider, on to its card, a button too)
+        if (focused) requestAnimationFrame(() => (teaser ? why : thumb).focus({ preventScroll: true }));
       } else {
         chip.setAttribute("role", "button");
         chip.setAttribute("aria-label", `${model.title}, ${model.detail}: explain its prediction`);
@@ -2391,7 +2484,8 @@
         const value = el("span", sign > 0 ? "orders-demo-plan-raises" : sign < 0 ? "orders-demo-plan-lowers" : "", text);
         // (named by what it is: a group, a pair, or a player, an atom, a feature, a patch or a word)
         const one = example.kind === "image-text" ? (players[0] < example.grid ** 2 ? "patch" : "word") : PLAYERS[example.kind].one;
-        top.append(`Top ${players.length > 2 ? "group" : players.length > 1 ? "pair" : one}: `, name, " ", value);
+        // (its kind a muted label before it, with no colon)
+        top.append(el("span", "orders-demo-plan-top-label", `Top ${players.length > 2 ? "group" : players.length > 1 ? "pair" : one}`), " ", name, " ", value);
         top.addEventListener("pointerenter", (event) => {
           if (event.pointerType === "mouse") inspect(inspectorNow()?.find(players) ?? null);
         });
@@ -2419,7 +2513,7 @@
       const top = (why.getBoundingClientRect().top - root.getBoundingClientRect().top) / scale;
       const rest = why.offsetHeight - planView.offsetHeight; // (its words, padding and gap)
       const tall = frameOf(root) - top - rest - fan - 6; // (and its shadow)
-      const wide = root.clientWidth - sides - fan - 2;
+      const wide = root.clientWidth - sides - 2 * fan - 2; // (the room it fans into, at both sides: the card in the middle)
       const face = Math.floor(Math.max(9 * rem, Math.min(32 * rem, tall, wide)));
       if (Math.abs(face - teaserFace) < 2) return;
       teaserFace = face;
@@ -2522,6 +2616,7 @@
       }
       // named as the layer it shows: a sheet, the mechanism, or an order between
       tagFace(state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face);
+      teaserName.textContent = sheetName(example.sheets[0]).tag;
       // the mechanism, where only an estimate shows it, blurred
       planView.classList.toggle("orders-demo-estimated", Boolean(mechanism) && state.blank === null && estimated(example));
 
@@ -2544,7 +2639,7 @@
       // its R^2 in two decimals, or >.99 short of 1: as wide whatever it is, so that the chip, whose
       // words shrink to fit it, does not change its size from one to the next
       const short = r2 >= EXACT ? "1.00" : r2 >= 0.995 ? ">.99" : r2.toFixed(2);
-      const note = lit && !teaser ? `R² ${short} explained` : example.model.title;
+      const note = lit && !teaser ? `R² ${short} explained` : modelOf(example).title;
       if (chipNote.textContent !== note) {
         // (refit only where the note's shape changes: its digits are as wide as each other)
         const shape = (text) => text.replace(/\d/g, "0");
@@ -3109,9 +3204,11 @@
         name.setAttribute("y", f(from - 25));
       });
       [...ticks].forEach((tick, k) => {
-        // (on a narrow screen, without the leading zero: .5, .75)
+        // (on a narrow screen, without the leading zero: .5, .75; but on a talk's slide, where the
+        // stage is narrow and the plot not, with it, as every slide's plot then reads 0, 0.5, 1)
         const level = low + (k / 2) * (1 - low);
-        const text = g.narrow && level > 0 && level < 1 ? String(level).slice(1) : String(level);
+        const short = g.narrow && !(root.classList.contains("orders-demo-deck") && (x1 - x0) / 2 >= 26);
+        const text = short && level > 0 && level < 1 ? String(level).slice(1) : String(level);
         if (tick.textContent !== text) say(tick, text, tick.textContent !== "");
       });
 

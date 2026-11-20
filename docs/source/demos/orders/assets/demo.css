@@ -1455,6 +1455,12 @@ body[data-theme="dark"] .orders-demo {
   font-weight: 700;
 }
 
+/* (what the line names, a group, a pair or a player: a muted label before it) */
+.orders-demo-plan-top > .orders-demo-plan-top-label {
+  color: var(--orders-muted);
+  font-weight: inherit;
+}
+
 .orders-demo-plan-raises {
   color: var(--orders-raises);
 }
@@ -2975,13 +2981,98 @@ body[data-theme="dark"] .orders-demo {
   display: none;
 }
 
-/* the pack: the card on its cards, and to its right and below it, the room they fan out into, so
-   that the card stays in the middle of what the demo shows, and nothing moves as they do */
+/* the pack: the card on its cards, and around it the room they fan out into (to its right and
+   below it, and as much to its left, so that the card stays in the middle, under the chip), so that
+   nothing moves as they do */
 .orders-demo-pack {
   --orders-fan: 2.6rem;
   position: relative;
   display: grid;
-  margin: 0 var(--orders-fan) var(--orders-fan) 0;
+  margin: 0 var(--orders-fan) var(--orders-fan);
+}
+
+/* the card says only what its face is and what its colors mean, under the face: its words, which
+   the other steps' cards have, take no room (demo.js), and the face has no frame of its own, the
+   card's edge is its frame */
+.orders-demo-teaser .orders-demo-plan-text {
+  display: none;
+}
+
+.orders-demo.orders-demo-teaser .orders-demo-plan-view {
+  border-color: transparent;
+}
+
+.orders-demo-teaser-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0 0.15rem;
+  color: var(--orders-muted);
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.orders-demo-teaser-name {
+  color: var(--orders-ink);
+  font-size: 1.1em;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* unexplained, the teaser is the problem alone, and its card's room is kept (empty), so that
+   nothing on the slide moves as it is explained: the card, its pack and the light are there, unseen,
+   and the chip's tab lies over them */
+.orders-demo-teaser.orders-demo-veiled .orders-demo-why {
+  display: grid;
+}
+
+.orders-demo-teaser.orders-demo-veiled .orders-demo-cast {
+  display: block;
+}
+
+.orders-demo-teaser.orders-demo-veiled :is(.orders-demo-pack, .orders-demo-cast) {
+  visibility: hidden;
+}
+
+.orders-demo-teaser.orders-demo-veiled .orders-demo-plan {
+  padding-bottom: 4px;
+}
+
+/* nothing on the teaser is green: the card's edge and shadow are a plain card's, the light out of
+   the chip onto it gray, and the card has no question on its edge (it is the slide's) */
+.orders-demo.orders-demo-teaser .orders-demo-why {
+  border-color: var(--orders-line);
+  box-shadow:
+    0 1px 3px var(--orders-shade),
+    0 8px 22px -14px var(--orders-shade);
+}
+
+.orders-demo.orders-demo-teaser :is(.orders-demo-cast-top, .orders-demo-cast-bottom) {
+  stop-color: var(--orders-cast);
+}
+
+.orders-demo.orders-demo-teaser .orders-demo-cast-glow {
+  stop-color: var(--orders-cast-glow);
+}
+
+.orders-demo.orders-demo-teaser .orders-demo-cast-edges {
+  stroke: var(--orders-muted);
+}
+
+.orders-demo.orders-demo-teaser .orders-demo-why > .orders-demo-plan-eyebrow {
+  display: none;
+}
+
+/* explained, the card comes as the whole demo's does, out of a blur from the top down, and the pack
+   under it with it */
+.orders-demo-teaser.orders-demo-revealing .orders-demo-why {
+  animation: none;
+}
+
+.orders-demo-teaser.orders-demo-revealing .orders-demo-pack {
+  animation: orders-demo-materialize 620ms var(--orders-settle) 140ms both;
 }
 
 /* (the card: its face above its words, in the card's middle) */
@@ -3076,6 +3167,82 @@ body[data-theme="dark"] .orders-demo {
 
 .orders-demo-map-large .orders-demo-map-scale text {
   font-size: 3.3px;
+}
+
+/* (of two examples, on a slide: no bar of tabs, which would take the stack's room, but a button in
+   the lower right corner, under the plot's names, where nothing is (in the lower left one, the card's
+   words can reach down to the demo's bottom), which goes to the other one and names it; demo.js) */
+.orders-demo-flip {
+  display: none;
+}
+
+.orders-demo.orders-demo-deck.orders-demo-pair:not(.orders-demo-single) > .orders-demo-bar {
+  display: none;
+}
+
+.orders-demo-deck.orders-demo-pair .orders-demo-flip {
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 0.75rem 0 0.6rem;
+  border: 1px solid var(--orders-line);
+  border-radius: 999px;
+  background: var(--orders-raised);
+  color: var(--orders-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--orders-duration) var(--orders-ease),
+    border-color var(--orders-duration) var(--orders-ease),
+    transform 120ms var(--orders-ease);
+}
+
+.orders-demo-deck.orders-demo-pair .orders-demo-flip .orders-demo-option-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* (a layer's name, on the stack, reads over the card's words seen through it: a halo of the page) */
+.orders-demo-deck .orders-demo-layer .orders-demo-tag {
+  paint-order: stroke;
+  stroke: var(--orders-page);
+  stroke-width: 1.4px;
+  stroke-linejoin: round;
+}
+
+/* the whole demo, alone on its slide, fills the slide's room from its top, explained or not: so
+   unexplained, the problem lies where it lies explained, and the explanation, built under it, moves
+   nothing (else the slide holds the problem alone in its middle, and it moves up as the stack comes) */
+.shapiq-slide-body > .orders-demo.orders-demo-deck:not([data-step]) {
+  flex-grow: 1;
+  align-content: start; /* (beside, its rows as tall as they are: the room left is below them) */
+}
+
+/* (and unexplained, its parts' margins kept apart, as beside the stack's grid keeps them: the
+   problem where it is explained) */
+.shapiq-slide-body > .orders-demo.orders-demo-deck.orders-demo-veiled:not([data-step]) {
+  display: flex;
+  flex-direction: column;
+}
+
+.orders-demo-deck.orders-demo-pair .orders-demo-flip:hover,
+.orders-demo-deck.orders-demo-pair .orders-demo-flip:focus-visible {
+  border-color: var(--orders-ink);
+  color: var(--orders-ink);
+}
+
+.orders-demo-deck.orders-demo-pair .orders-demo-flip:active {
+  transform: scale(0.96);
 }
 
 body[data-theme="dark"] .orders-demo.orders-demo-deck {

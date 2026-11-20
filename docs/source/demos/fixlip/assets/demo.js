@@ -801,7 +801,7 @@
         button.style.removeProperty("color");
       });
       const regions = clique.filter((k) => k < regionCount).length;
-      title.replaceChildren(el("strong", "", "Clique:"), " features that raise the similarity most together");
+      title.replaceChildren(el("strong", "", "Clique."), " Features that raise the similarity most together.");
       const tokens = clique.length - regions;
       detail.replaceChildren(
         `${regions} ${regions === 1 ? "region" : "regions"} and ${tokens} ${tokens === 1 ? "token" : "tokens"} ` +
@@ -834,7 +834,7 @@
         button.style.setProperty("--fixlip-tint", color);
         button.classList.toggle("fixlip-demo-strong", alpha > 0.55);
       });
-      title.replaceChildren(el("strong", "", "Full explanation:"), " every main effect and the strongest interactions");
+      title.replaceChildren(el("strong", "", "Full explanation."), " Every main effect and the strongest interactions.");
       detail.textContent =
         "Each region and word is colored by its main effect. " +
         `Lines link the ${STRONGEST} strongest interactions. The list shows the strongest image–text pairs.`;

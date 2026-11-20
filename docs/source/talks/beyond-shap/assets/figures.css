@@ -507,7 +507,12 @@ a.talk-chip:focus-visible {
   stroke: var(--shapiq-amber-ink);
   stroke-opacity: 0.5;
   stroke-width: 0.6;
-  transition: cy 600ms var(--shapiq-ease);
+  transition: cy 600ms var(--shapiq-ease), opacity 320ms var(--shapiq-ease);
+}
+
+/* with a coalition picked, the others step back, so that its gap stands out */
+.talk-faith-picking .talk-faith-point {
+  opacity: 0.4;
 }
 
 .talk-faith-readout {
@@ -583,18 +588,18 @@ a.talk-chip:focus-visible {
 .talk-faith-keep {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3em;
+  gap: 0.25em;
   margin-bottom: 0.9em;
 }
 
 .talk-faith-chip {
-  padding: 0.18em 0.6em;
+  padding: 0.16em 0.42em;
   border: 1px dashed var(--talk-line);
   border-radius: 999px;
   background: none;
   color: var(--talk-muted);
   font: inherit;
-  font-size: 0.82em;
+  font-size: 0.74em;
   text-decoration: line-through;
   cursor: pointer;
   transition: background var(--shapiq-duration) var(--shapiq-ease), color var(--shapiq-duration) var(--shapiq-ease);
@@ -670,8 +675,8 @@ a.talk-chip:focus-visible {
 
 .talk-faith-gap {
   stroke: var(--shapiq-amber-ink);
-  stroke-width: 2;
-  stroke-dasharray: 2 3;
+  stroke-width: 6;
+  stroke-linecap: round;
   transition: x1 500ms var(--shapiq-ease), x2 500ms var(--shapiq-ease);
 }
 
@@ -713,20 +718,11 @@ a.talk-chip:focus-visible {
    lit up on both when either is hovered */
 .talk-faith-off-by {
   fill: var(--shapiq-amber-ink) !important;
+  font-weight: 800;
 }
 
-.talk-faith-residual {
-  fill: var(--shapiq-amber-ink);
-  fill-opacity: 0.32;
-  transition: y 600ms var(--shapiq-ease), height 600ms var(--shapiq-ease), fill-opacity 320ms var(--shapiq-ease);
-}
-
-.talk-faith-residual-picked {
-  fill-opacity: 0;
-}
-
-.talk-faith-dash {
-  fill: var(--shapiq-amber-ink);
+.talk-faith svg .talk-faith-off-by.talk-halo {
+  font-size: 15px;
 }
 
 .talk-faith-gap-bar,
@@ -736,7 +732,7 @@ a.talk-chip:focus-visible {
 
 .talk-faith-glow,
 .talk-faith-glow-bar {
-  opacity: 0;
+  opacity: 0.85;
   transition: x1 500ms var(--shapiq-ease), x2 500ms var(--shapiq-ease), opacity 320ms var(--shapiq-ease);
 }
 
@@ -749,16 +745,19 @@ a.talk-chip:focus-visible {
 
 .talk-faith-glow-bar {
   fill: var(--shapiq-amber);
-  fill-opacity: 0.45;
+  fill-opacity: 0.5;
+}
+
+.talk-faith-gap-bar {
+  fill: var(--shapiq-amber-ink);
+  stroke: var(--shapiq-surface);
+  stroke-width: 1.5;
+  paint-order: stroke;
 }
 
 .talk-faith-hot .talk-faith-glow,
 .talk-faith-hot .talk-faith-glow-bar {
   opacity: 1;
-}
-
-.talk-faith-hot .talk-faith-residual:not(.talk-faith-residual-picked) {
-  fill-opacity: 0.14;
 }
 
 .talk-faith-foot {
@@ -800,27 +799,6 @@ a.talk-chip:focus-visible {
   min-width: 0;
   margin: 0;
   white-space: pre-wrap;
-}
-
-.talk-faith-worst {
-  flex: none;
-  margin: -0.3em 0;
-  padding: 0.12em 0.7em;
-  border: 1px solid var(--shapiq-amber-ink);
-  border-radius: 999px;
-  background: none;
-  color: var(--shapiq-amber-ink);
-  font: inherit;
-  font-size: 0.75em;
-  font-weight: 600;
-  line-height: 1.3;
-  cursor: pointer;
-  transition: background var(--shapiq-duration) var(--shapiq-ease);
-}
-
-.talk-faith-worst:hover,
-.talk-faith-worst:focus-visible {
-  background: var(--shapiq-amber-soft);
 }
 
 .talk-faith-readout .talk-math {
