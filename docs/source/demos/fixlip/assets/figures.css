@@ -1520,7 +1520,7 @@ figure.fixlip-paper-figure figcaption strong {
 }
 
 /* on a phone, the captions that are not in a drawn figure are as large as those that are */
-@media (max-width: 36rem) {
+@media screen and (max-width: 36rem) {
   figure.fixlip-paper-figure figcaption,
   article[role="main"] .table-wrapper table.docutils caption {
     font-size: 0.94rem;

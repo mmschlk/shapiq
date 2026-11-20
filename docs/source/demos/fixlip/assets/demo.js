@@ -189,12 +189,12 @@
     about.append(aboutClip);
     aboutCard.innerHTML =
       '<p class="fixlip-demo-about-title">What are CLIP and SigLIP 2?</p>' +
-      "<p>Vision–language models: they turn a photo and a sentence each into a list of numbers. " +
+      "<p>They are vision–language models. They turn a photo and a sentence each into a list of numbers. " +
       "When both say the same thing, the two lists point the same way, and their " +
       "<strong>similarity</strong> is high.</p>" +
       normsSentence() +
-      "<p>They see a photo as a grid of square <strong>patches</strong> (here 32 × 32 pixels each: " +
-      "7 × 7 for CLIP, 8 × 8 for SigLIP 2) and a sentence as <strong>tokens</strong>, words or " +
+      "<p>They see a photo as a grid of square <strong>patches</strong> (here 32 × 32 pixels each, " +
+      "7 × 7 for CLIP and 8 × 8 for SigLIP 2) and a sentence as <strong>tokens</strong>, words or " +
       "pieces of them, and look at all of them at once.</p>" +
       "<p>They learned from millions of photos with their captions from the web which go together, " +
       "but were never told where in a photo a giraffe is. That is why, in the photo of the giraffe " +

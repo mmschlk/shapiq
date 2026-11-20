@@ -51,7 +51,7 @@
   };
   const PRESENTING = "shapiq-talk-presenting:" + location.pathname;
   // a phone scrolls through the slides, a larger screen shows one at a time
-  const phone = window.matchMedia("(max-width: 720px)");
+  const phone = window.matchMedia("screen and (max-width: 720px)");
   const scrolling = () => Boolean(deck) && deck.classList.contains("shapiq-deck--scroll");
 
   const ICONS = {

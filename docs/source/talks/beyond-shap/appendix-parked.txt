@@ -1,0 +1,240 @@
+.. The appendix of the talk, set aside for now (Max, 2026-11-20). To bring it back, append these
+   slides to index.rst after "Thank You". Sphinx does not read this file (.txt).
+
+.. shapiq-slide:: Appendix
+   :layout: section
+
+   .. shapiq-notes::
+
+      Slides for questions after the talk.
+
+.. shapiq-slide:: SHAP Gives One Score per Feature
+   :layout: wide
+   :cite: Lundberg.2017
+
+   .. shapiq-demo:: orders
+      :step: shapley
+      :examples: applicant
+
+   .. shapiq-notes::
+
+      An XGBoost model predicts whether a credit card client defaults, from eight features of the
+      last months. SHAP splits this prediction among the features. Each feature gets one score,
+      red where it raises the risk and blue where it lowers it. The bill of September raises the
+      risk the most, and the high credit limit lowers it a little. Yet a bill says little without
+      the limit it fills. Only both together say that the client has used nearly all of the
+      credit.
+
+   .. shapiq-try::
+
+      .. code-block:: python
+
+         from sklearn.datasets import fetch_california_housing
+         from xgboost import XGBRegressor
+
+         import shapiq
+
+         X, y = fetch_california_housing(return_X_y=True, as_frame=True)
+         model = XGBRegressor(n_estimators=100, max_depth=4).fit(X, y)
+         x = X.iloc[0].to_numpy()
+
+         # the exact Shapley values of one house
+         explainer = shapiq.TreeExplainer(model, index="SV", max_order=1)
+         shapley_values = explainer.explain(x)
+         shapley_values.plot_force(feature_names=list(X.columns))
+
+.. shapiq-slide:: Masking Turns a Model into a Game
+   :layout: wide
+   :cite: Covert.2021 Fumagalli.2025
+
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: Masking.
+
+      A model needs all :math:`d` features, not a subset. **Masking** turns it into a game. The
+      features in :math:`T` keep the values of :math:`x`, and the others are removed,
+
+      .. math::
+
+         \nu(T) = \mathbb{E}\big[f(x_T, X_{D \setminus T})\big],
+         \qquad \text{e.g. } \nu(\{\text{Limit}, \text{Bill Sep}\}) = -1.10 .
+
+   .. shapiq-notes::
+
+      A model is not a game, as it needs all its features. Masking makes it one. The features of
+      a coalition keep the values of the explained input, and the others are removed, for
+      instance by averaging the model over their distribution :cite:p:`Covert.2021`. With only the
+      credit limit and the bill of September, the model predicts −1.10 in log-odds, against −1.56
+      with no feature at all.
+
+.. shapiq-slide:: At the Highest Order, the Explanation Is Exact
+   :layout: wide
+   :cite: Harsanyi.1963 Fujimoto.2006
+
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: The Full Decomposition (Möbius Transform).
+
+      At order :math:`k = d`, the explanation is exact. Every coalition's value is the sum of the
+      **Möbius transform** :math:`m` over its groups,
+
+      .. math::
+
+         \nu(T) = \sum_{S \subseteq T} m(S), \qquad
+         m(S) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\, \nu(L).
+
+   .. shapiq-notes::
+
+      At the highest order, the explanation is the Möbius transform :cite:p:`Harsanyi.1963`,
+      which decomposes the game exactly :cite:p:`Fujimoto.2006`.
+
+.. shapiq-slide:: Every Order, for Five Examples
+   :layout: wide
+   :cite: Tsai.2022 Bordt.2023
+
+   .. shapiq-demo:: orders
+      :examples: applicant, house, tabpfn, applicants, houses
+      :select: 1
+
+   .. shapiq-notes::
+
+      One prediction can be explained at every order of interaction. The Shapley values sit at
+      the top. Below them follow the interactions of order 2, 3 and so on, down to the full
+      decomposition, which is the model itself :cite:p:`Bordt.2023`. Faithfulness measures how
+      well each order predicts what the model does when only some features are present
+      :cite:p:`Tsai.2022`. For the applicant, who defaulted, the Shapley values reach an R² of
+      0.24. The pairs of the credit limit with the bill, and of the bill with the payment of
+      August, lift the fit to 0.98. A house in Los Angeles shows the same with latitude and
+      longitude. TabPFN, a tabular foundation model, values that house, and its Shapley values
+      explain close to nothing.
+
+      Yet across 2,000 applicants, the Shapley values fit with an R² of 0.78 on average, and
+      across 2,000 houses with 0.79. For many predictions, SHAP is a good explanation. The
+      applicant fits worse than 97 % of them. Whether interactions are worth it thus depends on
+      the prediction, and it can be measured instead of guessed.
+
+   .. shapiq-try::
+
+      The guide :doc:`../../introduction/how-much-explained` builds this figure up step by step,
+      explains how the fit is measured, and ends with the code that computed it.
+
+.. shapiq-slide:: Latitude and Longitude Act Together
+   :layout: wide
+   :cite: Muschalik.2024a
+
+   .. shapiq-demo:: orders
+      :step: interactions
+      :select: 2
+      :examples: houses
+
+   .. shapiq-notes::
+
+      Back to the houses of California. At order 2, the strongest pair across the map is latitude
+      with longitude. On their own, both say little. Together, they say where a house lies: on the
+      coast around San Francisco and Los Angeles, or inland. A price depends on this location,
+      and no single coordinate captures it. Interactions show it on the map.
+
+.. shapiq-slide:: For Tree Ensembles, Interactions Are Exact
+   :layout: wide
+   :steps: 2
+   :cite: Muschalik.2024a Lundberg.2020
+
+   .. container:: shapiq-talk-columns
+
+      .. container:: shapiq-talk-column
+
+         .. code-block:: python
+
+            import shapiq
+
+            explainer = shapiq.TreeExplainer(
+                model, index="k-SII", max_order=2
+            )
+            # one prediction, exactly
+            explanation = explainer.explain(x)
+
+         .. container:: shapiq-from-1
+
+            .. code-block:: python
+
+               # every prediction of a test set
+               explanations = explainer.explain_X(X_test)
+
+               # what "absent" means is an argument
+               shapiq.TreeExplainer(
+                   model, mode="interventional",
+                   reference_dataset=X_ref,
+               )
+
+         .. rst-class:: shapiq-talk-libraries
+
+         XGBoost · LightGBM · CatBoost · scikit-learn
+
+      .. container:: shapiq-talk-column
+
+         .. shapiq-demo:: orders
+            :step: full
+            :examples: applicant
+            :select: 1
+
+   .. shapiq-notes::
+
+      Every explanation of the house so far was computed exactly, with no sampling and no
+      approximation. A path in a tree of depth 5 splits on at most five features, so no more than
+      five features interact. The layers of the applicant thus end at order 5, where the explanation
+      fits the model exactly. TreeSHAP computes the Shapley values of tree ensembles in
+      polynomial time :cite:p:`Lundberg.2020`. TreeSHAP-IQ uses the same structure for Shapley
+      interactions of any order :cite:p:`Muschalik.2024a`. In ``shapiq``, it takes three lines for
+      XGBoost, LightGBM, CatBoost and scikit-learn models. What it means for a feature to be absent
+      is an argument of the explainer, ``mode``.
+
+   .. shapiq-try::
+
+      .. code-block:: python
+
+         from sklearn.datasets import fetch_california_housing
+         from xgboost import XGBRegressor
+
+         import shapiq
+
+         X, y = fetch_california_housing(return_X_y=True, as_frame=True)
+         model = XGBRegressor(n_estimators=100, max_depth=5).fit(X, y)
+         X_test = X.to_numpy()[:200]
+
+         # the exact Shapley interactions of 200 houses, up to pairs
+         explainer = shapiq.TreeExplainer(model, index="k-SII", max_order=2)
+         portfolio = explainer.explain_X(X_test)
+         print(portfolio[0].get_top_k(5))
+
+         # absent features drawn from 100 houses instead of the trees' own distribution
+         explainer = shapiq.TreeExplainer(
+             model, index="k-SII", max_order=2, mode="interventional", reference_dataset=X_test[:100]
+         )
+         print(explainer.explain(X_test[0]).get_top_k(5))
+
+.. shapiq-slide:: Each Explanation Answers a Different Question
+
+   .. container:: shapiq-talk-answers
+
+      .. list-table::
+         :header-rows: 1
+
+         * - Question
+           - Explanation
+         * - How much does each feature contribute?
+           - Shapley values
+         * - Which features act together?
+           - Shapley interactions
+         * - Is that enough for this prediction?
+           - Faithfulness of the order
+         * - What does a feature do alone, and what if it is removed?
+           - Pure and full effects
+         * - What does it mean that a feature is absent?
+           - Baseline, marginal or conditional
+
+   .. shapiq-notes::
+
+      One explanation does not fit all, because each explanation answers a different question.
+      SHAP is a good answer to the first one and no answer to the others. The question thus comes
+      first, and the explanation follows. Where features act together, interactions show how, and
+      faithfulness says how far to go. For tree ensembles, all of this is exact.

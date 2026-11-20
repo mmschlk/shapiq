@@ -310,8 +310,8 @@ details.shapiq-slide-extra .highlight pre {
   width: clamp(7rem, 20vmin, 15rem);
 }
 
-/* a phone that shows the deck is already there */
-.shapiq-deck--scroll .shapiq-talk-qr {
+/* a phone that shows the deck is already there (the QR codes of other slides stay) */
+.shapiq-deck--scroll .shapiq-talk-follow {
   display: none;
 }
 
@@ -494,6 +494,12 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   flex-direction: column;
   justify-content: center;
   min-height: 0;
+}
+
+/* a slide of the same build as its neighbours, whose body is not as tall: at the top, as theirs is,
+   so that nothing jumps from one to the next (:class: shapiq-slide--top) */
+.shapiq-deck .shapiq-slide--top .shapiq-slide-body {
+  justify-content: flex-start;
 }
 
 .shapiq-deck .shapiq-slide-notes {
@@ -787,7 +793,7 @@ html.shapiq-presenting body > :not(.shapiq-deck) {
   stroke-width: 2;
 }
 
-@media (max-width: 720px) {
+@media screen and (max-width: 720px) {
   .shapiq-talk-pdf {
     display: none;
   }
@@ -943,7 +949,7 @@ html.shapiq-talk-print *::after {
   letter-spacing: 0.02em;
 }
 
-@media (max-width: 900px) {
+@media screen and (max-width: 900px) {
   .shapiq-talk-columns {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1147,7 +1153,7 @@ html.shapiq-talk-print *::after {
   margin: 0;
 }
 
-@media (max-width: 900px) {
+@media screen and (max-width: 900px) {
   .shapiq-talk-cards {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1259,8 +1265,14 @@ html.shapiq-talk-print *::after {
   align-items: start;
 }
 
+/* (at most 20px: the slide's width stops growing before its height does, and a formula beside
+   the lattice has to fit its box) */
 .shapiq-deck .shapiq-talk-columns-theory {
-  font-size: clamp(15px, 0.72vw + 0.85vh, 28px);
+  font-size: clamp(15px, 0.72vw + 0.85vh, 20px);
+}
+
+.shapiq-deck .shapiq-talk-columns-theory .shapiq-talk-definition {
+  font-size: inherit;
 }
 
 .shapiq-deck .shapiq-slide-body .shapiq-talk-columns-theory p {
@@ -1279,7 +1291,7 @@ html.shapiq-talk-print *::after {
   margin: 0.8em auto 0;
 }
 
-@media (max-width: 900px) {
+@media screen and (max-width: 900px) {
   .shapiq-talk-columns-theory,
   .shapiq-talk-teaser {
     grid-template-columns: minmax(0, 1fr);
@@ -1405,6 +1417,226 @@ html.shapiq-talk-print *::after {
 /* a display formula in a definition is as wide as the box's content, not as the box */
 .shapiq-talk-definition > .math-wrapper {
   width: auto;
+}
+
+/* the feature attribution: its words, and beside them its formula, centered in the room left */
+.shapiq-talk-attribution {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1.5em;
+}
+
+.shapiq-talk-attribution > p.rubric {
+  flex: 1 0 100%;
+}
+
+.shapiq-talk-attribution > p:not(.rubric) {
+  flex: 0 1 26em;
+}
+
+.shapiq-talk-attribution > .math-wrapper,
+.shapiq-talk-attribution > div.math {
+  flex: 1 1 auto;
+  margin: 0.2em 0;
+  text-align: center;
+}
+
+/* ---- the last slide ("Thank You", .shapiq-talk-thanks) --------------------------------------------
+
+   Two columns in the content column: on the left the title, the subtitle, the command to install
+   shapiq and the speaker's links, on the right a card with the logo and the QR code of the
+   repository. On the page and on a phone, the card follows the links. */
+
+/* the word shapiq, as its logo writes it */
+.shapiq-wordmark,
+.shapiq-wordmark-iq {
+  font-weight: 700;
+}
+
+.shapiq-wordmark {
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-wordmark-iq {
+  color: var(--shapiq-red);
+}
+
+/* pip install shapiq: a chip as wide as the command */
+.shapiq-talk-install {
+  margin: 1.1em 0 0;
+}
+
+.shapiq-talk-install > div[class*="highlight-"] {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--shapiq-border);
+  border-radius: 999px;
+  background: var(--color-code-background, var(--shapiq-surface-raised));
+}
+
+.shapiq-talk-install div.highlight,
+.shapiq-talk-install div.highlight pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.shapiq-talk-install div.highlight pre {
+  padding: 0.45em 1.1em;
+  font-size: 0.8em;
+  line-height: 1.3;
+  white-space: pre;
+}
+
+.shapiq-talk-install .highlight button.copybtn {
+  display: none;
+}
+
+/* the speaker and the links, each with an icon by its address */
+.shapiq-talk-socials .shapiq-talk-speaker {
+  margin-top: 1.4em;
+  font-size: 0.85em;
+}
+
+.shapiq-talk-socials .shapiq-talk-speaker > .line:first-child {
+  margin-bottom: 0.25em;
+}
+
+.shapiq-talk-socials a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  color: inherit;
+  text-decoration: none;
+}
+
+.shapiq-talk-socials a:hover {
+  color: var(--shapiq-amber-ink);
+}
+
+.shapiq-talk-socials a::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  background: var(--shapiq-text-muted);
+  mask: var(--shapiq-icon) center / contain no-repeat;
+  -webkit-mask: var(--shapiq-icon) center / contain no-repeat;
+}
+
+/* (on paper, a mask leaves a hairline at its side: the icons are pictures there, in the muted ink of
+   the light theme, which paper has) */
+html.shapiq-talk-print .shapiq-talk-socials a::before {
+  background: var(--shapiq-icon-paper) center / contain no-repeat;
+  mask: none;
+  -webkit-mask: none;
+}
+
+.shapiq-talk-socials a[href*="maxmuschalik.com"] {
+  --shapiq-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z'/%3E%3C/g%3E%3C/svg%3E");  --shapiq-icon-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235b6275'%3E%3Cg fill='none' stroke='%235b6275' stroke-width='1.8'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.shapiq-talk-socials a[href*="linkedin.com"] {
+  --shapiq-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M6 2h12a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4zM7 9.5h2.6V18H7zM8.3 5.4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11.4 9.5h2.5v1.2c.4-.8 1.4-1.4 2.6-1.4 2 0 2.9 1.2 2.9 3.4V18h-2.6v-4.8c0-1.1-.4-1.7-1.3-1.7-1 0-1.5.7-1.5 1.8V18h-2.6z'/%3E%3C/svg%3E");  --shapiq-icon-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235b6275'%3E%3Cpath fill-rule='evenodd' d='M6 2h12a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4zM7 9.5h2.6V18H7zM8.3 5.4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11.4 9.5h2.5v1.2c.4-.8 1.4-1.4 2.6-1.4 2 0 2.9 1.2 2.9 3.4V18h-2.6v-4.8c0-1.1-.4-1.7-1.3-1.7-1 0-1.5.7-1.5 1.8V18h-2.6z'/%3E%3C/svg%3E");
+}
+
+.shapiq-talk-socials a[href*="github.com"] {
+  --shapiq-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='translate(1.5 1.5) scale(1.3125)' d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E");  --shapiq-icon-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235b6275'%3E%3Cpath transform='translate(1.5 1.5) scale(1.3125)' d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E");
+}
+
+.shapiq-talk-socials a[href*="scholar.google"] {
+  --shapiq-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3 1 9l11 6 9-4.9V17h2V9zM5 13.2v3.3c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-3.3l-7 3.8z'/%3E%3C/svg%3E");  --shapiq-icon-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235b6275'%3E%3Cpath d='M12 3 1 9l11 6 9-4.9V17h2V9zM5 13.2v3.3c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-3.3l-7 3.8z'/%3E%3C/svg%3E");
+}
+
+/* the card: the logo, the QR code below it and the address (over Furo's containers, which have no
+   padding at their sides) */
+.shapiq-slide .shapiq-talk-thanks-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: fit-content;
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.5rem 1rem;
+  border: 1px solid var(--shapiq-border);
+  border-radius: var(--shapiq-radius);
+  background: var(--shapiq-surface-raised);
+}
+
+.shapiq-talk-thanks-card .shapiq-talk-logo,
+.shapiq-deck .shapiq-slide--title .shapiq-talk-thanks-card .shapiq-talk-logo {
+  position: static;
+  float: none;
+  margin: 0;
+}
+
+.shapiq-talk-thanks-card .shapiq-talk-logo .shapiq-hero-logo {
+  width: 6rem;
+}
+
+.shapiq-talk-thanks-card .shapiq-talk-qr,
+.shapiq-deck .shapiq-slide--title .shapiq-talk-thanks-card .shapiq-talk-qr {
+  position: static;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* in the deck, on a large screen and on paper: the two columns, the card as high as it needs */
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr repeat(4, auto) 1fr;
+  column-gap: clamp(2rem, 4vw, 4.5rem);
+  padding-inline: max(6vw, 1.5rem, calc((100% - 72rem) / 2));
+}
+
+/* (the body's parts are the grid's, beside the title) */
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks > .shapiq-slide-body {
+  display: contents;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-slide-title {
+  grid-area: 2 / 1;
+  max-width: none;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-talk-subtitle {
+  grid-area: 3 / 1;
+  font-size: 1.05em; /* (on one line, beside the card) */
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-talk-install {
+  grid-area: 4 / 1;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-talk-socials {
+  grid-area: 5 / 1;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-talk-thanks-card {
+  grid-area: 1 / 2 / -1;
+  align-self: center;
+  gap: 1.1rem;
+  margin: 0;
+  padding: 1.6rem 2rem 1.2rem;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-talk-logo .shapiq-hero-logo {
+  width: clamp(6rem, 13vmin, 9rem);
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-talk-qr {
+  gap: 0.6rem;
+  font-size: clamp(0.85rem, 1.6vmin, 1.05rem);
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-thanks .shapiq-talk-qr img {
+  width: clamp(13rem, 28vmin, 16rem);
 }
 
 /* the badge of probly's oral on one line */

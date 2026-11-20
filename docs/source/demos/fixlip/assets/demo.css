@@ -46,7 +46,7 @@ body[data-theme="dark"] .fixlip-demo {
   }
 }
 
-@media (scripting: enabled) and (max-width: 45em) {
+@media screen and (scripting: enabled) and (max-width: 45em) {
   .fixlip-demo:not(.fixlip-demo-ready, .fixlip-demo-failed) {
     min-height: 72rem;
   }
@@ -429,8 +429,11 @@ body[data-theme="dark"] .fixlip-demo-cell::after {
   font-size: 0.92rem;
   line-height: 2.1;
   text-align: start;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 0.6em, #000 calc(100% - 0.6em), transparent);
+  /* (the half line of text above and below fades out, its cut glyphs nearly gone: half a line is
+     1.05em, at the line height of 2.1) */
+  --fixlip-caption-fade: linear-gradient(to bottom, transparent 0.3em, #000 1.05em, #000 calc(100% - 1.05em), transparent calc(100% - 0.3em));
+  -webkit-mask-image: var(--fixlip-caption-fade);
+  mask-image: var(--fixlip-caption-fade);
   transition: opacity 450ms ease;
 }
 

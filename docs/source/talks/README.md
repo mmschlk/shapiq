@@ -73,4 +73,6 @@ npx qrcode@1.5.4 -t svg -e M -q 2 -d 1b1e27 -l ffffff -o assets/qr-deck.svg "<ur
 ```
 
 The probly slide shows `assets/probly/qr-probly.svg`, made the same way from
-`"https://github.com/pwhofman/probly"`.
+`"https://github.com/pwhofman/probly"`. The last slide shows `assets/qr-shapiq.svg`, of
+`"https://github.com/mmschlk/shapiq"`. Remove the XML prolog (`<?xml ...?><!DOCTYPE ...>`) that
+`qrcode` writes, as `qr-deck.svg` has none.

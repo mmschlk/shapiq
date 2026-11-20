@@ -50,11 +50,21 @@
     return element;
   };
   const format = (value) => (value > 0 ? "+" : value < 0 ? "−" : "") + Math.abs(value).toLocaleString("en");
+  // ν and ∅ in faces of their own: the text face draws them as v and ø (in an SVG text, or HTML)
+  const GLYPH = /([ν∅]\u0302?)/;
+  const glyphs = (parent, text, svg = true) => {
+    text.split(GLYPH).forEach((part, k) => {
+      if (!part) return;
+      if (k % 2) make(svg ? "svg:tspan" : "span", { class: part[0] === "ν" ? "talk-glyph talk-glyph-italic" : "talk-glyph talk-glyph-set" }, parent, part);
+      else parent.append(part);
+    });
+    return parent;
+  };
   // an SVG text with subscripts: parts are strings, or [text] for a subscript ("f", ["S"], "(x)")
   const label = (parent, attributes, parts) => {
     const text = make("svg:text", attributes, parent);
     for (const part of parts) {
-      if (typeof part === "string") text.append(part);
+      if (typeof part === "string") glyphs(text, part);
       else make("svg:tspan", { "baseline-shift": "sub", "font-size": "75%" }, text, part[0]);
     }
     return text;
@@ -306,7 +316,7 @@
     const rows = labels.map((label, j) => {
       const yy = wt + j * row;
       const g = make("svg:g", { class: "talk-faith-row" }, waterfall);
-      make("svg:text", { x: wl - 10, y: yy + row / 2 + 4, class: "talk-faith-rowname", "text-anchor": "end" }, g, label);
+      glyphs(make("svg:text", { x: wl - 10, y: yy + row / 2 + 4, class: "talk-faith-rowname", "text-anchor": "end" }, g), label);
       const line = make("svg:line", { y1: yy + row / 2, y2: yy + row / 2, class: "talk-faith-arrow" }, g);
       const head = make("svg:circle", { cy: yy + row / 2, r: 3.2 }, g);
       const value = make("svg:text", { x: WW - wr + 8, y: yy + row / 2 + 4, class: "talk-value" }, g);
@@ -330,7 +340,7 @@
     gapZone.addEventListener("pointerenter", () => hot(true));
     gapZone.addEventListener("pointerleave", () => hot(false));
     const key = make("div", { class: "talk-faith-key" }, how);
-    key.innerHTML = '<span><i class="talk-faith-key-model"></i>the model, ν(S)</span><span><i class="talk-faith-key-sum"></i>the explanation, ν̂<sub>k</sub>(S)</span>';
+    key.innerHTML = '<span><i class="talk-faith-key-model"></i>the model, <span class="talk-glyph talk-glyph-italic">ν</span>(S)</span><span><i class="talk-faith-key-sum"></i>the explanation, <span class="talk-glyph talk-glyph-italic">ν̂</span><sub>k</sub>(S)</span>';
 
     // ---- every coalition: the model against the explanation, and the R²
     const right = make("div", { class: "talk-faith-all" }, figure);
@@ -352,8 +362,8 @@
     // (the label along the diagonal, above it, where no point lies)
     const at = hi - 0.45, angle = (Math.atan2(y(lo) - y(hi), x(hi) - x(lo)) * 180) / Math.PI;
     make("svg:text", { x: x(at), y: y(at) - 6, class: "talk-faith-note", "text-anchor": "middle", transform: `rotate(${-angle} ${x(at)} ${y(at) - 6})` }, svg, "faithful");
-    make("svg:text", { x: (left + W - rightPad) / 2, y: H - 6, class: "talk-axis-name", "text-anchor": "middle" }, svg, "the model, ν(S) (log-odds)");
-    make("svg:text", { x: 20, y: (top + H - bottom) / 2, class: "talk-axis-name", "text-anchor": "middle", transform: `rotate(-90 20 ${(top + H - bottom) / 2})` }, svg, "the explanation, ν̂ₖ(S)");
+    label(svg, { x: (left + W - rightPad) / 2, y: H - 6, class: "talk-axis-name", "text-anchor": "middle" }, ["the model, ν(S) (log-odds)"]);
+    label(svg, { x: 20, y: (top + H - bottom) / 2, class: "talk-axis-name", "text-anchor": "middle", transform: `rotate(-90 20 ${(top + H - bottom) / 2})` }, ["the explanation, ν̂", ["k"], "(S)"]);
     const points = data.model.map((value, index) => make("svg:circle", {
       cx: x(value), cy: y(value), r: 1.8 + 4.2 * Math.sqrt(data.probability[index]), class: "talk-faith-point",
     }, svg));
@@ -697,7 +707,7 @@
       ["conditional", "Conditional", "Absent features take the values of data like the present ones."],
     ],
     [
-      ["local", "Local", "The prediction for one input x₀."],
+      ["local", "Local", "The prediction for one input x."],
       ["sensitivity", "Sensitivity", "How much the predictions vary over the data."],
       ["risk", "Risk", "How well the predictions match the labels, as a loss."],
     ],
@@ -773,7 +783,7 @@
         preds.forEach((p) => make("svg:circle", { cx: sx(p), cy: 120, r: 3, class: "talk-choices-data" }, svg));
         make("svg:line", { x1: sx(0.9), x2: sx(0.9), y1: 40, y2: 130, class: "talk-choices-guide" }, svg);
         make("svg:circle", { cx: sx(0.9), cy: 120, r: 6, class: "talk-choices-x" }, svg);
-        label(svg, { x: sx(0.9) + 10, y: 50, class: "talk-value" }, ["f", ["S"], "(x", ["0"], ")"]);
+        label(svg, { x: sx(0.9) + 10, y: 50, class: "talk-value" }, ["f", ["S"], "(x)"]);
       } else if (key === "sensitivity") {
         const bins = new Array(12).fill(0);
         preds.forEach((p) => bins[Math.max(0, Math.min(11, Math.floor((p + 2) / 4 * 12)))]++);
@@ -800,7 +810,7 @@
 
     function drawInteraction(key) {
       // two features as circles, their interaction the overlap
-      const [c1, c2, r] = [[150, 85], [250, 85], 70];
+      const [c1, c2, r] = [[155, 85], [245, 85], 70];
       const id = `talk-clip-${Math.random().toString(36).slice(2, 8)}`;
       const defs = make("svg:defs", {}, svg);
       const clip1 = make("svg:clipPath", { id: `${id}-1` }, defs);
@@ -817,7 +827,11 @@
       make("svg:circle", { cx: c2[0], cy: c2[1], r, class: "talk-choices-ring talk-choices-ring-other" }, svg);
       make("svg:text", { x: c1[0] - 30, y: c1[1] + 5, class: "talk-value", "text-anchor": "middle" }, svg, "m(1)");
       make("svg:text", { x: c2[0] + 30, y: c2[1] + 5, class: "talk-tick", "text-anchor": "middle" }, svg, "m(2)");
-      make("svg:text", { x: 200, y: c1[1] + 5, class: "talk-value talk-halo", "text-anchor": "middle" }, svg, "m(12)");
+      // the interaction in the overlap, and in the partial case its half above it (the overlap is
+      // narrow, so the ½ stands over m(12), not beside it), on a halo of the overlap's own color
+      const halo = `talk-value talk-halo talk-choices-in talk-choices-in-${key}`;
+      make("svg:text", { x: 200, y: c1[1] + (key === "partial" ? 13 : 4), class: halo, "text-anchor": "middle" }, svg, "m(12)");
+      if (key === "partial") make("svg:text", { x: 200, y: c1[1] - 7, class: `${halo} talk-choices-half-label`, "text-anchor": "middle" }, svg, "½");
       const formula = { pure: "φ(1) = m(1)", partial: "φ(1) = m(1) + ½ m(12)", full: "φ(1) = m(1) + m(12)" }[key];
       make("svg:text", { x: 350, y: 90, class: "talk-choices-note talk-choices-strong" }, svg, formula);
     }

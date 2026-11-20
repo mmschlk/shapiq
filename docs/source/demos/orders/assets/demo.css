@@ -172,7 +172,7 @@ body[data-theme="dark"] .orders-demo {
   }
 }
 
-@media (scripting: enabled) and (max-width: 45em) {
+@media screen and (scripting: enabled) and (max-width: 45em) {
   .orders-demo:not(.orders-demo-ready, .orders-demo-failed) {
     min-height: 11.75rem;
   }

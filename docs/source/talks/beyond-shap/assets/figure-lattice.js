@@ -172,18 +172,17 @@
       return names.length ? names.join(", ") : "no player";
     };
 
-    // a node: its value above, then the players, a patch and a word in each row
-    const nodes = [];
-    for (let mask = 0; mask <= FULL; mask++) {
+    // a node: its value above, then the players, a patch and a word in each row (drawn into g, both
+    // in the lattice and in the annotation below it; mark outlines one player)
+    function drawNode(g, mask, mark = null) {
       const value = nu(mask);
-      const g = make("svg:g", { class: "tl-node", "data-mask": mask, "aria-label": `ν of ${describe(mask)} is ${number(value)}` }, nodeLayer);
       const box = make("svg:rect", { class: `tl-node-box ${value < 0 ? "tl-neg" : "tl-pos"}`, x: -NW / 2, y: -NH / 2, width: NW, height: NH, rx: 9 }, g);
       box.style.setProperty("--level", Math.abs(value) / MAX_VALUE);
       make("svg:text", { class: "tl-node-value", x: 0, y: -12, "text-anchor": "middle" }, g, number(value));
       PLAYERS.forEach((p) => {
         const on = (mask >> p) & 1;
         const player = players[p];
-        const slot = make("svg:g", { class: `tl-slot ${on ? "tl-on" : "tl-off"}`, "data-player": p }, g);
+        const slot = make("svg:g", { class: `tl-slot ${on ? "tl-on" : "tl-off"}${p === mark ? " tl-mark" : ""}`, "data-player": p }, g);
         // two rows: a patch and a word in each (the giraffe's head and "giraffe" above)
         const row = PLAYERS.filter((q) => players[q].kind === player.kind).indexOf(p);
         const y = row ? 10 : -7;
@@ -196,6 +195,32 @@
           make("svg:text", { class: "tl-slot-word", x: 10, y: y + 11, "text-anchor": "middle" }, slot, player.word);
         }
       });
+    }
+
+    // tags on a node's top corners: T and T ∪ i on an edge, S, the signs of a square's corners
+    function addTags(g) {
+      const pair = {};
+      for (const side of ["left", "right"]) {
+        const tag = make("svg:g", { class: "tl-tag" }, g);
+        make("svg:rect", { y: -9, height: 18, rx: 9 }, tag);
+        make("svg:text", { x: 0, y: 4.5, "text-anchor": "middle" }, tag);
+        tag.setAttribute("transform", `translate(${side === "left" ? -NW / 2 + 4 : NW / 2 - 4}, ${-NH / 2})`);
+        pair[side] = tag;
+      }
+      return pair;
+    }
+    function tagText(tag, text) {
+      const w = 10 + [...text].length * 6.4;
+      tag.querySelector("rect").setAttribute("x", -w / 2);
+      tag.querySelector("rect").setAttribute("width", w);
+      tag.querySelector("text").textContent = text;
+      tag.classList.add("tl-tag-on");
+    }
+
+    const nodes = [];
+    for (let mask = 0; mask <= FULL; mask++) {
+      const g = make("svg:g", { class: "tl-node", "data-mask": mask, "aria-label": `ν of ${describe(mask)} is ${number(nu(mask))}` }, nodeLayer);
+      drawNode(g, mask);
       nodes[mask] = g;
     }
 
@@ -208,7 +233,7 @@
       const line = make("svg:line", { class: "tl-edge-line" }, g);
       line.style.setProperty("--weight", Math.abs(value) / MAX_DELTA);
       const hit = make("svg:line", { class: "tl-edge-hit", tabindex: -1, role: "button", "aria-label": `Adding ${label(edge.i)} to ${describe(edge.T)}: marginal contribution ${number(value, { signed: true })}` }, g);
-      const tag = make("svg:g", { class: "tl-edge-label" }, labelLayer);
+      const tag = make("svg:g", { class: `tl-edge-label ${value < 0 ? "tl-neg" : "tl-pos"}` }, labelLayer);
       const text = number(value, { signed: true });
       const w = 9 + text.length * 7;
       make("svg:rect", { x: -w / 2, y: -9, width: w, height: 18, rx: 9 }, tag);
@@ -216,26 +241,8 @@
       edges.set(edge.key, { ...edge, value, g, glow, line, hit, tag });
     }
 
-    // tags on nodes: T and T ∪ i on an edge, the signs of a square's corners
-    const tags = nodes.map((node) => {
-      const pair = {};
-      for (const side of ["left", "right"]) {
-        const tag = make("svg:g", { class: "tl-tag" }, node);
-        make("svg:rect", { y: -9, height: 18, rx: 9 }, tag);
-        make("svg:text", { x: 0, y: 4.5, "text-anchor": "middle" }, tag);
-        tag.setAttribute("transform", `translate(${side === "left" ? -NW / 2 + 4 : NW / 2 - 4}, ${-NH / 2})`);
-        pair[side] = tag;
-      }
-      return pair;
-    });
-    function setTag(mask, text, side = "left") {
-      const tag = tags[mask][side];
-      const w = 10 + [...text].length * 6.4;
-      tag.querySelector("rect").setAttribute("x", -w / 2);
-      tag.querySelector("rect").setAttribute("width", w);
-      tag.querySelector("text").textContent = text;
-      tag.classList.add("tl-tag-on");
-    }
+    const tags = nodes.map((node) => addTags(node));
+    const setTag = (mask, text, side = "left") => tagText(tags[mask][side], text);
 
     // the squares of the pair (lattice-sii): one face per coalition T of the other two players
     const squares = new Map();
@@ -287,6 +294,7 @@
         const value = derivative(T, geometry.pair);
         square.value = value;
         square.face.classList.toggle("tl-neg", value < 0);
+        square.badge.classList.toggle("tl-neg", value < 0);
         square.face.style.setProperty("--weight", Math.min(1, Math.abs(value) / 25));
         const spot = geometry.badge.get(T);
         const text = number(value, { signed: true });
@@ -324,72 +332,78 @@
     place(geometry.at);
     placeSquares();
 
-    // ---- the formula below the lattice, in the style of the deck's definitions ----
-    const box = make("div", { class: "shapiq-talk-definition tl-formula", "aria-live": "polite" }, root);
-    const rubric = make("p", { class: "rubric tl-rubric" }, box);
-    const title = make("span", { class: "tl-title" }, rubric);
-    const aside = make("span", { class: "tl-aside" }, rubric);
-    const eq = make("div", { class: "tl-eq" }, box);
-    const lines = [make("div", { class: "tl-line" }, eq), make("div", { class: "tl-line" }, eq)];
-
-    // a little language for the formulas: strings, variables, subscripts, numbers, glyphs
-    const V = (t) => ({ v: t });
-    const SUB = (...parts) => ({ sub: parts });
-    const NUM = (value, options, key) => ({ num: number(value, options), key });
-    const CHIP = (p) => ({ chip: p });
-    const FRAC = (a, b) => ({ frac: [a, b] });
-    const SET = (mask) => ({ set: mask });
-    const GAP = { gap: true };
-    let previous = [];
-    function write(line, parts) {
-      line.replaceChildren();
-      const render = (part, parent) => {
-        if (part == null) return;
-        if (typeof part === "string") parent.append(part);
-        else if (Array.isArray(part)) part.forEach((p) => render(p, parent));
-        else if (part.v) make("i", { class: "tl-var" }, parent, part.v);
-        else if (part.gap) make("span", { class: "tl-gap" }, parent);
-        else if (part.sub) render(part.sub, make("sub", { class: "tl-sub" }, parent));
-        else if (part.num != null) {
-          const el = make("span", { class: "tl-num" }, parent, part.num);
-          if (part.key != null) el.dataset.key = part.key;
-        } else if (part.chip != null) chip(part.chip, parent, "tl-chip-inline");
-        else if (part.frac) {
-          const f = make("span", { class: "tl-frac" }, parent);
-          make("span", {}, f, String(part.frac[0]));
-          make("span", {}, f, String(part.frac[1]));
-        } else if (part.set != null) {
-          const members = PLAYERS.filter((p) => (part.set >> p) & 1);
-          if (!members.length) parent.append("∅");
-          else {
-            parent.append("{");
-            members.forEach((p, k) => {
-              if (k) parent.append(", ");
-              chip(p, parent, "tl-chip-inline");
-            });
-            parent.append("}");
-          }
-        } else if (part.cls) render(part.parts, make("span", { class: part.cls }, parent));
-      };
-      render(parts, line);
+    // ---- the annotation below the lattice: the step's computation, drawn with the lattice's own
+    // nodes, edges and value tags (the math stands in the definitions beside the figure) ----
+    const note = make("div", { class: "tl-note" }, root);
+    const row = make("div", { class: "tl-note-row", "aria-hidden": "true" }, note);
+    const spoken = make("p", { class: "tl-sr", "aria-live": "polite" }, note);
+    const span = (cls, parent, text) => make("span", { class: cls }, parent, text);
+    const op = (text, parent) => span("tl-op", parent, text);
+    // a node of the lattice, small
+    function mini(mask, parent, { left = null, right = null, mark = null, hot = true } = {}) {
+      const holder = span("tl-mini", parent);
+      const svgMini = make("svg:svg", { class: "tl-mini-svg", viewBox: "-44 -39 88 70" }, holder);
+      const g = make("svg:g", { class: `tl-node${hot ? " tl-hot" : ""}` }, svgMini);
+      drawNode(g, mask, mark);
+      const corner = addTags(g);
+      if (left) tagText(corner.left, left);
+      if (right) tagText(corner.right, right);
+      return holder;
     }
-    function formula(name, side, first, second) {
-      title.textContent = name;
-      aside.replaceChildren();
-      if (side) write(aside, side);
-      write(lines[0], first);
-      write(lines[1], second);
-      // numbers that changed slide in
-      const nums = [...eq.querySelectorAll(".tl-num")].concat([...aside.querySelectorAll(".tl-num")]);
-      const now = nums.map((el) => el.textContent);
-      nums.forEach((el, k) => {
-        if (previous[k] !== now[k]) el.classList.add("tl-fresh");
+    // a value tag, as on the edges and squares of the lattice
+    function valueTag(value, parent, { hot = false, digits = 0, signed = true, result = false } = {}) {
+      const cls = `tl-val ${value < 0 ? "tl-neg" : "tl-pos"}${hot ? " tl-hot" : ""}${result ? " tl-val-result" : ""}`;
+      return span(cls, parent, number(value, { signed, digits }));
+    }
+    // an edge of the lattice, lying down, with its tag
+    function link(edge, parent) {
+      const el = span(`tl-link ${edge.value < 0 ? "tl-neg" : "tl-pos"}`, parent);
+      el.style.setProperty("--weight", Math.abs(edge.value) / MAX_DELTA);
+      span("tl-link-line", el);
+      valueTag(edge.value, el, { hot: true });
+    }
+    const dots = (parent) => span("tl-dots", parent);
+    // the tags of a weighted sum, grouped by the size of T, each group with its weight
+    function groups(parent, entries, weight, focus) {
+      const bySize = new Map();
+      for (const entry of entries) {
+        if (!bySize.has(entry.t)) bySize.set(entry.t, []);
+        bySize.get(entry.t).push(entry);
+      }
+      [...bySize.entries()].forEach(([t, list], k) => {
+        if (k) op("+", parent);
+        const group = span("tl-group", parent);
+        const head = span("tl-group-size", group);
+        head.append("|");
+        make("i", {}, head, "T");
+        head.append(`| = ${t}`);
+        const row = span("tl-group-tags", group);
+        list.forEach((entry) => valueTag(entry.value, row, { hot: entry.key === focus }));
+        const foot = span("tl-group-weight", group);
+        foot.append("× ");
+        const f = span("tl-frac", foot);
+        span("", f, "1");
+        span("", f, String(weight(t)));
       });
+    }
+    let previous = [];
+    function annotate(build, text) {
+      row.replaceChildren();
+      build(row);
+      spoken.textContent = text;
+      // values that changed slide in
+      const vals = [...row.querySelectorAll(".tl-val")];
+      const now = vals.map((el) => el.textContent);
+      vals.forEach((el, k) => previous[k] !== now[k] && el.classList.add("tl-fresh"));
       previous = now;
     }
-    const nuOf = (mask) => [V("ν"), "(", SET(mask), ")"];
-    const signedTerm = (value, first, key) => (first ? NUM(value, {}, key) : [value < 0 ? ` ${MINUS} ` : " + ", NUM(Math.abs(value), {}, key)]);
-    const paren = (value) => (value < 0 ? ["(", NUM(value), ")"] : NUM(value));
+    // the empty coalition, a coalition, and the full one
+    function chain(mask, parent, options) {
+      [0, mask, FULL].filter((m, k, all) => all.indexOf(m) === k).forEach((m, k) => {
+        if (k) dots(parent);
+        mini(m, parent, m === mask ? options : { hot: false });
+      });
+    }
 
     // ---- states ----
     let step = 0;
@@ -418,9 +432,7 @@
       clear();
       nodes[mask].classList.add("tl-hot");
       PLAYERS.forEach((p) => (mask >> p) & 1 && hotPlayer(p));
-      formula("Value of a Coalition", null, [nuOf(mask), " = ", NUM(nu(mask), {}, "v")], [
-        V("ν"), "(∅) = ", NUM(nu(0)), GAP, V("ν"), "(", V("D"), ") = ", NUM(nu(FULL)),
-      ]);
+      annotate((r) => chain(mask, r), `ν of ${describe(mask)} is ${number(nu(mask))}.`);
     }
 
     function showEdge({ T, i }) {
@@ -434,9 +446,11 @@
       setTag(T, "T");
       setTag(up, "T ∪ i");
       hotPlayer(i);
-      formula("Marginal Contribution", null, [
-        "Δ", SUB(CHIP(i)), "(", V("T"), ") = ", V("ν"), "(", V("T"), " ∪ {", CHIP(i), "}) ", MINUS, " ", V("ν"), "(", V("T"), ")",
-      ], ["= ", NUM(nu(up)), ` ${MINUS} `, paren(nu(T)), " = ", NUM(edge.value, { signed: true })]);
+      annotate((r) => {
+        mini(T, r, { left: "T" });
+        link(edge, r);
+        mini(up, r, { left: "T ∪ i", mark: i });
+      }, `Adding ${label(i)} to ${describe(T)} changes ν from ${number(nu(T))} to ${number(nu(up))}, a marginal contribution of ${number(edge.value, { signed: true })}.`);
     }
 
     function showShapley(i, focus = null) {
@@ -455,28 +469,15 @@
         nodes[edge.T].classList.add("tl-hot");
         nodes[edge.T | (1 << i)].classList.add("tl-hot");
       }
-      // the 8 edges, grouped by their weights: 1/4 for |T| = 0 and 3, 1/12 for |T| = 1 and 2
+      // the 8 edges, by the size of T, weighted 1/4 for |T| = 0 and 3, 1/12 for |T| = 1 and 2
       const mine = [...edges.values()].filter((e) => e.i === i).sort((a, b) => size(a.T) - size(b.T) || shown[a.T].x - shown[b.T].x);
-      const groups = new Map();
-      for (const edge of mine) {
-        const w = svWeight(size(edge.T))[1];
-        if (!groups.has(w)) groups.set(w, []);
-        groups.get(w).push(edge);
-      }
-      const sum = [];
-      [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([w, list], k) => {
-        if (k) sum.push(" + ");
-        sum.push(FRAC(1, w), " · (");
-        list.forEach((edge, j) => {
-          const term = signedTerm(edge.value, j === 0, edge.key);
-          sum.push(focus === edge.key ? { cls: "tl-term-hot", parts: term } : term);
-        });
-        sum.push(")");
-      });
-      const total = shapley.reduce((a, b) => a + b, 0);
-      formula("Shapley Value", [
-        "Σ ", V("φ"), " = ", NUM(total, { digits: 0 }), " = ", V("ν"), "(", V("D"), ") ", MINUS, " ", V("ν"), "(∅)",
-      ], [V("φ"), SUB(CHIP(i)), " = ", sum], ["= ", NUM(shapley[i], { digits: 2 }, "phi")]);
+      annotate((r) => {
+        groups(r, mine.map((e) => ({ t: size(e.T), value: e.value, key: e.key })), (t) => svWeight(t)[1], focus);
+        op("=", r);
+        const result = span("tl-result", r);
+        chip(i, result, "tl-chip-inline");
+        valueTag(shapley[i], result, { digits: 2, signed: false, result: true });
+      }, `The Shapley value of ${label(i)} is ${number(shapley[i], { digits: 2 })}.`);
     }
 
     function showSquare(T) {
@@ -486,20 +487,19 @@
       const A = 1 << a, B = 1 << b;
       for (const square of squares.values()) square.g.classList.add(square.T === T ? "tl-hot" : "tl-dim");
       squares.get(T).badge.classList.add("tl-hot");
-      [[T, "+"], [T | A, MINUS], [T | B, MINUS], [T | A | B, "+"]].forEach(([m, sign]) => {
+      const corners = [[T, "+"], [T | A, MINUS], [T | B, MINUS], [T | A | B, "+"]];
+      corners.forEach(([m, sign]) => {
         nodes[m].classList.add("tl-hot");
         setTag(m, sign, "right");
       });
       setTag(T, "T");
       pair.forEach(hotPlayer);
       const value = derivative(T, pair);
-      formula("Discrete Derivative", null, [
-        "Δ", SUB(V("S")), "(", V("T"), ") = ", V("ν"), "(", V("T"), " ∪ ", V("S"), ") ", MINUS, " ", V("ν"), "(", V("T"), " ∪ ", CHIP(a), ") ",
-        MINUS, " ", V("ν"), "(", V("T"), " ∪ ", CHIP(b), ") + ", V("ν"), "(", V("T"), ")",
-      ], [
-        "= ", NUM(nu(T | A | B)), ` ${MINUS} `, paren(nu(T | A)), ` ${MINUS} `, paren(nu(T | B)), " + ", paren(nu(T)), " = ",
-        NUM(value, { signed: true }),
-      ]);
+      annotate((r) => {
+        corners.forEach(([m, sign]) => mini(m, r, { right: sign, left: m === T ? "T" : null }));
+        op("=", r);
+        valueTag(value, r, { result: true });
+      }, `The square at ${describe(T)} has the discrete derivative ${number(value, { signed: true })}.`);
     }
 
     function showInteraction(focus = null) {
@@ -510,26 +510,15 @@
         if (focus != null) square.g.classList.add(square.T === focus ? "tl-hot" : "tl-dim");
       }
       if (focus != null) squares.get(focus).badge.classList.add("tl-hot");
-      const list = [...squares.values()].filter((s) => (s.T & ~geometry.rest) === 0);
-      const groups = new Map();
-      for (const square of list.sort((x, y) => size(x.T) - size(y.T) || x.T - y.T)) {
-        const w = siiWeight(size(square.T))[1];
-        if (!groups.has(w)) groups.set(w, []);
-        groups.get(w).push(square);
-      }
-      const sum = [];
-      [...groups.entries()].sort((x, y) => x[0] - y[0]).forEach(([w, group], k) => {
-        if (k) sum.push(" + ");
-        sum.push(FRAC(1, w), " · (");
-        group.forEach((square, j) => {
-          const term = signedTerm(square.value, j === 0, square.T);
-          sum.push(focus === square.T ? { cls: "tl-term-hot", parts: term } : term);
-        });
-        sum.push(")");
-      });
+      const list = [...squares.values()].filter((s) => (s.T & ~geometry.rest) === 0).sort((x, y) => size(x.T) - size(y.T) || x.T - y.T);
       const value = interaction(pair);
-      formula("Shapley Interaction", null,
-        [V("φ"), SUB(V("S")), " = ", sum], ["= ", NUM(value, { digits: 2 }, "sii")]);
+      annotate((r) => {
+        groups(r, list.map((s) => ({ t: size(s.T), value: s.value, key: s.T })), (t) => siiWeight(t)[1], focus);
+        op("=", r);
+        const result = span("tl-result", r);
+        pair.forEach((p) => chip(p, result, "tl-chip-inline"));
+        valueTag(value, result, { digits: 2, signed: false, result: true });
+      }, `The Shapley interaction of ${label(pair[0])} and ${label(pair[1])} is ${number(value, { digits: 2 })}.`);
     }
 
     function showPair() {
@@ -539,7 +528,7 @@
       nodes[S].classList.add("tl-hot");
       setTag(S, "S");
       geometry.pair.forEach(hotPlayer);
-      formula("A Pair of Players", null, [V("S"), " = ", SET(S)], [V("ν"), "(", V("S"), ") = ", NUM(nu(S), {}, "v")]);
+      annotate((r) => chain(S, r, { left: "S" }), `The pair S of ${label(a)} and ${label(b)}, with ν of ${number(nu(S))}.`);
     }
 
     function render(state) {

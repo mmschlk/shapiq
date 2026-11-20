@@ -1,6 +1,8 @@
 /* The lattices of the talk (figure-lattice.js): lattice-sv and lattice-sii. The figure keeps its
-   height in every step and on every hover: the legend, the lattice and the formula box keep their
-   room, and only what is in them changes. */
+   height in every step and on every hover: the legend, the lattice and the annotation below it keep
+   their room, and only what is in them changes. The annotation draws the step's computation with
+   the lattice's own nodes, edges and value tags, so that it reads as part of the figure and the
+   math stays in the definitions beside it. */
 
 .tl {
   container-type: inline-size;
@@ -182,15 +184,6 @@ body[data-theme="dark"] .tl {
   font-size: 0.72em;
 }
 
-.tl-sub .tl-chip-inline.tl-chip-patch {
-  width: 1.15em;
-  height: 1.15em;
-}
-
-.tl-sub .tl-chip-inline.tl-chip-word {
-  font-size: 0.85em;
-}
-
 /* ---- the lattice ---- */
 
 .tl-svg {
@@ -203,7 +196,7 @@ body[data-theme="dark"] .tl {
 }
 
 .shapiq-deck .tl-svg {
-  max-height: 47vh;
+  max-height: 51vh;
 }
 
 .shapiq-talk-figure .tl-svg text {
@@ -351,8 +344,17 @@ body[data-theme="dark"] .tl {
 
 .tl-edge-label rect {
   fill: var(--tl-surface);
-  stroke: var(--talk-line);
   stroke-width: 1;
+}
+
+.tl-edge-label.tl-pos rect,
+.tl-square-badge rect {
+  stroke: color-mix(in srgb, var(--talk-pos) 55%, var(--talk-line));
+}
+
+.tl-edge-label.tl-neg rect,
+.tl-square-badge.tl-neg rect {
+  stroke: color-mix(in srgb, var(--talk-neg) 55%, var(--talk-line));
 }
 
 .tl-edge-label.tl-hot rect {
@@ -458,7 +460,6 @@ body[data-theme="dark"] .tl {
 
 .tl-square-badge rect {
   fill: var(--tl-surface);
-  stroke: var(--talk-line);
   stroke-width: 1;
 }
 
@@ -478,75 +479,81 @@ body[data-theme="dark"] .tl {
   cursor: default;
 }
 
-/* ---- the formula box: a definition of the deck (talk.css), of a fixed height ---- */
+/* ---- the annotation below the lattice, of a fixed height ---- */
 
-.shapiq-talk-figure .tl-formula {
-  margin: 0;
-}
-
-.shapiq-talk-figure .tl-rubric {
-  box-sizing: border-box;
-  height: 2.1em;
-  line-height: 1.5;
-  overflow: hidden;
-}
-
-.tl-rubric {
+.tl-note {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1em;
+  align-items: center;
+  justify-content: center;
+  height: 4.6em;
+  font-size: min(1em, 3cqi);
+  color: var(--tl-ink);
+}
+
+.tl-note-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
   white-space: nowrap;
 }
 
-.tl-aside {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  white-space: pre;
-  font-size: min(0.82em, 2.8cqi);
-  font-weight: 600;
-  text-overflow: clip;
+/* a node of the lattice, small */
+.tl-mini {
+  display: block;
+  flex: none;
 }
 
-.tl-eq {
-  font-size: min(1em, 3.05cqi);
+.tl-mini-svg {
+  display: block;
+  width: calc(4em * 88 / 70);
+  height: 4em;
+  overflow: visible;
+}
+
+/* the player an edge adds, outlined in its node */
+.tl-slot.tl-mark .tl-slot-frame {
+  stroke: var(--tl-hot);
+  stroke-width: 1.8;
+}
+
+/* value tags, as on the edges and squares of the lattice */
+.tl-val {
+  --tl-val-line: color-mix(in srgb, var(--talk-pos) 55%, var(--talk-line));
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  border-radius: 999px;
+  background: var(--tl-surface);
+  box-shadow: inset 0 0 0 1px var(--tl-val-line);
+  font-size: 0.8em;
   font-variant-numeric: tabular-nums;
-}
-
-.tl-line {
-  display: flex;
-  align-items: center;
-  min-height: 2em;
-  overflow: hidden;
-  white-space: pre;
-}
-
-.tl-gap {
-  display: inline-block;
-  width: 1.4em;
-}
-
-.tl-var {
-  font-family: "Times New Roman", "STIX Two Text", serif;
-  font-size: 1.12em;
-  font-style: italic;
-}
-
-.tl-sub {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0.06em;
-  font-size: 0.78em;
-  vertical-align: -0.35em;
-}
-
-.tl-num {
-  display: inline-block;
   font-weight: 700;
+  line-height: 1.35;
+  transition: box-shadow 200ms var(--shapiq-ease);
 }
 
-.tl-num.tl-fresh {
+.tl-val.tl-neg {
+  --tl-val-line: color-mix(in srgb, var(--talk-neg) 55%, var(--talk-line));
+}
+
+.tl-val.tl-hot {
+  box-shadow: inset 0 0 0 2px var(--tl-hot);
+}
+
+/* a result: a tag filled like the nodes */
+.tl-val-result {
+  padding: 0.18em 0.65em;
+  background: color-mix(in srgb, var(--talk-pos) 22%, var(--tl-surface));
+  box-shadow: inset 0 0 0 1.5px var(--tl-val-line);
+  font-size: 1em;
+}
+
+.tl-val-result.tl-neg {
+  background: color-mix(in srgb, var(--talk-neg) 22%, var(--tl-surface));
+}
+
+.tl-val.tl-fresh {
   animation: tl-in 380ms var(--shapiq-ease);
 }
 
@@ -558,19 +565,94 @@ body[data-theme="dark"] .tl {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tl-num.tl-fresh {
+  .tl-val.tl-fresh {
     animation: none;
   }
+}
+
+/* an edge of the lattice, lying down, its tag in its middle */
+.tl-link {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 6.5em;
+  height: 2em;
+}
+
+.tl-link-line {
+  position: absolute;
+  inset-inline: -0.4em;
+  top: 50%;
+  height: calc(1.5px + var(--weight) * 4px);
+  border-radius: 999px;
+  background: var(--talk-pos);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--tl-hot) 35%, transparent);
+  transform: translateY(-50%);
+}
+
+.tl-link.tl-neg .tl-link-line {
+  background: var(--talk-neg);
+}
+
+.tl-link .tl-val {
+  position: relative;
+}
+
+/* the way from the empty coalition to the full one */
+.tl-dots {
+  flex: none;
+  width: 2.2em;
+  border-top: 1.5px dashed var(--talk-line);
+}
+
+.tl-op {
+  color: var(--talk-muted);
+  font-weight: 600;
+}
+
+/* the tags of a weighted sum, grouped by the size of T, with their weight below */
+.tl-group {
+  display: grid;
+  justify-items: center;
+  row-gap: 0.15em;
+}
+
+.tl-group-size,
+.tl-group-weight {
+  color: var(--talk-muted);
+  font-size: 0.75em;
+  line-height: 1.1;
+}
+
+.tl-group-size i {
+  font-family: "Times New Roman", "STIX Two Text", serif;
+  font-size: 1.15em;
+}
+
+.tl-group-tags {
+  display: flex;
+  gap: 0.22em;
+}
+
+.tl-group-weight {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: stretch;
+  gap: 0.2em;
+  padding-top: 0.2em;
+  border-top: 1px solid var(--talk-line);
+  font-size: 0.85em;
 }
 
 .tl-frac {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  margin: 0 0.1em;
-  font-size: 0.72em;
+  font-size: 0.95em;
   line-height: 1.05;
-  vertical-align: middle;
 }
 
 .tl-frac > :first-child {
@@ -578,10 +660,20 @@ body[data-theme="dark"] .tl {
   border-bottom: 1px solid currentColor;
 }
 
-.tl-term-hot {
-  border-radius: 4px;
-  background: var(--shapiq-amber-soft);
-  box-shadow: 0 0 0 2px var(--shapiq-amber-soft);
+.tl-result {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.tl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ---- narrow: no photo in the legend ---- */

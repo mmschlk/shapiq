@@ -189,7 +189,7 @@
 }
 
 /* on a phone: a row of cards to swipe through, the next one peeking in, and a dot for each */
-@media (max-width: 720px) {
+@media screen and (max-width: 720px) {
   .talk-same {
     display: flex;
     gap: 0.75rem;
@@ -323,6 +323,7 @@
   color: var(--talk-muted);
   font-size: 0.8em;
   line-height: 1.3;
+  text-wrap: balance;
 }
 
 .talk-frame-row span {
@@ -386,7 +387,7 @@
   left: 0.8em;
 }
 
-@media (max-width: 720px) {
+@media screen and (max-width: 720px) {
   .talk-frame-grid {
     grid-template-columns: 6.5em repeat(3, minmax(0, 1fr));
     font-size: 0.85em;
@@ -585,24 +586,31 @@ a.talk-chip:focus-visible {
   white-space: pre;
 }
 
+/* (the eight features on one line: the chips grow with the text up to what the column holds) */
 .talk-faith-keep {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25em;
+  gap: 0.2em;
   margin-bottom: 0.9em;
+  container-type: inline-size;
 }
 
 .talk-faith-chip {
-  padding: 0.16em 0.42em;
+  padding: 0.16em 0.38em;
   border: 1px dashed var(--talk-line);
   border-radius: 999px;
   background: none;
   color: var(--talk-muted);
   font: inherit;
   font-size: 0.74em;
+  white-space: nowrap;
   text-decoration: line-through;
   cursor: pointer;
   transition: background var(--shapiq-duration) var(--shapiq-ease), color var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .talk-faith-chip {
+  font-size: min(0.74em, 2.25cqi);
 }
 
 .talk-faith-chip[aria-pressed="true"] {
@@ -807,7 +815,7 @@ a.talk-chip:focus-visible {
   font-size: 0.8em;
 }
 
-@media (max-width: 900px) {
+@media screen and (max-width: 900px) {
   .talk-faith {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "orders" "how" "all";
@@ -931,6 +939,25 @@ a.talk-chip:focus-visible {
   stroke-dasharray: 4 3;
 }
 
+/* the labels in the overlap: a little smaller, on a halo of the overlap's own color (its amber at
+   the opacity of the case, over the page), so that the halo cuts no outline */
+.talk-choices .talk-choices-in {
+  font-size: 11px;
+  stroke-width: 3px;
+}
+
+.talk-choices .talk-choices-in-pure {
+  stroke: color-mix(in srgb, var(--shapiq-amber) 8%, var(--color-background-primary));
+}
+
+.talk-choices .talk-choices-in-partial {
+  stroke: color-mix(in srgb, var(--shapiq-amber) 29%, var(--color-background-primary));
+}
+
+.talk-choices .talk-choices-in-full {
+  stroke: color-mix(in srgb, var(--shapiq-amber) 65%, var(--color-background-primary));
+}
+
 /* the options of the cards: each pictured on hover or focus, SHAP's marked */
 .talk-choice {
   margin: 0 -0.4em;
@@ -963,7 +990,7 @@ a.talk-chip:focus-visible {
   font-size: clamp(14px, 0.7vw + 0.8vh, 26px);
 }
 
-@media (max-width: 900px) {
+@media screen and (max-width: 900px) {
   .talk-choices {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -979,7 +1006,7 @@ a.talk-chip:focus-visible {
   margin-top: 0.8em;
 }
 
-@media (min-width: 901px) {
+@media print, (min-width: 901px) {
   .talk-faith .talk-faith-readout {
     flex-wrap: nowrap;
   }
@@ -1028,6 +1055,23 @@ body[data-theme="dark"] .talk-neg-line {
   }
 }
 
+/* ν and ∅ in faces of their own (figures.js, glyphs): the text face draws them as v and ø */
+.shapiq-talk-figure .talk-glyph {
+  font-family: "Times New Roman", "STIX Two Text", "Liberation Serif", serif;
+  font-size: 1.12em;
+  font-weight: 400;
+}
+
+.shapiq-talk-figure .talk-glyph-italic {
+  font-style: italic;
+}
+
+/* (the empty set round and slashed, as in the formulas: from a face of symbols) */
+.shapiq-talk-figure .talk-glyph-set {
+  font-family: "STIX Two Math", "Cambria Math", "Apple Symbols", "DejaVu Sans", "OpenSymbol", serif;
+  font-size: 1em;
+}
+
 /* a label over lines, with a halo of the page's color so that it reads */
 .talk-halo {
   paint-order: stroke;
@@ -1038,4 +1082,10 @@ body[data-theme="dark"] .talk-neg-line {
 
 .talk-effects .talk-same-says {
   text-wrap: balance;
+}
+
+/* (a verdict on one line: no larger than the cards, whose width stops growing with the content
+   column of 72rem, leave room for) */
+.shapiq-deck:not(.shapiq-deck--scroll) .talk-effects .talk-same-says {
+  font-size: min(1em, 1.15rem);
 }
