@@ -557,6 +557,9 @@ a.talk-chip:focus-visible {
 .talk-faith-orders {
   grid-area: orders;
   justify-self: start;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .talk-faith-how {
@@ -704,6 +707,120 @@ a.talk-chip:focus-visible {
   stroke: var(--talk-ink);
   stroke-width: 2;
   transition: cx 600ms var(--shapiq-ease), cy 600ms var(--shapiq-ease);
+}
+
+/* the gap of the picked coalition, the same on both sides: dashed in the sum and in the scatter,
+   lit up on both when either is hovered */
+.talk-faith-off-by {
+  fill: var(--shapiq-amber-ink) !important;
+}
+
+.talk-faith-residual {
+  fill: var(--shapiq-amber-ink);
+  fill-opacity: 0.32;
+  transition: y 600ms var(--shapiq-ease), height 600ms var(--shapiq-ease), fill-opacity 320ms var(--shapiq-ease);
+}
+
+.talk-faith-residual-picked {
+  fill-opacity: 0;
+}
+
+.talk-faith-dash {
+  fill: var(--shapiq-amber-ink);
+}
+
+.talk-faith-gap-bar,
+.talk-faith-glow-bar {
+  transition: x 600ms var(--shapiq-ease), y 600ms var(--shapiq-ease), height 600ms var(--shapiq-ease), opacity 320ms var(--shapiq-ease);
+}
+
+.talk-faith-glow,
+.talk-faith-glow-bar {
+  opacity: 0;
+  transition: x1 500ms var(--shapiq-ease), x2 500ms var(--shapiq-ease), opacity 320ms var(--shapiq-ease);
+}
+
+.talk-faith-glow {
+  stroke: var(--shapiq-amber);
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-opacity: 0.3;
+}
+
+.talk-faith-glow-bar {
+  fill: var(--shapiq-amber);
+  fill-opacity: 0.45;
+}
+
+.talk-faith-hot .talk-faith-glow,
+.talk-faith-hot .talk-faith-glow-bar {
+  opacity: 1;
+}
+
+.talk-faith-hot .talk-faith-residual:not(.talk-faith-residual-picked) {
+  fill-opacity: 0.14;
+}
+
+.talk-faith-foot {
+  transition: transform 600ms var(--shapiq-ease);
+}
+
+.talk-faith svg .talk-faith-off-by {
+  transition: transform 600ms var(--shapiq-ease);
+}
+
+.talk-faith-hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.talk-faith-near .talk-faith-hit {
+  cursor: pointer;
+}
+
+.talk-faith-svg[role="slider"]:focus {
+  outline: none;
+}
+
+.talk-faith-svg[role="slider"]:focus-visible {
+  border-radius: var(--shapiq-radius-small);
+  outline: 2px solid var(--shapiq-amber);
+  outline-offset: 4px;
+}
+
+.talk-faith-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin: 0 0 0.45em;
+}
+
+.talk-faith-head .talk-faith-step {
+  min-width: 0;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.talk-faith-worst {
+  flex: none;
+  margin: -0.3em 0;
+  padding: 0.12em 0.7em;
+  border: 1px solid var(--shapiq-amber-ink);
+  border-radius: 999px;
+  background: none;
+  color: var(--shapiq-amber-ink);
+  font: inherit;
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: background var(--shapiq-duration) var(--shapiq-ease);
+}
+
+.talk-faith-worst:hover,
+.talk-faith-worst:focus-visible {
+  background: var(--shapiq-amber-soft);
 }
 
 .talk-faith-readout .talk-math {
