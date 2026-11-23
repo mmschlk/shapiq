@@ -288,7 +288,7 @@ says, and code reproduces what the slide shows.
 
 .. shapiq-slide:: Shapley Interactions Extend the Shapley Value
    :layout: wide
-   :steps: 3
+   :steps: 2
    :cite: Grabisch.1999 Bordt.2023 Tsai.2022
 
    .. container:: shapiq-talk-columns shapiq-talk-columns-theory
@@ -364,6 +364,13 @@ says, and code reproduces what the slide shows.
    .. shapiq-demo:: fixlip
       :pick: giraffe-tree
       :select: full
+
+   .. container:: shapiq-talk-callout shapiq-talk-paper
+
+      .. rubric:: NeurIPS 2025
+
+      | **Explaining Similarity in Vision–Language Encoders** with Weighted Banzhaf Interactions
+      | Baniecki, Muschalik, Fumagalli, Hammer, Hüllermeier and Biecek
 
    .. shapiq-notes::
 

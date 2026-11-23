@@ -638,8 +638,10 @@
       items.forEach((item, p) => item.setAttribute("aria-pressed", String(sii ? order.includes(p) : step === 2 && p === selected)));
     }
 
+    // lattice-sii opens on the discrete derivative of a square, without the pair alone first
+    const first = sii ? 1 : 0;
     function show(next) {
-      step = next;
+      step = next + first;
       root.dataset.step = String(step);
       if (!sii) {
         rest = step === 0 ? { node: (1 << PAIR[0]) | (1 << PAIR[1]) } : step === 1 ? { edge: { T: 1 << PAIR[0], i: PAIR[1] } } : { player: selected };
@@ -650,7 +652,7 @@
       render(rest);
     }
     show(0);
-    return { show, steps: 3 };
+    return { show, steps: 3 - first };
   }
 
   figures["lattice-sv"] = (figure, helpers) => lattice(figure, helpers, "sv");

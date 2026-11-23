@@ -1807,3 +1807,48 @@ html.shapiq-talk-print .shapiq-talk-about,
 .shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution > div.math {
   margin-right: 1.2em;
 }
+
+/* both attribution boxes (slides 2 and 8): the sentence, and under it the formula, centered in the
+   box (Max, 2026-11-23). This overrides the side-by-side layouts above */
+.shapiq-talk-attribution,
+.shapiq-deck .shapiq-talk-attribution,
+.shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution {
+  display: block;
+}
+
+.shapiq-talk-attribution > .math-wrapper,
+.shapiq-talk-attribution > div.math,
+.shapiq-deck .shapiq-talk-attribution > .math-wrapper,
+.shapiq-deck .shapiq-talk-attribution > div.math,
+.shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution > .math-wrapper,
+.shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution > div.math {
+  margin: 0.2em 0 0;
+  text-align: center;
+}
+
+.shapiq-talk-attribution mjx-container[display="true"] {
+  text-align: center !important;
+  margin-inline: auto;
+}
+
+/* the paper of a demo, a small card under it, at its right */
+.shapiq-talk-paper,
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-paper {
+  width: fit-content;
+  max-width: 40em;
+  margin: 0.6em 0 0 auto;
+  font-size: 0.8em;
+}
+
+/* in the deck, it takes no room of the demo: in the free corner at the bottom right */
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-slide-body:has(> .shapiq-talk-paper) {
+  position: relative;
+}
+
+.shapiq-deck:not(.shapiq-deck--scroll) .shapiq-talk-paper {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  max-width: 46em;
+  margin: 0;
+}
