@@ -362,6 +362,19 @@
   window.addEventListener("resize", () => {
     if (deck || paper) fit();
   });
+  // the math, once typeset, and the fonts, once loaded, change the size of what holds them: the deck
+  // measures the slide shown again (a slide opened at its address before is otherwise left scaled)
+  (async () => {
+    for (let k = 0; k < 100 && !(window.MathJax && window.MathJax.startup && window.MathJax.startup.promise); k++)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      if (window.MathJax && window.MathJax.startup) await window.MathJax.startup.promise;
+      if (document.fonts) await document.fonts.ready;
+    } catch (error) {
+      // (measured as it is)
+    }
+    if (deck || paper) fit();
+  })();
 
   // what the corner, the line and the notes say about the slide that is shown
   function show(index) {

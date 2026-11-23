@@ -1790,3 +1790,20 @@ html.shapiq-talk-print .shapiq-talk-about,
 .shapiq-deck--print .shapiq-talk-about {
   display: none;
 }
+
+/* the two attributions, one above the other: the slide's content in its middle, roomier boxes */
+.shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 2.5em;
+  margin-top: 1.4em;
+  font-size: 1.2em;
+}
+
+.shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution > p:not(.rubric) {
+  margin-block: 0.4em;
+}
+
+.shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution > .math-wrapper,
+.shapiq-deck .shapiq-talk-attributions .shapiq-talk-attribution > div.math {
+  margin-right: 1.2em;
+}

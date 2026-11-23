@@ -489,11 +489,14 @@
       setTag(T, "T");
       pair.forEach(hotPlayer);
       const value = derivative(T, pair);
+      // what both add to T together, less what each adds alone (their marginal contributions)
+      const alone = (m) => nu(m) - nu(T);
+      const edgeValue = (v) => (v < 0 ? ["(", NUM(v, { tone: "sign" }), ")"] : NUM(v, { tone: "sign" }));
       formula([
-        "Δ", SUB(V("S")), "(", V("T"), ") = ", V("ν"), "(", V("T"), " ∪ ", V("S"), ") ", MINUS, " ", V("ν"), "(", V("T"), " ∪ ", V("i"), ") ",
-        MINUS, " ", V("ν"), "(", V("T"), " ∪ ", V("j"), ") + ", V("ν"), "(", V("T"), ")",
+        "Δ", SUB(V("S")), "(", V("T"), ") = ", V("ν"), "(", V("T"), " ∪ ", V("S"), ") ", MINUS, " ", V("ν"), "(", V("T"), ") ",
+        MINUS, " Δ", SUB(V("i")), "(", V("T"), ") ", MINUS, " Δ", SUB(V("j")), "(", V("T"), ")",
       ], [
-        "= ", NUM(nu(T | A | B)), ` ${MINUS} `, paren(nu(T | A)), ` ${MINUS} `, paren(nu(T | B)), " + ", paren(nu(T)), " = ",
+        "= ", NUM(nu(T | A | B)), ` ${MINUS} `, paren(nu(T)), ` ${MINUS} `, edgeValue(alone(T | A)), ` ${MINUS} `, edgeValue(alone(T | B)), " = ",
         NUM(value, { signed: true, tone: "sign", hot: true }),
       ]);
     }

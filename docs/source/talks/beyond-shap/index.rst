@@ -297,18 +297,6 @@ says, and code reproduces what the slide shows.
 
          .. container:: shapiq-talk-definition
 
-            .. rubric:: Feature Attribution with Interactions.
-
-            An explanation of order :math:`k` summarizes :math:`f` at :math:`x` by values for
-            single features, pairs, and groups of up to :math:`k` features,
-
-            .. math::
-
-               f(x) \;\approx\; \phi_\emptyset + \sum_{i} \phi_i + \sum_{i < j} \phi_{ij}
-               + \dots + \sum_{|S| = k} \phi_S .
-
-         .. container:: shapiq-talk-definition shapiq-from-1
-
             .. rubric:: Definition 3 (Shapley Interactions).
 
             Shapley interactions average **discrete derivatives**
@@ -327,14 +315,47 @@ says, and code reproduces what the slide shows.
 
    .. shapiq-notes::
 
-      An explanation of order :math:`k` adds to the Shapley values a value for every pair, every
-      triple, and so on up to groups of :math:`k` features. Together they approximate the
-      prediction. In the lattice, a pair of players spans a square at every coalition of the
+      In the lattice, a pair of players spans a square at every coalition of the
       others. Going around the square gives the discrete derivative, what the pair adds together
       beyond what each adds alone. For the patch of the giraffe and the word "giraffe", it is
       large. The Shapley interaction index averages these squares :cite:p:`Grabisch.1999`, as the
       Shapley value averages edges. Its variants k-SII :cite:p:`Bordt.2023`, Shapley-Taylor and
       Faith-SHAP :cite:p:`Tsai.2022` make the values of each order add up to the prediction.
+
+.. shapiq-slide:: From Feature Attributions to Interactions
+   :layout: wide
+   :class: shapiq-talk-attributions
+
+   .. container:: shapiq-talk-definition shapiq-talk-attribution
+
+      .. rubric:: Feature Attribution.
+
+      A feature attribution summarizes :math:`f` at :math:`x` by one score :math:`\phi_i` for each
+      feature :math:`i \in D`, so that
+
+      .. math::
+
+         f(x) \;\approx\; \phi_\emptyset + \sum_{i \in D} \phi_i .
+
+   .. container:: shapiq-talk-definition shapiq-talk-attribution
+
+      .. rubric:: Feature Attribution with Interactions.
+
+      An explanation of order :math:`k` summarizes :math:`f` at :math:`x` by values for single
+      features, pairs, and groups of up to :math:`k` features, so that
+
+      .. math::
+
+         f(x) \;\approx\; \phi_\emptyset + \sum_{i} \phi_i + \sum_{i < j} \phi_{ij}
+         + \dots + \sum_{|S| = k} \phi_S .
+
+   .. shapiq-notes::
+
+      A feature attribution gives one score to each feature, and the scores add up to the
+      prediction. An explanation of order :math:`k` adds a value for every pair, every triple,
+      and so on up to groups of :math:`k` features. Together they approximate the prediction.
+      Order 1 is the feature attribution again. Higher orders show what features do only
+      together.
 
 .. shapiq-slide:: Similarity Lives Between Image and Text
    :layout: wide
