@@ -1692,3 +1692,101 @@ html.shapiq-talk-print .shapiq-talk-socials a::before {
 .shapiq-accent {
   color: var(--shapiq-amber);
 }
+
+/* an aside: a small "i" above what holds it, which opens a panel on top of it (talk.js) */
+.shapiq-talk-columns:has(> .shapiq-talk-about) {
+  position: relative;
+}
+
+.shapiq-talk-about {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.shapiq-talk-about-open {
+  position: absolute;
+  top: -2.1em;
+  right: 0;
+  width: 1.6em;
+  height: 1.6em;
+  padding: 0;
+  border: 1.5px solid var(--shapiq-border);
+  border-radius: 50%;
+  background: var(--shapiq-surface-raised);
+  color: var(--color-foreground-muted);
+  font: italic 600 0.85em/1 Georgia, "Times New Roman", serif;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.shapiq-talk-about-open:hover,
+.shapiq-talk-about-open:focus-visible,
+.shapiq-talk-about--open .shapiq-talk-about-open {
+  border-color: var(--shapiq-amber);
+  color: var(--color-foreground-primary);
+}
+
+.shapiq-talk-about-panel {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7em;
+  padding: 1.1em 1.6em 1.3em;
+  border: 1px solid var(--shapiq-border);
+  border-top: 3px solid var(--shapiq-amber);
+  border-radius: 6px;
+  background: var(--color-background-primary);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  pointer-events: auto;
+}
+
+.shapiq-talk-about-panel[hidden] {
+  display: none;
+}
+
+.shapiq-talk-about-panel > .rubric {
+  align-self: stretch;
+  margin: 0;
+  text-align: left;
+  font-size: 1.05em;
+  font-weight: 700;
+  color: var(--shapiq-amber-ink);
+}
+
+.shapiq-talk-about-panel img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: min(62vh, 26em);
+  margin: 0 auto;
+}
+
+.shapiq-talk-about-panel > p {
+  max-width: 46em;
+  margin: 0;
+  text-align: center;
+  font-size: 0.95em;
+}
+
+.shapiq-talk-about-close {
+  position: absolute;
+  top: 0.45em;
+  right: 0.6em;
+  border: 0;
+  background: none;
+  color: var(--color-foreground-muted);
+  font-size: 1.5em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+html.shapiq-talk-print .shapiq-talk-about,
+.shapiq-deck--print .shapiq-talk-about {
+  display: none;
+}

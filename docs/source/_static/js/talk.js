@@ -87,7 +87,66 @@
     slide.shapiqSteps = Math.max(Number(slide.dataset.steps) || 1, last + 1);
   }
 
+  // ---- asides ----------------------------------------------------------------------------------
+
+  // a container "shapiq-talk-about" becomes a small "i" button and the panel it opens on top of what
+  // holds it (its first rubric names it). Esc, the "×", a click outside or a new step closes it
+  const abouts = [...document.querySelectorAll(".shapiq-talk-about")].map((about) => {
+    const panel = make("div", "shapiq-talk-about-panel");
+    panel.append(...about.childNodes);
+    panel.hidden = true;
+    panel.id = `shapiq-talk-about-${Math.random().toString(36).slice(2, 8)}`;
+    const name = (panel.querySelector(".rubric")?.textContent || "More").trim();
+    const open = make("button", "shapiq-talk-about-open", "i");
+    open.type = "button";
+    open.title = name;
+    open.setAttribute("aria-label", name);
+    open.setAttribute("aria-expanded", "false");
+    open.setAttribute("aria-controls", panel.id);
+    const close = make("button", "shapiq-talk-about-close", "\u00D7");
+    close.type = "button";
+    close.setAttribute("aria-label", "Close");
+    panel.prepend(close);
+    about.append(open, panel);
+    const set = (on) => {
+      panel.hidden = !on;
+      open.setAttribute("aria-expanded", String(on));
+      about.classList.toggle("shapiq-talk-about--open", on);
+    };
+    for (const button of [open, close]) button.addEventListener("pointerup", (event) => event.stopPropagation());
+    // (the deck keeps the focus, so that the arrow keys go on to the next step, which closes it)
+    const refocus = (button) => {
+      const holder = button.closest(".shapiq-deck");
+      if (holder) holder.focus({ preventScroll: true });
+      else button.focus({ preventScroll: true });
+    };
+    open.addEventListener("click", (event) => {
+      event.stopPropagation();
+      set(panel.hidden);
+      refocus(open);
+    });
+    close.addEventListener("click", (event) => {
+      event.stopPropagation();
+      set(false);
+      refocus(open);
+    });
+    panel.addEventListener("click", (event) => event.stopPropagation());
+    panel.addEventListener("pointerup", (event) => event.stopPropagation());
+    return { about, set, isOpen: () => !panel.hidden };
+  });
+  const closeAbouts = () => abouts.forEach((about) => about.isOpen() && about.set(false));
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest || !event.target.closest(".shapiq-talk-about")) closeAbouts();
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !abouts.some((about) => about.isOpen())) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeAbouts();
+  }, true);
+
   function setStep(slide, step, presenting) {
+    closeAbouts();
     step = Math.max(0, Math.min(slide.shapiqSteps - 1, step));
     slide.shapiqStep = step;
     slide.dataset.talkStep = String(step);

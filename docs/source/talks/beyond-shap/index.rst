@@ -74,6 +74,26 @@ says, and code reproduces what the slide shows.
             :examples: fixlip
             :pick: giraffe
 
+      .. The "i" above the examples opens this panel on top of them (talk.js, talk.css). The picture
+         is the figure "encoders" of the FIxLIP demo, for this pair and SigLIP 2, light and dark.
+
+      .. container:: shapiq-talk-about
+
+         .. rubric:: How SigLIP 2 Works
+
+         .. image:: assets/siglip-encoders-light.webp
+            :class: only-light
+            :alt: The photo of the giraffe in 64 patches goes into a vision encoder, and its caption in 19 tokens into a language encoder. Each encoder returns an embedding of 768 values. The cosine similarity of the two embeddings is 0.170.
+
+         .. image:: assets/siglip-encoders-dark.webp
+            :class: only-dark
+            :alt: The photo of the giraffe in 64 patches goes into a vision encoder, and its caption in 19 tokens into a language encoder. Each encoder returns an embedding of 768 values. The cosine similarity of the two embeddings is 0.170.
+
+         SigLIP 2 is a vision–language encoder :cite:p:`Baniecki.2025`. A vision encoder maps the
+         patches of the photo to an embedding. A language encoder maps the tokens of the caption to
+         another. The model predicts how well photo and caption match as the cosine similarity of
+         the two embeddings.
+
    .. container:: shapiq-talk-definition shapiq-talk-attribution shapiq-from-1
 
       .. rubric:: Feature Attribution.
