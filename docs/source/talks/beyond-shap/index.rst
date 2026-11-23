@@ -4,8 +4,8 @@
    Its own figures are drawn by assets/figures.js. The demos are those of demos/.
    assets/qr-deck.svg opens this page as a deck (?present, off the title slide until the page is
    online), assets/qr-shapiq.svg the repository of
-   shapiq (on the last slide); README.md says how to make them again. appendix-parked.txt holds
-   the appendix, set aside for now.
+   shapiq (on "Thank You"); README.md says how to make them again. The Appendix after
+   "Thank You" holds slides for questions. appendix-parked.txt holds more, set aside for now.
    assets/probly/ holds the logo of probly (MIT, github.com/pwhofman/probly) and a QR code of its
    repository, made like qr-deck.svg (README.md).
 
@@ -93,45 +93,6 @@ says, and code reproduces what the slide shows.
       photo or a word of the caption. Red raises the output, and blue lowers it. What SHAP gives is a
       feature attribution, one score for each feature that adds up to the prediction.
 
-.. shapiq-slide:: Feature-Based Explainable AI
-   :layout: wide
-   :steps: 2
-   :cite: Lundberg.2017 Friedman.2001 Breiman.2001 Covert.2021
-
-   .. container:: shapiq-talk-definition
-
-      .. rubric:: Definition 1 (Feature-Based Explanation).
-
-      Let :math:`f: \mathcal{X} \to \mathcal{Y}` be a trained model with the features
-      :math:`D = \{1, \dots, d\}`. A feature-based explanation is a mapping
-
-      .. math::
-
-         e: \mathcal{S} \to \mathcal{E}, \qquad S \mapsto e(S),
-
-      where :math:`\mathcal{S} \subseteq 2^D` is a **chosen collection of feature subsets** and
-      :math:`\mathcal{E}` an explanation space. For each :math:`S \in \mathcal{S}`, the
-      **explanation** :math:`e(S)` describes how the features in :math:`S` **influence** the output
-      of :math:`f`.
-
-   .. shapiq-talk-figure:: feature-xai
-      :alt: Above, features of five kinds of data: the columns of a California housing table, the 64 patches of a photo of a giraffe, the 19 tokens of its caption, the windows of a time series and the atoms of a molecule. Below, four shapes of explanations: the Shapley values of one house (SHAP) and the Shapley interactions of the giraffe's patches and words for one prediction, the partial dependence curve of MedInc and the permutation importance of the features for the whole model.
-
-   .. shapiq-notes::
-
-      Feature-based explanations describe a model through its input features: the columns of a
-      table, the patches of an image, the tokens of a text, the windows of a time series, or the
-      nodes of a graph. They are post-hoc,
-      applied to a model that is already trained, and they apply to any model, because features
-      are the language that every model speaks. Formally, a feature-based explanation maps a
-      chosen collection of feature subsets to an explanation space. SHAP gives one score to each
-      feature of one prediction :cite:p:`Lundberg.2017`. Partial dependence gives each feature a
-      curve over the whole model :cite:p:`Friedman.2001`, and permutation importance a score of
-      how much the model relies on it :cite:p:`Breiman.2001`. Shapley interactions give a score
-      to every group of features up to a size :math:`k`. Many of these methods remove features
-      and watch what the model does :cite:p:`Covert.2021`. This talk stays with explanations of
-      one prediction.
-
 .. shapiq-slide:: The Shapley Value
    :layout: wide
    :steps: 3
@@ -143,7 +104,7 @@ says, and code reproduces what the slide shows.
 
          .. container:: shapiq-talk-definition
 
-            .. rubric:: Definition 2 (Cooperative Game).
+            .. rubric:: Definition 1 (Cooperative Game).
 
             A **cooperative game** is a pair :math:`(D, \nu)` of a **player set**
             :math:`D = \{1, \dots, d\}` and a **value function**
@@ -152,7 +113,7 @@ says, and code reproduces what the slide shows.
 
          .. container:: shapiq-talk-definition shapiq-from-1
 
-            .. rubric:: Definition 3 (Shapley Value).
+            .. rubric:: Definition 2 (Shapley Value).
 
             The Shapley value of a player :math:`i \in D` is a weighted average of its **marginal
             contributions** :math:`\Delta_i(T) = \nu(T \cup \{i\}) - \nu(T)`,
@@ -328,7 +289,7 @@ says, and code reproduces what the slide shows.
 
          .. container:: shapiq-talk-definition shapiq-from-1
 
-            .. rubric:: Definition 4 (Shapley Interactions).
+            .. rubric:: Definition 3 (Shapley Interactions).
 
             Shapley interactions average **discrete derivatives**
             :math:`\Delta_S(T) = \sum_{L \subseteq S} (-1)^{|S| - |L|}\, \nu(T \cup L)` instead of
@@ -777,3 +738,48 @@ says, and code reproduces what the slide shows.
             :alt: A QR code that opens github.com/mmschlk/shapiq.
 
          github.com/mmschlk/shapiq
+
+.. shapiq-slide:: Appendix
+   :layout: section
+
+   .. shapiq-notes::
+
+      Slides for questions after the talk.
+
+.. shapiq-slide:: Feature-Based Explainable AI
+   :layout: wide
+   :cite: Lundberg.2017 Friedman.2001 Breiman.2001 Covert.2021
+
+   .. container:: shapiq-talk-definition
+
+      .. rubric:: Definition (Feature-Based Explanation).
+
+      Let :math:`f: \mathcal{X} \to \mathcal{Y}` be a trained model with the features
+      :math:`D = \{1, \dots, d\}`. A feature-based explanation is a mapping
+
+      .. math::
+
+         e: \mathcal{S} \to \mathcal{E}, \qquad S \mapsto e(S),
+
+      where :math:`\mathcal{S} \subseteq 2^D` is a **chosen collection of feature subsets** and
+      :math:`\mathcal{E}` an explanation space. For each :math:`S \in \mathcal{S}`, the
+      **explanation** :math:`e(S)` describes how the features in :math:`S` **influence** the output
+      of :math:`f`.
+
+   .. shapiq-talk-figure:: feature-xai
+      :alt: Above, features of five kinds of data: the columns of a California housing table, the 64 patches of a photo of a giraffe, the 19 tokens of its caption, the windows of a time series and the atoms of a molecule. Below, four shapes of explanations: the Shapley values of one house (SHAP) and the Shapley interactions of the giraffe's patches and words for one prediction, the partial dependence curve of MedInc and the permutation importance of the features for the whole model.
+
+   .. shapiq-notes::
+
+      Feature-based explanations describe a model through its input features: the columns of a
+      table, the patches of an image, the tokens of a text, the windows of a time series, or the
+      nodes of a graph. They are post-hoc,
+      applied to a model that is already trained, and they apply to any model, because features
+      are the language that every model speaks. Formally, a feature-based explanation maps a
+      chosen collection of feature subsets to an explanation space. SHAP gives one score to each
+      feature of one prediction :cite:p:`Lundberg.2017`. Partial dependence gives each feature a
+      curve over the whole model :cite:p:`Friedman.2001`, and permutation importance a score of
+      how much the model relies on it :cite:p:`Breiman.2001`. Shapley interactions give a score
+      to every group of features up to a size :math:`k`. Many of these methods remove features
+      and watch what the model does :cite:p:`Covert.2021`. This talk stays with explanations of
+      one prediction.

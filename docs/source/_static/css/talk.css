@@ -1448,6 +1448,44 @@ html.shapiq-talk-print *::after {
   text-align: center;
 }
 
+/* in the deck, under the two examples, it takes little of the slide, so that their cards can be
+   large: as wide as the slide's content, its words on one line where the slide is wide enough (else
+   on two), the formula centered in the room right of them, and less paper around both */
+.shapiq-deck .shapiq-talk-attribution {
+  display: grid;
+  grid-template-columns: auto minmax(max-content, 1fr); /* (the words as wide as they are, or less) */
+  align-self: stretch; /* (as wide as the slide's content, not as its own) */
+  max-width: none;
+  margin: 0.4em 0 0;
+}
+
+.shapiq-deck .shapiq-talk-attribution > p.rubric {
+  grid-column: 1 / -1;
+}
+
+.shapiq-deck .shapiq-talk-attribution > p.rubric {
+  margin-bottom: 0.25em;
+  padding-block: 0.2em;
+}
+
+.shapiq-deck .shapiq-talk-attribution > p:not(.rubric) {
+  margin-block: 0.1em;
+}
+
+.shapiq-deck .shapiq-talk-attribution > .math-wrapper,
+.shapiq-deck .shapiq-talk-attribution > div.math {
+  margin-block: 0;
+}
+
+.shapiq-deck .shapiq-talk-attribution > :last-child {
+  margin-bottom: 0.3em;
+}
+
+.shapiq-deck .shapiq-talk-attribution mjx-container[display="true"] {
+  margin-block: 0;
+  padding-block: 0.1em;
+}
+
 /* ---- the last slide ("Thank You", .shapiq-talk-thanks) --------------------------------------------
 
    Two columns in the content column: on the left the title, the subtitle, the command to install

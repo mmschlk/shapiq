@@ -3080,13 +3080,13 @@ body[data-theme="dark"] .orders-demo {
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: 0.8rem;
-  width: calc(var(--orders-teaser-face, 18rem) + 2.2rem + 2px);
+  width: calc(var(--orders-teaser-face, 18rem) * var(--orders-teaser-aspect, 1) + 2.2rem + 2px);
   padding: 1.25rem 1.1rem 1rem;
   cursor: pointer;
 }
 
 .orders-demo-teaser .orders-demo-plan-view {
-  width: var(--orders-teaser-face, 18rem);
+  width: calc(var(--orders-teaser-face, 18rem) * var(--orders-teaser-aspect, 1));
   cursor: inherit;
 }
 
@@ -3126,8 +3126,55 @@ body[data-theme="dark"] .orders-demo {
 }
 
 .orders-demo-fanned .orders-demo-ghost {
-  transform: translate(calc(var(--orders-ghost) * 0.42rem), calc(var(--orders-ghost) * 0.5rem)) rotate(calc(var(--orders-ghost) * 0.9deg));
+  transform: translate(calc(var(--orders-ghost) * var(--orders-fan-x, 0.42rem)), calc(var(--orders-ghost) * var(--orders-fan-y, 0.5rem))) rotate(calc(var(--orders-ghost) * var(--orders-fan-turn, 0.9deg)));
   transition-delay: calc((var(--orders-ghost) - 1) * 70ms);
+}
+
+/* -- the teaser on a talk's slide (orders-demo-deck), where it is seen across a room: its card as
+   large as the slide lets it be. Its face is wider than tall (orders-demo-teaser-wide, demo.js:
+   WIDE, the map with its rows beside it, the photo with its caption written out beside it), so
+   that the card takes its column's width as well as its height, and its words grow with it. The
+   pack fans out less far, and turns less (a wide card turned by as much drops its far corner a
+   long way), so that it keeps less room around the card ------------------------------------- */
+.orders-demo-teaser-wide {
+  --orders-teaser-aspect: 1.6; /* (WIDE, demo.js) */
+}
+
+.orders-demo-teaser-wide .orders-demo-plan-view {
+  aspect-ratio: 1.6;
+}
+
+.orders-demo.orders-demo-deck.orders-demo-teaser {
+  margin: 0 0 0.25rem; /* (the slide's room is the card's) */
+}
+
+.orders-demo-deck.orders-demo-teaser .orders-demo-pack {
+  --orders-fan: 1.3rem;
+  --orders-fan-x: 0.2rem;
+  --orders-fan-y: 0.16rem;
+  --orders-fan-turn: 0.22deg;
+}
+
+/* (its words under the face, as large as the face lets them be: SV, and what its colors mean) */
+.orders-demo-deck.orders-demo-teaser .orders-demo-teaser-foot {
+  font-size: clamp(0.95rem, calc(var(--orders-teaser-face, 18rem) * 0.064), 1.6rem);
+}
+
+.orders-demo-deck.orders-demo-teaser .orders-demo-why {
+  gap: 0.6rem;
+  padding: 1rem 1.1rem 0.8rem;
+}
+
+.orders-demo-map-large.orders-demo-map-wide .orders-demo-map-caption .orders-demo-map-shown {
+  font-size: 7.4px;
+}
+
+.orders-demo-map-large.orders-demo-map-wide .orders-demo-map-row text {
+  font-size: 6px;
+}
+
+.orders-demo-map-large.orders-demo-map-wide .orders-demo-map-scale text {
+  font-size: 5px;
 }
 
 /* (with a mouse, the card pointed at stirs: the cards under it show their edges) */

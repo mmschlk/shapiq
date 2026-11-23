@@ -5,7 +5,7 @@
    demo), the photo of the giraffe in its 8 x 8 patches and its caption in its 19 tokens (the
    giraffe of the FIxLIP and orders demos), a week's electricity load in windows, and the molecule
    of the orders demo (GraphSHAP-IQ) with its atoms as nodes. One feature of each is marked.
-   Explanations (step 1, class talk-from-1): the Shapley values of the house (order 1 of the
+   Explanations (shown together with the features): the Shapley values of the house (order 1 of the
    orders demo), the Shapley interactions of the giraffe's patches and words (order 2), the
    partial dependence of MedInc with a rug of the data, and the permutation importance of the
    California features. The last two are plausible, not computed. MedInc, marked in the table,
@@ -153,7 +153,7 @@
     }
 
     // ---- explanations --------------------------------------------------------------------------
-    const shapes = row("Explanations Take Many Shapes", "talk-fx-shapes", 1);
+    const shapes = row("Explanations Take Many Shapes", "talk-fx-shapes");
     const W = 210, H = 84;
 
     // horizontal bars with names, sorted by size, and an axis below with its name under the names
@@ -259,6 +259,6 @@
       name: "Error increase", unit: (v) => String(v),
     });
 
-    return { steps: 2 };
+    return { steps: 1 };
   };
 })();

@@ -551,17 +551,40 @@
   // stack is the card's: the words and the numbers on them clear of it
   const tokensOf = (large) => (large ? { x: 70, width: 23, top: 5, bottom: 95 } : { x: 72, width: 24, top: 5, bottom: 95 });
   // the photo and its caption: the photo's patches on the left, the caption's tokens on the right
-  function imageTextFace(svg, example, sheet, url, id, layer = "all", large = false) {
-    const photo = { x: 4, y: 11, size: 62 };
+  function imageTextFace(svg, example, sheet, url, id, layer = "all", large = false, wide = false) {
+    const photo = wide ? { x: 3, y: 8, size: 84 } : { x: 4, y: 11, size: 62 };
     const grid = example.grid;
     const cell = photo.size / grid;
     const tokens = tokensOf(large);
     const row = (tokens.bottom - tokens.top) / example.tokens.length;
     const patches = grid * grid;
+    // each token's box (its left, top, width and height) and the size of its word: in a column, one
+    // under the other; or, wide, the caption written out right of the photo, its words wrapped into
+    // lines as a text is, in its middle (a word's width estimated by its letters)
+    const chips = example.tokens.map((token, k) => ({ x: tokens.x, y: tokens.top + k * row + row * 0.12, width: tokens.width, height: row * 0.76, size: row < 6 ? row * 0.58 : null }));
+    if (wide) {
+      const [from, to] = [photo.x + photo.size + 5, WIDE - 3];
+      for (let size = 7.2; size > 2; size -= 0.4) {
+        const [pad, gap, high, step] = [size * 0.24, size * 0.3, size * 1.36, size * 1.66];
+        const placed = [];
+        let [x, line] = [from, 0];
+        for (const token of example.tokens) {
+          const width = token.length * size * 0.58 + 2 * pad;
+          if (x > from && x + width > to) [x, line] = [from, line + 1];
+          placed.push({ x, line, width, height: high, size });
+          x += width + gap;
+        }
+        const lines = line + 1;
+        if (lines * step - (step - high) > photo.size && size > 2.4) continue;
+        const top = photo.y + (photo.size - (lines * step - (step - high))) / 2;
+        placed.forEach((chip, k) => Object.assign(chips[k], { x: chip.x, y: top + chip.line * step, width: chip.width, height: high, size }));
+        break;
+      }
+    }
     const anchor = (player) =>
       player < patches
         ? [photo.x + ((player % grid) + 0.5) * cell, photo.y + (Math.floor(player / grid) + 0.5) * cell]
-        : [tokens.x + 0.6, tokens.top + (player - patches + 0.5) * row];
+        : [chips[player - patches].x + 0.6, chips[player - patches].y + chips[player - patches].height / 2];
     const largest = largestValue(sheet);
 
     const clip = `${id}-photo`;
@@ -624,28 +647,19 @@
     example.tokens.forEach((token, k) => {
       const value = sheet.first[patches + k];
       const ratio = Math.abs(value) / largest;
-      const y = tokens.top + k * row + row * 0.12;
-      const height = row * 0.76;
-      if (shows(layer, "input")) {
-        add(words, "rect", { x: tokens.x, y: roundTo(y, 2), width: tokens.width, height: roundTo(height, 2), rx: 1.4 });
-      }
+      const { x, y, width, height, size } = chips[k];
+      const box = { x: roundTo(x, 2), y: roundTo(y, 2), width: roundTo(width, 2), height: roundTo(height, 2), rx: wide ? roundTo(height * 0.22, 2) : 1.4 };
+      if (shows(layer, "input")) add(words, "rect", box);
       if (shows(layer, "marks") && ratio >= FAINTEST) {
-        add(words, "rect", {
-          class: "orders-demo-tint",
-          x: tokens.x,
-          y: roundTo(y, 2),
-          width: tokens.width,
-          height: roundTo(height, 2),
-          rx: 1.4,
-          fill: solid(value),
-          "fill-opacity": roundTo(ratio, 3),
-        });
+        add(words, "rect", { ...box, class: "orders-demo-tint", fill: solid(value), "fill-opacity": roundTo(ratio, 3) });
       }
       if (shows(layer, "input")) {
-        // (a long caption's words smaller, as their rows are; and white on a strong tint, where
-        // the ink is hard to read)
-        const word = add(words, "text", { x: tokens.x + tokens.width / 2, y: roundTo(y + height / 2 + 0.1, 2) }, token);
-        if (row < 6) word.setAttribute("font-size", roundTo(row * 0.58, 2));
+        // (a long caption's words smaller, as their rows are, or wide, as their lines are; and white
+        // on a strong tint, where the ink is hard to read)
+        const word = add(words, "text", { x: roundTo(x + width / 2, 2), y: roundTo(y + height / 2 + 0.1, 2) }, token);
+        // (wide, its size over the slide's 3.7px, demo.css; in a column, under it, as before)
+        if (size && wide) word.style.fontSize = `${roundTo(size, 2)}px`;
+        else if (size) word.setAttribute("font-size", roundTo(size, 2));
         if (shows(layer, "marks") && ratio >= ON_TINT) word.classList.add("orders-demo-on-tint");
       }
     });
@@ -654,7 +668,7 @@
     const targets = players.map(([x, y], player) =>
       player < patches
         ? { x, y, rx: cell / 2, ry: cell / 2, player }
-        : { x: tokens.x + tokens.width / 2, y: tokens.top + (player - patches + 0.5) * row, rx: tokens.width / 2, ry: row * 0.38, player },
+        : { x: chips[player - patches].x + chips[player - patches].width / 2, y, rx: chips[player - patches].width / 2, ry: chips[player - patches].height / 2, player },
     );
     const find = (group) =>
       group.length === 1
@@ -847,6 +861,9 @@
     // rows only, a few, in larger words, the bars between the names and the values; the colors'
     // scale under them, its ends named
     large: { top: 10.2, step: 5.4, name: 71.6, bar: 73.4, width: 11.4, value: 97.6, count: 6, scale: 47.4 },
+    // (and the teaser's, wide: the rows right of the state, not over its east, in larger words still,
+    // with thicker bars, and the colors' scale under them; the face WIDE wide)
+    wide: { mapTop: 12, mapScale: 8.9, top: 19, step: 10, name: 114, bar: 116.5, width: 20, value: 156, count: 6, scale: 80, shown: 7.8, thick: 4, cell: 3.6, middle: 136.5, high: 4.4, below: 6.4 },
   };
   // many applicants: not on a map but on a plane (example.plane), its axes' room on the face, left
   // of the rows: across, the R^2 of their Shapley values, and up, their predicted probability of
@@ -859,6 +876,9 @@
   const LEVELS = (ALPHABET.length - 1) / 2;
   // the least opacity of a house's dot that raises its value, on the map
   const RAISED = 0.75;
+  // the teaser's face on a talk's slide, wider than tall: its width, in hundredths of its height
+  // (the map with its rows beside it, the photo with its caption beside it, both in larger words)
+  const WIDE = 160;
   // a face's name, in its bottom left corner: where it starts, and about how wide a letter of it is
   // (both in hundredths of the face; demo.css: .orders-demo-tag, 4.6px)
   const TAG_X = 6;
@@ -935,14 +955,19 @@
   // (large: the card's face on a talk's slide, where words smaller than about 10 pixels do not read
   // across a room: the map, what it shows, its few strongest rows and the colors' scale, in larger
   // words; no line of counts, no cities, no head over the rows, no name over the scale)
-  function mapFace(svg, example, sheet, layer = "all", large = false) {
+  function mapFace(svg, example, sheet, layer = "all", large = false, wide = false) {
     const { plane } = example;
-    const lines = large ? MAP.large : { ...MAP.rows, count: Infinity, scale: 64.6 };
+    const lines = wide ? MAP.wide : large ? MAP.large : { ...MAP.rows, count: Infinity, scale: 64.6 };
+    // (wide, as large as large, and more: what large leaves out, it leaves out too)
+    if (wide) svg.classList.add("orders-demo-map-wide");
+    large ||= wide;
     if (large) svg.classList.add("orders-demo-map-large");
     const words = subjectOf(example);
     const west = plane ? 0 : Math.min(...example.outline.map(([lon]) => lon));
     const north = plane ? 0 : Math.max(...example.outline.map(([, lat]) => lat));
-    const at = plane ? onPlane : ([lon, lat]) => [roundTo(MAP.left + (lon - west) * MAP.shrink * MAP.scale, 2), roundTo(MAP.top + (north - lat) * MAP.scale, 2)];
+    // (wide, the state larger, as tall as the face lets it be)
+    const [mapTop, mapScale] = [lines.mapTop ?? MAP.top, lines.mapScale ?? MAP.scale];
+    const at = plane ? onPlane : ([lon, lat]) => [roundTo(MAP.left + (lon - west) * MAP.shrink * mapScale, 2), roundTo(mapTop + (north - lat) * mapScale, 2)];
     const { coords, values } = readMap(example);
     const spots = coords.map(at);
     const picture = (dots) => add(svg, "image", { class: "orders-demo-map-dots", x: 0, y: 0, width: 100, height: 100, href: dots });
@@ -988,12 +1013,12 @@
     const caption = add(svg, "g", { class: "orders-demo-map-caption" });
     const shown = add(caption, "text", { class: "orders-demo-map-shown", x: MAP.left, y: 4.6 });
     const counts = add(caption, "text", { class: "orders-demo-map-counts", x: MAP.left, y: 8.3 });
-    if (large) shown.setAttribute("y", 5.4);
+    if (large) shown.setAttribute("y", lines.shown ?? 5.4);
     // the rows: a name, a bar by the mean of its absolute values, and that mean
     const list = add(svg, "g", { class: "orders-demo-map-rows" });
     if (!large) add(list, "text", { class: "orders-demo-map-head", x: lines.value, y: 4.6 }, `moves ${words.each} by, on average`);
     const most = Math.max(...sheet.rows.map((row) => row[2]));
-    const bar = large ? 2.8 : 2.2;
+    const bar = lines.thick ?? (large ? 2.8 : 2.2);
     const rows = sheet.rows.slice(0, lines.count).map(([players, , mean], r) => {
       const y = roundTo(lines.top + r * lines.step, 2);
       const row = add(list, "g", { class: "orders-demo-map-row" });
@@ -1005,13 +1030,13 @@
     // the colors' scale, under the rows, east of the state: from what lowers a house's value the
     // most (the sheet's scale, or more) to what raises it the most
     const scale = add(svg, "g", { class: "orders-demo-map-scale" });
-    const [steps, cell, middle, high] = [5, large ? 2.4 : 2.2, large ? 85.4 : 84.6, large ? 3 : 2.2];
+    const [steps, cell, middle, high] = [5, lines.cell ?? (large ? 2.4 : 2.2), lines.middle ?? (large ? 85.4 : 84.6), lines.high ?? (large ? 3 : 2.2)];
     const top = lines.scale;
     for (let k = -steps; k <= steps; k++) {
       add(scale, "rect", { x: roundTo(middle + (k - 0.5) * cell, 2), y: top, width: cell + 0.05, height: high, fill: solid(k), "fill-opacity": roundTo((Math.abs(k) / steps) ** 0.85, 3) });
     }
     if (!large) add(scale, "text", { x: middle, y: 62.3, "text-anchor": "middle" }, `added to ${words.each}`);
-    const ends = roundTo(top + high + (large ? 3.6 : 2.6), 2);
+    const ends = roundTo(top + high + (lines.below ?? (large ? 3.6 : 2.6)), 2);
     add(scale, "text", { x: roundTo(middle - (steps + 0.5) * cell, 2), y: ends, "text-anchor": "start" }, `−${words.size(sheet.scale)}`);
     add(scale, "text", { x: roundTo(middle + (steps + 0.5) * cell, 2), y: ends, "text-anchor": "end" }, `+${words.size(sheet.scale)}`);
     let showing = -1;
@@ -1976,15 +2001,15 @@
     // a face of an example's kind, into svg (id names what it defines, as the photo's clip); a
     // face with all of it, the card's, can be inspected: its inspector is kept by it
     const inspectors = new WeakMap();
-    function drawFace(svg, example, sheet, layer, id, large = false) {
+    function drawFace(svg, example, sheet, layer, id, large = false, wide = false) {
       const inspector =
         example.kind === "graph"
           ? moleculeFace(svg, example, sheet, layer)
           : example.kind === "tree"
             ? treeFace(svg, example, sheet, layer)
             : example.kind === "map"
-              ? mapFace(svg, example, sheet, layer, large)
-              : imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer, large);
+              ? mapFace(svg, example, sheet, layer, large, wide)
+              : imageTextFace(svg, example, sheet, `${root.dataset.root}${example.image}`, id, layer, large, wide);
       if (inspector) inspectors.set(svg, inspector);
     }
     // every example's layers, drawn once: an example chosen again shows them as they were drawn
@@ -2073,15 +2098,20 @@
     const plans = new Map();
     // (on a talk's slide, a map's in its large variant: mapFace; the slide's and the page's are
     // kept apart, as a talk switches between them)
+    // (and the teaser's, on a slide, wider than tall: mapFace and imageTextFace, wide)
+    const facesWide = (example) =>
+      teaser && root.classList.contains("orders-demo-deck") && ((example.kind === "map" && !example.plane) || example.kind === "image-text");
     function planFace(example, sheet) {
       const name = sheet ? `${sheet.order}${sheet.full ? "-full" : ""}` : "input";
-      const large = root.classList.contains("orders-demo-deck") && ((example.kind === "map" && !example.plane) || example.kind === "image-text");
-      const key = `${example.id} ${name}${large ? " large" : ""}`;
+      const wide = facesWide(example);
+      const large = !wide && root.classList.contains("orders-demo-deck") && ((example.kind === "map" && !example.plane) || example.kind === "image-text");
+      const variant = wide ? "wide" : large ? "large" : "";
+      const key = `${example.id} ${name} ${variant}`;
       if (!plans.has(key)) {
         const svg = document.createElementNS(SVG, "svg");
-        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.setAttribute("viewBox", `0 0 ${wide ? WIDE : 100} 100`);
         svg.setAttribute("class", "orders-demo-plan-face");
-        drawFace(svg, example, sheet ?? example.sheets[0], sheet ? "all" : "input", `orders-${plotId}-${example.id}-plan-${name}${large ? "-large" : ""}`, large);
+        drawFace(svg, example, sheet ?? example.sheets[0], sheet ? "all" : "input", `orders-${plotId}-${example.id}-plan-${name}-${variant}`, large, wide);
         plans.set(key, svg);
       }
       return plans.get(key);
@@ -2517,7 +2547,9 @@
       const top = (why.getBoundingClientRect().top - root.getBoundingClientRect().top) / scale;
       const rest = why.offsetHeight - planView.offsetHeight; // (its words, padding and gap)
       const tall = frameOf(root) - top - rest - fan - 6; // (and its shadow)
-      const wide = root.clientWidth - sides - 2 * fan - 2; // (the room it fans into, at both sides: the card in the middle)
+      // (the face's width, a square's or, wide, WIDE hundredths of its height)
+      const aspect = root.classList.contains("orders-demo-teaser-wide") ? WIDE / 100 : 1;
+      const wide = (root.clientWidth - sides - 2 * fan - 2) / aspect; // (the room it fans into, at both sides: the card in the middle)
       const face = Math.floor(Math.max(9 * rem, Math.min(32 * rem, tall, wide)));
       if (Math.abs(face - teaserFace) < 2) return;
       teaserFace = face;
@@ -2618,6 +2650,8 @@
         letGo(); // (of what was inspected on the face before)
         planView.replaceChildren(face, planTag);
       }
+      // (the teaser's face, wide on a slide: its card as wide as it, demo.css)
+      root.classList.toggle("orders-demo-teaser-wide", facesWide(example));
       // named as the layer it shows: a sheet, the mechanism, or an order between
       tagFace(state.blank !== null ? `${state.blank}-${INDEX}` : mechanism ? mechanismTag(example) : sheetName(example.sheets[index]).face);
       teaserName.textContent = sheetName(example.sheets[0]).tag;
@@ -3607,6 +3641,15 @@
     watch(new MutationObserver(() => inkChip())).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
     darkScheme.addEventListener?.("change", () => inkChip(), { signal: life });
     watch(new ResizeObserver(() => movePill(true))).observe(switcher);
+    // (on a slide, the teaser's room is what its slide's body leaves below it, such as a box whose
+    // formula is typeset after the demo was laid out: its card refit as that changes)
+    if (teaser) {
+      const body = root.closest(".shapiq-slide-body");
+      let part = root;
+      while (body && part.parentElement && part.parentElement !== body) part = part.parentElement;
+      const below = watch(new ResizeObserver(() => fitTeaser()));
+      for (let next = body ? part.nextElementSibling : null; next; next = next.nextElementSibling) below.observe(next);
+    }
     // the light out of the chip follows the plan's layout (its width, its fonts)
     watch(
       new ResizeObserver(() => {

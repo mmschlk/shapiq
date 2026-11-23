@@ -1,5 +1,5 @@
 .. The appendix of the talk, set aside for now (Max, 2026-11-20). To bring it back, append these
-   slides to index.rst after "Thank You". Sphinx does not read this file (.txt).
+   slides to index.rst after "Thank You" (index.rst already has the Appendix section slide). Sphinx does not read this file (.txt).
 
 .. shapiq-slide:: Appendix
    :layout: section
