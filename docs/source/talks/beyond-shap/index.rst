@@ -2,7 +2,8 @@
    Read on the page, it is a handout: every slide with its notes in prose, code to try and the
    references it cites. "Present" or the key P shows one slide at a time, and a phone scrolls.
    Its own figures are drawn by assets/figures.js. The demos are those of demos/.
-   assets/qr-deck.svg opens this page as a deck (?present), assets/qr-shapiq.svg the repository of
+   assets/qr-deck.svg opens this page as a deck (?present, off the title slide until the page is
+   online), assets/qr-shapiq.svg the repository of
    shapiq (on the last slide); README.md says how to make them again. appendix-parked.txt holds
    the appendix, set aside for now.
    assets/probly/ holds the logo of probly (MIT, github.com/pwhofman/probly) and a QR code of its
@@ -45,13 +46,6 @@ says, and code reproduces what the slide shows.
       .. image:: /_static/logo/logo_shapiq_dark.svg
          :class: shapiq-hero-logo only-dark
          :alt: The shapiq logo: a network of players, linked by their interactions.
-
-   .. container:: shapiq-talk-qr shapiq-talk-follow
-
-      .. image:: assets/qr-deck.svg
-         :alt: A QR code that opens this talk on shapiq.readthedocs.io.
-
-      Follow along on your phone
 
    .. shapiq-notes::
 
@@ -138,7 +132,7 @@ says, and code reproduces what the slide shows.
       and watch what the model does :cite:p:`Covert.2021`. This talk stays with explanations of
       one prediction.
 
-.. shapiq-slide:: The Shapley Value Shares a Prediction
+.. shapiq-slide:: The Shapley Value
    :layout: wide
    :steps: 3
    :cite: Shapley.1951 Lundberg.2017
@@ -188,7 +182,7 @@ says, and code reproduces what the slide shows.
       that is efficient, symmetric, linear and gives nothing to a player that never adds anything.
       SHAP computes it for the features of a model :cite:p:`Lundberg.2017`.
 
-.. shapiq-slide:: Below the Scores Lies the Model
+.. shapiq-slide:: The Hidden Mechanism of the Model
    :layout: wide
    :cite: Lundberg.2017 Baniecki.2025
 
@@ -205,7 +199,7 @@ says, and code reproduces what the slide shows.
       the Shapley values explain. For the houses, that is most of it. For the giraffe, it is much
       less.
 
-.. shapiq-slide:: Evaluating Shapley Value Explanations
+.. shapiq-slide:: Faithfulness of Shapley Value Explanations
    :layout: wide
    :class: shapiq-slide--top
    :cite: Tsai.2022 Hedstrom.2023 Agarwal.2022
@@ -367,6 +361,7 @@ says, and code reproduces what the slide shows.
 
    .. shapiq-demo:: fixlip
       :pick: giraffe-tree
+      :select: full
 
    .. shapiq-notes::
 
@@ -400,7 +395,7 @@ says, and code reproduces what the slide shows.
       many players to evaluate every coalition. Its explanations are estimated, and what the full
       decomposition falls short of 1 is the estimation gap. The mechanism stays blurry.
 
-.. shapiq-slide:: Every Order Explains More of the Model
+.. shapiq-slide:: Faithfulness of Shapley Interaction Explanations
    :layout: wide
    :steps: 5
    :cite: Tsai.2022 Bordt.2023
@@ -500,7 +495,9 @@ says, and code reproduces what the slide shows.
       :math:`\mathcal{I}_{\text{partial}} \circ \mathcal{B}_{\text{local}} \circ \mathcal{M}_{\text{marginal}}`. Shapley interactions keep masking and
       behavior, and change only how groups are counted :cite:p:`Enouen.2025`.
 
-.. shapiq-slide:: SHAP Shares Interactions Equally. Others Do Not.
+.. role:: shapiq-accent
+
+.. shapiq-slide:: SHAP Shares Interactions Equally. :shapiq-accent:`Others Do Not.`
    :layout: wide
    :class: shapiq-slide--top
    :steps: 2
@@ -685,7 +682,7 @@ says, and code reproduces what the slide shows.
       behavior and interaction become building blocks that combine freely, so that every cell of
       the grid, and every explanation of the three choices, is one call away.
 
-.. shapiq-slide:: A Shoutout to probly
+.. shapiq-slide:: probly: Uncertainty Quantification for Machine Learning
    :layout: wide
 
    .. container:: shapiq-talk-probly-ad

@@ -278,7 +278,7 @@
 
     // ---- how one coalition is predicted: keep some features, add up the explanation over them
     const how = make("div", { class: "talk-faith-how" }, figure);
-    make("div", { class: "talk-faith-step" }, how, "1  Keep some features, remove the others");
+    make("div", { class: "talk-faith-step" }, how, "1  Select Coalitions");
     const keep = make("div", { class: "talk-faith-keep", role: "group", "aria-label": "Features kept" }, how);
     let mask = data.start.reduce((m, i) => m | (1 << i), 0);
     if (climb) {
@@ -304,7 +304,7 @@
       });
       return chip;
     });
-    make("div", { class: "talk-faith-step" }, how, "2  Ask the model, and add up the explanation");
+    make("div", { class: "talk-faith-step" }, how, "2  Guess the Model Output based on the Explanations");
     math(how, "\\hat{\\nu}_k(S) \\;=\\; \\sum_{T \\subseteq S,\\; |T| \\le k} \\phi_k(T)");
 
     // the sum, order by order (a waterfall from the baseline φ(∅) = ν(∅)), against the model
@@ -339,7 +339,9 @@
     const hot = (on) => figure.classList.toggle("talk-faith-hot", on);
     gapZone.addEventListener("pointerenter", () => hot(true));
     gapZone.addEventListener("pointerleave", () => hot(false));
+    // (the legend centered below the x-axis, which runs from wl to WW - wr of the waterfall's width)
     const key = make("div", { class: "talk-faith-key" }, how);
+    key.style.paddingLeft = `${((wl - wr) / WW) * 100}%`;
     key.innerHTML = '<span><i class="talk-faith-key-model"></i>the model, <span class="talk-glyph talk-glyph-italic">ν</span>(S)</span><span><i class="talk-faith-key-sum"></i>the explanation, <span class="talk-glyph talk-glyph-italic">ν̂</span><sub>k</sub>(S)</span>';
 
     // ---- every coalition: the model against the explanation, and the R²

@@ -691,6 +691,7 @@ a.talk-chip:focus-visible {
 .talk-faith-key {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.4em 1.2em;
   color: var(--talk-muted);
   font-size: 0.78em;

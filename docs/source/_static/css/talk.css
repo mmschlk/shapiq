@@ -1649,3 +1649,8 @@ html.shapiq-talk-print .shapiq-talk-socials a::before {
 .shapiq-talk-oral {
   white-space: nowrap;
 }
+
+/* a part of a title in the talk's amber, so that it stands out (:shapiq-accent:`...`) */
+.shapiq-accent {
+  color: var(--shapiq-amber);
+}

@@ -2496,6 +2496,8 @@
         });
         top.addEventListener("click", () => inspect(inspectorNow()?.find(players) ?? null));
       } else top.append("\u00a0");
+      // (in a talk, the card is shown, not read: no line of what the order is, and no strongest)
+      if (root.closest(".shapiq-slide")) return { nodes: teaser ? [title, method, legend] : [title, fit, method, legend], r2 };
       return { nodes: teaser ? [title, what, top, method, legend] : [title, what, fit, top, method, legend], r2 };
     }
 

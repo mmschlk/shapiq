@@ -144,7 +144,8 @@
       image: first.id,
       model: data.models.find((model) => has(first.id, model.id)).id,
       size: 6, // the clique's, kept within the sizes of the explanation's cliques
-      view: "clique",
+      // (the view it starts with: the container's data-select, none, clique or full, else the clique)
+      view: ["none", "clique", "full"].includes(root.dataset.select?.trim()) ? root.dataset.select.trim() : "clique",
       focus: null,
       pinned: false,
     };

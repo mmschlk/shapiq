@@ -287,7 +287,9 @@ class TalkFigureDirective(SphinxDirective):
 
 def _visit_slide(self: HTML5Translator, node: SlideNode) -> None:
     classes = ["shapiq-slide"] + ([f"shapiq-slide--{node['layout']}"] if node["layout"] else [])
-    attributes = {"data-title": node["title"], "data-number": str(node["number"])}
+    # (the title as text: a role in it, as :shapiq-accent:`...`, gives its words)
+    title = re.sub(r":[\w-]+:`([^`]*)`", r"\1", node["title"])
+    attributes = {"data-title": title, "data-number": str(node["number"])}
     if node["steps"]:
         attributes["data-steps"] = str(node["steps"])
     self.body.append(self.starttag(node, "section", CLASS=" ".join(classes), **attributes))

@@ -21,7 +21,7 @@ A demo that builds up step by step shows the step its ``:step:`` names, as the c
 ``data-step`` (the orders demo's ``problem``, ``mechanism``, ``shapley``, ``interactions`` and
 ``full``; without it, all of it), and points at rest at what its ``:select:`` names, as
 ``data-select`` (the orders demo's ``none``, ``mechanism``, ``full`` or an order, ``1``, ``2``,
-...; without it, what the step adds). A demo with examples shows those its ``:examples:`` names, as
+...; without it, what the step adds; the fixlip demo's view, ``none``, ``clique`` or ``full``). A demo with examples shows those its ``:examples:`` names, as
 ``data-examples``, in that order (the orders demo's ``molecule``, ``house``, ``tabpfn``,
 ``houses`` and ``fixlip``, apart by commas or spaces; without it, all of them; with one, no tabs).
 The demos of one page show the same example: choosing one in any of them chooses it in all that
