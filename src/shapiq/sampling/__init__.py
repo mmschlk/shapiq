@@ -1,5 +1,5 @@
-"""Sampling evidence and approximation states."""
+"""Samples: the coalitions a sampler drew in one step, with their log weights."""
 
-from shapiq.sampling._state import ApproximationState, Evaluations, Sample, SamplingState
+from shapiq.sampling._state import DenseSample, PairedSample, Sample
 
-__all__ = ["ApproximationState", "Evaluations", "Sample", "SamplingState"]
+__all__ = ["DenseSample", "PairedSample", "Sample"]

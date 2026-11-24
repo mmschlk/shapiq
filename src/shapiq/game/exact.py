@@ -59,7 +59,7 @@ class ExactComputer(JaxAxisProtected["ExactComputer"]):
 
 def discrete_derivative_coefficients(
     index: Shaped[DiscreteDerivativeIndex[Any], "#*batch"],
-    coalitions: Bool[jax.Array, "n_coalitions n_players"],
+    coalitions: Bool[jax.Array, "#*batch n_coalitions n_players"],
     interactions: Bool[jax.Array, "n_interactions n_players"],
 ) -> Float[jax.Array, "*batch n_interactions n_coalitions"]:
     """Return the coefficient of v(S) in phi(T): ``(-1)**|T - S| w(|S - T|, |T|, n)``.
@@ -67,10 +67,12 @@ def discrete_derivative_coefficients(
     Expanding the discrete derivative in ``phi(T) = sum over S ⊆ N - T of w(|S|, |T|, n)
     Δ_T v(S)`` gives every coalition one coefficient per interaction, the representation used by
     SHAP-IQ (Fumagalli et al., 2023). Summed against every coalition value, they give the index.
+    The batches of the index and the coalitions broadcast, so either can stay compact.
     """
     n_players = coalitions.shape[-1]
     order = jnp.sum(interactions, axis=-1)[:, None]  # (n_interactions, 1)
-    overlap = jnp.sum(interactions[:, None] & coalitions, axis=-1)  # (n_interactions, n_coal.)
+    coalitions = coalitions[..., None, :, :]  # (*batch, 1, n_coalitions, n_players)
+    overlap = jnp.sum(interactions[:, None] & coalitions, axis=-1)  # (*batch, n_int., n_coal.)
     outside = jnp.sum(coalitions, axis=-1) - overlap  # |S - T|
     # Two trailing batch axes, so the index parameters broadcast against (T, S).
     weights = index[..., None, None].discrete_derivative_weight(outside, order, n_players)

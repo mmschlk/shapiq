@@ -17,3 +17,7 @@ class SamplingError(RuntimeError):
 
 class HistoryError(IndexError):
     """Raised when approximation history is unavailable or invalid."""
+
+
+class UnsupportedSamplerError(TypeError):
+    """Raised when an approximator has no applicable implementation for a sampler."""

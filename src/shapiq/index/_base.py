@@ -33,7 +33,7 @@ def _log_binom(n: int, k: Int[jax.Array, "*batch"]) -> Float[jax.Array, "*batch"
 
 
 @runtime_checkable
-class IndexProtocol[R: Game](JaxLike[Any], Protocol):
+class Index[R: Game](JaxLike[Any], Protocol):
     """A batch of interaction indices, defined by weights and the interaction orders covered."""
 
     @property
@@ -60,7 +60,7 @@ class IndexProtocol[R: Game](JaxLike[Any], Protocol):
 
 
 @runtime_checkable
-class DiscreteDerivativeIndex[R: Game](IndexProtocol[R], Protocol):
+class DiscreteDerivativeIndex[R: Game](Index[R], Protocol):
     """An index defined by discrete-derivative weights, e.g. for exact or Monte Carlo routes."""
 
     @abstractmethod
@@ -71,7 +71,7 @@ class DiscreteDerivativeIndex[R: Game](IndexProtocol[R], Protocol):
 
 
 @runtime_checkable
-class LeastSquaresIndex[R: Game](IndexProtocol[R], Protocol):
+class LeastSquaresIndex[R: Game](Index[R], Protocol):
     """An index defined as a weighted least-squares fit."""
 
     @abstractmethod

@@ -11,8 +11,8 @@ from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
 from shapiq.game.table import TableGame
 from shapiq.index import BanzhafIndex, ShapleyValueIndex
 from shapiq.players import FinitePlayers
-from shapiq.sampling._base import SizeSampler
-from shapiq.sampling._state import Evaluations, Sample
+from shapiq.sampling._base import SizeWithReplacement
+from shapiq.sampling._state import DenseSample, Sample
 
 
 def batch_results(
@@ -25,8 +25,8 @@ def batch_results(
     additive: AdditiveMoebiusGame[str, jax.Array],
     banzhaf: BanzhafIndex,
     shapley: ShapleyValueIndex,
-    sampler: SizeSampler,
-    evaluations: Evaluations[str],
+    sampler: SizeWithReplacement,
+    sample: DenseSample,
 ) -> None:
     assert_type(players[0], FinitePlayers[str])
     assert_type(players.reshape(-1), FinitePlayers[str])
@@ -40,15 +40,13 @@ def batch_results(
     assert_type(additive[0].reshape(-1), AdditiveMoebiusGame[str, jax.Array])
     assert_type(banzhaf[0], BanzhafIndex)
     assert_type(shapley[0].reshape(-1), ShapleyValueIndex)
-    assert_type(sampler[0], SizeSampler)
-    assert_type(evaluations[0].reshape(-1), Evaluations[str])
-    assert_type(evaluations.at[0].set(evaluations[0]), Evaluations[str])
+    assert_type(sampler[0], SizeWithReplacement)
+    assert_type(sample[0].reshape(-1), DenseSample)
+    assert_type(sample.at[0].set(sample[0]), DenseSample)
 
 
-def accepts_subclasses(
-    additive: AdditiveMoebiusGame[str, jax.Array], evaluations: Evaluations[str]
-) -> None:
+def accepts_subclasses(additive: AdditiveMoebiusGame[str, jax.Array], dense: DenseSample) -> None:
     game: SetMoebiusGame[str, jax.Array, Any] = additive
-    sample: Sample[str, Any] = evaluations
+    sample: Sample[Any] = dense
     assert_type(game.players, FinitePlayers[str])
-    assert_type(sample.players, FinitePlayers[str])
+    assert_type(sample.coalitions, jax.Array)
