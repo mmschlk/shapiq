@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, TypeIs
 
-from ndlike.jax_like import JaxLikeImplementation
+from ndlike.jax_like import JaxLike
 
 
-class Players[C](JaxLikeImplementation[Any], ABC):
+class Players[C](JaxLike[Any]):
     """An abstract JAX-like batch whose elements are sets of players.
 
     ``shape`` describes the batch of player sets, excluding each set's internal

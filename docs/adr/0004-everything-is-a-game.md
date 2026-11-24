@@ -8,7 +8,7 @@
 
 The central computational interface is a game transformation. A model can be embedded in a game and then transformed into other games; an explanation is an interpretation of a resulting game, not a separate universal result container. This makes results composable through the same player/coalition/value interface, at the cost of requiring explicit mathematical semantics for each result rather than relying on a common attribution-array schema.
 
-The Shapley transformation produces a zero-empty additive game with Shapley values as singleton values. Its grand-coalition value is the source's grand-minus-empty value. Exact and approximate algorithms implement this common result form; approximation policy must be explicit. Mathematical capability protocols, such as k-additivity, remain separate from concrete storage types built on ndlike's protected-axis support.
+The Shapley transformation produces a zero-empty additive game with Shapley values as singleton values. Its grand-coalition value is the source's grand-minus-empty value. Exact and approximate algorithms implement this common result form; approximation policy must be explicit. Mathematical capability interfaces, such as `KAdditiveGame` and `AdditiveGame`, remain separate from concrete storage types built on ndlike's protected-axis support.
 
 ## Casts Preserve a Game; Transformations May Compute
 

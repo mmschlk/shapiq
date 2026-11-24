@@ -1,16 +1,16 @@
 """Base game class for shapiq."""
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, TypeIs
 
 from jaxtyping import Shaped
-from ndlike.jax_like import JaxLikeImplementation
+from ndlike.jax_like import JaxLike
 
 from shapiq.players import Players
 from shapiq.value import NumericValue, Value
 
 
-class Game[C, V: Value](JaxLikeImplementation[Any], ABC):
+class Game[C, V: Value](JaxLike[Any]):
     """An abstract JAX-like batch of cooperative games.
 
     ``shape`` describes the game batch; a scalar game has shape ``()``. Indexing

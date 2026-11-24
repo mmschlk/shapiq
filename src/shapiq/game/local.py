@@ -2,19 +2,22 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import jax
 from jaxtyping import Float
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.game import BoolFinitePlayerGame
+from shapiq.game.finite import _FiniteGame
 from shapiq.typing import typechecked
 
 
 @typechecked
 @dataclass(slots=True, frozen=True, weakref_slot=True)
 class MLLocalXAI[P](
-    BoolFinitePlayerGame[P, Float[jax.Array, "..."]], JaxAxisProtected["MLLocalXAI"]
+    BoolFinitePlayerGame[P, Float[jax.Array, "..."]],
+    JaxAxisProtected["MLLocalXAI[P]", Any, _FiniteGame[P]],
 ):
     """A game reflecting the local explanations of a machine learning model."""
 

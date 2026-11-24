@@ -46,10 +46,10 @@ m = cast(g, MobiusGame)
 f = cast(g, FourierGame)
 assert_allclose(g.eval(S), m.eval(S))
 assert_allclose(g.eval(S), f.eval(S))
-m.coefficient(T)  # Möbius dividend for T
+m.coefficients(T)  # Möbius dividend for T
 ```
 
-Mathematical capabilities such as `KAdditive` and `Additive` are independent of storage. `Additive` means Möbius order at most one, including a possible empty-coalition coefficient. The exact Shapley transformation specifically produces a zero-empty additive game with the same players:
+Mathematical capabilities such as `KAdditiveGame` and `AdditiveGame` are independent of storage. `AdditiveGame` means Möbius order at most one, including a possible empty-coalition coefficient. The exact Shapley transformation specifically produces a zero-empty additive game with the same players:
 
 ```text
 h(S) = sum(phi_i(g) for i in S)

@@ -7,10 +7,11 @@ from typing import Any, ClassVar, Literal, TypeIs, overload, override
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax.core import Tracer
 from jaxtyping import Bool, Int, UInt8
 from ndlike.array_like import NumpyLike
 from ndlike.jax_like import JaxLike
-from ndlike.protected_axis.jax import JaxAxisProtected
+from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
 from shapiq.coalition import FiniteCoalition
 from shapiq.coalition.coalition import (
@@ -453,6 +454,22 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected["FinitePlayers
             ids.shape[-1] if latent_n_players is None else latent_n_players,
         )
 
+    @override
+    def _prepare_assignment_value(self, value: object, *, method: JaxAtMethod) -> object:
+        """Require matching latent player space and metadata catalog on indexed replacement."""
+        del method
+        if isinstance(value, FinitePlayers):
+            if value.players is not self.players:
+                msg = "Cannot assign FinitePlayers with a different metadata catalog."
+                raise ValueError(msg)
+            if value.latent_n_players != self.latent_n_players:
+                msg = (
+                    f"Cannot assign FinitePlayers with latent_n_players={value.latent_n_players} "
+                    f"into FinitePlayers with latent_n_players={self.latent_n_players}."
+                )
+                raise ValueError(msg)
+        return value
+
     @typechecked
     def remove(
         self,
@@ -630,3 +647,46 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected["FinitePlayers
         has the same meaning as in :meth:`is_valid`.
         """
         return _is_valid_coalition(coalition, self.latent_n_players, self.shape, batch_shape)
+
+    def empty_coalition(self) -> Bool[jax.Array, "... {self.n_players}"]:
+        """Return the canonical empty boolean coalition with logical batch ``self.shape``."""
+        return jnp.zeros_like(self.ids, dtype=jnp.bool_)
+
+    def full_coalition(self) -> Bool[jax.Array, "... {self.n_players}"]:
+        """Return the canonical full boolean coalition with logical batch ``self.shape``."""
+        return jnp.ones_like(self.ids, dtype=jnp.bool_)
+
+    def is_compatible(self, other: object) -> bool:
+        """Check whether ``other`` defines identical finite player coordinates after broadcasting.
+
+        Compatibility requires another ``FinitePlayers`` batch with matching
+        ``n_players``, matching ``latent_n_players``, the same shared metadata
+        catalog by identity (or both ``None``), broadcast-compatible batch
+        shapes, and equal local ordered IDs after broadcasting. Concrete
+        closed-over ID arrays may be compared even while tracing under
+        ``jax.jit``; distinct dynamic traced ID arrays cannot.
+
+        Raises:
+            TypeError: Either player batch carries a distinct traced ID array
+                under JIT that cannot be compared for equality in Python.
+        """
+        if self is other:
+            return True
+        if (
+            not isinstance(other, FinitePlayers)
+            or self.n_players != other.n_players
+            or self.latent_n_players != other.latent_n_players
+            or self.players is not other.players
+        ):
+            return False
+        try:
+            jnp.broadcast_shapes(self.shape, other.shape)
+        except ValueError:
+            return False
+        if self.ids is other.ids or self.n_players == 0 or self.size == 0 or other.size == 0:
+            return True
+        if isinstance(self.ids, Tracer) or isinstance(other.ids, Tracer):
+            msg = "Cannot compare distinct traced player IDs under JIT."
+            raise TypeError(msg)
+        with jax.ensure_compile_time_eval():
+            return bool(jnp.all(self.ids == other.ids))
