@@ -171,7 +171,7 @@ class MoebiusGame[
             _moebius_lookup(self.values, self.interactions, interactions),
         )
 
-    @castmethod
+    @castmethod(AdditiveGame)
     def _as_additive(self) -> AdditiveGame[P, JaxValue]:
         """View a ``MoebiusGame`` with ``additivity <= 1`` as an ``AdditiveGame``."""
         additivity = self.additivity
@@ -190,7 +190,7 @@ class MoebiusGame[
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class AdditiveMoebiusGame[P, V: JaxLike[Any]](
     MoebiusGame[P, V, "AdditiveMoebiusGame[P, V]"],
-    AdditiveGame[P, JaxValue, "AdditiveMoebiusGame[P, V]"],
+    AdditiveGame[P, JaxValue],
 ):
     """A batch of 1-additive (or 0-additive) games stored as Möbius coefficients on sets.
 

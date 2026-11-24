@@ -1,7 +1,7 @@
 """Lazy arithmetic wrappers and k-additive refinements for finite games."""
 
 import math
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, override
@@ -237,9 +237,8 @@ class ArithmeticGame[
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
     OwnerT: "ArithmeticGame[Any, Any, Any, Any]" = "ArithmeticGame[P, V, GameT, Any]",
 ](
-    FinitePlayerGame[P, V, OwnerT],
+    FinitePlayerGame[P, V],
     JaxAxisProtected[OwnerT, Any, _FiniteGame[P]],
-    ABC,
 ):
     """Abstract lazy arithmetic game combining a nonempty tuple of finite games.
 
@@ -320,7 +319,7 @@ class ArithmeticGame[
         """Forward packed coalitions lazily to component games without unpacking."""
         return self._eval_children(coalition)
 
-    @castmethod(cost=1.0)
+    @castmethod(TableGame, cost=1.0)
     def _as_table(self) -> TableGame[P]:
         """Materialize directly on raw tables when every leaf is a ``TableGame``."""
         n_coalitions = 2**self.n_players
@@ -483,7 +482,7 @@ class AffineGame[
             jf.jax_add(_weighted_sum(self.weights.members, values), self.bias),
         )
 
-    @castmethod
+    @castmethod(AdditiveGame)
     def _as_additive(self) -> AdditiveGame[P, V]:
         """Refine this affine game when every component is additive."""
         members = _require_refinable_children(self, AdditiveGame)
@@ -491,7 +490,7 @@ class AffineGame[
             games=JaxBroadcastTuple(members), weights=self.weights, bias=self.bias
         )
 
-    @castmethod
+    @castmethod(KAdditiveGame)
     def _as_kadditive(self) -> KAdditiveGame[P, V]:
         """Refine this affine game when every component is k-additive."""
         members = _require_refinable_children(self, KAdditiveGame)
@@ -508,7 +507,7 @@ class _KAdditiveAffineGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     AffineGame[P, V, GameT],
-    KAdditiveGame[P, V, "AffineGame[P, V, GameT]"],
+    KAdditiveGame[P, V],
 ):
     """Private k-additive refinement of ``AffineGame`` with all k-additive components."""
 
@@ -592,7 +591,7 @@ class _AdditiveAffineGame[
     GameT: AdditiveGame[Any, Any] = AdditiveGame[P, Any],
 ](
     _KAdditiveAffineGame[P, V, GameT],
-    AdditiveGame[P, V, "AffineGame[P, V, GameT]"],
+    AdditiveGame[P, V],
 ):
     """Private additive refinement of ``AffineGame`` sharing k-additive affine mechanics."""
 
@@ -655,7 +654,7 @@ class ProductGame[
             result = jf.jax_multiply(result, value)
         return cast("Shaped[V, '...']", result)
 
-    @castmethod
+    @castmethod(KAdditiveGame)
     def _as_kadditive(self) -> KAdditiveGame[P, V]:
         """Refine this product when every component is k-additive."""
         members = _require_refinable_children(self, KAdditiveGame)
@@ -670,7 +669,7 @@ class _KAdditiveProductGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     ProductGame[P, V, GameT],
-    KAdditiveGame[P, V, "ProductGame[P, V, GameT]"],
+    KAdditiveGame[P, V],
 ):
     """Private k-additive refinement of ``ProductGame`` with capped sum of bounds."""
 

@@ -1,6 +1,6 @@
 """K-additive games stored as coefficients on interaction sets of a game basis."""
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, cast, override
@@ -27,10 +27,9 @@ class BasisGame[
     V: JaxLike[Any],
     OwnerT: "BasisGame[Any, Any, Any]" = "BasisGame[P, V, Any]",
 ](
-    BoolFinitePlayerGame[P, JaxValue, OwnerT],
-    KAdditiveGame[P, JaxValue, OwnerT],
+    BoolFinitePlayerGame[P, JaxValue],
+    KAdditiveGame[P, JaxValue],
     JaxAxisProtected[OwnerT, Any, _FiniteGame[P]],
-    ABC,
 ):
     """A batch of k-additive games stored as basis coefficients on interaction sets.
 

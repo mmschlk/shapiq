@@ -100,7 +100,7 @@ def _derivative(
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class DiscreteDerivative[P, V: JaxLike[Any]](
-    BoolFinitePlayerGame[P, JaxValue, "DiscreteDerivative[P, V]"],
+    BoolFinitePlayerGame[P, JaxValue],
     JaxAxisProtected["DiscreteDerivative[P, V]", Any, _FiniteGame[P]],
 ):
     """The discrete derivative S ↦ Δ_T v(S) of a game with respect to interactions T.

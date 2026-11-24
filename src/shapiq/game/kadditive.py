@@ -1,7 +1,7 @@
 """Nominal k-additive and additive interfaces for finite cooperative games."""
 
 import math
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from itertools import combinations
 from typing import Any, Literal, cast, overload, override
 
@@ -40,11 +40,7 @@ def _order_interactions(
     return jnp.asarray(rows)
 
 
-class KAdditiveGame[
-    P,
-    V: JaxValue = JaxValue,
-    OwnerT: "FinitePlayerGame[Any, Any, Any]" = Any,
-](FinitePlayerGame[P, V, OwnerT], ABC):
+class KAdditiveGame[P, V: JaxValue = JaxValue](FinitePlayerGame[P, V]):
     """Nominal interface for k-additive finite cooperative games.
 
     All Möbius coefficients above ``additivity`` vanish. The bound is
@@ -153,11 +149,7 @@ class KAdditiveGame[
         return cast("Shaped[V, '...']", jf.jax_moveaxis(coeffs, 0, -1))
 
 
-class AdditiveGame[
-    P,
-    V: JaxValue = JaxValue,
-    OwnerT: "FinitePlayerGame[Any, Any, Any]" = Any,
-](KAdditiveGame[P, V, OwnerT], ABC):
+class AdditiveGame[P, V: JaxValue = JaxValue](KAdditiveGame[P, V]):
     """Nominal interface for 1-additive finite games, allowing a nonzero empty value.
 
     Coalition values satisfy

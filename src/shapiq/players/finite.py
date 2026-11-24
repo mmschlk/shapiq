@@ -291,9 +291,7 @@ def _is_valid_coalition(
 
 @typechecked
 @dataclass(slots=True, init=False, frozen=True)
-class FinitePlayers[P](
-    Players[FiniteCoalition, "FinitePlayers[P]"], JaxAxisProtected["FinitePlayers[P]"]
-):
+class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected["FinitePlayers[P]"]):
     """A batch of equally sized finite player sets.
 
     ``ids`` has shape ``(*batch, n_players)`` and is sorted in ascending order

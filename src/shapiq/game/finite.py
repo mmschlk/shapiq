@@ -1,6 +1,6 @@
 """Games with boolean and packed finite-coalition evaluation hooks."""
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, override
 
@@ -26,12 +26,10 @@ if TYPE_CHECKING:
 
     from .arithmetic import AffineGame, ArithmeticGame
 
-type _FiniteGame[P] = FinitePlayerGame[P, Value]
+type _FiniteGame[P] = FinitePlayerGame[P, Value]  # noqa: PYI047 - imported by finite-game subclasses
 
 
-class FinitePlayerGame[P, V: Value, OwnerT: "FinitePlayerGame[Any, Any, Any]" = Any](
-    Game[FiniteCoalition, V, OwnerT, _FiniteGame[P]], ABC
-):
+class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
     """A game accepting boolean and little-endian packed finite coalitions.
 
     Implement both evaluation hooks for native support of both representations,
@@ -128,12 +126,16 @@ class FinitePlayerGame[P, V: Value, OwnerT: "FinitePlayerGame[Any, Any, Any]" = 
     @override
     def __pow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, JaxValue]":
         """Raise the game to the right operand pointwise."""
-        return cast("ArithmeticGame[P, JaxValue]", super().__pow__(other, modulo))
+        if modulo is not None:
+            return NotImplemented
+        return cast("ArithmeticGame[P, JaxValue]", super().__pow__(other))
 
     @override
     def __rpow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, JaxValue]":
         """Raise the left operand to the game pointwise."""
-        return cast("ArithmeticGame[P, JaxValue]", super().__rpow__(other, modulo))
+        if modulo is not None:
+            return NotImplemented
+        return cast("ArithmeticGame[P, JaxValue]", super().__rpow__(other))
 
     @classmethod
     def __jax_function__(
@@ -150,8 +152,10 @@ class FinitePlayerGame[P, V: Value, OwnerT: "FinitePlayerGame[Any, Any, Any]" = 
             result = _dispatch_game_arithmetic(func, args)
             if result is not NotImplemented:
                 return result
-        super_fn = super().__jax_function__
-        if super_fn.__func__ is JaxLikeImplementation.__jax_function__.__func__:  # type: ignore[attr-defined]
+        super_fn = getattr(super(), "__jax_function__", None)
+        if (
+            super_fn is None or super_fn.__func__ is JaxLikeImplementation.__jax_function__.__func__  # type: ignore[attr-defined]
+        ):
             return NotImplemented
         return super_fn(func, types, args, kwargs)
 
@@ -186,9 +190,7 @@ class FinitePlayerGame[P, V: Value, OwnerT: "FinitePlayerGame[Any, Any, Any]" = 
         """Evaluate packed membership, ignoring unused input padding bits."""
 
 
-class BoolFinitePlayerGame[P, V: Value, OwnerT: "BoolFinitePlayerGame[Any, Any, Any]" = Any](
-    FinitePlayerGame[P, V, OwnerT]
-):
+class BoolFinitePlayerGame[P, V: Value](FinitePlayerGame[P, V]):
     """A finite-player game with a native ``_eval_bool`` implementation.
 
     Packed input is unpacked automatically. Subclasses may also override
@@ -203,9 +205,7 @@ class BoolFinitePlayerGame[P, V: Value, OwnerT: "BoolFinitePlayerGame[Any, Any, 
         return self._eval_bool(unpack_bool_coalition(coalition, self.n_players))
 
 
-class PackedFinitePlayerGame[P, V: Value, OwnerT: "PackedFinitePlayerGame[Any, Any, Any]" = Any](
-    FinitePlayerGame[P, V, OwnerT]
-):
+class PackedFinitePlayerGame[P, V: Value](FinitePlayerGame[P, V]):
     """A finite-player game with a native ``_eval_packed`` implementation.
 
     Boolean input is packed automatically. Subclasses may also override

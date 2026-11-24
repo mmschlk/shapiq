@@ -268,7 +268,7 @@ class _ScalarDivGame[
         lhs, rhs = (self.constant, values[0]) if self.reciprocal else (values[0], self.constant)
         return cast("Shaped[V, '...']", jf.jax_true_divide(lhs, rhs))
 
-    @castmethod
+    @castmethod(AdditiveGame)
     def _as_additive(self) -> AdditiveGame[P, V]:
         """Refine division of an additive game by a nonzero divisor."""
         members = _require_refinable_div_children(self, AdditiveGame)
@@ -276,7 +276,7 @@ class _ScalarDivGame[
             games=JaxBroadcastTuple(members), constant=self.constant, known_nonzero=True
         )
 
-    @castmethod
+    @castmethod(KAdditiveGame)
     def _as_kadditive(self) -> KAdditiveGame[P, V]:
         """Refine division of a k-additive game by a nonzero divisor."""
         members = _require_refinable_div_children(self, KAdditiveGame)
@@ -293,7 +293,7 @@ class _KAdditiveDivGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     _ScalarDivGame[P, V, GameT],
-    KAdditiveGame[P, V, "_ScalarDivGame[P, V, GameT]"],
+    KAdditiveGame[P, V],
 ):
     """Private k-additive refinement of ``game / nonzero_constant``."""
 
@@ -349,7 +349,7 @@ class _AdditiveDivGame[
     GameT: AdditiveGame[Any, Any] = AdditiveGame[P, Any],
 ](
     _KAdditiveDivGame[P, V, GameT],
-    AdditiveGame[P, V, "_ScalarDivGame[P, V, GameT]"],
+    AdditiveGame[P, V],
 ):
     """Private additive refinement of ``game / nonzero_constant``."""
 
@@ -438,7 +438,7 @@ class _IntPowerGame[
     def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
         return cast("Shaped[V, '...']", jf.jax_power(values[0], self.exponent))
 
-    @castmethod
+    @castmethod(KAdditiveGame)
     def _as_kadditive(self) -> KAdditiveGame[P, V]:
         """Refine a k-additive game raised to a nonnegative integer power."""
         if self.exponent < 0:
@@ -456,7 +456,7 @@ class _KAdditivePowerGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     _IntPowerGame[P, V, GameT],
-    KAdditiveGame[P, V, "_IntPowerGame[P, V, GameT]"],
+    KAdditiveGame[P, V],
 ):
     """Private k-additive refinement of ``game ** m`` for nonnegative static integer ``m``."""
 

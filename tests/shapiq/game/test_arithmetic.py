@@ -2012,7 +2012,7 @@ def test_jit_allows_closed_over_concrete_equal_player_ids_and_rejects_mismatched
 def test_rewriting_wrappers_with_custom_zero_cost_caster_preserve_eval():
     @dataclass(frozen=True, slots=True, weakref_slot=True)
     class _CustomAdditiveTable[P](TableGame[P]):
-        @castmethod
+        @castmethod(AdditiveGame)
         def _as_additive(self) -> AdditiveGame[P, jax.Array]:
             contribs = self.values[..., 1:] - self.values[..., :1]
             return _additive_moebius(contribs, self.players)

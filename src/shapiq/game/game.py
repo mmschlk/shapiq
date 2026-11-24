@@ -1,21 +1,16 @@
 """Base game class for shapiq."""
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, TypeIs
 
 from jaxtyping import Shaped
-from ndlike.jax_like import JaxLikeImplementation
+from ndlike.jax_like import JaxLike
 
 from shapiq.players import Players
 from shapiq.value import NumericValue, Value
 
 
-class Game[
-    C,
-    V: Value,
-    OwnerT: "Game[Any, Any, Any, Any]" = Any,
-    OpResultT: "Game[Any, Any, Any, Any]" = OwnerT,
-](JaxLikeImplementation[OwnerT, Any, OpResultT], ABC):
+class Game[C, V: Value](JaxLike[Any]):
     """An abstract JAX-like batch of cooperative games.
 
     ``shape`` describes the game batch; a scalar game has shape ``()``. Indexing
@@ -31,9 +26,6 @@ class Game[
     The player sets declare the compatible coalition representations ``C`` and
     validate their admissibility. Subclasses provide the representation-specific
     JAX-like hooks, player sets, and evaluation.
-
-    ``OpResultT`` declares the result of the inherited ndlike arithmetic operators
-    independently of the type returned by coalition evaluation.
     """
 
     @property
