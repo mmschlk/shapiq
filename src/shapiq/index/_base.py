@@ -17,7 +17,7 @@ from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.game import Game
 from shapiq.game.discretederivative import subset_patterns
-from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
+from shapiq.game.moebius import AdditiveMoebiusGame, MoebiusGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
@@ -83,7 +83,7 @@ class LeastSquaresIndex[R: Game](IndexProtocol[R], Protocol):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class CardinalInteractionIndex(DiscreteDerivativeIndex[SetMoebiusGame[Any, Any, Any]]):
+class CardinalInteractionIndex(DiscreteDerivativeIndex[MoebiusGame[Any, Any, Any]]):
     """A batch of cardinal interaction indices, building an k-additive game on the Moebius Basis."""
 
     min_order: int = field(default=1, init=False)
@@ -96,9 +96,9 @@ class CardinalInteractionIndex(DiscreteDerivativeIndex[SetMoebiusGame[Any, Any, 
         values: Float[jax.Array, "*batch n_interactions"],
         interactions: Bool[jax.Array, "n_interactions n_players"],
         players: Shaped[FinitePlayers, "#*batch"],
-    ) -> SetMoebiusGame[Any, Any, Any]:
+    ) -> MoebiusGame[Any, Any, Any]:
         """Store the coefficients on their interaction sets, bounded by ``max_order``."""
-        return SetMoebiusGame(
+        return MoebiusGame(
             values=values, interactions=interactions, players=players, additivity=self.max_order
         )
 
@@ -227,7 +227,7 @@ class ShapleyInteractionIndex[OwnerT: JaxLike[Any] = "ShapleyInteractionIndex[An
 class ShapleyValueIndex(
     SemivalueIndex,
     ShapleyInteractionIndex["ShapleyValueIndex"],
-    LeastSquaresIndex[SetMoebiusGame[Any, Any, Any]],
+    LeastSquaresIndex[MoebiusGame[Any, Any, Any]],
 ):
     """The Shapley value: the Shapley interaction index restricted to the singletons."""
 

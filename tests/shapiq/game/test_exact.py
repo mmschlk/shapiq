@@ -9,7 +9,7 @@ import pytest
 from ndlike.jax_functions import jax_broadcast_to
 
 from shapiq.game.exact import ExactComputer
-from shapiq.game.moebius import AdditiveMoebiusGame, SetMoebiusGame
+from shapiq.game.moebius import MoebiusGame
 from shapiq.game.table import TableGame
 from shapiq.index import (
     AlphaBetaIndex,
@@ -83,7 +83,7 @@ def test_exact_matches_the_index_definition(index, weight, index_shape):
     sets = [tuple(int(i) for i in jnp.flatnonzero(row)) for row in index.interactions(N_PLAYERS)]
     expected = jnp.array([_brute_force(table.tolist(), weight, sets) for table in TABLES])
 
-    assert isinstance(result, AdditiveMoebiusGame | SetMoebiusGame)
+    assert isinstance(result, MoebiusGame)
     assert result.shape == jnp.broadcast_shapes((2,), index_shape)
     assert jnp.allclose(result.values, expected, atol=1e-5)
 

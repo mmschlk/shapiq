@@ -689,3 +689,82 @@ def test_validation_supports_jit_and_player_pytrees(metadata, packed):
     assert restored.n_players == 2
     assert restored.latent_n_players == 3
     assert bool(jnp.array_equal(restored.ids, players.ids))
+
+
+@pytest.mark.parametrize("batch_shape", [(), (2,), (2, 3), (0, 2)])
+@pytest.mark.parametrize("n_players", [0, 1, 4])
+def test_empty_and_full_coalitions_match_players_shape(batch_shape, n_players):
+    ids = jnp.broadcast_to(jnp.arange(n_players), (*batch_shape, n_players))
+    players = FinitePlayers(ids)
+    empty = players.empty_coalition()
+    full = players.full_coalition()
+    assert empty.shape == (*batch_shape, n_players)
+    assert full.shape == (*batch_shape, n_players)
+    assert empty.dtype == jnp.bool_
+    assert full.dtype == jnp.bool_
+    assert bool(jnp.all(~empty))
+    assert bool(jnp.all(full))
+    assert players.is_valid(empty)
+    assert players.is_valid(full)
+    # Works inside jax.jit.
+    assert bool(jnp.array_equal(jax.jit(lambda p: p.empty_coalition())(players), empty))
+    assert bool(jnp.array_equal(jax.jit(lambda p: p.full_coalition())(players), full))
+
+
+def test_is_compatible_checks_broadcast_ids_latent_space_and_catalog_identity():
+    catalog = LatentPlayers(["a", "b", "c", "d"])
+    scalar = FinitePlayers(jnp.array([0, 2]), players=catalog)
+    broadcasted = FinitePlayers(jnp.array([[0, 2], [0, 2]]), players=catalog)
+    no_meta_a = FinitePlayers(jnp.array([0, 2]), latent_n_players=4)
+    no_meta_b = FinitePlayers(jnp.array([[0, 2], [0, 2]]), latent_n_players=4)
+
+    assert scalar.is_compatible(scalar)
+    assert scalar.is_compatible(broadcasted)
+    assert broadcasted.is_compatible(scalar)
+    assert no_meta_a.is_compatible(no_meta_b)
+
+    # Mismatched local IDs, player count, latent size, catalog identity, batch shape, or type.
+    assert not scalar.is_compatible(FinitePlayers(jnp.array([0, 3]), players=catalog))
+    assert not scalar.is_compatible(FinitePlayers(jnp.array([0]), players=catalog))
+    assert not no_meta_a.is_compatible(FinitePlayers(jnp.array([0, 2]), latent_n_players=5))
+    assert not scalar.is_compatible(FinitePlayers(jnp.array([0, 2]), players=["a", "b", "c", "d"]))
+    assert not scalar.is_compatible(no_meta_a)
+    assert not broadcasted.is_compatible(
+        FinitePlayers(jnp.zeros((3, 2), dtype=int), players=catalog)
+    )
+    assert not scalar.is_compatible(object())
+
+    # Under JIT: identical object and closed-over concrete IDs succeed;
+    # distinct traced ID arrays (either or both arguments) reject Python bool check.
+    other_diff = FinitePlayers(jnp.array([0, 3]), players=catalog)
+    assert bool(jax.jit(lambda p: p.is_compatible(p))(scalar))
+    assert bool(jax.jit(lambda: scalar.is_compatible(broadcasted))())
+    assert not bool(jax.jit(lambda: scalar.is_compatible(other_diff))())
+    with pytest.raises(TypeError, match="traced player IDs"):
+        jax.jit(lambda a, b: a.is_compatible(b))(scalar, broadcasted)
+    with pytest.raises(TypeError, match="traced player IDs"):
+        jax.jit(scalar.is_compatible)(broadcasted)
+
+    # JIT shaping on already-constructed FinitePlayers succeeds without value checks.
+    sliced = jax.jit(lambda p: p[1])(broadcasted)
+    assert sliced.shape == ()
+    assert sliced.players is catalog
+    assert bool(jnp.array_equal(sliced.ids, jnp.array([0, 2])))
+    reshaped = jax.jit(lambda p: p.reshape(1, 2))(broadcasted)
+    assert reshaped.shape == (1, 2)
+    assert reshaped.players is catalog
+
+
+def test_public_construction_and_updates_reject_traced_ids_under_jit():
+    # Public construction must not silently accept out-of-range traced IDs when latent count is given.
+    with pytest.raises(TypeError):
+        jax.jit(lambda ids: FinitePlayers(ids, latent_n_players=4))(jnp.array([-1, 5]))
+    with pytest.raises(TypeError):
+        jax.jit(lambda ids: FinitePlayers(ids, latent_n_players=4))(jnp.array([0, 2]))
+
+    # replace() and .at[...].set(...) also remain strictly validated under JIT.
+    valid = FinitePlayers(jnp.array([[0, 2], [1, 3]]), latent_n_players=4)
+    with pytest.raises(TypeError):
+        jax.jit(lambda p, new_ids: replace(p, ids=new_ids))(valid, jnp.array([[0, 9], [1, 2]]))
+    with pytest.raises(TypeError):
+        jax.jit(lambda p, row: p.at[0].set(row))(valid, jnp.array([-1, 9]))

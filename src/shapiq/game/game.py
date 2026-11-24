@@ -10,7 +10,7 @@ from shapiq.players import Players
 from shapiq.value import NumericValue, Value
 
 
-class Game[C, V: Value](JaxLikeImplementation[Any], ABC):
+class Game[C, V: Value, OpResultT = Any](JaxLikeImplementation[Any, Any, OpResultT], ABC):
     """An abstract JAX-like batch of cooperative games.
 
     ``shape`` describes the game batch; a scalar game has shape ``()``. Indexing
@@ -26,6 +26,9 @@ class Game[C, V: Value](JaxLikeImplementation[Any], ABC):
     The player sets declare the compatible coalition representations ``C`` and
     validate their admissibility. Subclasses provide the representation-specific
     JAX-like hooks, player sets, and evaluation.
+
+    ``OpResultT`` declares the result of the inherited ndlike arithmetic operators
+    independently of the type returned by coalition evaluation.
     """
 
     @property

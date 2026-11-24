@@ -47,11 +47,11 @@ A function producing a **Game** or **Partial Game**, potentially changing player
 _Avoid_: explainer as a separate core object
 
 **Game Family**:
-A semantic or representation-based category of games. Mathematical capability protocols describe semantic guarantees; concrete game types specify storage and available operations. A parameterized family with missing inputs is a **Partial Game**.
+A semantic or representation-based category of games. Storage-independent capability interfaces describe semantic guarantees; concrete game types specify storage and available operations. A parameterized family with missing inputs is a **Partial Game**.
 _Avoid_: assuming that mathematical capability determines memory layout
 
 **K-Additivity**:
-For a finite game with suitable additive values, the guarantee that all Möbius coefficients above order `k` vanish. The `KAdditive` capability declares a nonnegative upper bound through `additivity`; the bound need not be tight. An empty-coalition coefficient is allowed.
+For a finite game with suitable additive values, the guarantee that all Möbius coefficients above order `k` vanish. The `KAdditiveGame` interface declares a nonnegative upper bound through `additivity` and exposes Möbius coefficients through `coefficients`; the bound need not be tight. An empty-coalition coefficient is allowed.
 _Avoid_: maximum coalition size, storage layout
 
 **Möbius Coefficient**:
@@ -63,7 +63,7 @@ A finite **Game** whose coalition value is its empty-coalition value plus the su
 _Avoid_: singleton evaluations as a synonym for contributions when the empty-coalition value is nonzero
 
 **Additive Game**:
-A **1-Additive Game**, allowing a nonzero empty-coalition value. This project's usage includes a constant offset (a modular set function); zero-empty is a separate property.
+A **1-Additive Game** (`AdditiveGame`), allowing a nonzero empty-coalition value and exposing per-player singleton Möbius coefficients through `contributions`. This project's usage includes a constant offset (a modular set function); zero-empty is a separate property.
 _Avoid_: assuming additivity implies zero empty value, assuming every additive game is a Shapley game of a particular source
 
 **Shapley Game**:

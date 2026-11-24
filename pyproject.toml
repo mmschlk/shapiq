@@ -17,8 +17,8 @@ dependencies = [
     # plotting
     "matplotlib",
     "colour",
-    "flextype>=0.3.0",
-    "ndlike>=0.5.0",
+    "flextype>=0.4.1",
+    "ndlike>=0.7.0",
 ]
 authors = [
     {name = "Maximilian Muschalik", email = "Maximilian.Muschalik@lmu.de"},
@@ -267,9 +267,9 @@ test-typeguard = [
     "typeguard>=2.13.3,<3", # jaxtyping's supported typeguard series
 ]
 lint = [
-    "ruff>=0.17.5",       # for linting
+    "ruff>=0.17.6",       # for linting
     "prek>=0.4.3",        # for running the linters as pre-commit hooks
-    "ty>=0.0.104",         # for type checking
+    "ty>=0.0.107",         # for type checking
 ]
 docs = [
     "sphinx>=9.1.0",            # documentation generator

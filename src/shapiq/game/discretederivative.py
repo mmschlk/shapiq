@@ -13,7 +13,7 @@ from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.coalition.coalition import unpack_bool_coalition
-from shapiq.game import BoolFinitePlayerGame, FinitePlayerGame
+from shapiq.game.finite import BoolFinitePlayerGame, FinitePlayerGame, _FiniteGameOpResult
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 from shapiq.value.value import JaxValue
@@ -100,7 +100,8 @@ def _derivative(
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class DiscreteDerivative[P, V: JaxLike[Any]](
-    BoolFinitePlayerGame[P, JaxValue], JaxAxisProtected["DiscreteDerivative[P, V]"]
+    BoolFinitePlayerGame[P, JaxValue],
+    JaxAxisProtected["DiscreteDerivative[P, V]", Any, _FiniteGameOpResult[P]],
 ):
     """The discrete derivative S ↦ Δ_T v(S) of a game with respect to interactions T.
 

@@ -1,12 +1,14 @@
 """Games with boolean and packed finite-coalition evaluation hooks."""
 
-from abc import abstractmethod
-from typing import override
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, override
 
 import jax
 import jax.numpy as jnp
 from beartype.door import is_bearable
 from jaxtyping import Bool, Shaped, UInt8
+from ndlike.jax_like import JaxLikeImplementation
 
 from shapiq.coalition import FiniteCoalition
 from shapiq.coalition.coalition import (
@@ -19,8 +21,15 @@ from shapiq.value import Value
 
 from .game import Game
 
+if TYPE_CHECKING:
+    from shapiq.value.value import JaxValue
 
-class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
+    from .arithmetic import AffineGame, ArithmeticGame
+
+type _FiniteGameOpResult[P] = FinitePlayerGame[P, Value]
+
+
+class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V, _FiniteGameOpResult[P]], ABC):
     """A game accepting boolean and little-endian packed finite coalitions.
 
     Implement both evaluation hooks for native support of both representations,
@@ -34,6 +43,9 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
     predicate and is not called during evaluation.
     """
 
+    # Defer NumPy ufuncs (e.g., ``np.array(1.0) + game``) to game reflected operators.
+    __array_ufunc__: ClassVar[None] = None
+
     @property
     @abstractmethod
     @override
@@ -44,6 +56,102 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
     def n_players(self) -> int:
         """Return the number of players in each game, which is constant across the batch."""
         return self.players.n_players
+
+    def _value_spec(self) -> jax.ShapeDtypeStruct:
+        """Return lazy scalar abstract dtype metadata without evaluating the game.
+
+        Defaults conservatively to ``weak_type=False`` because unknown custom
+        implementations may not preserve JAX weak typing across evaluation.
+        """
+        return jax.ShapeDtypeStruct((), jnp.dtype(self.dtype), weak_type=False)
+
+    def empty_value(self) -> Shaped[V, "..."]:
+        """Evaluate the game on the empty coalition for every game in the batch."""
+        return self.eval(self.players.empty_coalition())
+
+    def full_value(self) -> Shaped[V, "..."]:
+        """Evaluate the game on the full coalition for every game in the batch."""
+        return self.eval(self.players.full_coalition())
+
+    @override
+    def __pos__(self) -> Self:
+        """Return this game."""
+        return self
+
+    @override
+    def __neg__(self) -> "AffineGame[P, JaxValue]":
+        """Negate the game pointwise."""
+        return cast("AffineGame[P, JaxValue]", super().__neg__())
+
+    @override
+    def __add__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+        """Add the right operand pointwise."""
+        return cast("AffineGame[P, JaxValue]", super().__add__(other))
+
+    @override
+    def __radd__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+        """Add the game to the left operand pointwise."""
+        return cast("AffineGame[P, JaxValue]", super().__radd__(other))
+
+    @override
+    def __sub__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+        """Subtract the right operand pointwise."""
+        return cast("AffineGame[P, JaxValue]", super().__sub__(other))
+
+    @override
+    def __rsub__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+        """Subtract the game from the left operand pointwise."""
+        return cast("AffineGame[P, JaxValue]", super().__rsub__(other))
+
+    @override
+    def __mul__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+        """Multiply the operands pointwise."""
+        return cast("ArithmeticGame[P, JaxValue]", super().__mul__(other))
+
+    @override
+    def __rmul__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+        """Multiply the left operand by the game pointwise."""
+        return cast("ArithmeticGame[P, JaxValue]", super().__rmul__(other))
+
+    @override
+    def __truediv__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+        """Divide by the right operand pointwise."""
+        return cast("ArithmeticGame[P, JaxValue]", super().__truediv__(other))
+
+    @override
+    def __rtruediv__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+        """Divide the left operand by the game pointwise."""
+        return cast("ArithmeticGame[P, JaxValue]", super().__rtruediv__(other))
+
+    @override
+    def __pow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, JaxValue]":
+        """Raise the game to the right operand pointwise."""
+        return cast("ArithmeticGame[P, JaxValue]", super().__pow__(other, modulo))
+
+    @override
+    def __rpow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, JaxValue]":
+        """Raise the left operand to the game pointwise."""
+        return cast("ArithmeticGame[P, JaxValue]", super().__rpow__(other, modulo))
+
+    @classmethod
+    def __jax_function__(
+        cls,
+        func: Callable[..., Any],
+        types: tuple[type[Any], ...],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+    ) -> Any:  # noqa: ANN401 - ndlike dispatch protocol returns arbitrary result or NotImplemented
+        """Route numeric arithmetic through lazy game wrappers; delegate other ops to super."""
+        if not kwargs:
+            from ._arithmetic_ops import _dispatch_game_arithmetic  # noqa: PLC0415
+
+            result = _dispatch_game_arithmetic(func, args)
+            if result is not NotImplemented:
+                return result
+        super_fn = super().__jax_function__
+        if super_fn.__func__ is JaxLikeImplementation.__jax_function__.__func__:  # type: ignore[attr-defined]
+            return NotImplemented
+        return super_fn(func, types, args, kwargs)
 
     @typechecked
     @override

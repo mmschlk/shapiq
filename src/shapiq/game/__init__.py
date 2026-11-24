@@ -1,8 +1,9 @@
 """Definitions of games and related data structures."""
 
+from .arithmetic import AffineGame, ArithmeticGame, MappedGame, ProductGame
 from .finite import BoolFinitePlayerGame, FinitePlayerGame, PackedFinitePlayerGame
 from .game import Game
-from .protocols import Additive, KAdditive
+from .kadditive import AdditiveGame, KAdditiveGame
 from .table import TableGame
 
 __all__ = [
@@ -10,7 +11,11 @@ __all__ = [
     "FinitePlayerGame",
     "BoolFinitePlayerGame",
     "PackedFinitePlayerGame",
+    "KAdditiveGame",
+    "AdditiveGame",
+    "ArithmeticGame",
+    "AffineGame",
+    "MappedGame",
+    "ProductGame",
     "TableGame",
-    "KAdditive",
-    "Additive",
 ]

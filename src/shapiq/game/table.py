@@ -1,7 +1,7 @@
 """Dense tables of values for every coalition of a finite game."""
 
 from dataclasses import dataclass, field
-from typing import ClassVar, override
+from typing import Any, ClassVar, override
 
 import jax
 import jax.numpy as jnp
@@ -12,13 +12,14 @@ from ndlike.protected_axis.jax import JaxAxisProtected
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
-from .finite import PackedFinitePlayerGame
+from .finite import PackedFinitePlayerGame, _FiniteGameOpResult
 
 
 @typechecked
 @dataclass(slots=True, frozen=True, weakref_slot=True)
 class TableGame[P](
-    PackedFinitePlayerGame[P, Float[jax.Array, "..."]], JaxAxisProtected["TableGame[P]"]
+    PackedFinitePlayerGame[P, Float[jax.Array, "..."]],
+    JaxAxisProtected["TableGame[P]", Any, _FiniteGameOpResult[P]],
 ):
     """A batch of finite games stored as dense coalition-value tables.
 
@@ -47,6 +48,17 @@ class TableGame[P](
     players: Shaped[FinitePlayers[P], "#*batch"] = field()
     protected_axes: ClassVar[dict[str, int]] = {"values": 1, "players": 0}
     broadcasted_batch: ClassVar[set[str]] = {"players"}
+
+    @override
+    def _value_spec(self) -> jax.ShapeDtypeStruct:
+        """Return lazy dtype metadata preserving ``weak_type`` for unmodified table lookup."""
+        if (
+            type(self)._eval_packed is TableGame._eval_packed  # noqa: SLF001 - subclass override check
+            and type(self)._eval_bool is PackedFinitePlayerGame._eval_bool  # noqa: SLF001 - subclass override check
+            and isinstance(self.values, jax.Array)
+        ):
+            return jax.ShapeDtypeStruct((), self.values.dtype, weak_type=self.values.weak_type)
+        return super(TableGame, self)._value_spec()
 
     @jax.jit
     @typechecked
