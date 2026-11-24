@@ -32,15 +32,7 @@ class ExactComputer(JaxAxisProtected["ExactComputer"]):
     @classmethod
     def from_game(cls, game: Shaped[FinitePlayerGame, "#*batch"]) -> Self:
         """Evaluate ``game`` on every coalition and cache the values."""
-        if isinstance(game, TableGame):
-            return cls(table=game)
-        n_players = game.n_players
-        # subset_patterns lists coalitions in TableGame order: row i has the bits of i.
-        coalitions = subset_patterns(n_players).reshape(
-            2**n_players, *(1,) * game.ndim, n_players
-        )  # (2**n_players, *ones, n_players)
-        values = jnp.moveaxis(game(coalitions), 0, -1)  # (*batch, 2**n_players)
-        return cls(table=TableGame(values, game.players))
+        return cls(table=TableGame.from_game(game))
 
     @typechecked
     def __call__[R: Game](self, index: Shaped[DiscreteDerivativeIndex[R], "#*batch"]) -> R:

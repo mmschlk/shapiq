@@ -10,7 +10,12 @@ from shapiq.players import Players
 from shapiq.value import NumericValue, Value
 
 
-class Game[C, V: Value, OpResultT = Any](JaxLikeImplementation[Any, Any, OpResultT], ABC):
+class Game[
+    C,
+    V: Value,
+    OwnerT: "Game[Any, Any, Any, Any]" = Any,
+    OpResultT: "Game[Any, Any, Any, Any]" = OwnerT,
+](JaxLikeImplementation[OwnerT, Any, OpResultT], ABC):
     """An abstract JAX-like batch of cooperative games.
 
     ``shape`` describes the game batch; a scalar game has shape ``()``. Indexing

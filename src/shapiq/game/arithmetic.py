@@ -2,8 +2,8 @@
 
 import math
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from dataclasses import dataclass, field, fields
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, override
 
 import jax
@@ -12,19 +12,18 @@ import numpy as np
 from flextype import CastUnavailable, autocast, castmethod, try_cast
 from jaxtyping import Bool, Shaped, UInt8
 from ndlike import jax_functions as jf
-from ndlike.jax_like import JaxLike
-from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected, JaxProtectedValue
+from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 from ndlike.tuple.jax import JaxBroadcastTuple
 
 from shapiq.coalition import FiniteCoalition
 from shapiq.players import FinitePlayers
-from shapiq.players.finite import _TRUSTED_GATHER, _TRUSTED_SHAPE_FUNCS
 from shapiq.typing import typechecked
 from shapiq.value.value import JaxValue
 
-from .finite import FinitePlayerGame, _FiniteGameOpResult
+from .finite import FinitePlayerGame, _FiniteGame
 from .kadditive import AdditiveGame, KAdditiveGame
 from .moebius import _moebius_coefficients_by_eval, _moebius_zero_like
+from .table import TableGame
 
 
 def _zero_scalar() -> jax.Array:
@@ -64,10 +63,6 @@ def _abstract_value_spec(value: object) -> jax.ShapeDtypeStruct | None:
         return jax.ShapeDtypeStruct((), value.dtype, weak_type=value.weak_type)
     if isinstance(value, FinitePlayerGame):
         return value._value_spec()  # noqa: SLF001 - internal lazy abstract dtype hook
-    if isinstance(value, JaxAxisProtected):
-        rep = value._jax_protected_value()  # noqa: SLF001 - representative protected value leaf
-        if rep is not value and getattr(rep, "dtype", None) == getattr(value, "dtype", None):
-            return _abstract_value_spec(rep)
     if isinstance(value, (jnp.dtype, np.dtype, type)):
         try:
             return jax.ShapeDtypeStruct((), jnp.dtype(cast("Any", value)), weak_type=False)
@@ -240,8 +235,12 @@ class ArithmeticGame[
     P,
     V: JaxValue = JaxValue,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
-    OwnerT: JaxLike[Any] = "ArithmeticGame[P, V, GameT, Any]",
-](FinitePlayerGame[P, V], JaxAxisProtected[OwnerT, Any, _FiniteGameOpResult[P]], ABC):
+    OwnerT: "ArithmeticGame[Any, Any, Any, Any]" = "ArithmeticGame[P, V, GameT, Any]",
+](
+    FinitePlayerGame[P, V, OwnerT],
+    JaxAxisProtected[OwnerT, Any, _FiniteGame[P]],
+    ABC,
+):
     """Abstract lazy arithmetic game combining a nonempty tuple of finite games.
 
     ``games`` defines the logical batch shape via ``JaxBroadcastTuple`` and
@@ -284,34 +283,6 @@ class ArithmeticGame[
                 msg = "ArithmeticGame requires compatible player sets."
                 raise ValueError(msg)
 
-    @override
-    def _gather_protected_values(self, index: Any) -> Any:
-        """Allow trusted reconstruction during read-only batch indexing on validated games."""
-        token = _TRUSTED_GATHER.set(self)
-        try:
-            return super(ArithmeticGame, self)._gather_protected_values(index)
-        finally:
-            _TRUSTED_GATHER.reset(token)
-
-    @override
-    def with_protected_values(
-        self,
-        values: dict[str, JaxProtectedValue],
-        func: Any = None,
-    ) -> Any:
-        """Skip value-dependent ID checks only for pure shape/gather ops on validated games."""
-        if func in _TRUSTED_SHAPE_FUNCS or (func is None and _TRUSTED_GATHER.get() is self):
-            obj = object.__new__(type(self))
-            for field_info in fields(self):
-                object.__setattr__(
-                    obj,
-                    field_info.name,
-                    values.get(field_info.name, getattr(self, field_info.name)),
-                )
-            obj.validate()
-            return obj
-        return super(ArithmeticGame, self).with_protected_values(values, func)
-
     @property
     @override
     def players(self) -> FinitePlayers[P]:
@@ -348,6 +319,39 @@ class ArithmeticGame[
     ) -> Shaped[V, "..."]:
         """Forward packed coalitions lazily to component games without unpacking."""
         return self._eval_children(coalition)
+
+    @castmethod(cost=1.0)
+    def _as_table(self) -> TableGame[P]:
+        """Materialize directly on raw tables when every leaf is a ``TableGame``."""
+        n_coalitions = 2**self.n_players
+        child_tables: list[jax.Array] = []
+        for member in self.games.members:
+            if isinstance(member, TableGame):
+                table = member
+            elif isinstance(member, ArithmeticGame):
+                result = try_cast(member, TableGame, max_cost=1.0)
+                if result is None:
+                    msg = "ArithmeticGame fast TableGame cast requires TableGame leaves."
+                    raise CastUnavailable(msg)
+                table = result.value
+            else:
+                msg = "ArithmeticGame fast TableGame cast requires TableGame leaves."
+                raise CastUnavailable(msg)
+            # Align trailing batch rank with self.ndim while keeping the 2**n table axis at axis 0.
+            moved = jnp.moveaxis(table.values, -1, 0)
+            pad = self.ndim - table.ndim
+            if pad > 0:
+                moved = moved.reshape((n_coalitions, *(1,) * pad, *table.shape))
+            child_tables.append(moved)
+        computed = self._compute(tuple(child_tables))
+        if not isinstance(computed, jax.Array) or not jnp.issubdtype(computed.dtype, jnp.floating):
+            msg = "TableGame requires floating jax.Array values."
+            raise CastUnavailable(msg)
+        values = jnp.moveaxis(computed, 0, -1)
+        expected_shape = (*self.shape, n_coalitions)
+        if values.shape != expected_shape:
+            values = jnp.broadcast_to(values, expected_shape)
+        return TableGame(values, self.players)
 
 
 def _can_flatten_affine(outer_dtype: jnp.dtype, inner: "AffineGame[Any, Any, Any]") -> bool:
@@ -504,7 +508,7 @@ class _KAdditiveAffineGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     AffineGame[P, V, GameT],
-    KAdditiveGame[P, V],
+    KAdditiveGame[P, V, "AffineGame[P, V, GameT]"],
 ):
     """Private k-additive refinement of ``AffineGame`` with all k-additive components."""
 
@@ -588,7 +592,7 @@ class _AdditiveAffineGame[
     GameT: AdditiveGame[Any, Any] = AdditiveGame[P, Any],
 ](
     _KAdditiveAffineGame[P, V, GameT],
-    AdditiveGame[P, V],
+    AdditiveGame[P, V, "AffineGame[P, V, GameT]"],
 ):
     """Private additive refinement of ``AffineGame`` sharing k-additive affine mechanics."""
 
@@ -666,7 +670,7 @@ class _KAdditiveProductGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     ProductGame[P, V, GameT],
-    KAdditiveGame[P, V],
+    KAdditiveGame[P, V, "ProductGame[P, V, GameT]"],
 ):
     """Private k-additive refinement of ``ProductGame`` with capped sum of bounds."""
 
@@ -776,17 +780,17 @@ class MappedGame[
         object.__setattr__(self, "output_dtype", resolved)
         object.__setattr__(self, "_output_weak_type", weak_type)
 
+    @classmethod
     @override
-    def with_protected_values(
-        self,
-        values: dict[str, JaxProtectedValue],
-        func: Any = None,
-    ) -> Any:
-        """Preserve inferred ``_output_weak_type`` across non-shape reconstructions such as stack."""
-        result = super(MappedGame, self).with_protected_values(values, func)
-        if isinstance(result, MappedGame) and result.output_dtype == self.output_dtype:
-            object.__setattr__(result, "_output_weak_type", self._output_weak_type)
-        return result
+    def _combine_sequence_metadata(
+        cls,
+        items: Sequence["MappedGame[Any, Any, Any]"],
+        *,
+        func: Callable[..., Any] | None,
+    ) -> dict[str, Any]:
+        """Combine ``_output_weak_type`` conservatively across stacked/concatenated mapped games."""
+        del func
+        return {"_output_weak_type": all(item._output_weak_type for item in items)}  # noqa: SLF001 - own private metadata field
 
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:

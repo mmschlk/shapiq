@@ -124,9 +124,11 @@ def _moebius_contributions(
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class MoebiusGame[P, V: JaxLike[Any], OwnerT: JaxLike[Any] = "MoebiusGame[P, V, Any]"](
-    BasisGame[P, V, OwnerT]
-):
+class MoebiusGame[
+    P,
+    V: JaxLike[Any],
+    OwnerT: "MoebiusGame[Any, Any, Any]" = "MoebiusGame[P, V, Any]",
+](BasisGame[P, V, OwnerT]):
     """A batch of k-additive games with Möbius coefficients on explicitly stored sets.
 
     ``values[..., t]`` is the Möbius coefficient m(T_t) of ``interactions[..., t, :]``, and
@@ -188,7 +190,7 @@ class MoebiusGame[P, V: JaxLike[Any], OwnerT: JaxLike[Any] = "MoebiusGame[P, V, 
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class AdditiveMoebiusGame[P, V: JaxLike[Any]](
     MoebiusGame[P, V, "AdditiveMoebiusGame[P, V]"],
-    AdditiveGame[P, JaxValue],
+    AdditiveGame[P, JaxValue, "AdditiveMoebiusGame[P, V]"],
 ):
     """A batch of 1-additive (or 0-additive) games stored as Möbius coefficients on sets.
 

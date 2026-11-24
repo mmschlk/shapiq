@@ -26,10 +26,12 @@ if TYPE_CHECKING:
 
     from .arithmetic import AffineGame, ArithmeticGame
 
-type _FiniteGameOpResult[P] = FinitePlayerGame[P, Value]
+type _FiniteGame[P] = FinitePlayerGame[P, Value]
 
 
-class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V, _FiniteGameOpResult[P]], ABC):
+class FinitePlayerGame[P, V: Value, OwnerT: "FinitePlayerGame[Any, Any, Any]" = Any](
+    Game[FiniteCoalition, V, OwnerT, _FiniteGame[P]], ABC
+):
     """A game accepting boolean and little-endian packed finite coalitions.
 
     Implement both evaluation hooks for native support of both representations,
@@ -184,7 +186,9 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V, _FiniteGameOpResult
         """Evaluate packed membership, ignoring unused input padding bits."""
 
 
-class BoolFinitePlayerGame[P, V: Value](FinitePlayerGame[P, V]):
+class BoolFinitePlayerGame[P, V: Value, OwnerT: "BoolFinitePlayerGame[Any, Any, Any]" = Any](
+    FinitePlayerGame[P, V, OwnerT]
+):
     """A finite-player game with a native ``_eval_bool`` implementation.
 
     Packed input is unpacked automatically. Subclasses may also override
@@ -199,7 +203,9 @@ class BoolFinitePlayerGame[P, V: Value](FinitePlayerGame[P, V]):
         return self._eval_bool(unpack_bool_coalition(coalition, self.n_players))
 
 
-class PackedFinitePlayerGame[P, V: Value](FinitePlayerGame[P, V]):
+class PackedFinitePlayerGame[P, V: Value, OwnerT: "PackedFinitePlayerGame[Any, Any, Any]" = Any](
+    FinitePlayerGame[P, V, OwnerT]
+):
     """A finite-player game with a native ``_eval_packed`` implementation.
 
     Boolean input is packed automatically. Subclasses may also override

@@ -8,7 +8,7 @@ from typing import Any, TypeIs
 from ndlike.jax_like import JaxLikeImplementation
 
 
-class Players[C](JaxLikeImplementation[Any], ABC):
+class Players[C, OwnerT: "Players[Any, Any]" = Any](JaxLikeImplementation[OwnerT], ABC):
     """An abstract JAX-like batch whose elements are sets of players.
 
     ``shape`` describes the batch of player sets, excluding each set's internal

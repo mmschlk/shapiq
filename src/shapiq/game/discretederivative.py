@@ -10,10 +10,10 @@ from jax.core import Tracer
 from jaxtyping import Bool, Shaped, UInt8
 from ndlike.jax_functions import jax_multiply, jax_sum
 from ndlike.jax_like import JaxLike
-from ndlike.protected_axis.jax import JaxAxisProtected
+from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
 from shapiq.coalition.coalition import unpack_bool_coalition
-from shapiq.game.finite import BoolFinitePlayerGame, FinitePlayerGame, _FiniteGameOpResult
+from shapiq.game.finite import BoolFinitePlayerGame, FinitePlayerGame, _FiniteGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 from shapiq.value.value import JaxValue
@@ -100,8 +100,8 @@ def _derivative(
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class DiscreteDerivative[P, V: JaxLike[Any]](
-    BoolFinitePlayerGame[P, JaxValue],
-    JaxAxisProtected["DiscreteDerivative[P, V]", Any, _FiniteGameOpResult[P]],
+    BoolFinitePlayerGame[P, JaxValue, "DiscreteDerivative[P, V]"],
+    JaxAxisProtected["DiscreteDerivative[P, V]", Any, _FiniteGame[P]],
 ):
     """The discrete derivative S ↦ Δ_T v(S) of a game with respect to interactions T.
 
@@ -130,6 +130,18 @@ class DiscreteDerivative[P, V: JaxLike[Any]](
             interaction = unpack_bool_coalition(interaction, self.game.n_players)
         _check_order(interaction, self.order)
         object.__setattr__(self, "interaction", interaction)
+
+    @override
+    def _prepare_assignment_value(self, value: object, *, method: JaxAtMethod) -> object:
+        """Require matching derivative order on indexed replacement."""
+        del method
+        if isinstance(value, DiscreteDerivative) and value.order != self.order:
+            msg = (
+                f"Cannot assign DiscreteDerivative with order {value.order} "
+                f"into DiscreteDerivative with order {self.order}."
+            )
+            raise ValueError(msg)
+        return value
 
     @property
     @typechecked

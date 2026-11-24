@@ -1,19 +1,17 @@
 """Finite player sets with optional, shared player metadata."""
 
-from contextvars import ContextVar
 from dataclasses import dataclass, field
 from math import prod
-from typing import Any, ClassVar, Literal, Self, TypeIs, overload, override
+from typing import Any, ClassVar, Literal, TypeIs, overload, override
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.core import Tracer
 from jaxtyping import Bool, Int, UInt8
-from ndlike import jax_functions as jf
 from ndlike.array_like import NumpyLike
 from ndlike.jax_like import JaxLike
-from ndlike.protected_axis.jax import JaxAxisProtected, JaxProtectedValue
+from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
 from shapiq.coalition import FiniteCoalition
 from shapiq.coalition.coalition import (
@@ -291,25 +289,11 @@ def _is_valid_coalition(
     return True
 
 
-_TRUSTED_SHAPE_FUNCS = frozenset(
-    (
-        jf.jax_reshape,
-        jf.jax_transpose,
-        jf.jax_matrix_transpose,
-        jf.jax_swapaxes,
-        jf.jax_moveaxis,
-        jf.jax_squeeze,
-        jf.jax_expand_dims,
-        jf.jax_broadcast_to,
-        jf.jax_copy,
-    )
-)
-_TRUSTED_GATHER: ContextVar[object | None] = ContextVar("_TRUSTED_GATHER", default=None)
-
-
 @typechecked
 @dataclass(slots=True, init=False, frozen=True)
-class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected["FinitePlayers[P]"]):
+class FinitePlayers[P](
+    Players[FiniteCoalition, "FinitePlayers[P]"], JaxAxisProtected["FinitePlayers[P]"]
+):
     """A batch of equally sized finite player sets.
 
     ``ids`` has shape ``(*batch, n_players)`` and is sorted in ascending order
@@ -472,38 +456,21 @@ class FinitePlayers[P](Players[FiniteCoalition], JaxAxisProtected["FinitePlayers
             ids.shape[-1] if latent_n_players is None else latent_n_players,
         )
 
-    def _rebuild_trusted(self, ids: Int[jax.Array, "*batch n_players"]) -> Self:
-        """Rebuild an already-validated player batch after a shape-only or gather operation."""
-        obj = object.__new__(type(self))
-        object.__setattr__(obj, "ids", ids)
-        object.__setattr__(obj, "players", self.players)
-        object.__setattr__(obj, "n_players", self.n_players)
-        object.__setattr__(obj, "latent_n_players", self.latent_n_players)
-        return obj
-
     @override
-    def _gather_protected_values(self, index: Any) -> "FinitePlayers[P]":
-        """Allow trusted reconstruction during read-only batch indexing on validated players."""
-        token = _TRUSTED_GATHER.set(self)
-        try:
-            return super(FinitePlayers, self)._gather_protected_values(index)
-        finally:
-            _TRUSTED_GATHER.reset(token)
-
-    @override
-    def with_protected_values(
-        self,
-        values: dict[str, JaxProtectedValue],
-        func: Any = None,
-    ) -> Any:
-        """Skip value-dependent ID checks only for pure shape/gather ops on validated batches."""
-        if (
-            (func in _TRUSTED_SHAPE_FUNCS or (func is None and _TRUSTED_GATHER.get() is self))
-            and set(values) == {"ids"}
-            and isinstance(ids_val := values["ids"], jax.Array)
-        ):
-            return self._rebuild_trusted(ids_val)
-        return super(FinitePlayers, self).with_protected_values(values, func)
+    def _prepare_assignment_value(self, value: object, *, method: JaxAtMethod) -> object:
+        """Require matching latent player space and metadata catalog on indexed replacement."""
+        del method
+        if isinstance(value, FinitePlayers):
+            if value.players is not self.players:
+                msg = "Cannot assign FinitePlayers with a different metadata catalog."
+                raise ValueError(msg)
+            if value.latent_n_players != self.latent_n_players:
+                msg = (
+                    f"Cannot assign FinitePlayers with latent_n_players={value.latent_n_players} "
+                    f"into FinitePlayers with latent_n_players={self.latent_n_players}."
+                )
+                raise ValueError(msg)
+        return value
 
     @typechecked
     def remove(

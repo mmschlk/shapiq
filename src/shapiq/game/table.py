@@ -6,20 +6,26 @@ from typing import Any, ClassVar, override
 import jax
 import jax.numpy as jnp
 from beartype.door import is_bearable
+from flextype import (
+    CastUnavailable,
+    cast as flex_cast,
+    caster,
+)
 from jaxtyping import Float, Shaped, TypeCheckError, UInt8
-from ndlike.protected_axis.jax import JaxAxisProtected
+from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
-from .finite import PackedFinitePlayerGame, _FiniteGameOpResult
+from .discretederivative import subset_patterns
+from .finite import FinitePlayerGame, PackedFinitePlayerGame, _FiniteGame
 
 
 @typechecked
 @dataclass(slots=True, frozen=True, weakref_slot=True)
 class TableGame[P](
-    PackedFinitePlayerGame[P, Float[jax.Array, "..."]],
-    JaxAxisProtected["TableGame[P]", Any, _FiniteGameOpResult[P]],
+    PackedFinitePlayerGame[P, Float[jax.Array, "..."], "TableGame[P]"],
+    JaxAxisProtected["TableGame[P]", Any, _FiniteGame[P]],
 ):
     """A batch of finite games stored as dense coalition-value tables.
 
@@ -49,16 +55,26 @@ class TableGame[P](
     protected_axes: ClassVar[dict[str, int]] = {"values": 1, "players": 0}
     broadcasted_batch: ClassVar[set[str]] = {"players"}
 
+    @staticmethod
+    def from_game[P2](game: FinitePlayerGame[P2, Any]) -> "TableGame[P2]":
+        """Convert ``game`` to a ``TableGame`` via ``flextype.cast``."""
+        return flex_cast(game, TableGame)
+
+    @override
+    def _prepare_assignment_value(self, value: object, *, method: JaxAtMethod) -> object:
+        """Cast compatible finite-game replacements to ``TableGame`` before scattering."""
+        if (
+            method == "set"
+            and isinstance(value, FinitePlayerGame)
+            and not isinstance(value, TableGame)
+        ):
+            return TableGame.from_game(value)
+        return value
+
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:
-        """Return lazy dtype metadata preserving ``weak_type`` for unmodified table lookup."""
-        if (
-            type(self)._eval_packed is TableGame._eval_packed  # noqa: SLF001 - subclass override check
-            and type(self)._eval_bool is PackedFinitePlayerGame._eval_bool  # noqa: SLF001 - subclass override check
-            and isinstance(self.values, jax.Array)
-        ):
-            return jax.ShapeDtypeStruct((), self.values.dtype, weak_type=self.values.weak_type)
-        return super(TableGame, self)._value_spec()
+        """Return lazy dtype metadata preserving ``weak_type``."""
+        return jax.ShapeDtypeStruct((), self.values.dtype, weak_type=self.values.weak_type)
 
     @jax.jit
     @typechecked
@@ -88,3 +104,21 @@ class TableGame[P](
         table = jnp.broadcast_to(self.values, (*shape, self.values.shape[-1]))
         index = jnp.broadcast_to(index, shape)
         return jnp.take_along_axis(table, index[..., None], axis=-1)[..., 0]
+
+
+@caster(cost=10.0)
+def _finite_game_to_table[P](game: FinitePlayerGame[P, Any]) -> TableGame[P]:
+    """Evaluate ``game`` on every coalition to materialize a dense ``TableGame``."""
+    n_players = game.n_players
+    # subset_patterns lists coalitions in TableGame order: row i has the bits of i.
+    coalitions = subset_patterns(n_players).reshape(
+        2**n_players, *(1,) * game.ndim, n_players
+    )  # (2**n_players, *ones, n_players)
+    values = jnp.moveaxis(game(coalitions), 0, -1)  # (*batch, 2**n_players)
+    if not isinstance(values, jax.Array) or not jnp.issubdtype(values.dtype, jnp.floating):
+        msg = (
+            f"TableGame requires floating jax.Array values, got {type(values).__name__} "
+            f"(dtype={getattr(values, 'dtype', None)})."
+        )
+        raise CastUnavailable(msg)
+    return TableGame(values, game.players)

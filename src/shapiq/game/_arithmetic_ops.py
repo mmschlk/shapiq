@@ -1,7 +1,7 @@
 """Private operator dispatch and scalar division/power adapters for finite games."""
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, override
 
@@ -13,7 +13,7 @@ from jax.core import Tracer
 from jaxtyping import Bool, Shaped
 from ndlike import jax_functions as jf
 from ndlike.jax_like import JaxLike
-from ndlike.tuple._common import BroadcastTuple
+from ndlike.tuple import BroadcastTuple
 from ndlike.tuple.jax import JaxBroadcastTuple
 
 from shapiq.players import Players
@@ -251,6 +251,18 @@ class _ScalarDivGame[
         """Return exact JAX ``true_divide`` dtype without evaluating the child game."""
         return self._value_spec().dtype
 
+    @classmethod
+    @override
+    def _combine_sequence_metadata(
+        cls,
+        items: Sequence["_ScalarDivGame[Any, Any, Any]"],
+        *,
+        func: Callable[..., Any] | None,
+    ) -> dict[str, Any]:
+        """Combine ``known_nonzero`` conservatively across stacked/concatenated divisions."""
+        del func
+        return {"known_nonzero": all(item.known_nonzero for item in items)}
+
     @override
     def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
         lhs, rhs = (self.constant, values[0]) if self.reciprocal else (values[0], self.constant)
@@ -281,7 +293,7 @@ class _KAdditiveDivGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     _ScalarDivGame[P, V, GameT],
-    KAdditiveGame[P, V],
+    KAdditiveGame[P, V, "_ScalarDivGame[P, V, GameT]"],
 ):
     """Private k-additive refinement of ``game / nonzero_constant``."""
 
@@ -337,7 +349,7 @@ class _AdditiveDivGame[
     GameT: AdditiveGame[Any, Any] = AdditiveGame[P, Any],
 ](
     _KAdditiveDivGame[P, V, GameT],
-    AdditiveGame[P, V],
+    AdditiveGame[P, V, "_ScalarDivGame[P, V, GameT]"],
 ):
     """Private additive refinement of ``game / nonzero_constant``."""
 
@@ -444,7 +456,7 @@ class _KAdditivePowerGame[
     GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
 ](
     _IntPowerGame[P, V, GameT],
-    KAdditiveGame[P, V],
+    KAdditiveGame[P, V, "_IntPowerGame[P, V, GameT]"],
 ):
     """Private k-additive refinement of ``game ** m`` for nonnegative static integer ``m``."""
 

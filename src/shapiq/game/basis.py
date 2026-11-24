@@ -1,6 +1,7 @@
 """K-additive games stored as coefficients on interaction sets of a game basis."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, cast, override
 
@@ -10,9 +11,9 @@ from jax.core import Tracer
 from jaxtyping import Bool, Float, Shaped
 from ndlike.jax_functions import jax_multiply, jax_sum
 from ndlike.jax_like import JaxLike
-from ndlike.protected_axis.jax import JaxAxisProtected
+from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
-from shapiq.game.finite import BoolFinitePlayerGame, _FiniteGameOpResult
+from shapiq.game.finite import BoolFinitePlayerGame, _FiniteGame
 from shapiq.game.kadditive import KAdditiveGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
@@ -21,10 +22,14 @@ from shapiq.value.value import JaxValue
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class BasisGame[P, V: JaxLike[Any], OwnerT: JaxLike[Any] = "BasisGame[P, V, Any]"](
-    BoolFinitePlayerGame[P, JaxValue],
-    KAdditiveGame[P, JaxValue],
-    JaxAxisProtected[OwnerT, Any, _FiniteGameOpResult[P]],
+class BasisGame[
+    P,
+    V: JaxLike[Any],
+    OwnerT: "BasisGame[Any, Any, Any]" = "BasisGame[P, V, Any]",
+](
+    BoolFinitePlayerGame[P, JaxValue, OwnerT],
+    KAdditiveGame[P, JaxValue, OwnerT],
+    JaxAxisProtected[OwnerT, Any, _FiniteGame[P]],
     ABC,
 ):
     """A batch of k-additive games stored as basis coefficients on interaction sets.
@@ -68,6 +73,34 @@ class BasisGame[P, V: JaxLike[Any], OwnerT: JaxLike[Any] = "BasisGame[P, V, Any]
         if not isinstance(sizes, Tracer) and sizes.size and int(jnp.max(sizes)) > self.additivity:
             msg = "An interaction is larger than the declared additivity."
             raise ValueError(msg)
+
+    @override
+    def _prepare_assignment_value(self, value: object, *, method: JaxAtMethod) -> object:
+        """Require compatible basis type and bounded additivity on indexed replacement."""
+        del method
+        if isinstance(value, BasisGame):
+            if not isinstance(value, type(self)):
+                msg = f"Cannot assign {type(value).__name__} into {type(self).__name__}."
+                raise TypeError(msg)
+            if value.additivity > self.additivity:
+                msg = (
+                    f"Cannot assign {type(value).__name__} with additivity {value.additivity} "
+                    f"into {type(self).__name__} with additivity {self.additivity}."
+                )
+                raise ValueError(msg)
+        return value
+
+    @classmethod
+    @override
+    def _combine_sequence_metadata(
+        cls,
+        items: Sequence["BasisGame[Any, Any, Any]"],
+        *,
+        func: Callable[..., Any] | None,
+    ) -> dict[str, Any]:
+        """Combine declared additivity bounds order-independently via maximum."""
+        del func
+        return {"additivity": max(item.additivity for item in items)}
 
     @abstractmethod
     def _basis(
