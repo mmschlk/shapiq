@@ -1,13 +1,14 @@
 """Games with boolean and packed finite-coalition evaluation hooks."""
 
 from abc import abstractmethod
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, override
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, overload, override
 
 import jax
 import jax.numpy as jnp
 from beartype.door import is_bearable
 from jaxtyping import Bool, Shaped, UInt8
+from ndlike import jax_functions as jf
 from ndlike.jax_like import JaxLikeImplementation
 
 from shapiq.coalition import FiniteCoalition
@@ -22,9 +23,10 @@ from shapiq.value import Value
 from .game import Game
 
 if TYPE_CHECKING:
-    from shapiq.value.value import JaxValue
+    from jax.typing import DTypeLike
 
     from .arithmetic import AffineGame, ArithmeticGame
+    from .reduction import SumReductionGame
 
 type _FiniteGame[P] = FinitePlayerGame[P, Value]  # noqa: PYI047 - imported by finite-game subclasses
 
@@ -73,69 +75,111 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
         """Evaluate the game on the full coalition for every game in the batch."""
         return self.eval(self.players.full_coalition())
 
+    @overload
+    def sum(
+        self: "FinitePlayerGame[P, jax.Array]",
+        axis: int | Sequence[int] | None = None,
+        dtype: "DTypeLike | None" = None,
+        *,
+        keepdims: bool = False,
+    ) -> "SumReductionGame[P, jax.Array]": ...
+
+    @overload
+    def sum[ResultT: Value](
+        self: "FinitePlayerGame[P, JaxLikeImplementation[Any, Any, ResultT, Any, Any, Any, Any]]",
+        axis: int | Sequence[int] | None = None,
+        dtype: "DTypeLike | None" = None,
+        *,
+        keepdims: bool = False,
+    ) -> "SumReductionGame[P, ResultT]": ...
+
+    @overload
+    def sum(
+        self,
+        axis: int | Sequence[int] | None = None,
+        dtype: "DTypeLike | None" = None,
+        *,
+        keepdims: bool = False,
+    ) -> "SumReductionGame[P, Value]": ...
+
+    def sum(
+        self,
+        axis: int | Sequence[int] | None = None,
+        dtype: "DTypeLike | None" = None,
+        *,
+        keepdims: bool = False,
+    ) -> "SumReductionGame[P, Any]":
+        """Sum this game batch pointwise over ``axis`` via ``ndlike.jax_functions.jax_sum``."""
+        return jf.jax_sum(
+            self,
+            axis=axis,
+            dtype=dtype,
+            keepdims=keepdims,
+        )
+
     @override
     def __pos__(self) -> Self:
         """Return this game."""
         return self
 
     @override
-    def __neg__(self) -> "AffineGame[P, JaxValue]":
+    def __neg__(self) -> "AffineGame[P, Value]":
         """Negate the game pointwise."""
-        return cast("AffineGame[P, JaxValue]", super().__neg__())
+        return cast("AffineGame[P, Value]", super().__neg__())
 
     @override
-    def __add__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+    def __add__(self, other: object, /) -> "AffineGame[P, Value]":
         """Add the right operand pointwise."""
-        return cast("AffineGame[P, JaxValue]", super().__add__(other))
+        return cast("AffineGame[P, Value]", super().__add__(other))
 
     @override
-    def __radd__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+    def __radd__(self, other: object, /) -> "AffineGame[P, Value]":
         """Add the game to the left operand pointwise."""
-        return cast("AffineGame[P, JaxValue]", super().__radd__(other))
+        return cast("AffineGame[P, Value]", super().__radd__(other))
 
     @override
-    def __sub__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+    def __sub__(self, other: object, /) -> "AffineGame[P, Value]":
         """Subtract the right operand pointwise."""
-        return cast("AffineGame[P, JaxValue]", super().__sub__(other))
+        return cast("AffineGame[P, Value]", super().__sub__(other))
 
     @override
-    def __rsub__(self, other: object, /) -> "AffineGame[P, JaxValue]":
+    def __rsub__(self, other: object, /) -> "AffineGame[P, Value]":
         """Subtract the game from the left operand pointwise."""
-        return cast("AffineGame[P, JaxValue]", super().__rsub__(other))
+        return cast("AffineGame[P, Value]", super().__rsub__(other))
 
     @override
-    def __mul__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+    def __mul__(self, other: object, /) -> "ArithmeticGame[P, Value]":
         """Multiply the operands pointwise."""
-        return cast("ArithmeticGame[P, JaxValue]", super().__mul__(other))
+        return cast("ArithmeticGame[P, Value]", super().__mul__(other))
 
     @override
-    def __rmul__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+    def __rmul__(self, other: object, /) -> "ArithmeticGame[P, Value]":
         """Multiply the left operand by the game pointwise."""
-        return cast("ArithmeticGame[P, JaxValue]", super().__rmul__(other))
+        return cast("ArithmeticGame[P, Value]", super().__rmul__(other))
 
     @override
-    def __truediv__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+    def __truediv__(self, other: object, /) -> "ArithmeticGame[P, Value]":
         """Divide by the right operand pointwise."""
-        return cast("ArithmeticGame[P, JaxValue]", super().__truediv__(other))
+        return cast("ArithmeticGame[P, Value]", super().__truediv__(other))
 
     @override
-    def __rtruediv__(self, other: object, /) -> "ArithmeticGame[P, JaxValue]":
+    def __rtruediv__(self, other: object, /) -> "ArithmeticGame[P, Value]":
         """Divide the left operand by the game pointwise."""
-        return cast("ArithmeticGame[P, JaxValue]", super().__rtruediv__(other))
+        return cast("ArithmeticGame[P, Value]", super().__rtruediv__(other))
 
     @override
-    def __pow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, JaxValue]":
+    def __pow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, Value]":
         """Raise the game to the right operand pointwise."""
         if modulo is not None:
             return NotImplemented
-        return cast("ArithmeticGame[P, JaxValue]", super().__pow__(other))
+        return cast("ArithmeticGame[P, Value]", super().__pow__(other))
 
     @override
-    def __rpow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, JaxValue]":
+    def __rpow__(self, other: object, modulo: object = None) -> "ArithmeticGame[P, Value]":
         """Raise the left operand to the game pointwise."""
         if modulo is not None:
             return NotImplemented
-        return cast("ArithmeticGame[P, JaxValue]", super().__rpow__(other))
+        return cast("ArithmeticGame[P, Value]", super().__rpow__(other))
 
     @classmethod
     def __jax_function__(
@@ -145,8 +189,14 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
         args: tuple[Any, ...] = (),
         kwargs: dict[str, Any] | None = None,
     ) -> Any:  # noqa: ANN401 - ndlike dispatch protocol returns arbitrary result or NotImplemented
-        """Route numeric arithmetic through lazy game wrappers; delegate other ops to super."""
-        if not kwargs:
+        """Route numeric arithmetic and reductions through lazy game wrappers; delegate other ops to super."""
+        if func is jf.jax_sum:
+            from .reduction import _dispatch_game_sum  # noqa: PLC0415
+
+            result = _dispatch_game_sum(args, kwargs)
+            if result is not NotImplemented:
+                return result
+        elif not kwargs:
             from ._arithmetic_ops import _dispatch_game_arithmetic  # noqa: PLC0415
 
             result = _dispatch_game_arithmetic(func, args)

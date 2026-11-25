@@ -46,7 +46,9 @@ class TableGame[P](
 
     Packed evaluation is JIT-compiled, fusing table broadcasting and lookup.
     Values and player IDs remain dynamic pytree inputs; shape and dtype checks
-    inside the hook run during tracing.
+    inside the hook run during tracing. Subclasses must preserve the contract
+    that ``values`` directly holds the coalition values in canonical order so
+    fast table casts can operate on ``values`` without invoking ``eval``.
     """
 
     values: Float[jax.Array, "*batch 2**{players.n_players}"]
