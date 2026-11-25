@@ -397,7 +397,7 @@ def test_evaluation_rejects_wrong_logical_value_shape(packed, compiled, result_s
         evaluate(game, coalition)
 
 
-@pytest.mark.parametrize("result", [{"count": jnp.array(2)}, 2, [2]])
+@pytest.mark.parametrize("result", [{"count": jnp.array(2)}, 2, [2], np.zeros(())])
 def test_evaluation_rejects_unshaped_values(result):
     class UnshapedGame(_BooleanGame):
         def _eval_bool(self, coalition):

@@ -1,9 +1,10 @@
 """Static contracts for ndlike batch operations; checked by the ty lint hook."""
 
 from dataclasses import dataclass
-from typing import Any, assert_type, override
+from typing import TYPE_CHECKING, Any, ClassVar, assert_type, override
 
 import jax
+from ndlike.protected_axis.jax import JaxAxisProtected
 from ndlike.tuple.jax import JaxBroadcastTuple
 
 from shapiq.game._arithmetic_ops import (
@@ -28,12 +29,23 @@ from shapiq.game.finite import FinitePlayerGame
 from shapiq.game.fourier import FourierGame
 from shapiq.game.kadditive import AdditiveGame, KAdditiveGame
 from shapiq.game.moebius import AdditiveMoebiusGame, MoebiusGame
+from shapiq.game.reduction import (
+    ReductionGame,
+    SumReductionGame,
+    _AdditiveSumReductionGame,
+    _KAdditiveSumReductionGame,
+)
 from shapiq.game.table import TableGame
 from shapiq.index import BanzhafIndex, ShapleyValueIndex
 from shapiq.players import FinitePlayers
 from shapiq.sampling._base import SizeWithReplacement
 from shapiq.sampling._state import DenseSample, Sample
 from shapiq.value.value import JaxValue
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from shapiq.game import Game
 
 
 def batch_results(
@@ -267,3 +279,124 @@ def arithmetic_operand_types(
     _KAdditivePowerGame(JaxBroadcastTuple((table,)), 2)  # ty: ignore[invalid-argument-type]
     _AdditiveAffineGame(JaxBroadcastTuple((moebius,)), JaxBroadcastTuple((weight,)))  # ty: ignore[invalid-argument-type]
     _AdditiveDivGame(JaxBroadcastTuple((moebius,)), weight)  # ty: ignore[invalid-argument-type]
+
+
+def reduction_results(
+    *,
+    table: TableGame[str],
+    moebius: MoebiusGame[str, jax.Array],
+    additive: AdditiveMoebiusGame[str, jax.Array],
+    affine: AffineGame[str, jax.Array],
+    weight: jax.Array,
+) -> None:
+    # `.sum()` preserves P, preserves `jax.Array` for array-valued games, follows
+    # `JaxLikeImplementation`'s `OpResultT` for protected/structured values, and falls back to `Value`.
+    sum_table = table.sum()
+    assert_type(sum_table, SumReductionGame[str, jax.Array])
+    assert_type(sum_table[0].reshape(-1), SumReductionGame[str, jax.Array])
+    assert_type(sum_table.players, FinitePlayers[str])
+    assert_type(sum_table.eval(table.players.empty_coalition()), jax.Array)
+    assert_type(sum_table.full_value(), jax.Array)
+
+    sum_affine = affine.sum(axis=0, keepdims=True)
+    assert_type(sum_affine, SumReductionGame[str, jax.Array])
+    assert_type(sum_affine.eval(table.players.empty_coalition()), jax.Array)
+
+    sum_moebius = moebius.sum()
+    assert_type(sum_moebius, SumReductionGame[str, JaxValue])
+    sum_additive = additive.sum()
+    assert_type(sum_additive, SumReductionGame[str, JaxValue])
+
+    # Structured JaxLikeImplementation values follow ndlike's OpResultT contract:
+    # - JaxAxisProtected with default OpResultT = Self preserves its own type (e.g. vector values).
+    # - Game-valued games (TableGame has OpResultT = FinitePlayerGame[P, Value]) report the
+    #   reduced game interface rather than falsely promising TableGame.
+    @dataclass(frozen=True)
+    class StructuredVal(JaxAxisProtected["StructuredVal"]):
+        values: jax.Array
+        protected_axes: ClassVar[dict[str, int]] = {"values": 1}
+
+    def _check_structured(
+        structured_game: FinitePlayerGame[str, StructuredVal],
+        game_valued_game: FinitePlayerGame[str, TableGame[int]],
+    ) -> None:
+        sum_struct = structured_game.sum()
+        assert_type(sum_struct, SumReductionGame[str, StructuredVal])
+        assert_type(sum_struct.eval(table.players.empty_coalition()), StructuredVal)
+        assert_type(SumReductionGame(structured_game), SumReductionGame[str, StructuredVal])
+
+        sum_game_valued = game_valued_game.sum()
+        assert_type(sum_game_valued, SumReductionGame[str, FinitePlayerGame[int, JaxValue]])
+        assert_type(
+            sum_game_valued.eval(table.players.empty_coalition()),
+            FinitePlayerGame[int, JaxValue],
+        )
+        assert_type(
+            SumReductionGame(game_valued_game),
+            SumReductionGame[str, FinitePlayerGame[int, JaxValue]],
+        )
+        SumReductionGame[str, TableGame[int]](game_valued_game)  # ty: ignore[no-matching-overload]
+
+    _ = _check_structured
+
+    # Direct construction preserves V while keeping stored `game` conservatively typed.
+    # FinitePlayerGame remains covariant in V so TableGame[str] is assignable to FinitePlayerGame[str, JaxValue].
+    def _accept_covariant(game: FinitePlayerGame[str, JaxValue]) -> None:
+        assert_type(game.sum(), SumReductionGame[str, JaxValue])
+
+    _accept_covariant(table)
+
+    direct_sum = SumReductionGame(table)
+    assert_type(direct_sum, SumReductionGame[str, jax.Array])
+    assert_type(direct_sum.eval(table.players.empty_coalition()), jax.Array)
+
+    explicit_sum = SumReductionGame[str, jax.Array](table)
+    assert_type(explicit_sum, SumReductionGame[str, jax.Array])
+    widened_sum = SumReductionGame[str, JaxValue](table)
+    assert_type(widened_sum, SumReductionGame[str, JaxValue])
+
+    kadd_sum = _KAdditiveSumReductionGame[str, JaxValue](moebius)
+    assert_type(kadd_sum.game, KAdditiveGame[str, Any])
+    assert_type(kadd_sum.eval(moebius.players.empty_coalition()), JaxValue)
+
+    inferred_kadd_sum = _KAdditiveSumReductionGame(moebius)
+    assert_type(inferred_kadd_sum.game, KAdditiveGame[Any, Any])
+
+    add_sum = _AdditiveSumReductionGame[str, JaxValue](additive)
+    assert_type(add_sum.game, AdditiveGame[str, Any])
+    assert_type(add_sum.contributions(), JaxValue)
+
+    inferred_add_sum = _AdditiveSumReductionGame(additive)
+    assert_type(inferred_add_sum.game, AdditiveGame[Any, Any])
+
+    # Custom ReductionGame subclass preserves concrete GameT and V.
+    @dataclass(frozen=True, slots=True, weakref_slot=True)
+    class CustomReduction[
+        P,
+        V: JaxValue = JaxValue,
+        GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[Any, Any],
+    ](ReductionGame[P, V, GameT, "CustomReduction[P, V, GameT]"]):
+        @override
+        def _reduce(self, values: Any) -> Any:
+            return values
+
+    custom_red = CustomReduction(additive)
+    assert_type(custom_red.game, AdditiveMoebiusGame[str, jax.Array])
+
+    # Dataclass subclasses of SumReductionGame preserve synthesized constructors.
+    @dataclass(frozen=True, slots=True, weakref_slot=True)
+    class CustomSum(SumReductionGame[Any, Any]):
+        extra: int = 0
+
+    custom_sum = CustomSum(table, extra=1)
+    assert_type(custom_sum, CustomSum)
+    assert_type(custom_sum.extra, int)
+
+    # Invalid construction must be rejected statically.
+    _bad_game_type: type[Game[Any, np.ndarray[Any, Any]]]  # ty: ignore[invalid-type-arguments]
+    SumReductionGame(weight)  # ty: ignore[no-matching-overload]
+    SumReductionGame[int, jax.Array](table)  # ty: ignore[no-matching-overload]
+    SumReductionGame[str, jax.Array](moebius)  # ty: ignore[no-matching-overload]
+    SumReductionGame[str, jax.Array, TableGame[str]](table)  # ty: ignore[no-matching-overload]
+    _KAdditiveSumReductionGame(table)  # ty: ignore[no-matching-overload]
+    _AdditiveSumReductionGame(moebius)  # ty: ignore[no-matching-overload]

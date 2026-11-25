@@ -247,7 +247,8 @@ class ArithmeticGame[
     fieldwise arithmetic and indexed updates remain disabled.
 
     Subclasses implement ``_compute`` to combine the tuple of lazily evaluated
-    child coalition values. ``GameT`` tracks the operand game type stored in
+    child coalition values (and fast ``TableGame`` casting delegates directly
+    to ``_compute``). ``GameT`` tracks the operand game type stored in
     ``games`` (broadly bounded by ``FinitePlayerGame[Any, Any]`` because PEP 695
     bounds cannot reference ``P``, while defaulting to ``FinitePlayerGame[P, Any]``).
     """
@@ -327,15 +328,12 @@ class ArithmeticGame[
         for member in self.games.members:
             if isinstance(member, TableGame):
                 table = member
-            elif isinstance(member, ArithmeticGame):
+            else:
                 result = try_cast(member, TableGame, max_cost=1.0)
                 if result is None:
-                    msg = "ArithmeticGame fast TableGame cast requires TableGame leaves."
+                    msg = "Fast TableGame cast requires TableGame leaves."
                     raise CastUnavailable(msg)
                 table = result.value
-            else:
-                msg = "ArithmeticGame fast TableGame cast requires TableGame leaves."
-                raise CastUnavailable(msg)
             # Align trailing batch rank with self.ndim while keeping the 2**n table axis at axis 0.
             moved = jnp.moveaxis(table.values, -1, 0)
             pad = self.ndim - table.ndim

@@ -155,7 +155,7 @@ def test_arithmetic_game_rejects_indexed_updates_and_fieldwise_arithmetic():
     assert not g.permitted_functions
     for bad_op in (
         lambda: jf.jax_floor_divide(g, 2),
-        lambda: jf.jax_sum(g),
+        lambda: jf.jax_mean(g),
     ):
         with pytest.raises(TypeError):
             bad_op()

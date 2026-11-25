@@ -85,12 +85,13 @@ Keep reusable jaxtyping aliases in assignment form (`BoolCoalition = Bool[...]`)
   coalition admissibility. Numerical helpers relate their array shapes locally.
   Preserve the distinction between symmetric broadcasting and player sets
   broadcasting into a game batch without enlarging it.
-- Values expose logical `shape` and `dtype` metadata. Their shape is exactly the
+- Values are JAX arrays or `ndlike.jax_like.JaxLike` objects (`Value` / `JaxValue`),
+  exposing logical `shape` and `dtype` metadata. Their shape is exactly the
   broadcasted evaluation batch; vector or structured representations hide their
-  internal axes, for example with ndlike's protected axes. A plain array is a
-  batch of scalar values. Generic bounds describe this shape/dtype protocol;
-  concrete operations can apply `Shaped[V, "*batch"]` without nested variadics.
-  Runtime checks use the bound, not the concrete generic specialization.
+  internal axes, for example with ndlike's protected axes. A plain JAX array is a
+  batch of scalar values. Because `Value` is non-variadic, concrete operations
+  can apply `Shaped[V, "*batch"]` without nested variadics. Runtime checks use
+  the bound, not the concrete generic specialization.
 - `NumericValue` and `FloatVectorValue` constrain dtype without binding dimension
   names. The concrete representation, not `FloatVectorValue`, validates any
   internal vector layout.

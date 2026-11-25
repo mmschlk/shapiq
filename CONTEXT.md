@@ -35,7 +35,7 @@ The shared, read-only metadata catalog for a **Latent Player Space**, represente
 _Avoid_: player-set batch, dynamic JAX data, deeply immutable arbitrary objects
 
 **Value**:
-The output assigned by a **Game** to a **Coalition**, represented by an array or shaped structured value exposing `shape` and `dtype`. Its logical `shape` is the broadcasted game/coalition batch; representations hide internal value axes. Ordinary arrays therefore represent batches of scalar values. A value has a **Zero-Player Game** interpretation without needing to be stored as a game object.
+The output assigned by a **Game** to a **Coalition**, represented by a JAX array or `JaxLike` structured value (`Value` / `JaxValue`). Its logical `shape` is the broadcasted game/coalition batch; representations hide internal value axes. Ordinary JAX arrays therefore represent batches of scalar values. A value has a **Zero-Player Game** interpretation without needing to be stored as a game object.
 _Avoid_: prediction when the game's value space differs from model output
 
 **Zero-Player Game**:
