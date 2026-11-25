@@ -113,8 +113,8 @@ class DrawHistory(History["DrawHistory"]):
     def update(
         self,
         sampler: Sampler[Any, Any],
-        new_coalitions: Bool[jax.Array, "*batch n_new_draws n_players"],
-        new_values: Float[JaxValue, "*batch n_new_draws"],
+        new_coalitions: Bool[jax.Array, "#*batch n_new_draws n_players"],
+        new_values: Float[JaxValue, "#*batch n_new_draws"],
     ) -> Self:
         """Return the history updated with the draws of a new step and their values."""
         coalitions = _append(self.coalitions, new_coalitions, axis=-2)
@@ -154,8 +154,8 @@ class EstimateHistory(History["EstimateHistory"]):
     def update(
         self,
         sampler: Sampler[Any, Any],
-        new_estimates: Float[JaxValue, "*batch n_new_steps n_interactions"],
-        new_weights: Float[jax.Array, "*batch n_new_steps"],
+        new_estimates: Float[JaxValue, "#*batch n_new_steps n_interactions"],
+        new_weights: Float[jax.Array, "#*batch n_new_steps"],
     ) -> Self:
         """Return the history updated with the estimate of a new step and its weight."""
         estimates = _append(self.estimates, new_estimates, axis=-2)

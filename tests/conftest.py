@@ -1,7 +1,7 @@
 """Opt in to exhaustive typeguard checking without changing normal runtime tests."""
 
 import sys
-from typing import TypeAliasType
+from typing import TypeAliasType, TypeVar, get_origin, is_protocol
 
 import pytest
 
@@ -38,12 +38,19 @@ def pytest_configure(config: pytest.Config) -> None:
     config.add_cleanup(monkeypatch.undo)
     check_type = typeguard.check_type
 
-    def check_alias_type(argname, value, expected_type, *args, **kwargs):
+    def check_expected_type(argname, value, expected_type, *args, **kwargs):
+        # Typeguard 2 uses issubclass on TypeVar bounds, which fails for
+        # parameterized generics and protocols with data attributes. Check
+        # the instance against its bound through the usual type dispatcher.
+        if isinstance(expected_type, TypeVar):
+            bound = expected_type.__bound__
+            if is_protocol(bound) or get_origin(bound) is not None:
+                expected_type = bound
         if isinstance(expected_type, TypeAliasType):
             expected_type = expected_type.__value__
         return check_type(argname, value, expected_type, *args, **kwargs)
 
-    monkeypatch.setattr(typeguard, "check_type", check_alias_type)
+    monkeypatch.setattr(typeguard, "check_type", check_expected_type)
 
     if sys.version_info >= (3, 15):
         from importlib.util import cache_from_source  # noqa: PLC0415

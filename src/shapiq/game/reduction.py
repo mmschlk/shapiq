@@ -284,17 +284,6 @@ def _require_refinable_sum_child[T: KAdditiveGame](
     return refined
 
 
-def _build_validated[T: "ReductionGame[Any, Any, Any, Any]"](
-    cls: type[T],
-    **field_values: Any,
-) -> T:
-    """Construct a validated ``ReductionGame`` refinement without re-running player checks."""
-    obj = object.__new__(cls)
-    for name, value in field_values.items():
-        object.__setattr__(obj, name, value)
-    return obj
-
-
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class ReductionGame[
@@ -609,14 +598,21 @@ class SumReductionGame[
         """Sum evaluated child coalition values over the protected trailing axis."""
         return self._sum_values(values, axis=-1)
 
+    @classmethod
+    def _build_validated(cls, **field_values: Any) -> Self:
+        """Construct a sum reduction refinement without repeating player validation."""
+        obj = object.__new__(cls)
+        for name, value in field_values.items():
+            object.__setattr__(obj, name, value)
+        return obj
+
     @castmethod(AdditiveGame)
     def _as_additive(self) -> AdditiveGame[P, V]:
         """Refine a sum reduction of an additive game."""
         child = _require_refinable_sum_child(self, AdditiveGame)
         return cast(
             "AdditiveGame[P, V]",
-            _build_validated(
-                _AdditiveSumReductionGame,
+            _AdditiveSumReductionGame._build_validated(  # noqa: SLF001 - inherited factory
                 game=child,
                 _players=self._players,
                 output_dtype=self.output_dtype,
@@ -629,8 +625,7 @@ class SumReductionGame[
         child = _require_refinable_sum_child(self, KAdditiveGame)
         return cast(
             "KAdditiveGame[P, V]",
-            _build_validated(
-                _KAdditiveSumReductionGame,
+            _KAdditiveSumReductionGame._build_validated(  # noqa: SLF001 - inherited factory
                 game=child,
                 _players=self._players,
                 output_dtype=self.output_dtype,

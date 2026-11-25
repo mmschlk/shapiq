@@ -203,7 +203,7 @@ def colex_unrank(
         )
     )  # (n_players, n_players + 1, width); C(j, k) = 0 for k > j
 
-    def visit(step: int, state: tuple) -> tuple:
+    def visit(step: int | Int[jax.Array, ""], state: tuple) -> tuple:
         rank, missing, coalition = state
         # Decide which player to join, from highest to lowest.
         player = n_players - 1 - step

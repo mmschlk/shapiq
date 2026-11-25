@@ -108,7 +108,8 @@ class TableGame[P](
         return jnp.take_along_axis(table, index[..., None], axis=-1)[..., 0]
 
 
-@caster(cost=10.0)
+# High fallback cost so any cheaper multi-step cast chain is preferred over full 2**n evaluation.
+@caster(cost=1000.0)
 def _finite_game_to_table[P](game: FinitePlayerGame[P, Any]) -> TableGame[P]:
     """Evaluate ``game`` on every coalition to materialize a dense ``TableGame``."""
     n_players = game.n_players

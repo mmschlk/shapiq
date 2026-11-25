@@ -263,7 +263,7 @@ class Border[SampleT: Sample[Any] = DenseSample, OwnerT: JaxLike[Any] = "Border[
         """
         sizes = _float_domains(self._domains)
 
-        def add_one(_: int, new: jax.Array) -> jax.Array:
+        def add_one(_: int | Int[jax.Array, ""], new: jax.Array) -> jax.Array:
             taken = enumerated | new
             rest = jnp.where(taken, 0.0, weights)
             left = total[..., None] - jnp.sum(jnp.where(taken, sizes, 0.0), axis=-1, keepdims=True)
@@ -760,7 +760,7 @@ def _huntington_hill(
     first, last = counts(lo), counts(hi)
     below = jnp.where(fit(first), first, 0.0)  # fewer draws than positive strata: none given yet
 
-    def bisect(_: int, state: tuple) -> tuple:
+    def bisect(_: int | Int[jax.Array, ""], state: tuple) -> tuple:
         lo, hi, below, above = state
         mid = (lo + hi) / 2
         c = counts(mid)

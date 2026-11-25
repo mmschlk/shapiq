@@ -63,6 +63,10 @@ def test_table_game_from_game_fast_path_and_recursive_leaf_check(monkeypatch):
     )
     mixed = t1 + mg
     assert try_cast(mixed, TableGame, max_cost=1.0) is None
+    assert try_cast(mixed, TableGame, max_cost=999.0) is None
+    mixed_cast = try_cast(mixed, TableGame, max_cost=1000.0)
+    assert mixed_cast is not None
+    assert isinstance(mixed_cast.value, TableGame)
     mixed_table = TableGame.from_game(mixed)
     assert isinstance(mixed_table, TableGame)
     assert jnp.allclose(mixed_table(all_sets[:, None]), mixed(all_sets[:, None]))

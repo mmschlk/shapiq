@@ -2,19 +2,24 @@
 
 **Status: Accepted.** Replaces the explainer-to-explanation pipeline, supersedes ADR 0003, and updates the result/storage choices in ADRs 0001 and 0002.
 
-**Revision in progress:** the [working game algebra](../design/game-algebra.md) admits nonzero-cost game-preserving casts and values interpreted as zero-player games. Those requirements supersede the constant-time-only cast restriction below. The partiality/reduction model is being refined there before changes to the runtime skeleton.
-
 ## Decision and Trade-Off
 
 The central computational interface is a game transformation. A model can be embedded in a game and then transformed into other games; an explanation is an interpretation of a resulting game, not a separate universal result container. This makes results composable through the same player/coalition/value interface, at the cost of requiring explicit mathematical semantics for each result rather than relying on a common attribution-array schema.
 
 The Shapley transformation produces a zero-empty additive game with Shapley values as singleton values. Its grand-coalition value is the source's grand-minus-empty value. Exact and approximate algorithms implement this common result form; approximation policy must be explicit. Mathematical capability interfaces, such as `KAdditiveGame` and `AdditiveGame`, remain separate from concrete storage types built on ndlike's protected-axis support.
 
-## Casts Preserve a Game; Transformations May Compute
+## Casts Preserve a Game; Transformations May Change It
 
-`flextype.cast` registrations (`@caster` / `@castmethod`) are restricted to storage-sharing, constant-time game views. They preserve players, coalition admissibility, batch shape, and all coalition values. Costly conversions are named transformations even when they preserve the mathematical game. Player-changing or value-changing operations are transformations even when they happen to be cheap. This intentionally restricts flextype's more general casting machinery so routing through a view cannot hide numerical work.
+`flextype.cast` registrations (`@caster` / `@castmethod`) are restricted to **Game Casts**: conversions that preserve players, coalition admissibility, logical batch shape, and all coalition values while changing representation or exposing a capability interface. Player-changing or value-changing operations are **Game Transformations**, never casts, even when they are cheap.
 
-Concrete transformation handlers can use `flextype.flexdispatch`, including model-type routing inside model-backed game families. Cast lookup and transformation dispatch are distinct mechanisms. Mathematical protocol conformance is an implementer's guarantee, not an inferred runtime proof; no additional registry metaclass is required by this design.
+Cast costs distinguish **Game Views** from materializing conversions:
+
+- **Zero-cost casts (`cost=0.0`)** are constant-time, storage-sharing views (such as exposing `AdditiveGame` or `KAdditiveGame` on a compatible game or wrapper).
+- **Nonzero-cost casts (`cost > 0`)** may perform computation or materialize a representation (for example, evaluating an arbitrary `FinitePlayerGame` into a dense `TableGame` at a high fallback `cost=1000.0` so any cheaper multi-step cast chain is preferred, or taking a faster `cost=1.0` path on `ArithmeticGame` and `ReductionGame` when all leaves are `TableGame`s).
+
+Callers bound allowed conversion work explicitly through `max_cost`. Composite wrappers such as `AffineGame`, `_ScalarDivGame`, and `SumReductionGame` use `flextype.autocast(..., max_cost=0.0)` so they transparently satisfy capability interfaces like `KAdditiveGame` (and, transitively, `AdditiveGame`) whenever their operands admit zero-cost views, without ever triggering hidden materialization.
+
+Concrete transformation handlers, approximators, maskers, and explanation games use `flextype.flexdispatch` for type-based routing. Cast lookup and transformation dispatch remain distinct mechanisms. Mathematical capability conformance is an implementer's guarantee: concrete wrappers own their evaluation contract, and subclasses must honor parent semantics so callers and casters can rely on `isinstance` rather than exact-type guards.
 
 ## Partial Games Preserve Missing Inputs
 

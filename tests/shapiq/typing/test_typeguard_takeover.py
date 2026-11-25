@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import pytest
 from jaxtyping import Float, TypeCheckError
 
-from shapiq.typing import typechecked
+from shapiq.typing import HasShape, typechecked
 
 pytestmark = pytest.mark.typeguard
 
@@ -59,3 +59,22 @@ def _wrong_container_return() -> list[int]:
 def test_typeguard_checks_container_return_elements():
     with pytest.raises(TypeCheckError, match="return value"):
         _wrong_container_return()
+
+
+def _bounded_integers[T: list[int]](values: T) -> T:
+    return values
+
+
+def _bounded_shape[T: HasShape](value: T) -> T:
+    return value
+
+
+def test_typeguard_checks_type_variable_bounds():
+    assert _bounded_integers([1, 2]) == [1, 2]
+    with pytest.raises(TypeCheckError):
+        _bounded_integers([1, "two"])
+
+    array = jnp.ones(2)
+    assert _bounded_shape(array) is array
+    with pytest.raises(TypeCheckError):
+        _bounded_shape(object())
