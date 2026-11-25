@@ -9,7 +9,7 @@ import jax
 import jax.numpy as jnp
 from jax.core import Tracer
 from jaxtyping import Bool, Float, Shaped
-from ndlike.jax_functions import jax_multiply, jax_sum
+from ndlike.jax_functions import jax_multiply, jax_sum, jax_zeros_like
 from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
@@ -43,7 +43,7 @@ class BasisGame[
     ``interactions`` when they are concrete.
     """
 
-    values: Float[jax.Array, "*batch n_interactions"]
+    values: Float[JaxValue, "*batch n_interactions"]
     # A required slot replaces the inherited abstract players property.
     players: Shaped[FinitePlayers[P], "#*batch"] = field()
     protected_axes: ClassVar[dict[str, int]] = {"values": 1, "players": 0}
@@ -117,5 +117,7 @@ class BasisGame[
 
     @override
     def _zeros_like_value(self, shape: tuple[int, ...]) -> Shaped[JaxValue, "..."]:
-        """Return array zeros without evaluating coalitions."""
-        return cast("Shaped[JaxValue, '...']", jnp.zeros(shape, dtype=self.dtype))
+        """Return zeros of the coefficients' type without evaluating coalitions."""
+        if isinstance(self.values, jax.Array):
+            return cast("Shaped[JaxValue, '...']", jnp.zeros(shape, dtype=self.dtype))
+        return cast("Shaped[JaxValue, '...']", jax_zeros_like(self.values, shape=shape))

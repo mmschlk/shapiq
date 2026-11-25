@@ -87,10 +87,10 @@ def _moebius_coefficients_by_eval[P, V: JaxValue](
 
 @typechecked
 def _moebius_lookup(
-    values: Float[jax.Array, "#*batch n_interactions"],
+    values: Float[JaxValue, "#*batch n_interactions"],
     stored_interactions: Bool[jax.Array, "#*batch n_interactions n_players"],
     query_interactions: Bool[jax.Array, "#*batch n_players"],
-) -> Float[jax.Array, "*batch"]:
+) -> Float[JaxValue, "*batch"]:
     """Look up Möbius coefficients directly from stored interaction sets."""
     target_batch = jnp.broadcast_shapes(
         values.shape[:-1], stored_interactions.shape[:-2], query_interactions.shape[:-1]
@@ -98,28 +98,28 @@ def _moebius_lookup(
     n_interactions = values.shape[-1]
     matches = jnp.all(stored_interactions == query_interactions[..., None, :], axis=-1)
     matches_b = jnp.broadcast_to(matches, (*target_batch, n_interactions))
-    values_b = jnp.broadcast_to(values, (*target_batch, n_interactions))
-    zero = jnp.zeros((), dtype=values.dtype)
-    return jnp.sum(jnp.where(matches_b, values_b, zero), axis=-1)
+    values_b = jf.jax_broadcast_to(values, (*target_batch, n_interactions))
+    zero = jf.jax_zeros_like(values, shape=())
+    return jf.jax_sum(jf.jax_where(matches_b, values_b, zero), axis=-1)
 
 
 @typechecked
 def _moebius_contributions(
-    values: Float[jax.Array, "*batch n_interactions"],
+    values: Float[JaxValue, "*batch n_interactions"],
     stored_interactions: Bool[jax.Array, "#*batch n_interactions {n_players}"],
     n_players: int,
-) -> Float[jax.Array, "*batch {n_players}"]:
+) -> Float[JaxValue, "*batch {n_players}"]:
     """Extract singleton Möbius coefficients in canonical player order directly from storage."""
     game_shape = values.shape[:-1]
     if n_players == 0:
-        return jnp.zeros((*game_shape, 0), dtype=values.dtype)
+        return jf.jax_zeros_like(values, shape=(*game_shape, 0))
     n_interactions = values.shape[-1]
     is_singleton = jnp.sum(stored_interactions, axis=-1) == 1
     mask = stored_interactions & is_singleton[..., None]
     mask_b = jnp.broadcast_to(mask, (*game_shape, n_interactions, n_players))
-    values_b = jnp.broadcast_to(values, (*game_shape, n_interactions))[..., None]
-    zero = jnp.zeros((), dtype=values.dtype)
-    return jnp.sum(jnp.where(mask_b, values_b, zero), axis=-2)
+    values_b = jf.jax_expand_dims(jf.jax_broadcast_to(values, (*game_shape, n_interactions)), -1)
+    zero = jf.jax_zeros_like(values, shape=())
+    return jf.jax_sum(jf.jax_where(mask_b, values_b, zero), axis=-2)
 
 
 @typechecked
@@ -152,9 +152,10 @@ class MoebiusGame[
         """Read the empty-coalition Möbius coefficient directly from storage."""
         is_empty = ~jnp.any(self.interactions, axis=-1)
         is_empty_b = jnp.broadcast_to(is_empty, self.values.shape)
-        zero = jnp.zeros((), dtype=self.values.dtype)
+        zero = jf.jax_zeros_like(self.values, shape=())
         return cast(
-            "Shaped[JaxValue, '...']", jnp.sum(jnp.where(is_empty_b, self.values, zero), axis=-1)
+            "Shaped[JaxValue, '...']",
+            jf.jax_sum(jf.jax_where(is_empty_b, self.values, zero), axis=-1),
         )
 
     @override

@@ -8,7 +8,14 @@ import jax
 import jax.numpy as jnp
 from flextype import flexdispatch
 from jaxtyping import Bool, Float, Int, Shaped
-from ndlike.jax_functions import jax_concatenate, jax_expand_dims
+from ndlike.jax_functions import (
+    jax_add,
+    jax_broadcast_to,
+    jax_concatenate,
+    jax_expand_dims,
+    jax_multiply,
+    jax_sum,
+)
 from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
@@ -20,6 +27,7 @@ from shapiq.index._base import Index
 from shapiq.sampling._base import Border, Sampler, WithReplacement
 from shapiq.typing import typechecked
 from shapiq.value import Value
+from shapiq.value.value import JaxValue
 
 
 @dataclass(frozen=True, slots=True, weakref_slot=True)
@@ -73,13 +81,18 @@ class History[OwnerT: JaxLike[Any] = "History[Any]"](JaxAxisProtected[OwnerT], A
         """Return the history with only its first ``step`` steps."""
 
 
-def _append(old: jax.Array, new: jax.Array, axis: int) -> jax.Array:
-    """Concatenate along the protected ``axis`` (counted from the end) after broadcasting."""
+def _append[T: JaxValue](old: T, new: T, axis: int) -> T:
+    """Concatenate along the protected ``axis`` (counted from the end) after broadcasting.
+
+    An empty ``old`` is dropped, so the first step sets the value type, e.g. ``VectorValue``.
+    """
     batch = jnp.broadcast_shapes(old.shape[: old.ndim + axis], new.shape[: new.ndim + axis])
     trailing = new.shape[new.ndim + axis + 1 :]
-    old = jnp.broadcast_to(old, (*batch, old.shape[axis], *trailing))
-    new = jnp.broadcast_to(new, (*batch, new.shape[axis], *trailing))
-    return jnp.concatenate([old, new], axis=axis)
+    new = jax_broadcast_to(new, (*batch, new.shape[axis], *trailing))
+    if old.shape[axis] == 0:
+        return new
+    old = jax_broadcast_to(old, (*batch, old.shape[axis], *trailing))
+    return jax_concatenate([old, new], axis=axis)
 
 
 @dataclass(frozen=True, slots=True, weakref_slot=True)
@@ -92,7 +105,7 @@ class DrawHistory(History["DrawHistory"]):
     coalitions: Bool[jax.Array, "#*batch n_draws #n_players"] = field(
         default_factory=lambda: jnp.zeros((0, 1), bool)
     )
-    values: Float[jax.Array, "#*batch n_draws"] = field(default_factory=lambda: jnp.zeros((0,)))
+    values: Float[JaxValue, "#*batch n_draws"] = field(default_factory=lambda: jnp.zeros((0,)))
     ends: Int[jax.Array, " n_steps"] = field(default_factory=lambda: jnp.zeros((0,), int))
     protected_axes: ClassVar[dict[str, int]] = {"coalitions": 2, "values": 1, "ends": 1}
     broadcasted_batch: ClassVar[set[str]] = {"coalitions", "values", "ends"}
@@ -101,7 +114,7 @@ class DrawHistory(History["DrawHistory"]):
         self,
         sampler: Sampler[Any, Any],
         new_coalitions: Bool[jax.Array, "*batch n_new_draws n_players"],
-        new_values: Float[jax.Array, "*batch n_new_draws"],
+        new_values: Float[JaxValue, "*batch n_new_draws"],
     ) -> Self:
         """Return the history updated with the draws of a new step and their values."""
         coalitions = _append(self.coalitions, new_coalitions, axis=-2)
@@ -131,7 +144,7 @@ class EstimateHistory(History["EstimateHistory"]):
     estimate when later steps add draws.
     """
 
-    estimates: Float[jax.Array, "#*batch n_steps #n_interactions"] = field(
+    estimates: Float[JaxValue, "#*batch n_steps #n_interactions"] = field(
         default_factory=lambda: jnp.zeros((0, 1))
     )
     weights: Float[jax.Array, "#*batch n_steps"] = field(default_factory=lambda: jnp.zeros((0,)))
@@ -141,7 +154,7 @@ class EstimateHistory(History["EstimateHistory"]):
     def update(
         self,
         sampler: Sampler[Any, Any],
-        new_estimates: Float[jax.Array, "*batch n_new_steps n_interactions"],
+        new_estimates: Float[JaxValue, "*batch n_new_steps n_interactions"],
         new_weights: Float[jax.Array, "*batch n_new_steps"],
     ) -> Self:
         """Return the history updated with the estimate of a new step and its weight."""
@@ -280,7 +293,7 @@ def _(history: EstimateHistory, approximator: SupportsEstimates, budget: int) ->
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class SHAPIQ[
     P,
-    V: Float[jax.Array, "..."],
+    V: Float[JaxValue, "..."],
     R: Game,
     SamplerT: Sampler[Any, Any],
     IndexT: DiscreteDerivativeIndex,
@@ -294,15 +307,19 @@ class SHAPIQ[
     def _weighted_sum(
         self,
         coalitions: Bool[jax.Array, "#*batch n_draws n_players"],
-        values: Float[jax.Array, "#*batch n_draws"],
+        values: Float[JaxValue, "#*batch n_draws"],
         log_weights: Float[jax.Array, "#*batch n_draws"],
-    ) -> Float[jax.Array, "*batch n_interactions"]:
-        """Return the sum over draws of weight times value times derivative coefficients."""
+    ) -> Float[JaxValue, "*batch n_interactions"]:
+        """Return the sum over draws of weight times value times derivative coefficients.
+
+        The ndlike functions let vector values, e.g. ``VectorValue``, carry their outputs along.
+        """
         interactions = self.index.interactions(self.game.n_players)
         coefficients = discrete_derivative_coefficients(self.index, coalitions, interactions)
-        return jnp.sum(coefficients * (values * jnp.exp(log_weights))[..., None, :], axis=-1)
+        weighted = jax_multiply(values, jnp.exp(log_weights))  # (*batch, n_draws)
+        return jax_sum(jax_multiply(coefficients, jax_expand_dims(weighted, -2)), axis=-1)
 
-    def _build(self, estimate: Float[jax.Array, "*batch n_interactions"]) -> R:
+    def _build(self, estimate: Float[JaxValue, "*batch n_interactions"]) -> R:
         """Return the estimate as a game of the index."""
         interactions = self.index.interactions(self.game.n_players)
         return self.index.build(estimate, interactions, self.game.players)
@@ -327,7 +344,9 @@ class SHAPIQ[
         if not history.empty:
             # Earlier weights are 1 / (units p(S)): they shrink by the ratio of the units.
             ratio = history.weights[..., -1] / units
-            estimate = estimate + ratio[..., None] * history.estimates[..., -1, :]
+            estimate = jax_add(
+                estimate, jax_multiply(ratio[..., None], history.estimates[..., -1, :])
+            )
         history = history.update(self.sampler, estimate[..., None, :], units[..., None])
         return self._build(estimate), replace(self, sampler=sampler, history=history)
 

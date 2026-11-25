@@ -109,3 +109,19 @@ _Avoid_: ExplanationArray as the universal transformation result
 **Interaction Index**:
 A mathematical rule for attributing effects to interactions among players. In the game-centered API, the rule determines a **Game Transformation** and the interpretation of its resulting game; algorithm choice determines how that result is computed or estimated.
 _Avoid_: coupling an index to one algorithm or storage representation
+
+**Explained Data**:
+The inputs a local explanation game explains (`x_explain`) and its **Background**, kept unchanged in the model's own format, such as a DataFrame or tensor, with the shape `(*batch, *input_shape)`. Their batch axes form the game batch; the input axes are never touched.
+_Avoid_: assuming explained data is a JAX array
+
+**Background**:
+What the inputs outside a **Coalition** are compared against: baselines, each its own game; background rows on a sample axis, averaged; or an in-context learner's context.
+_Avoid_: assuming background rows are always averaged
+
+**Masker**:
+A static strategy turning a **Coalition** into model inputs in the format of the **Explained Data**, and combining the values of the samples it creates. It belongs to masking games only; explanations that do not fill in features, such as recontextualization, have none.
+_Avoid_: imputer when referring to the whole coalition-to-input step
+
+**Recontextualization**:
+Removing a **Coalition**'s absent features from an in-context learner's data instead of filling them in: the model, such as TabPFN, is contextualized on the **Background** restricted to the coalition's features and predicts the explained rows restricted alike. The empty coalition has nothing to contextualize on: its value is the prior of the background targets, their mean or class frequencies. It has no **Masker**.
+_Avoid_: imputation when no feature values are filled in

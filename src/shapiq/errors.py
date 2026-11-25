@@ -21,3 +21,7 @@ class HistoryError(IndexError):
 
 class UnsupportedSamplerError(TypeError):
     """Raised when an approximator has no applicable implementation for a sampler."""
+
+
+class UnsupportedModelError(TypeError):
+    """Raised when no converter is registered for a model's type."""

@@ -20,6 +20,7 @@ from shapiq.game.discretederivative import subset_patterns
 from shapiq.game.moebius import AdditiveMoebiusGame, MoebiusGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+from shapiq.value.value import JaxValue
 
 _BATCH = jnp.empty((0,), dtype=jnp.uint8)
 
@@ -51,7 +52,7 @@ class Index[R: Game](JaxLike[Any], Protocol):
     @abstractmethod
     def build(
         self,
-        values: Float[jax.Array, "*batch n_interactions"],
+        values: Float[JaxValue, "*batch n_interactions"],
         interactions: Bool[jax.Array, "n_interactions {players.n_players}"],
         players: Shaped[FinitePlayers, "#*batch"],
     ) -> R:
@@ -93,7 +94,7 @@ class CardinalInteractionIndex(DiscreteDerivativeIndex[MoebiusGame[Any, Any, Any
     @override
     def build(
         self,
-        values: Float[jax.Array, "*batch n_interactions"],
+        values: Float[JaxValue, "*batch n_interactions"],
         interactions: Bool[jax.Array, "n_interactions n_players"],
         players: Shaped[FinitePlayers, "#*batch"],
     ) -> MoebiusGame[Any, Any, Any]:
@@ -118,7 +119,7 @@ class SemivalueIndex(CardinalInteractionIndex):
     @override
     def build(
         self,
-        values: Float[jax.Array, "*batch n_interactions"],
+        values: Float[JaxValue, "*batch n_interactions"],
         interactions: Bool[jax.Array, "n_interactions n_players"],
         players: Shaped[FinitePlayers, "#*batch"],
     ) -> AdditiveMoebiusGame:

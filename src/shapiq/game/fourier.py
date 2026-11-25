@@ -6,6 +6,7 @@ from typing import Any, ClassVar, cast, override
 import jax
 import jax.numpy as jnp
 from jaxtyping import Bool, Float, Shaped
+from ndlike import jax_functions as jf
 from ndlike.jax_like import JaxLike
 
 from shapiq.game.basis import BasisGame
@@ -15,11 +16,11 @@ from shapiq.value.value import JaxValue
 
 @typechecked
 def _fourier_to_moebius_lookup(
-    values: Float[jax.Array, "#*batch n_interactions"],
+    values: Float[JaxValue, "#*batch n_interactions"],
     stored_interactions: Bool[jax.Array, "#*batch n_interactions n_players"],
     query_interactions: Bool[jax.Array, "#*batch n_players"],
     bound: int,
-) -> Float[jax.Array, "*batch"]:
+) -> Float[JaxValue, "*batch"]:
     """Compute Möbius coefficients directly from stored Fourier terms via ``m(U) = (-2)**|U| sum_{T >= U} f(T)``."""
     target_batch = jnp.broadcast_shapes(
         values.shape[:-1], stored_interactions.shape[:-2], query_interactions.shape[:-1]
@@ -32,12 +33,15 @@ def _fourier_to_moebius_lookup(
     contains = ~jnp.any(query_interactions[..., None, :] & ~stored_interactions, axis=-1)
     contains = contains & in_bound[..., None]
     contains_b = jnp.broadcast_to(contains, (*target_batch, n_interactions))
-    values_b = jnp.broadcast_to(values, (*target_batch, n_interactions))
-    zero = jnp.zeros((), dtype=values.dtype)
-    total = jnp.sum(jnp.where(contains_b, values_b, zero), axis=-1)
+    values_b = jf.jax_broadcast_to(values, (*target_batch, n_interactions))
+    zero = jf.jax_zeros_like(values, shape=())
+    total = jf.jax_sum(jf.jax_where(contains_b, values_b, zero), axis=-1)
     safe_sizes_b = jnp.broadcast_to(safe_sizes, target_batch)
-    scaled = jnp.ldexp(total, safe_sizes_b)
-    return jnp.where((safe_sizes_b & 1) == 0, scaled, -scaled)
+    if isinstance(total, jax.Array):
+        scaled = jnp.ldexp(total, safe_sizes_b)
+    else:  # Vector values: the exact power of two, which may overflow first.
+        scaled = jf.jax_multiply(total, jnp.ldexp(jnp.ones((), values.dtype), safe_sizes_b))
+    return jf.jax_where((safe_sizes_b & 1) == 0, scaled, jf.jax_negative(scaled))
 
 
 @typechecked
@@ -67,7 +71,7 @@ class FourierGame[P, V: JaxLike[Any]](BasisGame[P, V, "FourierGame[P, V]"]):
     @override
     def empty_value(self) -> Shaped[JaxValue, "..."]:
         """Sum stored Fourier coefficients directly."""
-        return cast("Shaped[JaxValue, '...']", jnp.sum(self.values, axis=-1))
+        return cast("Shaped[JaxValue, '...']", jf.jax_sum(self.values, axis=-1))
 
     @override
     def _coefficients_for_interactions(
