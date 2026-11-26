@@ -5,14 +5,25 @@ from math import prod
 from typing import ClassVar, override
 
 import jax
+import jax.numpy as jnp
+from jax.core import Tracer
 from jaxtyping import Bool, Float, Int
 from ndlike import jax_functions as jf
+from ndlike.jax_like import JaxLike
 
 from shapiq.masker import MarginalMasker, Masker
 from shapiq.typing import HasShape, typechecked
+from shapiq.value._dtype import value_spec
 from shapiq.value.value import JaxValue
 
-from .base import LocalXAIGame, batch_index, check_input_shape, predict
+from .base import (
+    LocalXAIGame,
+    _opaque_model_spec,
+    batch_index,
+    check_input_shape,
+    infer_model_spec,
+    predict,
+)
 
 
 @typechecked
@@ -46,11 +57,31 @@ class MaskedGame[In: HasShape, P](LocalXAIGame[In, P, "MaskedGame[In, P]"]):
         if self.batch_size is not None and self.batch_size < 1:
             msg = f"The batch size must be positive, not {self.batch_size}."
             raise ValueError(msg)
-        self._index_explained()
         check_input_shape("background", self.background, self.input_shape)
         if self.background_index is None:
             input_ndim = len(self.input_shape) + self.masker.sample_ndim
             object.__setattr__(self, "background_index", batch_index(self.background, input_ndim))
+        super(MaskedGame, self).__post_init__()
+
+    @override
+    def _infer_value_spec(self) -> jax.ShapeDtypeStruct:
+        """Trace masking, prediction and aggregation for one abstract coalition row."""
+        jax_backed = (jax.Array, Tracer, JaxLike)
+        if isinstance(self.x_explain, jax_backed) and isinstance(self.background, jax_backed):
+            try:
+                coalitions = jax.ShapeDtypeStruct((1, self.n_players), jnp.bool_)
+                rows = jax.ShapeDtypeStruct((1,), jnp.int32)
+                values = jax.eval_shape(
+                    self._values, self.x_explain, self.background, coalitions, rows, rows
+                )
+                spec = value_spec(values)
+            except Exception:  # noqa: BLE001 - maskers and models may reject abstract inputs
+                spec = None
+            if spec is not None:
+                return spec
+            if infer_model_spec.dispatch(type(self.model)) is infer_model_spec.dispatch(object):
+                return _opaque_model_spec()
+        return super(MaskedGame, self)._infer_value_spec()
 
     @override
     def _eval_bool(
@@ -63,7 +94,12 @@ class MaskedGame[In: HasShape, P](LocalXAIGame[In, P, "MaskedGame[In, P]"]):
         n = len(coalitions)
         step = n if self.batch_size is None else max(1, self.batch_size // self.n_samples)
         parts = [
-            self._values(coalitions[start : start + step], *(r[start : start + step] for r in rows))
+            self._values(
+                self.x_explain,
+                self.background,
+                coalitions[start : start + step],
+                *(r[start : start + step] for r in rows),
+            )
             for start in range(0, max(n, 1), max(step, 1))
         ]
         values = parts[0] if len(parts) == 1 else jf.jax_concatenate(parts)
@@ -77,14 +113,16 @@ class MaskedGame[In: HasShape, P](LocalXAIGame[In, P, "MaskedGame[In, P]"]):
 
     def _values(
         self,
+        x_explain: In,
+        background: In,
         coalitions: Bool[jax.Array, "n n_players"],
         explain_rows: Int[jax.Array, " n"],
         background_rows: Int[jax.Array, " n"],
     ) -> Float[JaxValue, " n"]:
         """Return the aggregated values of ``n`` evaluations from one model call."""
         inputs = self.masker.mask(
-            self.x_explain,
-            self.background,
+            x_explain,
+            background,
             explain_rows,
             background_rows,
             coalitions,

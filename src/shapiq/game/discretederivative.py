@@ -16,6 +16,7 @@ from shapiq.coalition.coalition import unpack_bool_coalition
 from shapiq.game.finite import BoolFinitePlayerGame, FinitePlayerGame, _FiniteGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+from shapiq.value._dtype import op_spec
 from shapiq.value.value import JaxValue
 
 
@@ -91,10 +92,18 @@ def _derivative(
     )  # (2**order, *coalition_batch, *interaction_batch)
     # The signs depend only on the subset patterns, not the specific interaction.
     differences = order - jnp.sum(subset_patterns(order), axis=-1)  # (2**order,)
-    signs = ((-1) ** differences).reshape(
+    signs = jnp.where((differences & 1) == 0, 1, -1).reshape(
         -1, *(1,) * (game_evals.ndim - 1)
     )  # (2**order, *coalition_batch, *interaction_batch)
-    return jax_sum(jax_multiply(game_evals, signs), axis=0)  # (*coalition_batch, *i_batch)
+    return _signed_sum(game_evals, signs)
+
+
+def _signed_sum(values: JaxValue, signs: jax.Array) -> JaxValue:
+    """Sum the signed values over subsets while retaining narrow array dtypes."""
+    signed = jax_multiply(values, signs)
+    if isinstance(signed, jax.Array):
+        return jnp.sum(signed, axis=0, dtype=signed.dtype)
+    return jax_sum(signed, axis=0, dtype=signed.dtype)
 
 
 @typechecked
@@ -149,6 +158,18 @@ class DiscreteDerivative[P, V: JaxLike[Any]](
     def players(self) -> FinitePlayers:
         """Return finite player sets whose logical shape broadcasts to ``shape``."""
         return self.game.players
+
+    @property
+    @override
+    def dtype(self) -> jnp.dtype:
+        """Return the dtype of the signed subset sum."""
+        return self._value_spec().dtype
+
+    @override
+    def _value_spec(self) -> jax.ShapeDtypeStruct:
+        """Infer the signed subset sum's spec without evaluating the child game."""
+        child = self.game._value_spec()  # noqa: SLF001 - internal lazy abstract dtype hook
+        return op_spec(_signed_sum, child.update(shape=(1,)), 1)
 
     @override
     def _eval_bool(

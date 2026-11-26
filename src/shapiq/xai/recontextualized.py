@@ -12,11 +12,12 @@ from jaxtyping import Bool, Float, Int
 from ndlike import jax_functions as jf
 
 from shapiq.masker import select
+from shapiq.masker.base import require_eager
 from shapiq.typing import HasShape, typechecked
 from shapiq.value import VectorValue
 from shapiq.value.value import JaxValue
 
-from .base import LocalXAIGame, batch_index, check_input_shape, predict, require_eager
+from .base import LocalXAIGame, batch_index, check_input_shape, predict
 
 
 @flexdispatch
@@ -67,8 +68,8 @@ class RecontextualizedGame[In: HasShape, P](LocalXAIGame[In, P, "Recontextualize
         if len(self.input_shape) != 1:
             msg = f"Recontextualization selects columns: the input shape {self.input_shape} must be (n_features,)."
             raise ValueError(msg)
-        self._index_explained()
         check_input_shape("background", self.background, self.input_shape)
+        super(RecontextualizedGame, self).__post_init__()
 
     @override
     def _eval_bool(

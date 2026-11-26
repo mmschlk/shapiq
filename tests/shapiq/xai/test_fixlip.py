@@ -68,6 +68,8 @@ def test_values_are_masked_logits(kind, first):
     coalitions = np.random.default_rng(0).random((7, game.n_players)) < 0.5
     coalitions[0] = True  # the full coalition
     values = game(jnp.asarray(coalitions.reshape(7, 1, -1)))
+    assert game.dtype == values.dtype == jnp.float32
+    assert not game.weak_type
     assert values.shape == (7, 1)
     want = expected(model, pixel_values, input_ids, first, coalitions)
     np.testing.assert_allclose(values[:, 0], want, rtol=1e-4, atol=1e-5)

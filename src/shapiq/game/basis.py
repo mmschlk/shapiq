@@ -3,8 +3,8 @@
 import math
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
-from typing import Any, ClassVar, cast, override
+from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, override
 
 import jax
 import jax.numpy as jnp
@@ -19,7 +19,13 @@ from shapiq.game.finite import BoolFinitePlayerGame, _FiniteGame
 from shapiq.game.kadditive import KAdditiveGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+from shapiq.value._dtype import cast_value, require_value_spec
 from shapiq.value.value import JaxValue
+
+if TYPE_CHECKING:
+    from jax.sharding import Sharding
+    from jax.typing import DTypeLike
+    from numpy.typing import DTypeLike as NpDTypeLike
 
 
 def _require_table_values(values: object) -> jax.Array:
@@ -33,14 +39,9 @@ def _require_table_values(values: object) -> jax.Array:
     return values
 
 
-def _table_accumulator_dtype(dtype: jnp.dtype) -> jnp.dtype:
-    """Return an accumulation dtype wide enough to avoid low-precision scatter/transform loss."""
-    return jnp.float32 if jnp.finfo(dtype).bits < 32 else dtype
-
-
 def _check_table_n_players(n_players: int) -> jnp.dtype:
     """Validate that ``2**n_players`` fits in JAX's enabled signed index/dimension width."""
-    index_dtype = jnp.int64 if jax.config.x64_enabled else jnp.int32
+    index_dtype = jnp.dtype(jnp.int64 if jax.config.x64_enabled else jnp.int32)
     # Both coalition indices (up to 2**n - 1) and axis length 2**n must fit in signed index_dtype.
     max_players = jnp.iinfo(index_dtype).bits - 2
     if n_players > max_players:
@@ -58,19 +59,16 @@ def _scatter_basis_coefficients(
 
     Coalition indices follow ``TableGame``'s little-endian bit order where bit ``j``
     corresponds to local player ``j``. Duplicate interactions are summed via additive
-    scatter in at least ``float32`` precision so low-precision dtypes do not lose
-    magnitude before the downstream transform.
+    scatter in the stored value dtype.
     """
     index_dtype = _check_table_n_players(n_players)
-    acc_dtype = _table_accumulator_dtype(values.dtype)
-    acc_values = values.astype(acc_dtype)
-    batch_shape = acc_values.shape[:-1]
-    n_interactions = acc_values.shape[-1]
+    batch_shape = values.shape[:-1]
+    n_interactions = values.shape[-1]
     if n_players == 0:
-        return jnp.sum(acc_values, axis=-1, keepdims=True)
+        return jnp.sum(values, axis=-1, keepdims=True, dtype=values.dtype)
     n_coalitions = 1 << n_players
     if n_interactions == 0 or 0 in batch_shape:
-        return jnp.zeros((*batch_shape, n_coalitions), dtype=acc_dtype)
+        return jnp.zeros((*batch_shape, n_coalitions), dtype=values.dtype)
 
     weights = jnp.left_shift(
         jnp.asarray(1, dtype=index_dtype),
@@ -79,16 +77,16 @@ def _scatter_basis_coefficients(
     indices = jnp.sum(interactions.astype(index_dtype) * weights, axis=-1, dtype=index_dtype)
 
     if math.prod(interactions.shape[:-2]) == 1:
-        table = jnp.zeros((*batch_shape, n_coalitions), dtype=acc_dtype)
-        return table.at[..., indices.reshape(n_interactions)].add(acc_values)
+        table = jnp.zeros((*batch_shape, n_coalitions), dtype=values.dtype)
+        return table.at[..., indices.reshape(n_interactions)].add(values)
 
     batch_size = math.prod(batch_shape)
     batch_idx = jnp.arange(batch_size)[:, None]
     indices_flat = jnp.broadcast_to(indices, (*batch_shape, n_interactions)).reshape(
         batch_size, n_interactions
     )
-    values_flat = acc_values.reshape(batch_size, n_interactions)
-    table_flat = jnp.zeros((batch_size, n_coalitions), dtype=acc_dtype)
+    values_flat = values.reshape(batch_size, n_interactions)
+    table_flat = jnp.zeros((batch_size, n_coalitions), dtype=values.dtype)
     table_flat = table_flat.at[batch_idx, indices_flat].add(values_flat)
     return table_flat.reshape(*batch_shape, n_coalitions)
 
@@ -126,6 +124,30 @@ class BasisGame[
     @abstractmethod
     def interactions(self) -> Bool[jax.Array, "#*batch n_interactions n_players"]:
         """Return the interaction sets whose coefficients ``values`` holds."""
+
+    @override
+    def _value_spec(self) -> jax.ShapeDtypeStruct:
+        """Return the coefficient dtype, strong after summing the basis terms."""
+        return require_value_spec(self.values).update(weak_type=False)
+
+    @property
+    @override
+    def dtype(self) -> jnp.dtype:
+        """Return the stored coefficient dtype."""
+        return self.values.dtype
+
+    @override
+    def astype(
+        self,
+        dtype: "DTypeLike | NpDTypeLike | None",
+        copy: bool = False,
+        device: "jax.Device | Sharding | None" = None,
+    ) -> Self:
+        """Cast the stored coefficients."""
+        game = self if device is None else self.to_device(device)
+        target = None if dtype is None else jax.dtypes.canonicalize_dtype(jnp.dtype(dtype))
+        values = cast_value(game.values, target, copy=copy, device=None)
+        return game if values is game.values else replace(game, values=values)
 
     def __post_init__(self) -> None:
         """Check that no interaction exceeds the declared additivity, when values are concrete.

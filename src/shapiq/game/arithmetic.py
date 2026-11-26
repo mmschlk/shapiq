@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, override
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 from flextype import CastUnavailable, autocast, castmethod, try_cast
 from jaxtyping import Bool, Shaped, UInt8
 from ndlike import jax_functions as jf
@@ -18,123 +17,23 @@ from ndlike.tuple.jax import JaxBroadcastTuple
 from shapiq.coalition import FiniteCoalition
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+from shapiq.value._dtype import (
+    match_promoted_dtype,
+    op_spec,
+    promote_dtype,
+    promote_spec,
+    require_value_spec,
+    validate_numeric_dtype,
+    validate_numeric_value,
+    weak_zero,
+    weak_zero_for_dtype,
+)
 from shapiq.value.value import JaxValue
 
 from .finite import FinitePlayerGame, _FiniteGame
 from .kadditive import AdditiveGame, KAdditiveGame
 from .moebius import _moebius_coefficients_by_eval, _moebius_zero_like
 from .table import TableGame
-
-
-def _zero_scalar() -> jax.Array:
-    """Return a weakly typed zero-dimensional scalar array for default affine bias."""
-    return jnp.asarray(0)
-
-
-def _weak_zero_for_dtype(dtype: jnp.dtype) -> jax.Array:
-    """Return a weakly typed zero scalar matching ``dtype``'s numeric kind."""
-    if jnp.issubdtype(dtype, jnp.complexfloating):
-        return jnp.asarray(0j)
-    if jnp.issubdtype(dtype, jnp.floating):
-        return jnp.asarray(0.0)
-    return jnp.asarray(0)
-
-
-def _is_numeric_dtype(dtype: object) -> bool:
-    """Return whether ``dtype`` represents a numeric JAX/NumPy dtype."""
-    try:
-        return bool(jnp.issubdtype(cast("Any", dtype), jnp.number))
-    except TypeError:
-        return False
-
-
-def _validate_numeric_value(value: object, name: str) -> None:
-    """Validate that an arithmetic parameter carries a numeric dtype."""
-    if not _is_numeric_dtype(getattr(value, "dtype", None)):
-        msg = f"{name} must have a numeric dtype."
-        raise TypeError(msg)
-
-
-def _abstract_value_spec(value: object) -> jax.ShapeDtypeStruct | None:
-    """Return lazy scalar ``ShapeDtypeStruct`` (dtype and ``weak_type``) without evaluating games."""
-    if isinstance(value, jax.ShapeDtypeStruct):
-        return jax.ShapeDtypeStruct((), value.dtype, weak_type=value.weak_type)
-    if isinstance(value, jax.Array):
-        return jax.ShapeDtypeStruct((), value.dtype, weak_type=value.weak_type)
-    if isinstance(value, FinitePlayerGame):
-        return value._value_spec()  # noqa: SLF001 - internal lazy abstract dtype hook
-    if isinstance(value, (jnp.dtype, np.dtype, type)):
-        try:
-            return jax.ShapeDtypeStruct((), jnp.dtype(cast("Any", value)), weak_type=False)
-        except TypeError:
-            return None
-    dtype = getattr(value, "dtype", None)
-    if dtype is None:
-        return None
-    try:
-        return jax.ShapeDtypeStruct(
-            (), jnp.dtype(cast("Any", dtype)), weak_type=bool(getattr(value, "weak_type", False))
-        )
-    except TypeError:
-        return None
-
-
-def _fallback_spec(fallback: object) -> jax.ShapeDtypeStruct:
-    """Build a conservative fallback ``ShapeDtypeStruct``."""
-    spec = _abstract_value_spec(fallback)
-    if spec is not None:
-        return spec
-    return jax.ShapeDtypeStruct((), cast("jnp.dtype", fallback), weak_type=False)
-
-
-def _promote_add(*xs: jax.Array) -> jax.Array:
-    """Abstract addition chain used with ``jax.eval_shape`` to follow JAX weak-type promotion."""
-    acc = xs[0]
-    for x in xs[1:]:
-        acc = jnp.add(acc, x)
-    return acc
-
-
-def _promote_spec(values: tuple[object, ...], fallback: object) -> jax.ShapeDtypeStruct:
-    """Compute promoted JAX dtype and ``weak_type`` across operands without evaluating games."""
-    specs: list[jax.ShapeDtypeStruct] = []
-    for item in values:
-        spec = _abstract_value_spec(item)
-        if spec is None:
-            return _fallback_spec(fallback)
-        specs.append(spec)
-    if not specs:
-        return _fallback_spec(fallback)
-    if len(specs) == 1:
-        return specs[0]
-    try:
-        out = jax.eval_shape(_promote_add, *specs)
-        return jax.ShapeDtypeStruct((), out.dtype, weak_type=out.weak_type)
-    except TypeError:
-        return _fallback_spec(fallback)
-
-
-def _promote_dtype(values: tuple[object, ...], fallback: object) -> jnp.dtype:
-    """Compute promoted JAX dtype across operands while preserving weak array/game dtypes."""
-    return _promote_spec(values, fallback).dtype
-
-
-def _match_promoted_dtype[T: JaxValue](
-    value: Shaped[T, "..."], reference: object
-) -> Shaped[T, "..."]:
-    """Promote ``value`` to match the promoted dtype (and ``weak_type``) with ``reference``."""
-    spec = _promote_spec((value, reference), getattr(value, "dtype", None))
-    if isinstance(value, jax.Array):
-        if value.dtype == spec.dtype and value.weak_type == spec.weak_type:
-            return value
-        if spec.weak_type:
-            promoted = value + _weak_zero_for_dtype(spec.dtype)
-            if promoted.dtype == spec.dtype and promoted.weak_type:
-                return cast("Shaped[T, '...']", promoted)
-        return cast("Shaped[T, '...']", value.astype(spec.dtype))
-    if isinstance(value, JaxAxisProtected) and getattr(value, "dtype", None) != spec.dtype:
-        return cast("Shaped[T, '...']", value.astype(spec.dtype))
-    return value
 
 
 def _ensure_shape[T: JaxValue](value: Shaped[T, "..."], shape: tuple[int, ...]) -> Shaped[T, "..."]:
@@ -150,7 +49,7 @@ def _scalar_zero_for_game(game: KAdditiveGame[Any, Any]) -> JaxValue:
     """Return a scalar-batch zero preserving ``game``'s structure, field dtypes, and weak type."""
     zero = game._zeros_like_value(())  # noqa: SLF001 - internal KAdditiveGame hook
     if isinstance(zero, jax.Array) and game._value_spec().weak_type:  # noqa: SLF001 - internal lazy abstract dtype hook
-        return _weak_zero_for_dtype(zero.dtype)
+        return weak_zero_for_dtype(zero.dtype)
     return zero
 
 
@@ -190,8 +89,8 @@ def _zeros_from_arithmetic(
                 if idx == structured_game_idx:
                     continue
                 acc = jf.jax_add(acc, _scalar_zero_for_game(game))
-        return _match_promoted_dtype(acc, dtype)
-    return _match_promoted_dtype(
+        return match_promoted_dtype(acc, dtype)
+    return match_promoted_dtype(
         jnp.zeros(shape, dtype=dtype) if first_zero is None else first_zero, dtype
     )
 
@@ -292,7 +191,7 @@ class ArithmeticGame[
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:
         """Return promoted scalar dtype and ``weak_type`` across component games lazily."""
-        return _promote_spec(self.games.members, super(ArithmeticGame, self).dtype)
+        return promote_spec(self.games.members, self.games.members[0])
 
     @property
     @override
@@ -366,12 +265,12 @@ def _can_flatten_affine(outer_dtype: jnp.dtype, inner: "AffineGame[Any, Any, Any
     inner_dtype = inner.dtype
     if jnp.issubdtype(inner_dtype, jnp.inexact):
         return all(
-            jnp.issubdtype(_promote_dtype((game, weight), inner_dtype), jnp.inexact)
+            jnp.issubdtype(promote_dtype((game, weight), inner_dtype), jnp.inexact)
             for game, weight in zip(inner.games.members, inner.weights.members, strict=True)
         )
     if jnp.issubdtype(inner_dtype, jnp.integer) and inner_dtype == outer_dtype:
         return all(
-            _promote_dtype((game, weight), inner_dtype) == inner_dtype
+            promote_dtype((game, weight), inner_dtype) == inner_dtype
             for game, weight in zip(inner.games.members, inner.weights.members, strict=True)
         )
     return False
@@ -402,7 +301,7 @@ class AffineGame[
     """
 
     weights: JaxBroadcastTuple[tuple[JaxValue, ...]]
-    bias: JaxValue = field(default_factory=_zero_scalar)
+    bias: JaxValue = field(default_factory=weak_zero)
     protected_axes: ClassVar[dict[str, int]] = {"games": 0, "weights": 0, "bias": 0}
     broadcasted_batch: ClassVar[set[str]] = {"weights", "bias"}
 
@@ -429,8 +328,8 @@ class AffineGame[
             msg = "AffineGame requires one weight per game."
             raise ValueError(msg)
         for weight in self.weights.members:
-            _validate_numeric_value(weight, "AffineGame weights")
-        _validate_numeric_value(self.bias, "AffineGame bias")
+            validate_numeric_value(weight, "AffineGame weights")
+        validate_numeric_value(self.bias, "AffineGame bias")
         self.validate()
 
         outer_spec = self._value_spec()
@@ -441,10 +340,10 @@ class AffineGame[
         ):
             flat_games: list[FinitePlayerGame[P, Any]] = []
             flat_weights: list[JaxValue] = []
-            bias = _match_promoted_dtype(self.bias, outer_spec)
+            bias = match_promoted_dtype(self.bias, outer_spec)
             for game, weight in zip(self.games.members, self.weights.members, strict=True):
                 if isinstance(game, AffineGame) and _can_flatten_affine(outer_dtype, game):
-                    scaled_weight = _match_promoted_dtype(weight, outer_spec)
+                    scaled_weight = match_promoted_dtype(weight, outer_spec)
                     flat_games.extend(game.games.members)
                     flat_weights.extend(
                         jf.jax_multiply(scaled_weight, inner_weight)
@@ -461,7 +360,7 @@ class AffineGame[
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:
         """Return promoted scalar dtype and ``weak_type`` across games, weights, and bias."""
-        return _promote_spec(
+        return promote_spec(
             (*self.games.members, *self.weights.members, self.bias),
             super(AffineGame, self)._value_spec(),
         )
@@ -543,7 +442,7 @@ class _KAdditiveAffineGame[
     def _linear_combine_last_axis(self, child_terms: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
         """Combine child coefficient arrays along a shared trailing interaction axis."""
         combined = _weighted_sum(self.weights.members, child_terms, expand_weight_axis=True)
-        result = _match_promoted_dtype(combined, self.bias)
+        result = match_promoted_dtype(combined, self.bias)
         return _ensure_shape(
             cast("Shaped[V, '...']", result), (*self.shape, child_terms[0].shape[-1])
         )
@@ -715,20 +614,15 @@ def _infer_mapped_spec(
         for spec in (game._value_spec() for game in games)  # noqa: SLF001 - internal lazy abstract dtype hook
     )
     try:
-        abstract_out = jax.eval_shape(cast("Any", fn), specs)
+        spec = op_spec(fn, specs)
     except Exception as error:
         msg = (
             "Cannot infer MappedGame output dtype lazily from abstract array specs; "
             "specify output_dtype explicitly."
         )
         raise TypeError(msg) from error
-    out_dtype = getattr(abstract_out, "dtype", None)
-    if out_dtype is None or not _is_numeric_dtype(out_dtype):
-        msg = "MappedGame output dtype must be numeric."
-        raise TypeError(msg)
-    out_spec = _abstract_value_spec(abstract_out)
-    weak = False if out_spec is None else out_spec.weak_type
-    return jax.ShapeDtypeStruct((), jnp.dtype(out_dtype), weak_type=weak)
+    validate_numeric_dtype(spec.dtype, "MappedGame output dtype")
+    return spec
 
 
 @typechecked
@@ -765,14 +659,7 @@ class MappedGame[
             resolved = resolved_spec.dtype
             weak_type = resolved_spec.weak_type
         else:
-            try:
-                resolved = jnp.dtype(self.output_dtype)
-            except TypeError as error:
-                msg = "MappedGame output_dtype must be a valid numeric dtype."
-                raise TypeError(msg) from error
-            if not _is_numeric_dtype(resolved):
-                msg = "MappedGame output_dtype must be a numeric dtype."
-                raise TypeError(msg)
+            resolved = validate_numeric_dtype(self.output_dtype, "MappedGame output_dtype")
             weak_type = False
         object.__setattr__(self, "output_dtype", resolved)
         object.__setattr__(self, "_output_weak_type", weak_type)
@@ -813,4 +700,6 @@ class MappedGame[
         if result_dtype is None or jnp.dtype(cast("Any", result_dtype)) != self.output_dtype:
             msg = f"MappedGame fn returned dtype {result_dtype}, expected {self.output_dtype}."
             raise TypeError(msg)
+        if not self._output_weak_type and require_value_spec(result).weak_type:
+            return cast("Shaped[V, '...']", result.astype(self.output_dtype, copy=False))
         return result

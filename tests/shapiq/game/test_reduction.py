@@ -566,17 +566,16 @@ def test_sum_dtypes_weak_typing_and_x64():
     p = FinitePlayers(2)
     coal = jnp.array([True, False])
 
-    # Weak float32 game becomes strong float32 upon sum (matches jnp.sum), including public `weak_type`.
+    # A weak float game becomes strong at the same dtype upon sum, as in jnp.sum.
     g_weak = TableGame(jnp.full((2, 4), 2.0), p)
     g_f16 = TableGame(jnp.full((4,), 3.0, dtype=jnp.float16), p)
     assert g_weak.weak_type is True
     s_weak = g_weak.sum(axis=0)
-    assert s_weak.dtype == jnp.float32
+    assert s_weak.dtype == g_weak.dtype
     assert s_weak.weak_type is False
     assert s_weak._value_spec().weak_type is False
     assert not s_weak(coal).weak_type
-    assert (s_weak + g_f16).dtype == jnp.float32
-    assert (s_weak + g_f16)(coal).dtype == jnp.float32
+    assert (s_weak + g_f16).dtype == (s_weak + g_f16)(coal).dtype == g_weak.dtype
 
     # Narrow integer promotion and explicit output dtype match jnp.sum under x64=False and x64=True.
     for x64 in (False, True):

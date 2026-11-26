@@ -20,13 +20,9 @@ from shapiq.coalition import FiniteCoalition
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 from shapiq.value import Value
+from shapiq.value._dtype import op_spec, validate_numeric_dtype, validate_numeric_value
 
-from .arithmetic import (
-    _abstract_value_spec,
-    _ensure_shape,
-    _is_numeric_dtype,
-    _validate_numeric_value,
-)
+from .arithmetic import _ensure_shape
 from .finite import FinitePlayerGame, _FiniteGame
 from .kadditive import AdditiveGame, KAdditiveGame
 from .table import TableGame
@@ -188,37 +184,9 @@ def _rearrange_game_for_reduction[GameT: FinitePlayerGame[Any, Any]](
     return cast("GameT", rearranged)
 
 
-def _validate_output_dtype(output_dtype: object) -> jnp.dtype | None:
-    """Validate and normalize an optional numeric reduction output dtype."""
-    if output_dtype is None:
-        return None
-    if isinstance(output_dtype, (bool, np.bool_)) or output_dtype in (bool, np.bool_, jnp.bool_):
-        msg = "SumReductionGame output_dtype must be a numeric dtype."
-        raise TypeError(msg)
-    try:
-        resolved = jnp.dtype(cast("Any", output_dtype))
-    except TypeError as error:
-        msg = "SumReductionGame output_dtype must be a valid numeric dtype."
-        raise TypeError(msg) from error
-    if not _is_numeric_dtype(resolved):
-        msg = "SumReductionGame output_dtype must be a numeric dtype."
-        raise TypeError(msg)
-    return resolved
-
-
-def _sum_spec(
-    game: FinitePlayerGame[Any, Any], output_dtype: jnp.dtype | None
-) -> jax.ShapeDtypeStruct:
-    """Compute JAX's exact ``jnp.sum`` dtype and ``weak_type`` lazily without evaluating."""
-    operand = _abstract_value_spec(game)
-    if operand is None:
-        fallback = output_dtype if output_dtype is not None else jnp.dtype(game.dtype)
-        return jax.ShapeDtypeStruct((), fallback, weak_type=False)
-    out = jax.eval_shape(
-        lambda x: jnp.sum(x, axis=-1, dtype=output_dtype),
-        jax.ShapeDtypeStruct((1,), operand.dtype, weak_type=operand.weak_type),
-    )
-    return jax.ShapeDtypeStruct((), out.dtype, weak_type=out.weak_type)
+def _sum_spec(operand: object, output_dtype: jnp.dtype | None) -> jax.ShapeDtypeStruct:
+    """Compute JAX's exact scalar result spec for summing a batch lazily."""
+    return op_spec(lambda x: jnp.sum(x, dtype=output_dtype), operand)
 
 
 def _child_value_leaf_specs(child: KAdditiveGame[Any, Any]) -> tuple[jax.ShapeDtypeStruct, ...]:
@@ -255,10 +223,7 @@ def _preserves_child_dtypes_for_sum(
     if not specs:
         return False
     for spec in specs:
-        summed = jax.eval_shape(
-            lambda x: jnp.sum(x, axis=-1, dtype=output_dtype),
-            jax.ShapeDtypeStruct((1,), spec.dtype, weak_type=spec.weak_type),
-        )
+        summed = _sum_spec(spec, output_dtype)
         if summed.dtype != spec.dtype:
             return False
     return True
@@ -565,10 +530,14 @@ class SumReductionGame[
         keepdims: bool,
     ) -> None:
         """Validate ``output_dtype`` and prepare the reduced game layout."""
-        resolved_dtype = _validate_output_dtype(self.output_dtype)
+        resolved_dtype = (
+            None
+            if self.output_dtype is None
+            else validate_numeric_dtype(self.output_dtype, "SumReductionGame output_dtype")
+        )
         object.__setattr__(self, "output_dtype", resolved_dtype)
         super(SumReductionGame, self).__post_init__(axis, keepdims)
-        _validate_numeric_value(self.game, "SumReductionGame game")
+        validate_numeric_value(self.game, "SumReductionGame game")
 
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:

@@ -210,8 +210,8 @@ def test_sklearn_models():
 def test_torch_module():
     """Is a torch module called on tensor data, its output columns kept as a vector value?"""
     torch = pytest.importorskip("torch")
-    module = torch.nn.Linear(3, 2)
     x, background = torch.tensor(np.asarray(X_EXPLAIN[0])), torch.tensor(np.asarray(BACKGROUND))
+    module = torch.nn.Linear(3, 2, dtype=x.dtype)
     values = MaskedGame(module, PLAYERS, x, background, TABULAR)(COALITIONS)
     masked = torch.where(torch.tensor(np.asarray(COALITIONS))[:, None, :], x, background)
     with torch.no_grad():

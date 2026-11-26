@@ -13,7 +13,9 @@ from shapiq.game.finite import FinitePlayerGame
 from shapiq.game.game import Game
 from shapiq.game.table import TableGame
 from shapiq.index import DiscreteDerivativeIndex
+from shapiq.index._base import weight_parameters
 from shapiq.typing import typechecked
+from shapiq.value._dtype import resolve_weight_dtype
 
 
 @typechecked
@@ -45,9 +47,9 @@ class ExactComputer(JaxAxisProtected["ExactComputer"]):
         interactions = index.interactions(n_players)
         # subset_patterns lists coalitions in TableGame order, matching the table's last axis.
         weights = discrete_derivative_coefficients(index, subset_patterns(n_players), interactions)
-        values = jnp.sum(
-            weights * self.table.values[..., None, :], axis=-1
-        )  # (*batch, n_interactions)
+        values = self.table.values
+        dtype = resolve_weight_dtype(values, *weight_parameters(index))
+        values = jnp.sum(weights.astype(dtype) * values[..., None, :], axis=-1)
         return index.build(values, interactions, self.table.players)
 
 
@@ -70,4 +72,5 @@ def discrete_derivative_coefficients(
     outside = jnp.sum(coalitions, axis=-1) - overlap  # |S - T|
     # Two trailing batch axes, so the index parameters broadcast against (T, S).
     weights = index[..., None, None].discrete_derivative_weight(outside, order, n_players)
-    return (-1.0) ** (order - overlap) * weights  # (*batch, n_interactions, n_coalitions)
+    signs = jnp.where(((order - overlap) & 1) == 0, 1, -1)
+    return signs * weights  # (*batch, n_interactions, n_coalitions)

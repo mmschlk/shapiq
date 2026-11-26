@@ -25,6 +25,7 @@ from shapiq.game import (
     AdditiveGame,
     AffineGame,
     ArithmeticGame,
+    CastGame,
     FinitePlayerGame,
     KAdditiveGame,
     MappedGame,
@@ -35,6 +36,7 @@ from shapiq.game.discretederivative import subset_patterns
 from shapiq.game.fourier import FourierGame
 from shapiq.game.moebius import AdditiveMoebiusGame, MoebiusGame
 from shapiq.players import FinitePlayers, LatentPlayers
+from shapiq.value import VectorValue
 
 
 def _table_game(n_players: int = 2, batch_shape: tuple[int, ...] = (2,)) -> TableGame:
@@ -729,6 +731,20 @@ class _IntTableGame(FinitePlayerGame[Any, jax.Array], JaxAxisProtected["_IntTabl
         )
 
 
+def test_exact_integer_cast_preserves_additive_capability():
+    class IntegerAdditiveGame(_IntTableGame, AdditiveGame):
+        def contributions(self):
+            return self.values[..., 1:] - self.values[..., :1]
+
+    child = IntegerAdditiveGame(jnp.array([1, 4], dtype=jnp.int8), FinitePlayers(1))
+    converted = child.astype(jnp.int32)
+    assert isinstance(converted, AdditiveGame)
+    assert converted.additivity == 1
+    assert converted.full_value().dtype == jnp.int32
+    assert jnp.array_equal(converted.contributions(), jnp.array([3], dtype=jnp.int32))
+    assert jnp.array_equal(converted.coefficients(order=1), converted.contributions())
+
+
 def test_unsigned_negation_subtraction_and_mixed_dtypes_preserve_jax_semantics():
     p = FinitePlayers(2)
     u1 = _IntTableGame(jnp.array([0, 1, 5, 255], dtype=jnp.uint8), p)
@@ -970,6 +986,36 @@ class _StructuredPair(JaxAxisProtected["_StructuredPair"]):
     }
 
 
+def test_same_dtype_cast_applies_to_all_mapped_value_fields():
+    table = _table_game(batch_shape=())
+    mapped = MappedGame(
+        JaxBroadcastTuple((table,)),
+        lambda vs: _StructuredPair(
+            vs[0].astype(jnp.float32), jnp.stack([vs[0], vs[0]], axis=-1).astype(jnp.float16)
+        ),
+        output_dtype=jnp.float32,
+    )
+    assert mapped.full_value().vector.dtype == jnp.float16
+    converted = mapped.astype(jnp.float32)
+    assert isinstance(converted, CastGame)
+    value = converted.full_value()
+    assert value.count.dtype == value.vector.dtype == jnp.float32
+
+
+@pytest.mark.parametrize("structured", [False, True])
+def test_explicit_mapped_dtype_strengthens_weak_result(structured):
+    table = _table_game(batch_shape=())
+    with jax.enable_x64(new_val=False):
+
+        def fn(vs):
+            shape = vs[0].shape
+            return VectorValue(jnp.full((*shape, 2), 3.0)) if structured else jnp.full(shape, 3.0)
+
+        mapped = MappedGame(JaxBroadcastTuple((table,)), fn, output_dtype=jnp.float32)
+        assert not mapped.weak_type
+        assert not mapped.full_value().weak_type
+
+
 @dataclass(frozen=True)
 class _VectorAdditiveGame(AdditiveGame[Any, _VectorValue], JaxAxisProtected["_VectorAdditiveGame"]):
     empty: _VectorValue
@@ -1020,10 +1066,11 @@ def test_structured_values_batch_weights_bias_divisors_and_kadditive_zero_shortc
         JaxBroadcastTuple((_table_game(2, (2,)),)),
         lambda vs: _VectorValue(jnp.stack([vs[0], vs[0] + 10.0], axis=-1)),
     )
+    pair_child = _table_game(2, (2,))
     pair_game = MappedGame(
-        JaxBroadcastTuple((_table_game(2, (2,)),)),
+        JaxBroadcastTuple((pair_child,)),
         lambda vs: _StructuredPair(vs[0], jnp.stack([vs[0], vs[0] + 1.0, vs[0] + 2.0], axis=-1)),
-        output_dtype=jnp.float32,
+        output_dtype=pair_child.dtype,
     )
     coal = jnp.array([True, False])
     w = jnp.array([10.0, 100.0])
@@ -1245,7 +1292,7 @@ def test_structured_values_batch_weights_bias_divisors_and_kadditive_zero_shortc
     ):
         assert isinstance(res, _StructuredPair)
         assert res.count.dtype == jnp.float32
-        assert res.vector.dtype == jnp.int32
+        assert res.vector.dtype == jnp.sum(jnp.int16(0)).dtype
 
     # K-additive product of structured additive games preserves _VectorValue on eval-based & zero shortcuts.
     v_prod = v_add * v_add
@@ -1907,13 +1954,12 @@ def test_weak_dtype_metadata_propagates_across_table_arithmetic_and_mapped_game(
         assert jit_actual.dtype == jnp.float16
         assert jnp.allclose(jit_actual, expected)
 
-    # BasisGame sum evaluation returns strong float32 even with weakly-typed storage.
+    # BasisGame sum evaluation returns a strong dtype even with weakly-typed storage.
     am_weak = _additive_moebius(jnp.full((1,), 2.0), p)
     assert am_weak.values.weak_type
     assert not am_weak(s).weak_type
     am_div_h = am_weak / h
-    assert am_div_h.dtype == jnp.float32
-    assert am_div_h(s).dtype == jnp.float32
+    assert am_div_h.dtype == am_div_h(s).dtype == am_weak.values.dtype
 
     # Explicit output_dtype on MappedGame remains strict.
     lying = MappedGame(

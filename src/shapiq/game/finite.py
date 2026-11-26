@@ -6,10 +6,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, overload, override
 
 import jax
 import jax.numpy as jnp
-from beartype.door import is_bearable
-from jaxtyping import Bool, Shaped, UInt8
+from jaxtyping import Bool, Shaped, TypeCheckError, UInt8
 from ndlike import jax_functions as jf
-from ndlike.jax_like import JaxLikeImplementation
+from ndlike.jax_like import JaxLike, JaxLikeImplementation
 
 from shapiq.coalition import FiniteCoalition
 from shapiq.coalition.coalition import (
@@ -23,7 +22,9 @@ from shapiq.value import Value
 from .game import Game
 
 if TYPE_CHECKING:
+    from jax.sharding import Sharding
     from jax.typing import DTypeLike
+    from numpy.typing import DTypeLike as NpDTypeLike
 
     from .arithmetic import AffineGame, ArithmeticGame
     from .reduction import SumReductionGame
@@ -59,13 +60,20 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
         """Return the number of players in each game, which is constant across the batch."""
         return self.players.n_players
 
-    def _value_spec(self) -> jax.ShapeDtypeStruct:
-        """Return lazy scalar abstract dtype metadata without evaluating the game.
+    @override
+    def astype(
+        self,
+        dtype: "DTypeLike | NpDTypeLike | None",
+        copy: bool = False,
+        device: "jax.Device | Sharding | None" = None,
+    ) -> Any:
+        """Return this finite game or a lazy cast of its evaluated values."""
+        from .cast import CastGame  # noqa: PLC0415 - CastGame depends on FinitePlayerGame
 
-        Defaults conservatively to ``weak_type=False`` because unknown custom
-        implementations may not preserve JAX weak typing across evaluation.
-        """
-        return jax.ShapeDtypeStruct((), jnp.dtype(self.dtype), weak_type=False)
+        if dtype is None:
+            game = self if device is None else self.to_device(device)
+            return game.copy() if copy else game
+        return CastGame(self.copy() if copy else self, dtype, device=device)
 
     def empty_value(self) -> Shaped[V, "..."]:
         """Evaluate the game on the empty coalition for every game in the batch."""
@@ -213,21 +221,30 @@ class FinitePlayerGame[P, V: Value](Game[FiniteCoalition, V]):
     @override
     def _eval(
         self,
-        coalition: Bool[jax.Array, "#*batch {self.n_players}"]
-        | UInt8[jax.Array, "#*batch ({self.n_players}+7)//8"],
-    ) -> Shaped[V, "*batch"]:
+        coalition: Bool[jax.Array, "... {self.n_players}"]
+        | UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"],
+    ) -> Shaped[V, "..."]:
         """Validate and dispatch finite coalitions to the matching evaluation hook.
 
         Raises:
             ValueError: The coalition batch is inadmissible for this game.
             TypeCheckError: The coalition representation or returned value is invalid.
         """
-        if not is_bearable(self, Shaped[FinitePlayerGame[P, V], "#*batch"]):
+        # The game batch is independent of the dtype of its evaluated values.
+        try:
+            shape = jnp.broadcast_shapes(self.shape, coalition.shape[:-1])
+        except ValueError as error:
             msg = "Inadmissible coalition batch."
-            raise ValueError(msg)
-        if coalition.dtype == jnp.bool_:
-            return self._eval_bool(coalition)
-        return self._eval_packed(coalition)
+            raise ValueError(msg) from error
+        value = (
+            self._eval_bool(coalition)
+            if coalition.dtype == jnp.bool_
+            else self._eval_packed(coalition)
+        )
+        if isinstance(value, (jax.Array, JaxLike)) and value.shape != shape:
+            msg = f"Invalid return value shape {value.shape}; expected {shape}."
+            raise TypeCheckError(msg)
+        return value
 
     @abstractmethod
     def _eval_bool(self, coalition: Bool[jax.Array, "... {self.n_players}"]) -> Shaped[V, "..."]:

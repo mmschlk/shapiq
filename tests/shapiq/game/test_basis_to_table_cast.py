@@ -362,71 +362,48 @@ def test_basis_to_table_cast_unavailable_for_vector_and_non_floating_values():
             TableGame.from_game(int_game)
 
 
-def test_basis_to_table_low_precision_accumulation_avoids_overflow_and_scatter_loss():
-    # Cancellation before float16 overflow: [40000, 40000, -40000] on {}, {0}, {1}.
-    players_2 = FinitePlayers(2)
-    inter_2 = jnp.array([[0, 0], [1, 0], [0, 1]], dtype=bool)
-    vals_f16 = jnp.array([40000.0, 40000.0, -40000.0], dtype=jnp.float16)
+@pytest.mark.parametrize(
+    ("game_cls", "coalition_index"),
+    [(MoebiusGame, 3), (AdditiveMoebiusGame, 3), (FourierGame, 0)],
+)
+def test_basis_to_table_low_precision_transforms_need_an_explicit_wider_cast(
+    game_cls, coalition_index
+):
+    players = FinitePlayers(2)
+    interactions = jnp.array([[0, 0], [1, 0], [0, 1]], dtype=bool)
+    values = jnp.array([40000.0, 40000.0, -40000.0], dtype=jnp.float16)
+    game = game_cls(values=values, interactions=interactions, players=players, additivity=1)
 
-    for game in (
-        MoebiusGame(values=vals_f16, interactions=inter_2, players=players_2, additivity=1),
-        AdditiveMoebiusGame(values=vals_f16, interactions=inter_2, players=players_2),
-    ):
-        table = TableGame.from_game(game)
-        assert table.values.dtype == jnp.float16
-        # Full coalition {0, 1} must be 40000, not inf from intermediate 80000 overflow.
-        assert jnp.array_equal(table.values[3], jnp.float16(40000.0))
-        assert jnp.array_equal(table.values, _eval_reference_table(game))
+    narrow = TableGame.from_game(game)
+    wide = TableGame.from_game(game.astype(jnp.float32))
+    assert narrow.dtype == jnp.float16
+    assert jnp.isinf(narrow.values[coalition_index])
+    assert wide.dtype == jnp.float32
+    assert wide.values[coalition_index] == 40000.0
+    assert jnp.array_equal(wide.values, _eval_reference_table(game.astype(jnp.float32)))
 
-    fg_f16 = FourierGame(values=vals_f16, interactions=inter_2, players=players_2, additivity=1)
-    fg_table = TableGame.from_game(fg_f16)
-    assert fg_table.values.dtype == jnp.float16
-    # Empty coalition {} sums all three coefficients -> 40000, not inf.
-    assert jnp.array_equal(fg_table.values[0], jnp.float16(40000.0))
-    assert jnp.array_equal(fg_table.values, _eval_reference_table(fg_f16))
 
-    # Many duplicate interactions must not saturate float16/bfloat16 accumulators.
-    n_dups = 4096
-    players_1 = FinitePlayers(1)
-    dup_singleton = jnp.ones((n_dups, 1), dtype=bool)
-    dup_empty = jnp.zeros((n_dups, 1), dtype=bool)
-    for dtype in (jnp.float16, jnp.bfloat16):
-        ones = jnp.ones((n_dups,), dtype=dtype)
-        for game, expected in (
-            (
-                MoebiusGame(
-                    values=ones, interactions=dup_singleton, players=players_1, additivity=1
-                ),
-                jnp.array([0.0, float(n_dups)], dtype=dtype),
-            ),
-            (
-                AdditiveMoebiusGame(values=ones, interactions=dup_singleton, players=players_1),
-                jnp.array([0.0, float(n_dups)], dtype=dtype),
-            ),
-            (
-                FourierGame(
-                    values=ones, interactions=dup_singleton, players=players_1, additivity=1
-                ),
-                jnp.array([float(n_dups), -float(n_dups)], dtype=dtype),
-            ),
-            (
-                MoebiusGame(values=ones, interactions=dup_empty, players=players_1, additivity=0),
-                jnp.array([float(n_dups), float(n_dups)], dtype=dtype),
-            ),
-            (
-                AdditiveMoebiusGame(
-                    values=ones, interactions=dup_empty, players=players_1, additivity=0
-                ),
-                jnp.array([float(n_dups), float(n_dups)], dtype=dtype),
-            ),
-            (
-                FourierGame(values=ones, interactions=dup_empty, players=players_1, additivity=0),
-                jnp.array([float(n_dups), float(n_dups)], dtype=dtype),
-            ),
-        ):
-            table = TableGame.from_game(game)
-            assert table.values.dtype == dtype
-            assert jnp.array_equal(table.values, expected)
+@pytest.mark.parametrize("dtype", [jnp.float16, jnp.bfloat16])
+@pytest.mark.parametrize("game_cls", [MoebiusGame, FourierGame])
+def test_duplicate_coefficients_scatter_in_the_storage_dtype(dtype, game_cls):
+    n = 4096
+    values = jnp.ones(n, dtype=dtype)
+    interactions = jnp.ones((n, 1), dtype=bool)
+    game = game_cls(
+        values=values, interactions=interactions, players=FinitePlayers(1), additivity=1
+    )
+
+    # Scatter order and rounding are backend dependent, so compare with JAX's native scatter.
+    # Build the reference with the same table layout and repeated index used by the cast.
+    singleton = jnp.zeros(2, dtype=dtype).at[jnp.ones(n, dtype=int)].add(values)[1]
+    expected = (
+        jnp.stack((0 * singleton, singleton))
+        if game_cls is MoebiusGame
+        else jnp.stack((singleton, -singleton))
+    )
+    assert jnp.array_equal(TableGame.from_game(game).values, expected)
+    wide = TableGame.from_game(game.astype(jnp.float32))
+    assert wide.values[0 if game_cls is FourierGame else 1] == n
 
 
 def test_basis_to_table_index_width_guard_at_x32_boundary():

@@ -1,7 +1,7 @@
 """Dense tables of values for every coalition of a finite game."""
 
-from dataclasses import dataclass, field
-from typing import Any, ClassVar, override
+from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING, Any, ClassVar, Self, override
 
 import jax
 import jax.numpy as jnp
@@ -11,14 +11,23 @@ from flextype import (
     cast as flex_cast,
     caster,
 )
+from jax.core import Tracer
 from jaxtyping import Float, Shaped, TypeCheckError, UInt8
 from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+from shapiq.value._dtype import cast_value
 
 from .discretederivative import subset_patterns
 from .finite import FinitePlayerGame, PackedFinitePlayerGame, _FiniteGame
+
+if TYPE_CHECKING:
+    from jax.sharding import Sharding
+    from jax.typing import DTypeLike
+    from numpy.typing import DTypeLike as NpDTypeLike
+
+_TABLE_FALLBACK_COST = 1000.0
 
 
 @typechecked
@@ -78,6 +87,25 @@ class TableGame[P](
         """Return lazy dtype metadata preserving ``weak_type``."""
         return jax.ShapeDtypeStruct((), self.values.dtype, weak_type=self.values.weak_type)
 
+    @property
+    @override
+    def dtype(self) -> jnp.dtype:
+        """Return the stored coalition value dtype."""
+        return self.values.dtype
+
+    @override
+    def astype(
+        self,
+        dtype: "DTypeLike | NpDTypeLike | None",
+        copy: bool = False,
+        device: "jax.Device | Sharding | None" = None,
+    ) -> Self:
+        """Cast the stored coalition values."""
+        game = self if device is None else self.to_device(device)
+        target = None if dtype is None else jax.dtypes.canonicalize_dtype(jnp.dtype(dtype))
+        values = cast_value(game.values, target, copy=copy, device=None)
+        return game if values is game.values else replace(game, values=values)
+
     @jax.jit
     @typechecked
     @override
@@ -109,9 +137,13 @@ class TableGame[P](
 
 
 # High fallback cost so any cheaper multi-step cast chain is preferred over full 2**n evaluation.
-@caster(cost=1000.0)
+@caster(cost=_TABLE_FALLBACK_COST)
 def _finite_game_to_table[P](game: FinitePlayerGame[P, Any]) -> TableGame[P]:
     """Evaluate ``game`` on every coalition to materialize a dense ``TableGame``."""
+    spec = game._value_spec()  # noqa: SLF001 - internal lazy abstract dtype hook
+    if not spec.weak_type and not jnp.issubdtype(spec.dtype, jnp.floating):
+        msg = f"TableGame requires floating jax.Array values, got dtype={spec.dtype}."
+        raise CastUnavailable(msg)
     n_players = game.n_players
     # subset_patterns lists coalitions in TableGame order: row i has the bits of i.
     coalitions = subset_patterns(n_players).reshape(
@@ -125,4 +157,9 @@ def _finite_game_to_table[P](game: FinitePlayerGame[P, Any]) -> TableGame[P]:
         )
         raise CastUnavailable(msg)
     values = jnp.moveaxis(raw_values, 0, -1)  # (*batch, 2**n_players)
-    return TableGame(values, game.players)
+    players = game.players
+    if not isinstance(values, Tracer):
+        devices = values.devices()
+        if len(devices) == 1 and players.devices() != devices:
+            players = players.to_device(next(iter(devices)))
+    return TableGame(values, players)

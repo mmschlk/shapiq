@@ -16,7 +16,6 @@ from shapiq.game.basis import (
     _check_table_n_players,
     _require_table_values,
     _scatter_basis_coefficients,
-    _table_accumulator_dtype,
 )
 from shapiq.game.discretederivative import powerset, subset_patterns
 from shapiq.game.kadditive import AdditiveGame, KAdditiveGame
@@ -64,7 +63,7 @@ def _moebius_zero_like[P, V: JaxValue](
     zero = game._zeros_like_value(shape)  # noqa: SLF001 - internal KAdditiveGame hook
     return cast(
         "Shaped[V, '...']",
-        jf.jax_sum(jf.jax_multiply(jf.jax_expand_dims(zero, axis=0), jnp.int32(1)), axis=0),
+        jf.jax_sum(jf.jax_multiply(jf.jax_expand_dims(zero, axis=0), 1), axis=0),
     )
 
 
@@ -146,6 +145,8 @@ def _moebius_contributions(
     values: Float[JaxValue, "*batch n_interactions"],
     stored_interactions: Bool[jax.Array, "#*batch n_interactions {n_players}"],
     n_players: int,
+    *,
+    dtype: jnp.dtype | None = None,
 ) -> Float[JaxValue, "*batch {n_players}"]:
     """Extract singleton Möbius coefficients in canonical player order directly from storage."""
     game_shape = values.shape[:-1]
@@ -157,7 +158,7 @@ def _moebius_contributions(
     mask_b = jnp.broadcast_to(mask, (*game_shape, n_interactions, n_players))
     values_b = jf.jax_expand_dims(jf.jax_broadcast_to(values, (*game_shape, n_interactions)), -1)
     zero = jf.jax_zeros_like(values, shape=())
-    return jf.jax_sum(jf.jax_where(mask_b, values_b, zero), axis=-2)
+    return jf.jax_sum(jf.jax_where(mask_b, values_b, zero), axis=-2, dtype=dtype)
 
 
 @typechecked
@@ -242,17 +243,17 @@ class MoebiusGame[
                 jnp.zeros((*self.shape, n_coalitions), dtype=values.dtype), self.players
             )
         if self.additivity == 0:
-            acc_dtype = _table_accumulator_dtype(values.dtype)
             is_empty = jnp.broadcast_to(~jnp.any(self.interactions, axis=-1), values.shape)
             empty = jnp.sum(
-                jnp.where(is_empty, values.astype(acc_dtype), jnp.zeros((), dtype=acc_dtype)),
+                jnp.where(is_empty, values, jnp.zeros((), dtype=values.dtype)),
                 axis=-1,
-            ).astype(values.dtype)
+                dtype=values.dtype,
+            )
             return TableGame(
                 jnp.broadcast_to(empty[..., None], (*self.shape, n_coalitions)), self.players
             )
         scattered = _scatter_basis_coefficients(values, self.interactions, n_players)
-        table = _fast_zeta_transform(scattered, n_players).astype(values.dtype)
+        table = _fast_zeta_transform(scattered, n_players)
         return TableGame(table, self.players)
 
 
@@ -309,23 +310,20 @@ class AdditiveMoebiusGame[P, V: JaxLike[Any]](
             return TableGame(
                 jnp.zeros((*self.shape, n_coalitions), dtype=values.dtype), self.players
             )
-        acc_dtype = _table_accumulator_dtype(values.dtype)
-        acc_values = values.astype(acc_dtype)
-        is_empty = jnp.broadcast_to(~jnp.any(self.interactions, axis=-1), acc_values.shape)
+        is_empty = jnp.broadcast_to(~jnp.any(self.interactions, axis=-1), values.shape)
         empty = jnp.sum(
-            jnp.where(is_empty, acc_values, jnp.zeros((), dtype=acc_dtype)),
+            jnp.where(is_empty, values, jnp.zeros((), dtype=values.dtype)),
             axis=-1,
+            dtype=values.dtype,
         )
         if self.additivity == 0:
             return TableGame(
-                jnp.broadcast_to(
-                    empty.astype(values.dtype)[..., None], (*self.shape, n_coalitions)
-                ),
+                jnp.broadcast_to(empty[..., None], (*self.shape, n_coalitions)),
                 self.players,
             )
         contributions = cast(
             "jax.Array",
-            _moebius_contributions(acc_values, self.interactions, n_players),
+            _moebius_contributions(values, self.interactions, n_players, dtype=values.dtype),
         )
-        table = _additive_to_table_values(empty, contributions, n_players).astype(values.dtype)
+        table = _additive_to_table_values(empty, contributions, n_players)
         return TableGame(table, self.players)

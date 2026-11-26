@@ -17,6 +17,7 @@ from shapiq.index import (
     LeastSquaresIndex,
     ShapleyInteractionIndex,
     ShapleyValueIndex,
+    WeightedBanzhafIndex,
 )
 from shapiq.players import FinitePlayers
 
@@ -135,3 +136,20 @@ def test_alpha_beta_parameters_stay_compact():
                 weights[i, j],
                 scalar.discrete_derivative_weight(jnp.array(2), jnp.array(1), N_PLAYERS),
             )
+
+
+def test_index_parameters_preserve_weak_scalars_and_explicit_array_dtypes():
+    weighted = WeightedBanzhafIndex(p=1, max_order=1)
+    alpha_beta = AlphaBetaIndex(alpha=2, beta=1.0, max_order=1)
+    assert weighted.p.weak_type and alpha_beta.alpha.weak_type and alpha_beta.beta.weak_type
+
+    weighted = WeightedBanzhafIndex(p=np.array([0.25, 0.5], dtype=np.float16), max_order=1)
+    alpha_beta = AlphaBetaIndex(alpha=np.float16(2), beta=jnp.bfloat16(1), max_order=1)
+    assert weighted.p.dtype == jnp.float16 and not weighted.p.weak_type
+    assert alpha_beta.alpha.dtype == jnp.float16 and not alpha_beta.alpha.weak_type
+    assert alpha_beta.beta.dtype == jnp.bfloat16 and not alpha_beta.beta.weak_type
+
+    large = AlphaBetaIndex(alpha=jnp.float16(50000), beta=jnp.float16(50000), max_order=1)
+    weights = large.discrete_derivative_weight(jnp.array(1), jnp.array(1), 3)
+    assert weights.dtype == jnp.asarray(0.0).dtype
+    assert jnp.isclose(weights, 0.25, atol=0.03)

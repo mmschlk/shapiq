@@ -23,10 +23,11 @@ from shapiq.errors import HistoryError, UnsupportedSamplerError
 from shapiq.game import FinitePlayerGame, Game
 from shapiq.game.exact import discrete_derivative_coefficients
 from shapiq.index import DiscreteDerivativeIndex
-from shapiq.index._base import Index
+from shapiq.index._base import Index, weight_parameters
 from shapiq.sampling._base import Border, Sampler, WithReplacement
 from shapiq.typing import typechecked
 from shapiq.value import Value
+from shapiq.value._dtype import resolve_weight_dtype
 from shapiq.value.value import JaxValue
 
 
@@ -320,8 +321,9 @@ class SHAPIQ[
         """
         interactions = self.index.interactions(self.game.n_players)
         coefficients = discrete_derivative_coefficients(self.index, coalitions, interactions)
-        weighted = jax_multiply(values, jnp.exp(log_weights))  # (*batch, n_draws)
-        return jax_sum(jax_multiply(coefficients, jax_expand_dims(weighted, -2)), axis=-1)
+        weights = coefficients * jnp.exp(log_weights[..., None, :])
+        dtype = resolve_weight_dtype(values, *weight_parameters(self.index))
+        return jax_sum(jax_multiply(weights.astype(dtype), jax_expand_dims(values, -2)), axis=-1)
 
     def _build(self, estimate: Float[JaxValue, "*batch n_interactions"]) -> R:
         """Return the estimate as a game of the index."""
@@ -347,7 +349,7 @@ class SHAPIQ[
         units = jnp.sum(sampler.expected, axis=-1)  # (*batch)
         if not history.empty:
             # Earlier weights are 1 / (units p(S)): they shrink by the ratio of the units.
-            ratio = history.weights[..., -1] / units
+            ratio = (history.weights[..., -1] / units).astype(estimate.dtype)
             estimate = jax_add(
                 estimate, jax_multiply(ratio[..., None], history.estimates[..., -1, :])
             )

@@ -18,6 +18,13 @@ from ndlike.tuple.jax import JaxBroadcastTuple
 
 from shapiq.players import Players
 from shapiq.typing import typechecked
+from shapiq.value._dtype import (
+    is_numeric_dtype,
+    op_spec,
+    promote_spec,
+    unit_scalar,
+    validate_numeric_value,
+)
 from shapiq.value.value import JaxValue
 
 from .arithmetic import (
@@ -25,62 +32,14 @@ from .arithmetic import (
     ArithmeticGame,
     MappedGame,
     ProductGame,
-    _abstract_value_spec,
     _ensure_shape,
-    _is_numeric_dtype,
-    _promote_spec,
     _require_refinable_children,
-    _validate_numeric_value,
     _zeros_from_arithmetic,
 )
 from .finite import FinitePlayerGame
 from .game import Game
 from .kadditive import AdditiveGame, KAdditiveGame
 from .moebius import _moebius_coefficients_by_eval, _moebius_zero_like
-
-
-def _unit_scalar(value: int, reference: object) -> jax.Array:
-    """Return a dynamic scalar ``0``, ``1``, or ``-1`` preserving ``reference``'s dtype/weakness."""
-    spec = _abstract_value_spec(reference)
-    if spec is None or not _is_numeric_dtype(spec.dtype):
-        return jnp.asarray(value)
-    if spec.weak_type:
-        if value == -1:
-            if jnp.issubdtype(spec.dtype, jnp.complexfloating):
-                return jnp.asarray(-1.0 + 0j)
-            if jnp.issubdtype(spec.dtype, jnp.floating):
-                return jnp.asarray(-1.0)
-        return jnp.asarray(value)
-    dt = spec.dtype
-    # Use ``-ones`` for -1 so unsigned dtypes wrap cleanly without NumPy/JAX conversion errors.
-    return -jnp.ones((), dtype=dt) if value == -1 else jnp.full((), value, dtype=dt)
-
-
-def _dtype_operand(value: object) -> jax.ShapeDtypeStruct:
-    """Build a zero-cost abstract operand preserving ``weak_type`` on JAX arrays and games."""
-    spec = _abstract_value_spec(value)
-    if spec is not None:
-        return spec
-    msg = f"Cannot determine numeric dtype for {type(value).__name__}."
-    raise TypeError(msg)
-
-
-def _true_divide_spec(left: object, right: object) -> jax.ShapeDtypeStruct:
-    """Compute JAX's exact ``true_divide`` result dtype and ``weak_type`` without evaluating."""
-    out = jax.eval_shape(jnp.true_divide, _dtype_operand(left), _dtype_operand(right))
-    return jax.ShapeDtypeStruct((), out.dtype, weak_type=out.weak_type)
-
-
-def _power_spec(left: object, right: object) -> jax.ShapeDtypeStruct:
-    """Compute JAX's dynamic ``power`` result dtype and ``weak_type`` without evaluating."""
-    out = jax.eval_shape(jnp.power, _dtype_operand(left), _dtype_operand(right))
-    return jax.ShapeDtypeStruct((), out.dtype, weak_type=out.weak_type)
-
-
-def _integer_power_spec(base: object) -> jax.ShapeDtypeStruct:
-    """Compute JAX's ``lax.integer_pow`` result dtype and ``weak_type``."""
-    out = jax.eval_shape(lambda x: jnp.power(x, 0), _dtype_operand(base))
-    return jax.ShapeDtypeStruct((), out.dtype, weak_type=out.weak_type)
 
 
 def _known_int_exponent(other: object) -> int | None:
@@ -232,7 +191,7 @@ class _ScalarDivGame[
         if len(self.games.members) != 1:
             msg = "_ScalarDivGame requires exactly one game."
             raise ValueError(msg)
-        _validate_numeric_value(self.constant, "Division constant")
+        validate_numeric_value(self.constant, "Division constant")
         self.validate()
 
     @override
@@ -243,7 +202,7 @@ class _ScalarDivGame[
             if self.reciprocal
             else (self.games.members[0], self.constant)
         )
-        return _true_divide_spec(lhs, rhs)
+        return op_spec(jnp.true_divide, lhs, rhs)
 
     @property
     @override
@@ -426,7 +385,7 @@ class _IntPowerGame[
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:
         """Return JAX's ``lax.integer_pow`` dtype and ``weak_type``."""
-        return _integer_power_spec(self.games.members[0])
+        return op_spec(lambda x: jnp.power(x, 0), self.games.members[0])
 
     @property
     @override
@@ -527,7 +486,7 @@ class _ScalarPowerGame[
         if len(self.games.members) != 1:
             msg = "_ScalarPowerGame requires exactly one game."
             raise ValueError(msg)
-        _validate_numeric_value(self.constant, "Power constant")
+        validate_numeric_value(self.constant, "Power constant")
         self.validate()
 
     @override
@@ -538,7 +497,7 @@ class _ScalarPowerGame[
             if self.reflected
             else (self.games.members[0], self.constant)
         )
-        return _power_spec(lhs, rhs)
+        return op_spec(jnp.power, lhs, rhs)
 
     @property
     @override
@@ -562,9 +521,9 @@ def _as_numeric_constant(other: object) -> JaxValue | None:
     if isinstance(other, (int, float, complex, np.number)):
         return jnp.asarray(other)
     if isinstance(other, (jax.Array, np.ndarray)):
-        return jnp.asarray(other) if _is_numeric_dtype(other.dtype) else None
+        return jnp.asarray(other) if is_numeric_dtype(other.dtype) else None
     if isinstance(other, JaxLike) and not isinstance(other, (Game, Players, BroadcastTuple)):
-        return other if _is_numeric_dtype(other.dtype) else None
+        return other if is_numeric_dtype(other.dtype) else None
     return None
 
 
@@ -577,15 +536,15 @@ def _dispatch_game_pair(
     if func is jf.jax_add:
         return AffineGame(
             games=JaxBroadcastTuple((left, right)),
-            weights=JaxBroadcastTuple((_unit_scalar(1, left), _unit_scalar(1, right))),
-            bias=_unit_scalar(0, left),
+            weights=JaxBroadcastTuple((unit_scalar(1, left), unit_scalar(1, right))),
+            bias=unit_scalar(0, left),
         )
     if func is jf.jax_subtract:
-        promoted = _promote_spec((left, right), left.dtype)
+        promoted = promote_spec((left, right), left.dtype)
         return AffineGame(
             games=JaxBroadcastTuple((left, right)),
-            weights=JaxBroadcastTuple((_unit_scalar(1, left), _unit_scalar(-1, promoted))),
-            bias=_unit_scalar(0, promoted),
+            weights=JaxBroadcastTuple((unit_scalar(1, left), unit_scalar(-1, promoted))),
+            bias=unit_scalar(0, promoted),
         )
     if func is jf.jax_multiply:
         return ProductGame(games=JaxBroadcastTuple((left, right)))
@@ -624,27 +583,27 @@ def _dispatch_constant_op(
     if func is jf.jax_add:
         return AffineGame(
             games=JaxBroadcastTuple((aligned,)),
-            weights=JaxBroadcastTuple((_unit_scalar(1, aligned),)),
+            weights=JaxBroadcastTuple((unit_scalar(1, aligned),)),
             bias=constant,
         )
     if func is jf.jax_multiply:
         return AffineGame(
             games=JaxBroadcastTuple((aligned,)),
             weights=JaxBroadcastTuple((constant,)),
-            bias=_unit_scalar(0, aligned),
+            bias=unit_scalar(0, aligned),
         )
     if func is jf.jax_subtract:
-        promoted = _promote_spec((aligned, constant), aligned.dtype)
+        promoted = promote_spec((aligned, constant), aligned.dtype)
         if reflected:
             return AffineGame(
                 games=JaxBroadcastTuple((aligned,)),
-                weights=JaxBroadcastTuple((_unit_scalar(-1, promoted),)),
+                weights=JaxBroadcastTuple((unit_scalar(-1, promoted),)),
                 bias=constant,
             )
-        neg_constant = jf.jax_multiply(_unit_scalar(-1, promoted), constant)
+        neg_constant = jf.jax_multiply(unit_scalar(-1, promoted), constant)
         return AffineGame(
             games=JaxBroadcastTuple((aligned,)),
-            weights=JaxBroadcastTuple((_unit_scalar(1, aligned),)),
+            weights=JaxBroadcastTuple((unit_scalar(1, aligned),)),
             bias=neg_constant,
         )
     if func is jf.jax_true_divide:
@@ -652,7 +611,7 @@ def _dispatch_constant_op(
             return _ScalarDivGame(
                 games=JaxBroadcastTuple((aligned,)), constant=constant, reciprocal=True
             )
-        compute_dtype = _true_divide_spec(aligned, constant).dtype
+        compute_dtype = op_spec(jnp.true_divide, aligned, constant).dtype
         return _ScalarDivGame(
             games=JaxBroadcastTuple((aligned,)),
             constant=constant,
@@ -674,8 +633,8 @@ def _dispatch_game_arithmetic(func: Callable[..., Any], args: tuple[Any, ...]) -
         if func is jf.jax_negative:
             return AffineGame(
                 games=JaxBroadcastTuple((game,)),
-                weights=JaxBroadcastTuple((_unit_scalar(-1, game),)),
-                bias=_unit_scalar(0, game),
+                weights=JaxBroadcastTuple((unit_scalar(-1, game),)),
+                bias=unit_scalar(0, game),
             )
         return NotImplemented
     if len(args) != 2:

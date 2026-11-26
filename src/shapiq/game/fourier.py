@@ -15,7 +15,6 @@ from shapiq.game.basis import (
     _check_table_n_players,
     _require_table_values,
     _scatter_basis_coefficients,
-    _table_accumulator_dtype,
 )
 from shapiq.game.table import TableGame
 from shapiq.typing import typechecked
@@ -93,7 +92,8 @@ class FourierGame[P, V: JaxLike[Any]](BasisGame[P, V, "FourierGame[P, V]"]):
         self, coalition: Bool[jax.Array, "#*batch {self.n_players}"]
     ) -> Shaped[jax.Array, "#*batch n_interactions"]:
         """Return the parity (-1)**|T & S| of every listed interaction T."""
-        return (-1) ** jnp.sum(self.interactions & coalition[..., None, :], axis=-1)
+        parity = jnp.sum(self.interactions & coalition[..., None, :], axis=-1)
+        return jnp.where((parity & 1) == 0, 1, -1)
 
     @override
     def empty_value(self) -> Shaped[JaxValue, "..."]:
@@ -128,11 +128,10 @@ class FourierGame[P, V: JaxLike[Any]](BasisGame[P, V, "FourierGame[P, V]"]):
                 jnp.zeros((*self.shape, n_coalitions), dtype=values.dtype), self.players
             )
         if self.additivity == 0:
-            acc_dtype = _table_accumulator_dtype(values.dtype)
-            empty = jnp.sum(values.astype(acc_dtype), axis=-1).astype(values.dtype)
+            empty = jnp.sum(values, axis=-1, dtype=values.dtype)
             return TableGame(
                 jnp.broadcast_to(empty[..., None], (*self.shape, n_coalitions)), self.players
             )
         scattered = _scatter_basis_coefficients(values, self.interactions, n_players)
-        table = _fast_walsh_hadamard_transform(scattered, n_players).astype(values.dtype)
+        table = _fast_walsh_hadamard_transform(scattered, n_players)
         return TableGame(table, self.players)

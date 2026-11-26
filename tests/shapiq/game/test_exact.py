@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import pytest
 from ndlike.jax_functions import jax_broadcast_to
 
+from shapiq.approximator.base import SHAPIQ
 from shapiq.game.exact import ExactComputer
 from shapiq.game.moebius import MoebiusGame
 from shapiq.game.table import TableGame
@@ -19,6 +20,7 @@ from shapiq.index import (
     WeightedBanzhafIndex,
 )
 from shapiq.players import FinitePlayers
+from shapiq.sampling._base import UniformWithoutReplacement, UniformWithReplacement
 
 N_PLAYERS = 4
 TABLES = jax.random.normal(jax.random.key(0), (2, 2**N_PLAYERS))
@@ -103,3 +105,36 @@ def test_game_and_index_batches_broadcast_and_the_computer_runs_under_jit(index_
     assert every_pair.shape == (2, *index_shape)
     assert jnp.allclose(every_pair[1, *last].values, single(single_p).values, atol=1e-6)
     assert jnp.allclose(jitted, computer(ShapleyValueIndex()).values, atol=1e-5)
+
+
+@pytest.mark.parametrize(
+    ("index", "expected_dtype"),
+    [
+        (ShapleyValueIndex(), jnp.float16),
+        (WeightedBanzhafIndex(p=0.25, max_order=1), jnp.float16),
+        (AlphaBetaIndex(alpha=2, beta=1, max_order=1), jnp.float16),
+        (WeightedBanzhafIndex(p=jnp.float32(0.25), max_order=1), jnp.float32),
+        (AlphaBetaIndex(alpha=jnp.float32(2), beta=1, max_order=1), jnp.float32),
+    ],
+)
+def test_exact_and_shapiq_respect_game_and_index_dtypes(index, expected_dtype):
+    players = FinitePlayers(2)
+    table = TableGame(jnp.array([0, 1, 2, 3], dtype=jnp.float16), players)
+    computer = ExactComputer.from_game(table)
+    result = jax.jit(lambda c, i: c(i))(computer, index)
+    assert result.dtype == expected_dtype
+    assert jnp.allclose(result.values, jnp.array([1, 2]), atol=1e-3)
+
+    sampler = UniformWithoutReplacement(keys=jax.random.key(0), n_players=2)
+    estimate, _ = SHAPIQ(sampler=sampler, game=table, index=index)(4)
+    assert estimate.dtype == expected_dtype
+    assert jnp.allclose(estimate.values, result.values, atol=1e-3)
+
+
+def test_shapiq_preserves_dtype_when_rescaling_earlier_estimates():
+    game = TableGame(jnp.array([0, 1, 2, 3], dtype=jnp.float16), FinitePlayers(2))
+    sampler = UniformWithReplacement(keys=jax.random.key(0), n_players=2)
+    approximator = SHAPIQ(sampler=sampler, game=game, index=ShapleyValueIndex())
+    first, approximator = approximator(8)
+    second, _ = approximator(16)
+    assert first.dtype == second.dtype == jnp.float16

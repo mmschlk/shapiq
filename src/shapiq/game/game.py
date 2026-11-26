@@ -3,6 +3,8 @@
 from abc import abstractmethod
 from typing import Any, TypeIs
 
+import jax
+import jax.numpy as jnp
 from jaxtyping import Shaped
 from ndlike.jax_like import JaxLike
 
@@ -32,6 +34,15 @@ class Game[C, V: Value](JaxLike[Any]):
     @abstractmethod
     def players(self) -> Players[C]:
         """Return player sets whose logical shape broadcasts to ``shape``."""
+
+    def _value_spec(self) -> jax.ShapeDtypeStruct:
+        """Return dtype metadata without evaluating a coalition."""
+        return jax.ShapeDtypeStruct((), jnp.dtype(self.dtype))
+
+    @property
+    def weak_type(self) -> bool:
+        """Return whether the game's values are weakly typed."""
+        return self._value_spec().weak_type
 
     def is_valid(self, coalition: object) -> TypeIs[C]:
         """Check coalition admissibility with the players and game batch shape."""

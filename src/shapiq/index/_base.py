@@ -11,7 +11,8 @@ from typing import Any, ClassVar, Protocol, override, runtime_checkable
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
-from jaxtyping import Bool, Float, Int, Shaped, UInt8
+import numpy as np
+from jaxtyping import Bool, Float, Int, Real, Shaped, UInt8
 from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
@@ -20,9 +21,29 @@ from shapiq.game.discretederivative import subset_patterns
 from shapiq.game.moebius import AdditiveMoebiusGame, MoebiusGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
+from shapiq.value._dtype import default_float_dtype
 from shapiq.value.value import JaxValue
 
 _BATCH = jnp.empty((0,), dtype=jnp.uint8)
+
+type _WeightParameter = (
+    int | float | np.integer | np.floating | Real[jax.Array | np.ndarray, "#*batch"]
+)
+
+
+def _as_weight_parameter(value: _WeightParameter) -> jax.Array:
+    """Keep Python scalars weak and explicitly typed inputs strong."""
+    return jnp.asarray(float(value) if type(value) in (int, float) else value)
+
+
+def weight_parameters(index: "DiscreteDerivativeIndex") -> tuple[jax.Array, ...]:
+    """Read the typed parameters of an index, if it declares any."""
+    return getattr(index, "weight_parameters", ())
+
+
+def _weight_precision(*params: jax.Array) -> jnp.dtype:
+    """Use at least default floating precision to form derivative weights."""
+    return jnp.result_type(default_float_dtype(), *params)
 
 
 def _log_binom(n: int, k: Int[jax.Array, "*batch"]) -> Float[jax.Array, "*batch"]:
@@ -137,13 +158,18 @@ class WeightedBanzhafIndex[OwnerT: JaxLike[Any] = "WeightedBanzhafIndex[Any]"](
     The index is the discrete-derivative fit under the weights w(|S|, |T|, n) = p**|S| * (1-p)**(n-|S|-|T|).
     """
 
-    p: float | Float[jax.Array, "#*batch"]
+    p: _WeightParameter
     protected_axes: ClassVar[dict[str, int]] = {"p": 0}
     broadcasted_batch: ClassVar[set[str]] = {"p"}
 
     def __post_init__(self) -> None:
         """Store ``p`` as an array, so it has a batch shape."""
-        object.__setattr__(self, "p", jnp.asarray(self.p, dtype=float))
+        object.__setattr__(self, "p", _as_weight_parameter(self.p))
+
+    @property
+    def weight_parameters(self) -> tuple[jax.Array, ...]:
+        """Return typed parameters for resolving the final weight dtype."""
+        return (jnp.asarray(self.p),)
 
     @override
     def discrete_derivative_weight(
@@ -151,7 +177,9 @@ class WeightedBanzhafIndex[OwnerT: JaxLike[Any] = "WeightedBanzhafIndex[Any]"](
     ) -> Float[jax.Array, "*batch"]:
         """Return the weighted Banzhaf weights."""
         size = jnp.broadcast_to(size, jnp.broadcast_shapes(self.shape, size.shape))
-        return self.p**size * (1 - self.p) ** (n_players - size - order)
+        (p,) = self.weight_parameters
+        p = p.astype(_weight_precision(p))
+        return p**size * (1 - p) ** (n_players - size - order)
 
 
 @typechecked
@@ -159,7 +187,7 @@ class WeightedBanzhafIndex[OwnerT: JaxLike[Any] = "WeightedBanzhafIndex[Any]"](
 class BanzhafIndex(WeightedBanzhafIndex["BanzhafIndex"]):
     """The Banzhaf index, with p fixed to 1/2."""
 
-    p: float | Float[jax.Array, "#*batch"] = field(default=0.5, init=False)
+    p: _WeightParameter = field(default=0.5, init=False)
     # Carry the logical batch shape without storing any elements.
     _batch: UInt8[jax.Array, "*batch 0"] = field(
         default_factory=lambda: _BATCH, kw_only=True, repr=False
@@ -178,24 +206,32 @@ class AlphaBetaIndex[OwnerT: JaxLike[Any] = "AlphaBetaIndex[Any]"](
     / B(alpha, beta)`` (Kwon & Zou, 2022, Eq. 4).
     """
 
-    alpha: float | Float[jax.Array, "#*batch"]
-    beta: float | Float[jax.Array, "#*batch"]
+    alpha: _WeightParameter
+    beta: _WeightParameter
     protected_axes: ClassVar[dict[str, int]] = {"alpha": 0, "beta": 0}
     broadcasted_batch: ClassVar[set[str]] = {"alpha", "beta"}
 
     def __post_init__(self) -> None:
         """Store alpha and beta as arrays without expanding their batches."""
-        object.__setattr__(self, "alpha", jnp.asarray(self.alpha, dtype=float))
-        object.__setattr__(self, "beta", jnp.asarray(self.beta, dtype=float))
+        object.__setattr__(self, "alpha", _as_weight_parameter(self.alpha))
+        object.__setattr__(self, "beta", _as_weight_parameter(self.beta))
+
+    @property
+    def weight_parameters(self) -> tuple[jax.Array, ...]:
+        """Return typed parameters for resolving the final weight dtype."""
+        return (jnp.asarray(self.alpha), jnp.asarray(self.beta))
 
     @override
     def discrete_derivative_weight(
         self, size: Int[jax.Array, "#*batch"], order: Int[jax.Array, "#*batch"], n_players: int
     ) -> Float[jax.Array, "*batch"]:
         """Return the alpha-beta weights."""
+        alpha, beta = self.weight_parameters
+        dtype = _weight_precision(alpha, beta)
+        alpha, beta = alpha.astype(dtype), beta.astype(dtype)
         return jnp.exp(
-            jsp.special.betaln(size + self.beta, n_players - size - order + self.alpha)
-            - jsp.special.betaln(self.alpha, self.beta)
+            jsp.special.betaln(size + beta, n_players - size - order + alpha)
+            - jsp.special.betaln(alpha, beta)
         )
 
 
@@ -206,8 +242,8 @@ class ShapleyInteractionIndex[OwnerT: JaxLike[Any] = "ShapleyInteractionIndex[An
 ):
     """The Shapley interaction index, with alpha and beta fixed to one."""
 
-    alpha: float | Float[jax.Array, "#*batch"] = field(default=1.0, init=False)
-    beta: float | Float[jax.Array, "#*batch"] = field(default=1.0, init=False)
+    alpha: _WeightParameter = field(default=1.0, init=False)
+    beta: _WeightParameter = field(default=1.0, init=False)
     # Carry the logical batch shape without storing any elements.
     _batch: UInt8[jax.Array, "*batch 0"] = field(
         default_factory=lambda: _BATCH, kw_only=True, repr=False

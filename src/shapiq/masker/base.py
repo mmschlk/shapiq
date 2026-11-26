@@ -22,6 +22,7 @@ from jaxtyping import Bool, Float, Int
 from ndlike import jax_functions as jf
 from ndlike.array_like import WeakArrayLike
 
+from shapiq.lazy_types import PANDAS_DATAFRAME, TORCH_TENSOR
 from shapiq.value.value import JaxValue
 
 
@@ -77,7 +78,7 @@ def _take_batch(xp: Any, dev: Any, data: Any, rows: jax.Array, ndim: int) -> Any
     return xp.take(entries, _to_backend(xp, dev, rows), axis=0)
 
 
-@impute.register(np.ndarray | jax.Array)
+@impute.register(np.ndarray | jax.Array | Tracer)
 def impute_array[T: WeakArrayLike[Any]](
     x_explain: T,
     background: T,
@@ -132,16 +133,16 @@ def select_array[T: WeakArrayLike[Any]](
 
 
 # Optional backends register in their own modules, imported once their data first arrives.
-@impute.delayed_register("torch.Tensor")
-@select.delayed_register("torch.Tensor")
-def _(cls: type) -> None:  # noqa: ARG001
-    import shapiq.masker.torch  # noqa: F401, PLC0415
+@impute.delayed_register(TORCH_TENSOR)
+@select.delayed_register(TORCH_TENSOR)
+def _(_: type[object]) -> None:
+    from . import torch  # noqa: F401, PLC0415
 
 
-@impute.delayed_register("pandas.DataFrame")
-@select.delayed_register("pandas.DataFrame")
-def _(cls: type) -> None:  # noqa: ARG001
-    import shapiq.masker.pandas  # noqa: F401, PLC0415
+@impute.delayed_register(PANDAS_DATAFRAME)
+@select.delayed_register(PANDAS_DATAFRAME)
+def _(_: type[object]) -> None:
+    from . import pandas  # noqa: F401, PLC0415
 
 
 class Masker(ABC):

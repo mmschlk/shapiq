@@ -12,10 +12,11 @@ import numpy as np
 import torch
 from jaxtyping import Bool, Float
 
+from shapiq.masker.base import require_eager
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
-from .base import XAIGame, require_eager
+from .base import XAIGame
 
 SIGLIP_TEXT_LENGTH = 64  # SigLIP was trained on texts padded to 64 tokens
 
@@ -47,6 +48,11 @@ class FIxLIPGame[P](XAIGame[P, "FIxLIPGame[P]"]):
     input_ids: torch.Tensor
     first_token: int
     batch_size: int = 16
+
+    @override
+    def _infer_value_spec(self) -> jax.ShapeDtypeStruct:
+        """Return the dtype used for the logits in this representation."""
+        return jax.ShapeDtypeStruct((), jnp.float32)
 
     @classmethod
     def from_processor(
@@ -130,4 +136,4 @@ class FIxLIPGame[P](XAIGame[P, "FIxLIPGame[P]"]):
             logits = model.logit_scale.exp() * torch.sum(image * text, dim=-1)
             if getattr(model, "logit_bias", None) is not None:
                 logits = logits + model.logit_bias
-        return logits.reshape(n).numpy(force=True)
+        return logits.reshape(n).float().numpy(force=True)
