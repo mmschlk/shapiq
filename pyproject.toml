@@ -218,6 +218,10 @@ python-version = "3.13"
 python = "./.venv"
 python-platform = "linux"
 
+[tool.ty.rules]
+blanket-ignore-comment = "error"
+missing-override-decorator = "error"
+
 [tool.cibuildwheel]
 build = ["cp313-*", "cp314-*"]
 skip = ["*-win32", "*-manylinux_i686", "pp*", "*musllinux*"]

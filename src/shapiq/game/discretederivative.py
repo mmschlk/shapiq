@@ -144,6 +144,7 @@ class DiscreteDerivative[P, V: JaxLike[Any]](
         return value
 
     @property
+    @override
     @typechecked
     def players(self) -> FinitePlayers:
         """Return finite player sets whose logical shape broadcasts to ``shape``."""

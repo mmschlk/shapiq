@@ -180,6 +180,7 @@ class Paired[OwnerT: JaxLike[Any] = "Paired[Any]"](Sampler[PairedSample, OwnerT]
 
     __slots__ = ()
 
+    @override
     def _units(self, budget: int) -> int:
         """Return the pairs in ``budget`` coalitions.
 
@@ -204,6 +205,7 @@ class Paired[OwnerT: JaxLike[Any] = "Paired[Any]"](Sampler[PairedSample, OwnerT]
         return np.arange(len(complements)), np.asarray(complements)
 
     @property
+    @override
     def _domains(self) -> tuple[int, ...]:
         """Return the number of pairs every stratum names."""
         strata, complements = self._paired_complements()
@@ -211,6 +213,7 @@ class Paired[OwnerT: JaxLike[Any] = "Paired[Any]"](Sampler[PairedSample, OwnerT]
         return tuple(n if s < t else n // 2 if s == t else 0 for n, s, t in pairs)
 
     @property
+    @override
     def _stratum_weights(self) -> Float[jax.Array, "#*batch n_strata"]:
         """Return the stratum weights, both strata of a pair collected on the one naming it."""
         strata, complements = self._paired_complements()
@@ -218,6 +221,7 @@ class Paired[OwnerT: JaxLike[Any] = "Paired[Any]"](Sampler[PairedSample, OwnerT]
         both = jnp.where(strata < complements, weights + weights[..., complements], 0.0)
         return jnp.where(strata == complements, weights, both)
 
+    @override
     def _stratum(
         self, coalitions: Bool[jax.Array, "*batch n_draws n_players"]
     ) -> Int[jax.Array, "*batch n_draws"]:
@@ -226,6 +230,7 @@ class Paired[OwnerT: JaxLike[Any] = "Paired[Any]"](Sampler[PairedSample, OwnerT]
         stratum = super()._stratum(coalitions)
         return jnp.minimum(stratum, jnp.asarray(complements)[stratum])
 
+    @override
     def _make_sample(
         self,
         units: Bool[jax.Array, "*batch n_units n_players"],
@@ -249,6 +254,7 @@ class Border[SampleT: Sample[Any] = DenseSample, OwnerT: JaxLike[Any] = "Border[
 
     __slots__ = ()
 
+    @override
     def _enumerated(
         self,
         n_units: int,
@@ -324,10 +330,12 @@ class WithReplacement[
 
     @property
     @abstractmethod
+    @override
     def _domains(self) -> tuple[int, ...]:
         """Return the number of items ``N_s`` in every stratum."""
 
     @abstractmethod
+    @override
     def _decode(
         self,
         numbers: UInt32[jax.Array, "*batch n_units n_words"],
@@ -445,10 +453,12 @@ class WithoutReplacement[
 
     @property
     @abstractmethod
+    @override
     def _domains(self) -> tuple[int, ...]:
         """Return the number of items ``N_s`` in every stratum."""
 
     @abstractmethod
+    @override
     def _decode(
         self,
         numbers: UInt32[jax.Array, "*batch n_units n_words"],
@@ -531,6 +541,7 @@ class WithoutReplacement[
             offsets.reshape(*self.shape, *offsets.shape[1:]),
         )
 
+    @override
     def log_weights(
         self, coalitions: Bool[jax.Array, "*batch n_draws n_players"]
     ) -> Float[jax.Array, "*batch n_draws"]:
@@ -538,6 +549,7 @@ class WithoutReplacement[
         _, expected = self._allocate(self.cursor)
         return _log_weights(self._domains, self._stratum(coalitions), expected)
 
+    @override
     def sample(self, budget: int) -> tuple[SampleT, Self]:
         """Draw the units ``budget`` coalitions buy, with their Horvitz-Thompson log weights.
 
@@ -590,15 +602,18 @@ class Uniform[SampleT: Sample[Any] = DenseSample, OwnerT: JaxLike[Any] = "Unifor
     n_players: int
 
     @property
+    @override
     def _domains(self) -> tuple[int, ...]:
         """Return ``(2**n_players,)``, the number of coalitions."""
         return (2**self.n_players,)
 
     @property
+    @override
     def _complements(self) -> tuple[int, ...]:
         """Return ``(0,)``: the single stratum holds the complements of its coalitions."""
         return (0,)
 
+    @override
     def _decode(
         self,
         numbers: UInt32[jax.Array, "*batch n_units n_words"],
@@ -608,6 +623,7 @@ class Uniform[SampleT: Sample[Any] = DenseSample, OwnerT: JaxLike[Any] = "Unifor
         del strata
         return bits(numbers, self.n_players)
 
+    @override
     def _stratum(
         self, coalitions: Bool[jax.Array, "*batch n_draws n_players"]
     ) -> Int[jax.Array, "*batch n_draws"]:
@@ -636,20 +652,24 @@ class Size[SampleT: Sample[Any] = DenseSample, OwnerT: JaxLike[Any] = "Size[Any,
         return self.weights.shape[-1] - 1
 
     @property
+    @override
     def _domains(self) -> tuple[int, ...]:
         """Return ``C(n, s)`` for every size ``s``."""
         return tuple(comb(self.n_players, size) for size in range(self.n_players + 1))
 
     @property
+    @override
     def _stratum_weights(self) -> Float[jax.Array, "#*batch n_sizes"]:
         """Return the size weights ``q``."""
         return self.weights
 
     @property
+    @override
     def _complements(self) -> tuple[int, ...]:
         """Return ``n - s`` for every size ``s``: complements of size-``s`` coalitions."""
         return tuple(self.n_players - size for size in range(self.n_players + 1))
 
+    @override
     def _decode(
         self,
         numbers: UInt32[jax.Array, "*batch n_units n_words"],
@@ -658,6 +678,7 @@ class Size[SampleT: Sample[Any] = DenseSample, OwnerT: JaxLike[Any] = "Size[Any,
         """Unrank every number as the coalition of its stratum's size, in colex order."""
         return colex_unrank(numbers, self.n_players, strata)
 
+    @override
     def _stratum(
         self, coalitions: Bool[jax.Array, "*batch n_draws n_players"]
     ) -> Int[jax.Array, "*batch n_draws"]:

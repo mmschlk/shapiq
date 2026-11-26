@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
-from typing import Any, ClassVar, Protocol, Self, cast, runtime_checkable
+from typing import Any, ClassVar, Protocol, Self, cast, override, runtime_checkable
 
 import jax
 import jax.numpy as jnp
@@ -110,6 +110,7 @@ class DrawHistory(History["DrawHistory"]):
     protected_axes: ClassVar[dict[str, int]] = {"coalitions": 2, "values": 1, "ends": 1}
     broadcasted_batch: ClassVar[set[str]] = {"coalitions", "values", "ends"}
 
+    @override
     def update(
         self,
         sampler: Sampler[Any, Any],
@@ -123,6 +124,7 @@ class DrawHistory(History["DrawHistory"]):
         samplers = self._record(sampler)
         return replace(self, samplers=samplers, coalitions=coalitions, values=values, ends=ends)
 
+    @override
     def rollback(self, step: int) -> Self:
         """Return the history with only the draws of its first ``step`` steps."""
         self._check_step(step)
@@ -151,6 +153,7 @@ class EstimateHistory(History["EstimateHistory"]):
     protected_axes: ClassVar[dict[str, int]] = {"estimates": 2, "weights": 1}
     broadcasted_batch: ClassVar[set[str]] = {"estimates", "weights"}
 
+    @override
     def update(
         self,
         sampler: Sampler[Any, Any],
@@ -163,6 +166,7 @@ class EstimateHistory(History["EstimateHistory"]):
         samplers = self._record(sampler)
         return replace(self, samplers=samplers, estimates=estimates, weights=weights)
 
+    @override
     def rollback(self, step: int) -> Self:
         """Return the history with only the estimates of its first ``step`` steps."""
         self._check_step(step)
@@ -350,6 +354,7 @@ class SHAPIQ[
         history = history.update(self.sampler, estimate[..., None, :], units[..., None])
         return self._build(estimate), replace(self, sampler=sampler, history=history)
 
+    @override
     def _compute_with_draws(self, budget: int) -> tuple[R, Self]:
         """Add the new draws to all draws so far and reweigh all of them with the new sampler."""
         history = cast("DrawHistory", self.history)

@@ -3,7 +3,7 @@
 import dataclasses
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, ClassVar, Self
+from typing import Any, ClassVar, Self, override
 
 import jax
 import jax.numpy as jnp
@@ -59,6 +59,7 @@ class DenseSample(Sample["DenseSample"]):
     log_weights: Float[jax.Array, "*batch n_samples"]
     protected_axes: ClassVar[dict[str, int]] = {"coalitions": 2, "log_weights": 1}
 
+    @override
     def head(self, n_samples: int) -> Self:
         """Return the first ``n_samples`` samples of this step."""
         return dataclasses.replace(
@@ -99,12 +100,14 @@ class PairedSample(Sample["PairedSample"]):
         return self.anchors.shape[-2]
 
     @property
+    @override
     def coalitions(self) -> Bool[jax.Array, "*batch n_samples n_players"]:
         """Return every anchor followed by its complement."""
         pairs = jnp.stack([self.anchors, ~self.anchors], axis=-2)  # (*batch, n_pairs, 2, n_players)
         # Interleave the anchors with reshape, as JAX performs row wise flattening.
         return pairs.reshape(*self.anchors.shape[:-2], 2 * self.n_pairs, self.anchors.shape[-1])
 
+    @override
     def head(self, n_samples: int) -> Self:
         """Return the first ``n_samples`` samples of this step, which must be whole pairs.
 

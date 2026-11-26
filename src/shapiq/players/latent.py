@@ -122,6 +122,7 @@ class LatentPlayers[P](Sequence[P]):
         object.__setattr__(catalog, "_data", data)
         return catalog
 
+    @override
     def __hash__(self) -> int:
         """Hash this catalog by identity, independently of its entries."""
         return id(self)
