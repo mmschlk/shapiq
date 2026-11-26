@@ -117,11 +117,12 @@ def _finite_game_to_table[P](game: FinitePlayerGame[P, Any]) -> TableGame[P]:
     coalitions = subset_patterns(n_players).reshape(
         2**n_players, *(1,) * game.ndim, n_players
     )  # (2**n_players, *ones, n_players)
-    values = jnp.moveaxis(game(coalitions), 0, -1)  # (*batch, 2**n_players)
-    if not isinstance(values, jax.Array) or not jnp.issubdtype(values.dtype, jnp.floating):
+    raw_values = game(coalitions)
+    if not isinstance(raw_values, jax.Array) or not jnp.issubdtype(raw_values.dtype, jnp.floating):
         msg = (
-            f"TableGame requires floating jax.Array values, got {type(values).__name__} "
-            f"(dtype={getattr(values, 'dtype', None)})."
+            f"TableGame requires floating jax.Array values, got {type(raw_values).__name__} "
+            f"(dtype={getattr(raw_values, 'dtype', None)})."
         )
         raise CastUnavailable(msg)
+    values = jnp.moveaxis(raw_values, 0, -1)  # (*batch, 2**n_players)
     return TableGame(values, game.players)

@@ -5,13 +5,40 @@ from typing import Any, ClassVar, cast, override
 
 import jax
 import jax.numpy as jnp
+from flextype import castmethod
 from jaxtyping import Bool, Float, Shaped
 from ndlike import jax_functions as jf
 from ndlike.jax_like import JaxLike
 
-from shapiq.game.basis import BasisGame
+from shapiq.game.basis import (
+    BasisGame,
+    _check_table_n_players,
+    _require_table_values,
+    _scatter_basis_coefficients,
+    _table_accumulator_dtype,
+)
+from shapiq.game.table import TableGame
 from shapiq.typing import typechecked
 from shapiq.value.value import JaxValue
+
+
+def _fast_walsh_hadamard_transform(
+    table: Float[jax.Array, "*batch n_coalitions"],
+    n_players: int,
+) -> Float[jax.Array, "*batch n_coalitions"]:
+    """Apply the unnormalized fast Walsh-Hadamard transform along the trailing ``2**n_players`` axis.
+
+    Maps Fourier coefficients ``f(T)`` in little-endian coalition order to coalition values
+    ``v(S) = sum_T f(T) * (-1)**|T & S|`` in ``O(n_players * 2**n_players)`` operations.
+    """
+    batch_shape = table.shape[:-1]
+    out = table
+    for k in range(n_players):
+        out = out.reshape(*batch_shape, 1 << (n_players - 1 - k), 2, 1 << k)
+        low = out[..., 0, :]
+        high = out[..., 1, :]
+        out = jnp.stack((low + high, low - high), axis=-2)
+    return out.reshape(*batch_shape, 1 << n_players)
 
 
 @typechecked
@@ -88,3 +115,24 @@ class FourierGame[P, V: JaxLike[Any]](BasisGame[P, V, "FourierGame[P, V]"]):
             "Shaped[JaxValue, '...']",
             _fourier_to_moebius_lookup(self.values, self.interactions, interactions, bound),
         )
+
+    @castmethod(TableGame, cost=5.0)
+    def _as_table(self) -> TableGame[P]:
+        """Materialize a ``TableGame`` via coefficient scatter and the fast Walsh-Hadamard transform."""
+        values = _require_table_values(self.values)
+        n_players = self.n_players
+        _check_table_n_players(n_players)
+        n_coalitions = 1 << n_players
+        if values.shape[-1] == 0 or 0 in self.shape:
+            return TableGame(
+                jnp.zeros((*self.shape, n_coalitions), dtype=values.dtype), self.players
+            )
+        if self.additivity == 0:
+            acc_dtype = _table_accumulator_dtype(values.dtype)
+            empty = jnp.sum(values.astype(acc_dtype), axis=-1).astype(values.dtype)
+            return TableGame(
+                jnp.broadcast_to(empty[..., None], (*self.shape, n_coalitions)), self.players
+            )
+        scattered = _scatter_basis_coefficients(values, self.interactions, n_players)
+        table = _fast_walsh_hadamard_transform(scattered, n_players).astype(values.dtype)
+        return TableGame(table, self.players)

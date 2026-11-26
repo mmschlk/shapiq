@@ -16,7 +16,7 @@ import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
 from math import comb
-from typing import Any, ClassVar, Self, cast
+from typing import Any, ClassVar, Self, cast, override
 
 import jax
 import jax.numpy as jnp
@@ -369,12 +369,14 @@ class WithReplacement[
         )
         return numbers.reshape(*strata.shape, width)
 
+    @override
     def log_weights(
         self, coalitions: Bool[jax.Array, "*batch n_draws n_players"]
     ) -> Float[jax.Array, "*batch n_draws"]:
         """Return ``log N_s - log E[M_s]`` of every coalition, with ``E[M_s]`` over all steps."""
         return _log_weights(self._domains, self._stratum(coalitions), self.expected)
 
+    @override
     def sample(self, budget: int) -> tuple[SampleT, Self]:
         """Draw the units ``budget`` coalitions buy, each weighted by ``N_s / E[M_s]``."""
         n_units = self._units(budget)
@@ -802,6 +804,15 @@ class SizeWithoutReplacement(
     Every size with ``q(s) > 0`` gets a draw first, sizes that run out are enumerated
     completely, and later steps never take a draw back.
     """
+
+
+@typechecked
+@dataclass(frozen=True, slots=True)
+class UniformWithReplacement(
+    Uniform[DenseSample, "UniformWithReplacement"],
+    WithReplacement[DenseSample, "UniformWithReplacement"],
+):
+    """Draw coalitions uniformly with replacement; every draw keeps ``n log 2``."""
 
 
 @typechecked

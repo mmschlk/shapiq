@@ -11,11 +11,49 @@ from jaxtyping import Bool, Float, Shaped
 from ndlike import jax_functions as jf
 from ndlike.jax_like import JaxLike
 
-from shapiq.game.basis import BasisGame
+from shapiq.game.basis import (
+    BasisGame,
+    _check_table_n_players,
+    _require_table_values,
+    _scatter_basis_coefficients,
+    _table_accumulator_dtype,
+)
 from shapiq.game.discretederivative import powerset, subset_patterns
 from shapiq.game.kadditive import AdditiveGame, KAdditiveGame
+from shapiq.game.table import TableGame
 from shapiq.typing import typechecked
 from shapiq.value.value import JaxValue
+
+
+def _fast_zeta_transform(
+    table: Float[jax.Array, "*batch n_coalitions"],
+    n_players: int,
+) -> Float[jax.Array, "*batch n_coalitions"]:
+    """Apply the fast zeta transform along the trailing ``2**n_players`` axis.
+
+    Maps Möbius coefficients ``m(T)`` in little-endian coalition order to coalition
+    values ``v(S) = sum_{T <= S} m(T)`` in ``O(n_players * 2**n_players)`` operations.
+    """
+    batch_shape = table.shape[:-1]
+    out = table
+    for k in range(n_players):
+        out = out.reshape(*batch_shape, 1 << (n_players - 1 - k), 2, 1 << k)
+        low = out[..., 0, :]
+        high = out[..., 1, :]
+        out = jnp.stack((low, low + high), axis=-2)
+    return out.reshape(*batch_shape, 1 << n_players)
+
+
+def _additive_to_table_values(
+    empty: Float[jax.Array, "*batch"],
+    contributions: Float[jax.Array, "*batch {n_players}"],
+    n_players: int,
+) -> Float[jax.Array, "*batch n_coalitions"]:
+    """Build coalition values for a 1-additive game in ``O(2**n_players)`` operations."""
+    table = empty[..., None]
+    for player in range(n_players):
+        table = jnp.concatenate((table, table + contributions[..., player : player + 1]), axis=-1)
+    return table
 
 
 def _moebius_zero_like[P, V: JaxValue](
@@ -175,9 +213,15 @@ class MoebiusGame[
     @castmethod(AdditiveGame)
     def _as_additive(self) -> AdditiveGame[P, JaxValue]:
         """View a ``MoebiusGame`` with ``additivity <= 1`` as an ``AdditiveGame``."""
+        if isinstance(self, AdditiveGame):
+            return self
         additivity = self.additivity
         if additivity > 1:
             msg = f"MoebiusGame with additivity {additivity} is not additive."
+            raise CastUnavailable(msg)
+        dtype = getattr(self.values, "dtype", None)
+        if dtype is None or not jnp.issubdtype(dtype, jnp.floating):
+            msg = f"AdditiveMoebiusGame requires floating values, got dtype={dtype}."
             raise CastUnavailable(msg)
         return AdditiveMoebiusGame(
             values=self.values,
@@ -185,6 +229,31 @@ class MoebiusGame[
             interactions=self.interactions,
             additivity=additivity,  # ty: ignore[invalid-argument-type]
         )
+
+    @castmethod(TableGame, cost=5.0)
+    def _as_table(self) -> TableGame[P]:
+        """Materialize a ``TableGame`` via coefficient scatter and the fast zeta transform."""
+        values = _require_table_values(self.values)
+        n_players = self.n_players
+        _check_table_n_players(n_players)
+        n_coalitions = 1 << n_players
+        if values.shape[-1] == 0 or 0 in self.shape:
+            return TableGame(
+                jnp.zeros((*self.shape, n_coalitions), dtype=values.dtype), self.players
+            )
+        if self.additivity == 0:
+            acc_dtype = _table_accumulator_dtype(values.dtype)
+            is_empty = jnp.broadcast_to(~jnp.any(self.interactions, axis=-1), values.shape)
+            empty = jnp.sum(
+                jnp.where(is_empty, values.astype(acc_dtype), jnp.zeros((), dtype=acc_dtype)),
+                axis=-1,
+            ).astype(values.dtype)
+            return TableGame(
+                jnp.broadcast_to(empty[..., None], (*self.shape, n_coalitions)), self.players
+            )
+        scattered = _scatter_basis_coefficients(values, self.interactions, n_players)
+        table = _fast_zeta_transform(scattered, n_players).astype(values.dtype)
+        return TableGame(table, self.players)
 
 
 @typechecked
@@ -227,3 +296,36 @@ class AdditiveMoebiusGame[P, V: JaxLike[Any]](
             "Shaped[JaxValue, '...']",
             _moebius_contributions(self.values, self.interactions, self.n_players),
         )
+
+    @castmethod(TableGame, cost=2.0)
+    @override
+    def _as_table(self) -> TableGame[P]:
+        """Materialize a ``TableGame`` via ``O(2**n_players)`` iterative doubling."""
+        values = _require_table_values(self.values)
+        n_players = self.n_players
+        _check_table_n_players(n_players)
+        n_coalitions = 1 << n_players
+        if values.shape[-1] == 0 or 0 in self.shape:
+            return TableGame(
+                jnp.zeros((*self.shape, n_coalitions), dtype=values.dtype), self.players
+            )
+        acc_dtype = _table_accumulator_dtype(values.dtype)
+        acc_values = values.astype(acc_dtype)
+        is_empty = jnp.broadcast_to(~jnp.any(self.interactions, axis=-1), acc_values.shape)
+        empty = jnp.sum(
+            jnp.where(is_empty, acc_values, jnp.zeros((), dtype=acc_dtype)),
+            axis=-1,
+        )
+        if self.additivity == 0:
+            return TableGame(
+                jnp.broadcast_to(
+                    empty.astype(values.dtype)[..., None], (*self.shape, n_coalitions)
+                ),
+                self.players,
+            )
+        contributions = cast(
+            "jax.Array",
+            _moebius_contributions(acc_values, self.interactions, n_players),
+        )
+        table = _additive_to_table_values(empty, contributions, n_players).astype(values.dtype)
+        return TableGame(table, self.players)
