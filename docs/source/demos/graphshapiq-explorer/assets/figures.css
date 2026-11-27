@@ -1,0 +1,927 @@
+/* The figures of the GraphSHAP-IQ explorer's page (figures.js, demos/graphshapiq-explorer/index.rst),
+   and the boxes of its write-up, in the system of the FIxLIP page (fixlip/assets/figures.css). A
+   figure sits open on the page, as the demo. Amber is the color of the docs (tokens.css): it marks
+   what a figure points at and the series of GraphSHAP-IQ in a chart. Red raises the log-odds and
+   blue lowers them, as in the explorer. Everything else is ink and gray. The classes of the figures
+   start with gsqf- (the explorer's own start with gsq-). Every figure has a marked section of its
+   own at the end of this file. */
+
+.graphshapiq-explorer-figure {
+  clear: both;
+  /* a figure is narrower than the text around it, and sits in the middle of the column */
+  max-width: var(--gsqf-figure-width, 38rem);
+  margin: 2rem auto 2.25rem;
+  container-type: inline-size; /* the layout follows the figure's width, not the window's */
+  -webkit-tap-highlight-color: transparent;
+  --gsqf-ink: var(--color-foreground-primary, #1b1e27);
+  --gsqf-muted: var(--shapiq-text-muted, #5b6275);
+  --gsqf-line: var(--shapiq-border, #e2e6f3);
+  --gsqf-raised: var(--shapiq-surface-raised, #f7f8fc);
+  --gsqf-page: var(--color-background-primary, #ffffff);
+  --gsqf-type: 1; /* the small texts of a figure are larger by this on a narrow page */
+  --gsqf-masked: #c9cdd8; /* a masked atom: the gray of the baseline */
+  --gsqf-gray: #9299ab; /* the series that are not GraphSHAP-IQ's */
+  --gsqf-red: #ff0d57; /* as the explorer and shapiq's plots */
+  --gsqf-blue: #1e88e5;
+  --gsqf-red-text: #d6003f; /* red and blue for values in text, darker than the marks */
+  --gsqf-blue-text: #1565c0;
+  --gsqf-lasso: color-mix(in srgb, var(--shapiq-amber, #f5a300) 45%, var(--gsqf-page)); /* the pattern */
+  --gsqf-ease: var(--shapiq-ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+  --gsqf-duration: var(--shapiq-duration, 220ms);
+}
+
+body[data-theme="dark"] .graphshapiq-explorer-figure {
+  --gsqf-masked: #3d414e;
+  --gsqf-gray: #737a8e;
+  --gsqf-red-text: #ff3d74;
+  --gsqf-blue-text: #4ba3f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .graphshapiq-explorer-figure {
+    --gsqf-masked: #3d414e;
+    --gsqf-gray: #737a8e;
+    --gsqf-red-text: #ff3d74;
+    --gsqf-blue-text: #4ba3f0;
+  }
+}
+
+/* Before the script has drawn a figure, its stage keeps about the figure's room (--gsqf-guess, set
+   in a figure's own section), and a figure that follows the molecule the room of its selector over
+   it and of its dots under it on a narrow page, so the page does not jump while it loads.
+   figures.js draws the figures as soon as it runs and then reserves the highest molecule's room. */
+@media (scripting: enabled) {
+  .graphshapiq-explorer-figure:not(.gsqf-ready) .graphshapiq-explorer-figure-stage {
+    min-height: var(--gsqf-guess, 14rem);
+  }
+
+  /* (padding, not a margin of the stage, which would collapse with the figure's) */
+  .graphshapiq-explorer-figure:not(.gsqf-ready):not([data-figure="arrangement"], [data-figure="paper-approximation"]) {
+    padding-top: 3rem; /* .gsqf-bar: 2.3rem and its margin */
+  }
+}
+
+/* A figure is drawn into a layer of its stage. While one molecule fades into the next, the layers
+   of both lie in the same cell, so the stage is as high as the higher one and nothing below moves. */
+.graphshapiq-explorer-figure-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* a swipe sideways goes to the next molecule (figures.js), up or down scrolls the page */
+  touch-action: pan-y pinch-zoom;
+}
+
+.gsqf-layer {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* the drawings of all molecules that the frame measures, unseen (figures.js, reserveStage) */
+.gsqf-layer.gsqf-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* From one molecule to the next (figures.js, morph): a part of the drawing before that is the same
+   in the new one is hidden at once, and a part that changes fades out before its successor fades in. */
+.gsqf-gone {
+  visibility: hidden;
+}
+
+.gsqf-out {
+  animation: gsqf-out 140ms ease-out both;
+}
+
+.gsqf-in {
+  animation: gsqf-in 220ms ease-out 140ms both;
+}
+
+@keyframes gsqf-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes gsqf-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.graphshapiq-explorer-figure-missing {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gsqf-muted);
+}
+
+.graphshapiq-explorer-figure figcaption {
+  margin-top: 0.7rem;
+  font-size: calc(0.88rem * var(--gsqf-type, 1));
+  line-height: 1.5;
+  color: var(--gsqf-muted);
+}
+
+.graphshapiq-explorer-figure figcaption p {
+  margin: 0;
+}
+
+.graphshapiq-explorer-figure figcaption strong {
+  color: var(--gsqf-ink);
+}
+
+/* where a caption says on which side a panel lies: the roles graphshapiq-wide and graphshapiq-narrow
+   hold the word for panels side by side and the word for stacked panels, and one of the two shows */
+.graphshapiq-explorer-figure figcaption .graphshapiq-narrow {
+  display: none;
+}
+
+@container (max-width: 34rem) {
+  .graphshapiq-explorer-figure figcaption .graphshapiq-wide {
+    display: none;
+  }
+
+  .graphshapiq-explorer-figure figcaption .graphshapiq-narrow {
+    display: inline;
+  }
+}
+
+/* a symbol inside the bold lead of a caption, in italics (the role graphshapiq-lead of the page) */
+.graphshapiq-explorer-figure figcaption .graphshapiq-lead {
+  font-weight: bold;
+  font-style: italic;
+  color: var(--gsqf-ink);
+}
+
+/* color words of the page and of the figures (the roles graphshapiq-red and graphshapiq-blue) */
+.gsqf-up,
+article[role="main"] .graphshapiq-red {
+  color: var(--gsqf-red-text, #d6003f);
+}
+
+.gsqf-down,
+article[role="main"] .graphshapiq-blue {
+  color: var(--gsqf-blue-text, #1565c0);
+}
+
+body[data-theme="dark"] article[role="main"] .graphshapiq-red {
+  color: #ff3d74;
+}
+
+body[data-theme="dark"] article[role="main"] .graphshapiq-blue {
+  color: #4ba3f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) article[role="main"] .graphshapiq-red {
+    color: #ff3d74;
+  }
+
+  body:not([data-theme="light"]) article[role="main"] .graphshapiq-blue {
+    color: #4ba3f0;
+  }
+}
+
+/* -- the selector: the molecule shown, and the others to choose from ---------------------------- */
+
+.gsqf-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.3rem;
+  margin-bottom: 0.7rem;
+}
+
+.gsqf-shown {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(0.8rem * var(--gsqf-type, 1));
+  line-height: 1.3;
+  color: var(--gsqf-muted);
+}
+
+.gsqf-shown strong {
+  margin-right: 0.45em;
+  font-weight: 650;
+  color: var(--gsqf-ink);
+}
+
+/* the molecule, shown where the thumbnails are not */
+.gsqf-shown-tile {
+  display: none;
+  flex: none;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 7px;
+  background: var(--gsqf-raised);
+}
+
+.gsqf-tiles {
+  display: flex;
+  flex: none;
+  gap: 0.25rem;
+}
+
+.gsqf-tile-button {
+  width: 2.3rem;
+  height: 2.3rem;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: var(--gsqf-raised);
+  opacity: 0.5;
+  cursor: pointer;
+  transition:
+    opacity var(--gsqf-duration) var(--gsqf-ease),
+    border-color var(--gsqf-duration) var(--gsqf-ease),
+    transform 120ms var(--gsqf-ease);
+}
+
+:is(.gsqf-tile-button, .gsqf-shown-tile) svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+:is(.gsqf-tile-button, .gsqf-shown-tile) svg line {
+  stroke: var(--gsqf-ink);
+  stroke-width: 1.3px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+:is(.gsqf-tile-button, .gsqf-shown-tile) svg circle {
+  fill: var(--gsqf-ink);
+}
+
+.gsqf-tile-button:hover,
+.gsqf-tile-button[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.gsqf-tile-button[aria-pressed="true"] {
+  border-color: var(--gsqf-ink);
+}
+
+.gsqf-tile-button:active {
+  transform: scale(0.95);
+}
+
+.graphshapiq-explorer-figure :is(.gsqf-tile-button, .gsqf-dot-button):focus-visible {
+  outline: 2px solid var(--gsqf-ink);
+  outline-offset: 2px;
+}
+
+/* on a narrow page, dots under the figure in place of the thumbnails, the one shown dark (as the
+   FIxLIP page's figures and the explorer) */
+.gsqf-dots {
+  display: none;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+/* what the first figure says under its dots, on a touch screen, until it was swiped */
+.gsqf-hint {
+  display: none;
+  margin: 0;
+  font-size: calc(0.75rem * var(--gsqf-type, 1));
+  text-align: center;
+  color: var(--gsqf-muted);
+}
+
+.gsqf-dot-button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.gsqf-dot-button::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gsqf-gray);
+  opacity: 0.55;
+  transition:
+    background var(--gsqf-duration) var(--gsqf-ease),
+    scale var(--gsqf-duration) var(--gsqf-ease);
+}
+
+.gsqf-dot-button[aria-pressed="true"]::before {
+  background: var(--gsqf-ink);
+  opacity: 1;
+  scale: 1.3;
+}
+
+@container (max-width: 34rem) {
+  .gsqf-tiles {
+    display: none;
+  }
+
+  .gsqf-dots {
+    display: flex;
+  }
+
+  @media (hover: none) {
+    .gsqf-hint {
+      display: block;
+    }
+  }
+
+  .gsqf-shown-tile {
+    display: block;
+  }
+
+  /* the name and the question on two lines, in one height for all molecules */
+  .gsqf-shown strong {
+    display: block;
+  }
+
+  .gsqf-bar {
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+
+  /* On a phone, the small texts of a figure are read at arm's length: labels, legends and the texts
+     of the charts are an eighth larger (figures.js gives the charts wider margins), and the caption
+     comes close to the text of the page. */
+  .graphshapiq-explorer-figure > * {
+    --gsqf-type: 1.12;
+  }
+
+  .graphshapiq-explorer-figure > figcaption {
+    --gsqf-type: 1.07;
+  }
+}
+
+@media (scripting: enabled) {
+  @container (max-width: 34rem) {
+    /* the room of the dots under a figure that follows the molecule, before it is drawn */
+    .graphshapiq-explorer-figure:not(.gsqf-ready):not([data-figure="arrangement"], [data-figure="paper-approximation"]) {
+      padding-top: 2.93rem; /* the bar of a narrow figure: two lines of its label */
+    }
+
+    .graphshapiq-explorer-figure:not(.gsqf-ready):not([data-figure="arrangement"], [data-figure="paper-approximation"])
+      > figcaption {
+      margin-top: calc(0.7rem + 2.65rem); /* .gsqf-dots: 2.25rem and its margin */
+    }
+  }
+}
+
+/* -- the motif: a molecule as the explorer and shapiq's si_graph_plot draw it (figures.js) ------- */
+
+.gsqf-molecule {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.gsqf-molecule .gsqf-bond {
+  stroke: var(--gsqf-ink);
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.gsqf-molecule .gsqf-disc {
+  fill: var(--gsqf-page);
+  stroke: var(--gsqf-ink);
+  stroke-width: 1.4px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gsqf-molecule .gsqf-tint {
+  stroke: none;
+}
+
+.gsqf-molecule .gsqf-letter {
+  fill: var(--gsqf-ink);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.gsqf-molecule .gsqf-number {
+  fill: var(--gsqf-muted);
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a masked atom: gray, the baseline the GNN sees, with a faint letter */
+.gsqf-molecule .gsqf-masked .gsqf-disc {
+  fill: var(--gsqf-masked);
+  stroke: var(--gsqf-muted);
+}
+
+.gsqf-molecule .gsqf-masked .gsqf-letter {
+  opacity: 0.45;
+}
+
+/* the atoms that a figure does not point at */
+.gsqf-molecule .gsqf-faded {
+  opacity: 0.3;
+}
+
+/* an atom that a figure points at: an amber frame */
+.gsqf-molecule .gsqf-frame {
+  fill: none;
+  stroke: var(--shapiq-amber, #f5a300);
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gsqf-molecule .gsqf-halo,
+.gsqf-molecule .gsqf-edge path {
+  stroke: none; /* a hyperedge's ends and bands share one opacity, so overlaps are not darker */
+}
+
+.gsqf-molecule .gsqf-lasso-out {
+  fill: var(--gsqf-lasso);
+  stroke: var(--gsqf-lasso);
+  stroke-linecap: round;
+}
+
+.gsqf-molecule .gsqf-lasso-in {
+  fill: var(--gsqf-page);
+  stroke: var(--gsqf-page);
+  stroke-linecap: round;
+}
+
+/* -- panels side by side -------------------------------------------------------------------------- */
+
+.gsqf-columns {
+  display: grid;
+  gap: 1.1rem 1.2rem;
+  align-items: start;
+}
+
+.gsqf-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gsqf-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gsqf-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.gsqf-five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.1rem 0.8rem;
+}
+
+.gsqf-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.gsqf-title {
+  margin: 0;
+  font-size: calc(0.82rem * var(--gsqf-type, 1));
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--gsqf-ink);
+}
+
+.gsqf-reading {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.gsqf-reading span {
+  font-size: calc(0.75rem * var(--gsqf-type, 1));
+  color: var(--gsqf-muted);
+}
+
+.gsqf-reading strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gsqf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 1.1rem;
+  margin: 0.6rem 0 0;
+  font-size: calc(0.78rem * var(--gsqf-type, 1));
+  color: var(--gsqf-muted);
+}
+
+.gsqf-swatch {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.55rem;
+  margin-right: 0.4rem;
+  border-radius: 2px;
+}
+
+.gsqf-swatch.gsqf-amber {
+  background: var(--shapiq-amber);
+}
+
+.gsqf-swatch.gsqf-gray {
+  background: var(--gsqf-gray);
+}
+
+.gsqf-swatch.gsqf-ink {
+  background: var(--gsqf-ink);
+}
+
+.gsqf-swatch.gsqf-red {
+  background: var(--gsqf-red);
+}
+
+.gsqf-swatch.gsqf-blue {
+  background: var(--gsqf-blue);
+}
+
+.gsqf-swatch.gsqf-masked {
+  background: var(--gsqf-masked);
+}
+
+.gsqf-swatch.gsqf-round {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+}
+
+.gsqf-swatch:is(.gsqf-solid, .gsqf-dashed) {
+  height: 0;
+  border-top: 2px solid var(--gsqf-muted);
+  border-radius: 0;
+  background: none;
+  vertical-align: middle;
+}
+
+.gsqf-swatch.gsqf-dashed {
+  border-top-style: dashed;
+}
+
+@container (max-width: 34rem) {
+  /* three panels under each other */
+  .gsqf-three {
+    grid-template-columns: minmax(0, 17rem);
+    justify-content: center;
+    gap: 1.6rem;
+  }
+
+  .gsqf-four,
+  .gsqf-five {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gsqf-two:not(.gsqf-keep) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* -- sliders -------------------------------------------------------------------------------------- */
+
+.gsqf-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  font-size: calc(0.78rem * var(--gsqf-type, 1));
+  color: var(--gsqf-muted);
+}
+
+/* The slider is drawn here and not by the browser, which darkens its own while it is pressed. */
+.gsqf-slider input {
+  --gsqf-at: calc(8px + var(--gsqf-part, 0) * (100% - 16px)); /* the middle of the thumb */
+  flex: 1;
+  min-width: 0;
+  height: 1.75rem; /* a target for a finger */
+  margin: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.gsqf-slider input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--shapiq-amber) var(--gsqf-at), var(--gsqf-line) var(--gsqf-at));
+}
+
+.gsqf-slider input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--shapiq-amber) var(--gsqf-at), var(--gsqf-line) var(--gsqf-at));
+}
+
+.gsqf-slider input::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.gsqf-slider input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shapiq-amber);
+}
+
+.gsqf-slider input:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--shapiq-amber);
+  outline-offset: 2px;
+}
+
+.gsqf-slider output {
+  min-width: 1.6em;
+  font-size: 0.95rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--gsqf-ink);
+}
+
+/* -- charts ------------------------------------------------------------------------------------------- */
+
+.gsqf-plot {
+  min-width: 0;
+}
+
+.gsqf-chart {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.gsqf-chart text {
+  fill: var(--gsqf-muted);
+  font-size: calc(11.5px * var(--gsqf-type, 1));
+  font-variant-numeric: tabular-nums;
+}
+
+.gsqf-chart .gsqf-strong {
+  fill: var(--gsqf-ink);
+  font-weight: 650;
+}
+
+.gsqf-axis {
+  stroke: var(--gsqf-muted);
+  stroke-width: 1;
+}
+
+.gsqf-grid {
+  stroke: var(--gsqf-line);
+  stroke-width: 1;
+}
+
+/* a reference: a dashed line */
+.gsqf-mark {
+  stroke: var(--gsqf-muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+
+.gsqf-chart :is(rect, circle, polygon).gsqf-amber {
+  fill: var(--shapiq-amber);
+}
+
+.gsqf-chart :is(rect, circle, polygon).gsqf-gray {
+  fill: var(--gsqf-gray);
+}
+
+.gsqf-chart :is(rect, circle, polygon).gsqf-ink {
+  fill: var(--gsqf-ink);
+}
+
+.gsqf-chart :is(rect, circle, polygon).gsqf-red {
+  fill: var(--gsqf-red);
+}
+
+.gsqf-chart :is(rect, circle, polygon).gsqf-blue {
+  fill: var(--gsqf-blue);
+}
+
+.gsqf-chart :is(line, path).gsqf-amber {
+  stroke: var(--shapiq-amber);
+}
+
+.gsqf-chart :is(line, path).gsqf-gray {
+  stroke: var(--gsqf-gray);
+}
+
+.gsqf-chart :is(line, path).gsqf-ink {
+  stroke: var(--gsqf-ink);
+}
+
+.gsqf-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gsqf-line.gsqf-dashed {
+  stroke-dasharray: 1.5 4.5;
+}
+
+.gsqf-area {
+  fill: var(--shapiq-amber-soft);
+}
+
+/* what a slider points at in a chart */
+.gsqf-guide {
+  stroke: var(--gsqf-ink);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+/* what a chart points at: an ink dot with a ring in the page's color (morph slides it) */
+.gsqf-dot {
+  fill: var(--gsqf-ink);
+  stroke: var(--gsqf-page);
+  stroke-width: 2;
+}
+
+.gsqf-point {
+  fill-opacity: 0.5;
+}
+
+/* -- the page: numbers of the captions, tables, the summary and the citation ------------------------ */
+
+/* the number of a figure or a table, in front of its caption (shapiq_demos.py) */
+article[role="main"] .caption-number {
+  font-weight: 700;
+  color: var(--shapiq-amber);
+}
+
+/* as the figures: narrower than the text, with a caption in their style */
+/* (this style sheet is only on pages with the explorer's figures) */
+article[role="main"] .table-wrapper.container {
+  max-width: var(--gsqf-figure-width, 38rem);
+  margin: 2rem auto 2.25rem;
+  padding-inline: 0;
+}
+
+article[role="main"] .table-wrapper table.docutils caption {
+  margin-bottom: 0.6rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--shapiq-text-muted, #5b6275);
+}
+
+article[role="main"] .table-wrapper table.docutils caption strong {
+  color: var(--color-foreground-primary, #1b1e27);
+}
+
+@media (max-width: 36rem) {
+  article[role="main"] .table-wrapper table.docutils caption {
+    font-size: 0.94rem;
+  }
+}
+
+/* The summary is set like the abstract of a paper, in a box of its own in the amber of the docs, and
+   so is the box at the end of the page that says how to cite the method (rst-class
+   graphshapiq-summary and graphshapiq-citation on their sections). */
+article[role="main"] section:is(.graphshapiq-summary, .graphshapiq-citation) {
+  margin: 2rem 0 2.5rem;
+  padding: 1.1rem 1.4rem 0.6rem;
+  border: 1.5px solid var(--shapiq-amber);
+  border-radius: var(--shapiq-radius, 12px);
+  background: var(--shapiq-amber-soft);
+  font-size: 0.95em;
+}
+
+article[role="main"] section:is(.graphshapiq-summary, .graphshapiq-citation) > h2 {
+  margin: 0 0 0.6rem;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--shapiq-amber-ink);
+}
+
+article[role="main"] section:is(.graphshapiq-summary, .graphshapiq-citation) > p {
+  margin: 0 0 0.75rem;
+}
+
+article[role="main"] section.graphshapiq-citation {
+  margin-bottom: 1rem;
+}
+
+article[role="main"] section.graphshapiq-citation div[class*="highlight-"] {
+  margin: 0 0 0.75rem;
+}
+
+/* -- on paper ------------------------------------------------------------------------------------------ */
+
+@media print {
+  .graphshapiq-explorer-figure {
+    break-inside: avoid;
+  }
+
+  .gsqf-tiles,
+  .gsqf-dots,
+  .gsqf-hint {
+    display: none;
+  }
+
+  .gsqf-shown-tile {
+    display: block;
+  }
+}
+
+/* -- the figures, one section each (--gsqf-guess: about the figure's height, before it is drawn) --- */
+
+/* the placeholder of a figure that is not drawn yet (figures.js, placeholder) */
+.gsqf-placeholder-art {
+  max-width: 15rem;
+  margin: 0 auto;
+}
+
+/* ===== figure: pipeline ===== */
+.graphshapiq-explorer-figure[data-figure="pipeline"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: pipeline ===== */
+
+/* ===== figure: nitro ===== */
+.graphshapiq-explorer-figure[data-figure="nitro"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: nitro ===== */
+
+/* ===== figure: maskings ===== */
+.graphshapiq-explorer-figure[data-figure="maskings"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: maskings ===== */
+
+/* ===== figure: order ===== */
+.graphshapiq-explorer-figure[data-figure="order"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: order ===== */
+
+/* ===== figure: arrangement ===== */
+.graphshapiq-explorer-figure[data-figure="arrangement"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: arrangement ===== */
+
+/* ===== figure: sparsity ===== */
+.graphshapiq-explorer-figure[data-figure="sparsity"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: sparsity ===== */
+
+/* ===== figure: complexity ===== */
+.graphshapiq-explorer-figure[data-figure="complexity"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: complexity ===== */
+
+/* ===== figure: approximation ===== */
+.graphshapiq-explorer-figure[data-figure="approximation"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: approximation ===== */
+
+/* ===== figure: paper-approximation ===== */
+.graphshapiq-explorer-figure[data-figure="paper-approximation"] {
+  --gsqf-guess: 15.4rem;
+}
+/* ===== end: paper-approximation ===== */
+
+/* ===== figure: orders ===== */
+.graphshapiq-explorer-figure[data-figure="orders"] {
+  --gsqf-guess: 18.5rem;
+}
+/* ===== end: orders ===== */
