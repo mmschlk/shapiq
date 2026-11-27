@@ -48,3 +48,47 @@ in RDKit's order for the SMILES, which is the order of the players.
 
 The data of the docs was computed with Python 3.13, numpy 2.5, scipy 1.18 and shapiq from the
 repository.
+
+**`pipeline.py`, `nitro.py`, `maskings.py`** (figures `pipeline`, `nitro`, `maskings`; each for
+every molecule and every question, under 15 seconds together). `pipeline.py` runs each GNN on the
+unmasked molecule and writes, for one atom per molecule (`FOCUS`), its node features and its
+embedding after each layer, and every atom's term of the log-odds with the readout's bias (they sum
+to the log-odds). `nitro.py` takes the pair of atoms with the strongest 2-SII and measures the
+changes of the log-odds when either atom or both are added, with all other atoms masked (there the
+discrete derivative is the pair's Möbius interaction) and averaged over 256 random maskings of the
+other atoms (seed 0; the number of atoms kept drawn uniformly, then the atoms, as in the SII, so
+the average estimates the pair's 2-SII). `maskings.py` evaluates all atoms, no atoms, a
+substructure removed (`SUBSTRUCTURE`, per molecule) and a random masking (seed 3).
+
+**`order.py`, `arrangement.py` and `orders.py`** (figures `order`, `arrangement`, `orders`; nothing
+random). `order.py` explains every molecule for every question with GraphSHAP-IQ and writes, for the
+k-SII of order 1 to 4 and the Möbius interactions, the number of non-zero contributions, their sum
+and the sums of the positive and the negative ones; it checks that every order sums to the log-odds
+minus the prediction with no atoms (efficiency, to 1e-5). `orders.py` sums the positive and the
+negative Möbius interactions of each molecule (its own question) by the size of their set (1, 2, 3,
+4 or more), with the same check, and the same for the 4-SII. `arrangement.py` builds catechol,
+resorcinol and hydroquinone from their SMILES with `gnn.from_smiles`, turns them so that their rings
+lie alike, and writes the PAINS GNN's probability and the complete 2-SII of each; it needs RDKit
+(run it where RDKit is installed).
+
+**`sparsity.py`, `complexity.py`, `approximation.py`, `paper_approximation.py`** (figures
+`sparsity`, `complexity`, `approximation`, `paper-approximation`). `sparsity.py` evaluates each GNN on
+all 2^n maskings of every molecule, in float32 and in float64 (the same weights, cast), takes the
+Möbius transform of both, marks every set as inside or outside the set I of Proposition 3.6 (the
+subsets of the receptive fields of three layers) and writes the absolute values binned by the size
+of the set and a quarter of a decade, the largest values inside and outside I, and the rounding of
+float32 (the largest difference of an MI between float32 and float64); it checks that GraphSHAP-IQ's
+MIs agree with the float64 brute force (to 7e-5) and that |I| is GraphSHAP-IQ's budget (about four
+minutes, three of them indigo). `complexity.py` counts |I| for one to four layers for the explorer's
+seven molecules and the four of `../../graphshapiq-exact/assets/data.js`, and checks the counts
+against the budgets of both demos (a second). `approximation.py` evaluates the graph game once on
+all 2^n maskings and runs, at every budget of GraphSHAP-IQ's approximation variant
+(`max_interaction_size` lambda = 1, 2, ... until it is exact), shapiq's `KernelSHAPIQ`, `SVARMIQ`,
+`SHAPIQ` and `PermutationSamplingSII` (k-SII, order 2, seeds 0, 1, 2), with the MSE over all 2-SII
+of one and two atoms against exact GraphSHAP-IQ; it also writes, for the record, the paper's
+interaction-informed variant of the three Monte Carlo methods (the SII of pairs outside I set to
+zero before the aggregation). The molecules with their own questions take about 25 minutes, almost
+all of it SVARM-IQ on indigo; `--all` adds the other questions (about an hour more).
+`paper_approximation.py` reads Figure 4 (left) of the paper from the vector graphic on page 9 of its
+PDF with PyMuPDF (`pip install pymupdf`; `python paper_approximation.py <the PDF>`): the axes are
+calibrated on their tick marks, the curves and bands are told apart by their colors and dashes.

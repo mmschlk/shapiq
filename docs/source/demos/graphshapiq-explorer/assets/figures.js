@@ -504,91 +504,828 @@
   const FIGURES = {};
 
   // ===== figure: pipeline =====
+  // From a molecule to the log-odds: the receptive field of one atom (amber) grows by one bond per
+  // layer, with the atom's node features and its embedding after each layer as strips of their real
+  // values; then sum pooling and the linear output layer, which make the log-odds the bias plus one
+  // term per atom (tints). Data: compute/pipeline.py (per molecule and question).
   FIGURES.pipeline = {
     draw(layer, c) {
-      placeholder(layer, c, "pipeline");
+      const { molecule: m, task } = c;
+      const d = c.part?.[`${m.id}/${task.id}`];
+      if (!d) return placeholder(layer, c, "pipeline");
+      const n = m.atoms.length;
+      const focus = d.focus;
+      // bonds from the focus atom to every atom
+      const nb = G.neighbors(m);
+      const hops = Array(n).fill(Infinity);
+      hops[focus] = 0;
+      for (let todo = [focus]; todo.length; ) {
+        const k = todo.shift();
+        for (const j of nb[k])
+          if (hops[j] === Infinity) {
+            hops[j] = hops[k] + 1;
+            todo.push(j);
+          }
+      }
+      const name = G.atomName(m, focus).toLowerCase();
+      // the molecule with the receptive field of `l` layers: an amber glow over its atoms (as the
+      // receptive-field figure of the page), the focus atom filled
+      const field = (l) => {
+        const art = molecule(m, { room: 84, cap: 16, dim: new Set(range(n).filter((k) => hops[k] <= l)), label: `${m.name}: the receptive field of the ${name} atom after ${l} layers` });
+        const { s, pos } = art.geom;
+        const glow = svgEl("g", { class: "gsqf-pl-glow" });
+        for (let k = 0; k < n; k++) if (hops[k] <= l) glow.append(svgEl("circle", { cx: pos[k][0], cy: pos[k][1], r: (0.56 * s).toFixed(2) }));
+        for (const [i, j] of m.bonds)
+          if (hops[i] <= l && hops[j] <= l) glow.append(svgEl("line", { x1: pos[i][0], y1: pos[i][1], x2: pos[j][0], y2: pos[j][1], "stroke-width": (0.7 * s).toFixed(2) }));
+        art.layers.truth.append(glow);
+        // the bonds outside the field step back with their atoms (skeleton draws one line per bond
+        // order, in the order of the bonds)
+        const lines = [...art.layers.bonds.children];
+        let at = 0;
+        for (const [i, j, order] of m.bonds) {
+          const count = order >= 3 ? 3 : order === 2 ? 2 : 1;
+          if (!(hops[i] <= l && hops[j] <= l)) for (let t = 0; t < count; t++) lines[at + t]?.classList.add("gsqf-faded");
+          at += count;
+        }
+        [...art.layers.atoms.children].forEach((atom, k) => {
+          if (k === focus) atom.classList.add("gsqf-pl-source");
+          else if (hops[k] <= l) atom.classList.add("gsqf-pl-in");
+        });
+        return art;
+      };
+      // a vector as a strip of cells, the darker the larger the value's magnitude
+      const strip = (values) => {
+        const top = largest(values);
+        const node = svgEl("svg", { class: "gsqf-pl-strip", viewBox: `0 0 ${values.length} 1`, preserveAspectRatio: "none", "aria-hidden": "true" });
+        values.forEach((v, k) => node.append(svgEl("rect", { x: k + 0.06, y: 0, width: 0.88, height: 1, "fill-opacity": (0.06 + 0.94 * (Math.abs(v) / top)).toFixed(3) })));
+        return node;
+      };
+      // h_i^(l) in the notation of the text
+      const symbol = (letter, l, count) => {
+        const node = el("p", "gsqf-pl-symbol");
+        add(node, el("i", "", letter), el("sub", "", "i"));
+        if (l) node.append(el("sup", "", `(${l})`));
+        node.append(document.createTextNode(` · ${count} values`));
+        return node;
+      };
+      const steps = [
+        panel("Input", field(0), strip(d.x), symbol("x", 0, d.x.length)),
+        ...d.h.map((h, l) => panel(`Layer ${l + 1}`, field(l + 1), strip(h), symbol("h", l + 1, h.length))),
+      ];
+      // the readout: each atom's term of the log-odds as a tint, the focus atom framed
+      const terms = Object.fromEntries(d.terms.map((v, k) => [k, v]));
+      const art = molecule(m, { tints: terms, framed: new Set([focus]), label: `${m.name}: the term of each atom in the log-odds` });
+      const total = sum(d.terms);
+      const line = (label, value, className = "") => add(el("p", className), add(el("span"), ...(typeof label === "string" ? [label] : label)), el("strong", "", value));
+      const pct = (p) => (p > 0.999 ? ">99.9%" : p < 0.001 ? "<0.1%" : `${(100 * p).toFixed(1)}%`);
+      const sums = add(
+        el("div", "gsqf-pl-sum"),
+        line([el("i", "gsqf-pl-key"), `term of the ${name} atom`], signed(d.terms[focus])),
+        line(`sum of all ${n} atom terms`, signed(total)),
+        line("bias of the output layer", signed(d.bias)),
+        line(`log-odds of “${task.yes}”`, signed(d.logOdds), `gsqf-pl-total ${d.logOdds >= 0 ? "gsqf-up" : "gsqf-down"}`),
+        line("probability", pct(d.p)),
+      );
+      layer.append(
+        add(el("div", "gsqf-pl-steps"), ...steps),
+        add(
+          el("div", "gsqf-pl-readout"),
+          el("p", "gsqf-title", "Sum pooling and linear output layer"),
+          add(
+            el("div", "gsqf-pl-out"),
+            add(el("div", "gsqf-pl-art"), art),
+            add(el("div", "gsqf-pl-right"), sums, legend([["gsqf-red gsqf-round", "term raises the log-odds"], ["gsqf-blue gsqf-round", "lowers them"]])),
+          ),
+        ),
+      );
     },
   };
   // ===== end: pipeline =====
 
   // ===== figure: nitro =====
+  // An interaction measured on the model: the pair of atoms with the strongest 2-SII, added alone and
+  // together, first to the molecule with all other atoms masked (the discrete derivative there is
+  // the pair's Möbius interaction), then to random maskings of the other atoms (its average estimates
+  // the pair's 2-SII). Bars as the FIxLIP page's `interaction`. Data: compute/nitro.py.
   FIGURES.nitro = {
     draw(layer, c) {
-      placeholder(layer, c, "nitro");
+      const { molecule: m, task } = c;
+      const d = c.part?.[`${m.id}/${task.id}`];
+      if (!d) return placeholder(layer, c, "nitro");
+      const [i, j] = d.pair;
+      // the molecule with the two atoms framed, and i and j beside them, away from their bonds
+      const art = molecule(m, { framed: new Set([i, j]), label: `${m.name}: the two atoms of the pair` });
+      const { s, pos } = art.geom;
+      // the place around the atom farthest from every atom, bond and the other name
+      const taken = [...pos, ...m.bonds.map(([a, b]) => [(pos[a][0] + pos[b][0]) / 2, (pos[a][1] + pos[b][1]) / 2])];
+      for (const [k, letter] of [[i, "i"], [j, "j"]]) {
+        const [x, y] = pos[k];
+        let best = null;
+        for (let step = 0; step < 16; step++) {
+          const angle = (step / 16) * 2 * Math.PI - Math.PI / 2; // from above, clockwise
+          const p = [x + 0.68 * s * Math.cos(angle), y + 0.68 * s * Math.sin(angle)];
+          const room = Math.min(...taken.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1])));
+          if (!best || room > best.room + 1e-6) best = { p, room };
+        }
+        taken.push(best.p);
+        art.layers.over.append(svgEl("text", { class: "gsqf-nt-name", x: best.p[0].toFixed(2), y: best.p[1].toFixed(2), "font-size": (0.46 * s).toFixed(2) }, letter));
+      }
+      const { alone, random } = d;
+      const groups = [
+        ["All other atoms masked", alone, ["MI of the pair", d.moebius]],
+        [`Random maskings of the other atoms (mean of ${d.samples})`, random, ["2-SII of the pair", d.sii]],
+      ];
+      const all = groups.flatMap(([, g, [, v]]) => [g.i, g.j, g.both, g.interaction, v]);
+      const step = stepOf(Math.min(0, ...all), Math.max(0, ...all));
+      const low = Math.floor(Math.min(0, ...all) / step - 1e-9) * step;
+      const high = Math.ceil(Math.max(0, ...all) / step - 1e-9) * step;
+      const ticks = ticksOf(low, high, step);
+      const at = (v) => ((v - low) / (high - low)) * 100;
+      const bars = el("div", "gsqf-nt-bars");
+      const bar = (label, value, kind) => {
+        const track = el("span", "gsqf-nt-track");
+        const tone = kind === "sign" ? (value >= 0 ? "up" : "down") : kind;
+        const fill = el("span", `gsqf-nt-fill gsqf-nt-${tone}`);
+        const [a, b] = [at(Math.min(0, value)), at(Math.max(0, value))];
+        fill.style.left = `${a}%`;
+        fill.style.width = `${Math.max(b - a, 0.6)}%`;
+        const origin = el("span", "gsqf-nt-origin");
+        origin.style.left = `${at(0)}%`;
+        const number = el("span", `gsqf-nt-number${kind === "sign" ? (value >= 0 ? " gsqf-up" : " gsqf-down") : ""}`, signed(value));
+        add(bars, add(el("span", "gsqf-nt-label"), ...rich(label)), add(track, fill, origin), number);
+      };
+      for (const [title, g, [name, value]] of groups) {
+        bars.append(el("p", "gsqf-nt-group", title));
+        bar("Atom *i* added", g.i, "gray");
+        bar("Atom *j* added", g.j, "gray");
+        bar("Both added", g.both, "ink");
+        bar("Interaction", g.interaction, "sign");
+        bar(name, value, "amber");
+      }
+      // the axis under the bars: ticks of the log-odds
+      const axis = el("span", "gsqf-nt-axis");
+      // the shortest form of a tick (0.5, not 0.50)
+      const short = (t) => String(Math.round(t * 100) / 100).replace("-", "−");
+      const labels = ticks.map((t) => {
+        const tick = el("span", "", short(t));
+        tick.style.left = `${at(t)}%`;
+        axis.append(tick);
+        return tick;
+      });
+      add(bars, el("span"), axis, el("span"), el("span"), el("span", "gsqf-nt-unit", "change of the log-odds"), el("span"));
+      layer.append(
+        add(
+          el("div", "gsqf-nt"),
+          panel(`Atoms *i* (${m.atoms[i][0]}) and *j* (${m.atoms[j][0]})`, add(el("div", "gsqf-nt-art"), art)),
+          bars,
+        ),
+      );
+      // on a narrow track, every other tick keeps its label (zero always)
+      const room = axis.getBoundingClientRect().width / Math.max(1, ticks.length - 1);
+      const widest = Math.max(...labels.map((label) => label.getBoundingClientRect().width));
+      if (room && room < widest + 10) {
+        const zero = ticks.findIndex((t) => Math.abs(t) < 1e-9);
+        labels.forEach((label, k) => (k - zero) % 2 && (label.style.visibility = "hidden"));
+      }
     },
   };
   // ===== end: nitro =====
 
   // ===== figure: maskings =====
+  // Four maskings of the graph game: all atoms, no atoms, a substructure masked (amber frames), a
+  // random masking, each with the GNN's probability and log-odds. Masked atoms are gray: they take
+  // the baseline. Data: compute/maskings.py (the substructure of every molecule is chosen there).
   FIGURES.maskings = {
     draw(layer, c) {
-      placeholder(layer, c, "maskings");
+      const { molecule: m, task } = c;
+      const rows = c.part?.[`${m.id}/${task.id}`];
+      if (!rows) return placeholder(layer, c, "maskings");
+      const pct = (p) => (p > 0.999 ? ">99.9%" : p < 0.001 ? "<0.1%" : `${(100 * p).toFixed(1)}%`);
+      const panels = rows.map((row, k) => {
+        const masked = new Set(row.masked);
+        const art = molecule(m, { room: 84, cap: 16, masked, framed: k === 2 ? masked : null, label: `${m.name}: ${row.title.toLowerCase()}` });
+        return panel(
+          row.title,
+          add(el("div", "gsqf-ms-art"), art),
+          add(
+            el("div", "gsqf-ms-readings"),
+            reading("probability", pct(row.p)),
+            reading("log-odds", signed(row.logOdds), row.logOdds >= 0 ? "gsqf-up" : "gsqf-down"),
+          ),
+        );
+      });
+      layer.append(columns("gsqf-four", ...panels));
     },
   };
   // ===== end: maskings =====
 
   // ===== figure: order =====
-  FIGURES.order = {
-    draw(layer, c) {
-      placeholder(layer, c, "order");
-    },
-  };
+  // The SI-Graph of the molecule at the explanation order the slider sets (k = 1 to 4, and n for the
+  // Möbius interactions), drawn as the explorer draws it: every atom's own value as a halo, the
+  // strongest groups as hyperedges (data.js keeps only those), one scale per order. Beside it, a
+  // table of all five orders from the complete explanations (../compute/order.py): how many
+  // non-zero contributions each has, and their sum, which is the same for every order (efficiency).
+  // The slider changes the drawing and the column in place (no redraw: the drag goes on).
+  {
+    const ORDERS = [1, 2, 3, 4, "n"];
+    const NAMES = { 1: "SV", 2: "2-SII", 3: "3-SII", 4: "4-SII", n: "MI" };
+    const TITLES = { 1: "Shapley values, *k* = 1", 2: "2-SII, *k* = 2", 3: "3-SII, *k* = 3", 4: "4-SII, *k* = 4", n: "Möbius interactions, *k* = *n*" };
+    const rowsKey = (k) => (k === "n" ? "M" : k);
+    // the SI-Graph of an order, as the explorer chooses what it shows (demo.js, the scene's update):
+    // the strongest groups (7, or 10 at order 2, and every other one of 8% of the strongest), and one
+    // scale for the order, the largest value of all
+    const siGraph = (m, ex, k) => {
+      const all = ex.groups(rowsKey(k));
+      const top = Math.abs(all[0]?.v ?? 0);
+      const limit = k === 2 ? 10 : 7;
+      let shown = k === 1 ? [] : all.filter((g, i) => i < 7 || Math.abs(g.v) >= 0.08 * top);
+      let count = Math.min(limit, shown.length);
+      while (count > 0 && count < shown.length && Math.abs(Math.abs(shown[count].v) - Math.abs(shown[count - 1].v)) < 1e-4) count++;
+      shown = shown.slice(0, count);
+      const scale = largest(ex.rows(rowsKey(k)).map(([, v]) => v));
+      return molecule(m, { halos: ex.singles(rowsKey(k)), groups: shown, largest: scale, label: `${m.name}: SI-Graph of the ${NAMES[k]}` });
+    };
+    // a part replaced by the next one in the same place: the old fades out, the new one in
+    const swap = (holder, next, fade) => {
+      for (const old of [...holder.children]) {
+        if (!fade || reducedMotion() || old.classList.contains("gsqf-out")) {
+          old.remove();
+          continue;
+        }
+        old.classList.add("gsqf-out");
+        old.setAttribute("aria-hidden", "true");
+        setTimeout(() => old.remove(), 140);
+      }
+      if (fade && !reducedMotion()) next.classList.add("gsqf-in");
+      holder.append(next);
+    };
+    FIGURES.order = {
+      draw(layer, c, state) {
+        const { molecule: m, ex } = c;
+        const part = c.part?.[`${m.id}/${c.task.id}`];
+        if (!part) return placeholder(layer, c, "order");
+        const order = () => (ORDERS.includes(state.order) ? state.order : 2);
+        const title = el("div", "gsqf-order-title");
+        const art = el("div", "gsqf-order-art");
+        const table = el("div", "gsqf-order-table");
+        table.setAttribute("role", "group");
+        table.setAttribute("aria-label", "Contributions of the SI-Graph by explanation order");
+        const cells = {}; // the cells of an order's column
+        const cell = (k, className, text) => {
+          const node = el("span", `gsqf-order-cell ${className}`.trim(), text);
+          (cells[k] ??= []).push(node);
+          return node;
+        };
+        const control = slider("explanation order", [0, 4], order(), (k) => {
+          state.order = k;
+          show(true);
+        }, { values: ORDERS });
+        control.classList.add("gsqf-order-slider");
+        // the rows: the slider, the order (a click on a column sets it), the index, the
+        // contributions, their sum
+        add(table, el("span", "gsqf-order-label"), control);
+        add(table, add(el("span", "gsqf-order-label"), "order ", el("em", "", "k")));
+        for (const k of ORDERS) {
+          const head = cell(k, "gsqf-order-k", String(k));
+          if (k === "n") head.replaceChildren(el("em", "", "n"));
+          head.addEventListener("click", () => {
+            state.order = k;
+            control.set(k);
+            show(true);
+          });
+          table.append(head);
+        }
+        add(table, el("span", "gsqf-order-label", "index"), ...ORDERS.map((k) => cell(k, "gsqf-order-name", NAMES[k])));
+        add(table, el("span", "gsqf-order-label", "contributions"), ...ORDERS.map((k) => cell(k, "", thousands(part.orders[k].count))));
+        add(
+          table,
+          el("span", "gsqf-order-label", "their sum"),
+          ...ORDERS.map((k) => cell(k, part.orders[k].sum >= 0 ? "gsqf-up" : "gsqf-down", signed(part.orders[k].sum))),
+        );
+        const check = el("p", "gsqf-order-check");
+        add(
+          check,
+          el("span", "", "log-odds "),
+          el("strong", "", signed(part.logOdds)),
+          el("span", "", " − no atoms "),
+          el("strong", "", signed(part.empty)),
+          el("span", "", " = "),
+          el("strong", part.difference >= 0 ? "gsqf-up" : "gsqf-down", signed(part.difference)),
+        );
+        layer.append(add(el("div", "gsqf-order"), add(el("div", "gsqf-order-left"), title, art), add(el("div", "gsqf-order-right"), table, check)));
+        const show = (fade) => {
+          const k = order();
+          swap(title, add(el("p", "gsqf-title"), ...rich(TITLES[k])), fade);
+          swap(art, siGraph(m, ex, k), fade);
+          for (const [key, nodes] of Object.entries(cells)) for (const node of nodes) node.classList.toggle("gsqf-order-on", key === String(k));
+        };
+        show(false);
+      },
+    };
+  }
   // ===== end: order =====
 
   // ===== figure: arrangement =====
+  // Catechol, resorcinol and hydroquinone (../compute/arrangement.py: from their SMILES, turned so
+  // that the ring lies in the same place, the first OH at the upper left): the PAINS GNN's
+  // probability for each, and its 2-SII as an SI-Graph, the three on one scale so that their
+  // strengths compare. The groups shown are those the explorer would show, and always the pair of
+  // the two oxygen atoms, whose value the panel reads.
   FIGURES.arrangement = {
     fixed: true,
     draw(layer, c) {
-      placeholder(layer, { ...c, molecule: moleculeOf("dopamine"), task: taskOf("PAINS"), ex: explanationOf("dopamine", "PAINS") }, "arrangement");
+      const part = c.part;
+      if (!part) return placeholder(layer, { ...c, molecule: moleculeOf("dopamine"), task: taskOf("PAINS"), ex: explanationOf("dopamine", "PAINS") }, "arrangement");
+      const task = taskOf(part.task);
+      const all = part.molecules.flatMap((m) => m.kSII2.map(([, v]) => v));
+      const scale = largest(all);
+      const panels = part.molecules.map((m) => {
+        const terms = m.kSII2.map(([atoms, v]) => ({ atoms, v }));
+        const halos = Object.fromEntries(terms.filter((t) => t.atoms.length === 1).map((t) => [t.atoms[0], t.v]));
+        const pairs = terms.filter((t) => t.atoms.length === 2).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+        const oo = pairs.find((t) => t.atoms.join() === m.oxygens.join());
+        // as the explorer at order 2: the 7 strongest, and others of 8% of the strongest, up to 10
+        const top = Math.abs(pairs[0].v);
+        const shown = pairs.filter((t, i) => i < 7 || Math.abs(t.v) >= 0.08 * top).slice(0, 10);
+        if (!shown.includes(oo)) shown.push(oo);
+        // the pair the panel reads stands out, the others step back
+        const groups = shown.map((t) => ({ ...t, emph: t === oo ? 1 : 0.4 }));
+        const art = molecule(m, { halos, groups, largest: scale, framed: new Set(m.oxygens), label: `${m.name}: SI-Graph of the 2-SII for ${task.label}` });
+        // the same square around the ring in all three (the bonds have one length, ShapiqGraph.geom's cap)
+        const { s, pos } = art.geom;
+        const ring = m.rings[0];
+        const cx = mean(ring.map((k) => pos[k][0]));
+        const cy = mean(ring.map((k) => pos[k][1]));
+        art.setAttribute("viewBox", [cx - 2.3 * s, cy - 2.55 * s, 4.6 * s, 4.1 * s].map((v) => v.toFixed(2)).join(" "));
+        const head = add(el("p", "gsqf-title"), m.name, el("span", "gsqf-arr-iupac", m.iupac));
+        return add(
+          el("div", "gsqf-panel gsqf-arr-panel"),
+          head,
+          art,
+          add(
+            el("div", "gsqf-arr-readings"),
+            reading(`${task.label}?`, `${(100 * m.p).toFixed(1)}%`),
+            reading("O–O", signed(oo.v), oo.v >= 0 ? "gsqf-up" : "gsqf-down"),
+          ),
+        );
+      });
+      layer.append(add(el("div", "gsqf-arr"), ...panels));
     },
   };
   // ===== end: arrangement =====
 
   // ===== figure: sparsity =====
-  FIGURES.sparsity = {
-    draw(layer, c) {
-      placeholder(layer, c, "sparsity");
-    },
-  };
+  // All 2^n Möbius interactions of the molecule for the question shown, by brute force over all
+  // 2^n maskings (../compute/sparsity.py, the GNN in float64), by the size of their set against
+  // their absolute value. With up to 2^20 sets, each size is a column of bins of a quarter of a
+  // decade; a bin's width grows with the logarithm of its number of sets, amber for the sets
+  // inside I (Proposition 3.6), gray for those outside. The dashed line is the rounding of float32:
+  // the largest difference between an MI in float32 (as the demo computes the GNN) and in float64.
+  {
+    const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+    const sup = (k) => String(k).replace(/\d/g, (d) => SUP[d]);
+    // a small positive number as "6 × 10⁻¹³", a larger one with two decimals
+    const tiny = (v) => {
+      if (v >= 0.01) return fmt(v, 2);
+      const p = Math.floor(Math.log10(v));
+      return `${Math.round(v / 10 ** p)} × 10⁻${sup(-p)}`;
+    };
+    const LOW = -16; // values below 10^LOW (and exact zeros) lie in the lowest bin
+    FIGURES.sparsity = {
+      draw(layer, c) {
+        const d = c.part?.cases?.[`${c.molecule.id}/${c.task.id}`];
+        if (!d) return placeholder(layer, c, "sparsity");
+        const { bins } = c.part;
+        const f = d.f64;
+        const total = d.inside + d.outside;
+        const legendNode = legend([
+          ["gsqf-amber", "inside 𝓘"],
+          ["gsqf-gray", "outside 𝓘"],
+          ["gsqf-dashed", "rounding of float32"],
+        ]);
+        const holder = el("div", "gsqf-plot");
+        const readings = add(
+          el("div", "gsqf-sp-readings"),
+          reading(`sets outside 𝓘, of ${thousands(total)}`, d.outside ? thousands(d.outside) : "none"),
+          reading("largest |MI| outside 𝓘", d.outside ? tiny(f.max_out) : "–"),
+          reading("largest |MI| inside 𝓘", fmt(f.max_in, 2)),
+        );
+        layer.append(add(el("div", "gsqf-sp"), legendNode, holder, readings));
+        const plot = chart(holder, 250, { left: 64, right: 14, top: 10, bottom: 36 });
+        const { draw, box } = plot;
+        plot.inset(legendNode);
+        plot.svg.setAttribute("role", "img");
+        plot.svg.setAttribute(
+          "aria-label",
+          `Absolute values of all ${thousands(total)} Möbius interactions of ${c.molecule.name} by the size of their set: ${thousands(d.inside)} inside I, ${thousands(d.outside)} outside`,
+        );
+        const x = plot.linear([-0.6, d.n + 0.6], [box.x0, box.x1]);
+        const y = plot.log([10 ** (LOW - 0.5), 10 ** 1.5], [box.y1, box.y0]);
+        const ticks = [1e-16, 1e-12, 1e-8, 1e-4, 1];
+        plot.yAxis(y, ticks, "|Möbius interaction|", (t) => (t === 1e-16 ? ["≤10", "−16"] : power(t)));
+        const step = d.n > 14 ? 4 : 2;
+        plot.xAxis(x, range(d.n + 1).filter((k) => k % step === 0), "size of the set |S|", String);
+        // the columns: a bin's half-width grows with log(1 + its sets), on one scale for the figure
+        const all = [...f.in, ...f.out];
+        const top = Math.log10(1 + Math.max(1, ...all.map(([, , count]) => count)));
+        const half = Math.min(14, (0.44 * (box.x1 - box.x0)) / (d.n + 1.2));
+        const bin = (b) => Math.max(LOW * bins, b); // the zeros and the smallest values: the lowest bin
+        const pixels = y(10 ** (LOW + 1 / bins)) - y(10 ** LOW); // the height of a bin (negative)
+        for (const [side, kind] of [
+          ["out", "gsqf-gray"],
+          ["in", "gsqf-amber"],
+        ]) {
+          // the counts of every size and bin (the exact zeros are in the lowest bin)
+          const counts = new Map();
+          for (const [size, b, count] of f[side]) {
+            const at = `${size} ${bin(b)}`;
+            counts.set(at, (counts.get(at) ?? 0) + count);
+          }
+          // one path for all bins of a side, so that no seam shows between two bins
+          const bars = [];
+          for (const [at, count] of counts) {
+            const [size, b] = at.split(" ").map(Number);
+            const w = Math.max(1, (half * Math.log10(1 + count)) / top);
+            const y0 = y(10 ** (b / bins));
+            bars.push(`M${(x(size) - w).toFixed(2)} ${y0.toFixed(2)}h${(2 * w).toFixed(2)}V${(y0 + pixels).toFixed(2)}h${(-2 * w).toFixed(2)}Z`);
+          }
+          if (bars.length) draw("path", { class: `${kind} gsqf-sp-bins`, d: bars.join("") });
+        }
+        // a molecule whose receptive fields cover it: nothing lies outside I
+        if (!d.outside)
+          draw("text", { class: "gsqf-sp-all", x: (box.x0 + box.x1) / 2, y: y(1e-12), "text-anchor": "middle" }, `All ${thousands(total)} sets lie inside 𝓘.`);
+        // the rounding of float32
+        const noise = y(d.noise);
+        draw("line", { class: "gsqf-mark", x1: box.x0, x2: box.x1, y1: noise, y2: noise });
+        draw("text", { class: "gsqf-sp-note", x: box.x1 - 2, y: noise - 5, "text-anchor": "end" }, `float32: ${tiny(d.noise)}`);
+      },
+    };
+  }
   // ===== end: sparsity =====
 
   // ===== figure: complexity =====
-  FIGURES.complexity = {
-    draw(layer, c) {
-      placeholder(layer, c, "complexity");
-    },
-  };
+  // The model calls of exact GraphSHAP-IQ, |I|, against the number of atoms, for the explorer's
+  // seven molecules (filled) and the four of the receptive-field figure (rings), for a GNN with the
+  // layers of the slider (../compute/complexity.py); the dashed line is all 2^n maskings. The
+  // molecule shown is amber and named; the dots slide when the layers change.
+  {
+    const share = (part) => {
+      if (part >= 0.9995) return "100%";
+      const digits = part >= 0.1 ? 0 : part >= 0.01 ? 1 : Math.max(1, 1 - Math.floor(Math.log10(100 * part)));
+      return `${(100 * part).toFixed(digits)}%`;
+    };
+    FIGURES.complexity = {
+      draw(layer, c, state) {
+        const part = c.part;
+        if (!part) return placeholder(layer, c, "complexity");
+        state.layers ??= 3; // the demo's GNNs
+        const k = state.layers - 1;
+        const rows = part.molecules;
+        const shown = rows.find((row) => row.id === c.molecule.id);
+        const legendNode = legend([
+          ["gsqf-round gsqf-cx-filled", "demo molecules"],
+          ["gsqf-round gsqf-cx-ring", "receptive-field figure"],
+          ["gsqf-dashed", "all 2ⁿ maskings"],
+        ]);
+        const holder = el("div", "gsqf-plot");
+        const control = slider("layers", [1, 4], state.layers, (value) => {
+          state.layers = value;
+          c.redraw();
+        });
+        const calls = shown.budgets[k];
+        const readings = add(
+          el("div", "gsqf-cx-readings"),
+          reading("model calls of GraphSHAP-IQ", thousands(calls)),
+          reading("all maskings, 2ⁿ", thousands(2 ** shown.n)),
+          reading("share", share(calls / 2 ** shown.n)),
+        );
+        layer.append(add(el("div", "gsqf-cx"), legendNode, holder, control, readings));
+        const plot = chart(holder, 250, { left: 52, right: 14, top: 10, bottom: 36 });
+        const { draw, box } = plot;
+        plot.inset(legendNode, control);
+        plot.svg.setAttribute("role", "img");
+        plot.svg.setAttribute("aria-label", `Model calls of GraphSHAP-IQ for ${state.layers} layers against the number of atoms, for eleven molecules, and all 2 to the n maskings`);
+        const x = plot.linear([4, 30], [box.x0, box.x1]);
+        const y = plot.log([10, 1e9], [box.y1, box.y0]);
+        plot.yAxis(y, [10, 1e3, 1e5, 1e7, 1e9], "model calls", power);
+        plot.xAxis(x, [5, 10, 15, 20, 25, 30], "atoms n", String);
+        const full = range(27).map((j) => [x(4 + j), y(2 ** (4 + j))]);
+        plot.path(full, { class: "gsqf-mark" });
+        draw("text", { class: "gsqf-cx-note", x: x(29.4) - 4, y: y(2 ** 29.4) + 14, "text-anchor": "end" }, "2ⁿ");
+        // the molecule shown: a line from its dot to all 2^n maskings
+        draw("line", { class: "gsqf-cx-gap", x1: x(shown.n), x2: x(shown.n), y1: y(2 ** shown.n), y2: y(calls) });
+        // in one order for every molecule and every layer, so that each dot slides to its new place
+        for (const row of rows) {
+          const on = row === shown;
+          const kind = on ? "gsqf-cx-shown" : row.explorer ? "gsqf-cx-filled" : "gsqf-cx-ring";
+          const dot = draw("circle", { class: `gsqf-dot gsqf-cx-dot ${kind}`, cx: x(row.n).toFixed(1), cy: y(row.budgets[k]).toFixed(1), r: on ? 5.5 : 4 });
+          dot.append(svgEl("title", {}, `${row.name}: ${thousands(row.budgets[k])} of ${thousands(2 ** row.n)} maskings (${row.n} atoms)`));
+        }
+        // names: the molecule shown, and cholesterol (the largest, which the text names). A name
+        // goes right of its dot, left, above or below: where it covers the fewest other dots
+        const points = rows.map((row) => [x(row.n), y(row.budgets[k])]);
+        const taken = [];
+        for (const row of [shown, rows.find((r) => r.id === "cholesterol")]) {
+          if (!row || (row !== shown && row.id === shown.id)) continue;
+          const name = moleculeOf(row.id)?.short ?? row.name;
+          const [px, py] = [x(row.n), y(row.budgets[k])];
+          const wide = name.length * 6.9 * plot.type;
+          const high = 13 * plot.type;
+          const places = [
+            [px + 10, py + 4, "start", px + 8, px + 12 + wide],
+            [px - 10, py + 4, "end", px - 12 - wide, px - 8],
+            [px, py - 13, "middle", px - wide / 2, px + wide / 2],
+            [px, py + 20 * plot.type, "middle", px - wide / 2, px + wide / 2],
+          ];
+          const cost = ([, ty, , x0, x1]) => {
+            const [y0, y1] = [ty - high + 2, ty + 3];
+            const near = (qx, qy, r) => qx > x0 - r && qx < x1 + r && qy > y0 - r && qy < y1 + r;
+            const covered = points.filter(([qx, qy]) => !(qx === px && qy === py) && near(qx, qy, 4)).length;
+            const clash = taken.some(([a0, a1, b0, b1]) => x0 < a1 && x1 > a0 && y0 < b1 && y1 > b0);
+            const out = x0 < box.x0 || x1 > box.x1 || y0 < box.y0 || y1 > box.y1;
+            return covered + 10 * clash + 10 * out;
+          };
+          const best = places.reduce((a, b) => (cost(b) < cost(a) ? b : a));
+          taken.push([best[3], best[4], best[1] - high + 2, best[1] + 3]);
+          draw("text", { class: row === shown ? "gsqf-strong" : "", x: best[0], y: best[1], "text-anchor": best[2] }, name);
+        }
+      },
+    };
+  }
   // ===== end: complexity =====
 
   // ===== figure: approximation =====
-  FIGURES.approximation = {
-    draw(layer, c) {
-      placeholder(layer, c, "approximation");
-    },
-  };
+  // The MSE of 2-SII estimates against GraphSHAP-IQ's exact values, against the model calls, on the
+  // molecule's graph game (../compute/approximation.py): GraphSHAP-IQ's approximation variant with
+  // lambda = 1, 2, ... (one budget each, amber, exact at the last) and four approximators of shapiq
+  // at the same budgets (cool colors; the mean of three seeds, with their range as a band). An MSE
+  // of zero, or below 10^-10, lies on the lane "exact" under the axis. The pointer (or a finger)
+  // shows the values at a budget.
+  {
+    const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹"; // for 10⁻⁵
+    const sup = (k) => String(k).replace(/\d/g, (d) => SUP[d]);
+    const METHODS = ["GraphSHAP-IQ", "KernelSHAP-IQ", "SVARM-IQ", "SHAP-IQ", "Permutation Sampling"];
+    const COLORS = { "GraphSHAP-IQ": "gsqf-ap-m0", "KernelSHAP-IQ": "gsqf-ap-m1", "SVARM-IQ": "gsqf-ap-m3", "SHAP-IQ": "gsqf-ap-m4", "Permutation Sampling": "gsqf-ap-m5" };
+    const EXACT = 1e-10; // an MSE below this is exact up to rounding
+    // an MSE as the text writes it: 113, 0.42, 0.0022, else 3.2 × 10⁻⁵
+    const mse = (v) => {
+      if (v < EXACT) return "exact";
+      if (v >= 10) return thousands(v);
+      if (v >= 1e-4) return v.toPrecision(2).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+      const [m, e] = v.toExponential(1).split("e");
+      return `${m} × 10⁻${sup(-Number(e))}`;
+    };
+    const share = (part) => `${(100 * part).toFixed(part >= 0.1 ? 0 : 1)}%`;
+    // the case of the molecule and the question shown, else the molecule's own question
+    const caseOf = (c) => c.part?.cases?.[`${c.molecule.id}/${c.task.id}`] ?? c.part?.cases?.[`${c.molecule.id}/${c.own.id}`];
+    FIGURES.approximation = {
+      draw(layer, c) {
+        const d = caseOf(c);
+        if (!d) return placeholder(layer, c, "approximation");
+        const series = METHODS.map((method) => {
+          if (method === "GraphSHAP-IQ") return { method, mean: d.graphshapiq, low: d.graphshapiq, high: d.graphshapiq };
+          const runs = d[method];
+          return { method, mean: runs.map(mean), low: runs.map((r) => Math.min(...r)), high: runs.map((r) => Math.max(...r)) };
+        });
+        const last = d.budgets.length - 1;
+        const legendNode = legend(METHODS.map((method) => [`gsqf-ap-swatch ${COLORS[method]}`, method]));
+        const holder = el("div", "gsqf-plot gsqf-ap-holder");
+        const tip = el("div", "gsqf-ap-tip");
+        tip.hidden = true;
+        // the best approximator at the exact budget
+        const [best] = series.slice(1).sort((a, b) => a.mean[last] - b.mean[last]);
+        const trivial = d.exact >= d.full;
+        const readings = add(
+          el("div", "gsqf-ap-readings"),
+          reading("GraphSHAP-IQ exact at", `${thousands(d.exact)} calls`),
+          reading("share of all 2ⁿ maskings", trivial ? "100%" : share(d.exact / d.full)),
+          trivial
+            ? reading("approximators exact there too", `${series.slice(1).filter((s) => s.mean[last] < EXACT).length} of ${series.length - 1}`)
+            : reading("best approximator there", `${best.method}, ${mse(best.mean[last])}`),
+        );
+        layer.append(add(el("div", "gsqf-ap"), legendNode, holder, readings));
+        holder.append(tip);
+        const plot = chart(holder, 260, { left: 52, right: 14, top: 10, bottom: 36 });
+        const { draw, box } = plot;
+        plot.inset(legendNode);
+        plot.svg.setAttribute("role", "img");
+        plot.svg.setAttribute("aria-label", `MSE of 2-SII estimates against model calls for ${c.molecule.name}: GraphSHAP-IQ is exact with ${thousands(d.exact)} model calls`);
+        const lane = box.y1 - 7; // the lane "exact"
+        const x = plot.log([d.budgets[0] / 1.35, d.budgets[last] * 1.35], [box.x0, box.x1]);
+        const yLog = plot.log([1e-6, 1e3], [lane - 22, box.y0]);
+        const y = (v) => (v < EXACT ? lane : yLog(Math.max(v, 1e-6)));
+        plot.yAxis(yLog, [1e-6, 1e-4, 1e-2, 1, 1e2], "MSE of 2-SII", power);
+        draw("text", { x: box.x0 - 6, y: lane + 4, "text-anchor": "end" }, "exact");
+        // ticks of the model calls: the powers of ten, with 2 and 5 times them where there are few
+        const lowest = d.budgets[0] / 1.35;
+        const highest = d.budgets[last] * 1.35;
+        let ticks = logTicks(lowest, highest);
+        if (ticks.length < 4) ticks = ticks.flatMap((t) => [t, 3 * t]).concat([ticks[0] / 10 * 3]).filter((t) => t >= lowest && t <= highest).sort((a, b) => a - b);
+        plot.xAxis(x, ticks, "model calls", thousands);
+        // the bands, then the lines of the approximators, then GraphSHAP-IQ with a dot per lambda
+        // the curves stay inside the plot (KernelSHAP-IQ starts far above it with fewer calls than terms)
+        const clip = `gsqf-ap-clip-${plot.width}`;
+        draw("defs", {}).append(add(svgEl("clipPath", { id: clip }), svgEl("rect", { x: box.x0, y: box.y0 - 2, width: box.x1 - box.x0, height: box.y1 - box.y0 + 2 })));
+        const curves = draw("g", { "clip-path": `url(#${clip})` });
+        const pathOf = (points) => points.map(([px, py], j) => `${j ? "L" : "M"} ${px.toFixed(1)} ${py.toFixed(1)}`).join(" ");
+        for (const s of series.slice(1)) {
+          const edge = [...d.budgets.map((b, j) => [x(b), y(s.low[j])]), ...d.budgets.map((b, j) => [x(b), y(s.high[j])]).reverse()];
+          curves.append(svgEl("path", { class: `gsqf-ap-band ${COLORS[s.method]}`, d: `${pathOf(edge)} Z` }));
+        }
+        for (const s of [...series.slice(1), series[0]]) {
+          const line = svgEl("path", { class: `gsqf-line gsqf-ap-line ${COLORS[s.method]}`, d: pathOf(d.budgets.map((b, j) => [x(b), y(s.mean[j])])) });
+          line.append(svgEl("title", {}, s.method));
+          curves.append(line);
+        }
+        for (const [j, b] of d.budgets.entries()) draw("circle", { class: `gsqf-ap-point ${COLORS["GraphSHAP-IQ"]}`, cx: x(b).toFixed(1), cy: y(d.graphshapiq[j]).toFixed(1), r: j === last ? 4.5 : 3 });
+        // the values at a budget, where the pointer is
+        const guide = draw("line", { class: "gsqf-guide", y1: box.y0, y2: box.y1, visibility: "hidden" });
+        const point = (event) => {
+          const rect = plot.svg.getBoundingClientRect();
+          const px = ((event.clientX - rect.left) / rect.width) * plot.width;
+          const j = d.budgets.reduce((at, b, k) => (Math.abs(x(b) - px) < Math.abs(x(d.budgets[at]) - px) ? k : at), 0);
+          const bx = x(d.budgets[j]);
+          guide.setAttribute("x1", bx);
+          guide.setAttribute("x2", bx);
+          guide.setAttribute("visibility", "visible");
+          const head = add(el("tr"), el("th", "", `λ = ${d.lambdas[j]}, ${thousands(d.budgets[j])} calls`), el("td", "", "MSE"));
+          const rows = series.map((s) => add(el("tr"), add(el("th"), el("i", `gsqf-swatch gsqf-ap-swatch ${COLORS[s.method]}`), s.method), el("td", "", mse(s.mean[j]))));
+          tip.replaceChildren(add(el("table"), add(el("thead"), head), add(el("tbody"), ...rows)));
+          tip.hidden = false;
+          const wide = tip.offsetWidth;
+          const at = bx < (box.x0 + box.x1) / 2 ? bx + 10 : bx - 10 - wide;
+          tip.style.left = `${Math.max(0, Math.min(plot.width - wide, at))}px`;
+        };
+        plot.svg.addEventListener("pointermove", point);
+        plot.svg.addEventListener("pointerdown", point);
+        plot.svg.addEventListener("pointerleave", (event) => {
+          if (event.pointerType === "touch") return; // a finger that lifts leaves the values
+          guide.setAttribute("visibility", "hidden");
+          tip.hidden = true;
+        });
+      },
+    };
+  }
   // ===== end: approximation =====
 
   // ===== figure: paper-approximation =====
-  FIGURES["paper-approximation"] = {
-    fixed: true,
-    draw(layer) {
-      const holder = el("div", "gsqf-plot");
-      layer.append(panel("paper-approximation", holder));
-      const plot = chart(holder, 220, { left: 52, bottom: 36 });
-      const x = plot.log([1e2, 1e4], [plot.box.x0, plot.box.x1]);
-      const y = plot.log([1e-4, 1], [plot.box.y1, plot.box.y0]);
-      plot.yAxis(y, logTicks(1e-4, 1), "MSE", power);
-      plot.xAxis(x, logTicks(1e2, 1e4), "model calls", power);
-    },
-  };
+  // Figure 4 (left) of the paper: the MSE of 2-SII estimates for a 2-layer GIN on 10 molecules of
+  // Mutagenicity against the model evaluations, for GraphSHAP-IQ (amber) and five model-agnostic
+  // baselines (cool colors), each as a baseline (solid) and as its interaction-informed variant
+  // (dashed), with the paper's bands (the standard error). The coordinates are those of the
+  // paper's vector graphic (../compute/paper_approximation.py). A method of the legend that the
+  // pointer is over (or that has the focus) is drawn alone.
+  {
+    const METHODS = ["GraphSHAP-IQ", "KernelSHAP-IQ", "Inc. KernelSHAP-IQ", "SVARM-IQ", "SHAP-IQ", "Permutation Sampling"];
+    const colorOf = (method) => `gsqf-pa-m${METHODS.indexOf(method)}`;
+    FIGURES["paper-approximation"] = {
+      fixed: true,
+      draw(layer, c) {
+        const part = c.extra?.["paper-approximation"];
+        if (!part) return;
+        const keys = add(
+          el("p", "gsqf-legend gsqf-pa-methods"),
+          ...METHODS.map((method) => {
+            const item = add(el("span", "gsqf-pa-key"), el("i", `gsqf-swatch gsqf-pa-swatch ${colorOf(method)}`), method);
+            item.tabIndex = 0;
+            item.dataset.method = method;
+            return item;
+          }),
+        );
+        const variants = legend([
+          ["gsqf-solid", "baseline"],
+          ["gsqf-dashed", "interaction-informed"],
+        ]);
+        variants.classList.add("gsqf-pa-variants");
+        const holder = el("div", "gsqf-plot");
+        layer.append(add(el("div", "gsqf-pa"), keys, holder, variants));
+        const plot = chart(holder, 270, { left: 52, right: 14, top: 10, bottom: 36 });
+        const { draw, box } = plot;
+        plot.inset(keys, variants);
+        plot.svg.setAttribute("role", "img");
+        plot.svg.setAttribute("aria-label", "The paper's MSE of 2-SII estimates against model evaluations for GraphSHAP-IQ and five baselines, with and without their interaction-informed variants");
+        const x = plot.linear([0, 8200], [box.x0, box.x1]);
+        const y = plot.log([3e-11, 0.3], [box.y1, box.y0]);
+        plot.yAxis(y, [1e-10, 1e-8, 1e-6, 1e-4, 1e-2], "MSE", power);
+        plot.xAxis(x, [0, 2000, 4000, 6000, 8000], "model evaluations", thousands);
+        // the curves stay inside the plot, as in the paper (KernelSHAP-IQ starts far above it)
+        const clip = `gsqf-pa-clip-${plot.width}`;
+        const defs = draw("defs", {});
+        defs.append(add(svgEl("clipPath", { id: clip }), svgEl("rect", { x: box.x0, y: box.y0 - 2, width: box.x1 - box.x0, height: box.y1 - box.y0 + 2 })));
+        const groups = new Map();
+        const order = [...part.series].sort((a, b) => (a.method === "GraphSHAP-IQ") - (b.method === "GraphSHAP-IQ")); // GraphSHAP-IQ on top
+        for (const s of order) {
+          if (!groups.has(s.method)) groups.set(s.method, draw("g", { class: `gsqf-pa-series ${colorOf(s.method)}`, "clip-path": `url(#${clip})` }));
+          const group = groups.get(s.method);
+          if (s.band) {
+            const edge = [...s.band.map(([bx, low]) => [x(bx), y(low)]), ...s.band.map(([bx, , high]) => [x(bx), y(high)]).reverse()];
+            group.append(svgEl("path", { class: "gsqf-pa-band", d: `${edge.map(([px, py], j) => `${j ? "L" : "M"} ${px.toFixed(1)} ${py.toFixed(1)}`).join(" ")} Z` }));
+          }
+          const line = svgEl("path", {
+            class: `gsqf-line gsqf-pa-line${s.variant === "interaction-informed" ? " gsqf-pa-dashed" : ""}`,
+            d: s.points.map(([px, py], j) => `${j ? "L" : "M"} ${x(px).toFixed(1)} ${y(py).toFixed(1)}`).join(" "),
+          });
+          line.append(svgEl("title", {}, `${s.method}${s.variant === "interaction-informed" ? " (interaction-informed)" : ""}: MSE ${s.points.at(-1)[1].toExponential(1)} at ${thousands(s.points.at(-1)[0])} evaluations`));
+          group.append(line);
+          for (const [px, py] of s.points) group.append(svgEl("circle", { class: "gsqf-pa-point", cx: x(px).toFixed(1), cy: y(py).toFixed(1), r: 2.4 }));
+        }
+        // GraphSHAP-IQ named at its curve, under the knee at 10^-7, where no curve runs
+        const [sx, sy] = part.series.find((s) => s.method === "GraphSHAP-IQ").points[2];
+        draw("text", { class: "gsqf-strong", x: x(sx) - 6, y: y(sy) + 18, "text-anchor": "end" }, "GraphSHAP-IQ");
+        // the legend points at a method
+        const focus = (method) => {
+          for (const [key, group] of groups) group.classList.toggle("gsqf-pa-dimmed", method !== null && key !== method);
+          for (const item of keys.children) item.classList.toggle("gsqf-pa-off", method !== null && item.dataset.method !== method);
+        };
+        for (const item of keys.children) {
+          for (const [type, method] of [
+            ["pointerenter", item.dataset.method],
+            ["pointerleave", null],
+            ["focus", item.dataset.method],
+            ["blur", null],
+          ])
+            item.addEventListener(type, () => focus(method));
+        }
+      },
+    };
+  }
   // ===== end: paper-approximation =====
 
   // ===== figure: orders =====
-  FIGURES.orders = {
-    draw(layer, c) {
-      placeholder(layer, c, "orders");
-    },
-  };
+  // For each of the seven molecules (its own question), the sums of its positive and of its negative
+  // Möbius interactions of 1, 2, 3 and 4 or more atoms (../compute/orders.py, from the complete
+  // MIs), as bars to the right and to the left of zero, on a symmetric log scale (sign · log10(1 +
+  // |x|)), so that sums of 3 and of 5,000 can be read on one axis. An ink line marks what all of a
+  // molecule's MIs sum to: its log-odds minus the prediction with no atoms. The molecule shown is
+  // in a band of amber.
+  {
+    const SIZES = ["1", "2", "3", "4"];
+    const SIZE_LABELS = { 1: "1", 2: "2", 3: "3", 4: "≥4" };
+    const symlog = (v) => Math.sign(v) * Math.log10(1 + Math.abs(v));
+    // a tick of the symmetric log axis: 0, ±10, ±10², ...
+    const tickLabel = (v) => {
+      if (v === 0) return "0";
+      const p = Math.round(Math.log10(Math.abs(v)));
+      const sign = v < 0 ? "−" : "";
+      return p === 1 ? `${sign}10` : [`${sign}10`, String(p)];
+    };
+    FIGURES.orders = {
+      draw(layer, c) {
+        const part = c.part;
+        if (!part) return placeholder(layer, c, "orders");
+        const mols = c.molecules.filter((m) => part[m.id]);
+        const legendNode = legend([
+          ["gsqf-red", "positive MIs"],
+          ["gsqf-blue", "negative MIs"],
+          ["gsqf-ords-net", "all MIs: log-odds − no atoms"],
+          ["gsqf-dashed", "±100"],
+        ]);
+        const holder = el("div", "gsqf-plot");
+        layer.append(add(el("div", "gsqf-ords"), legendNode, holder));
+        // a size's row, and the room between two molecules (larger where the texts are, on a phone)
+        const type = parseFloat(getComputedStyle(holder).getPropertyValue("--gsqf-type")) || 1;
+        const ROW = Math.round(10 * type);
+        const GAP = Math.round(9 * type);
+        const group = SIZES.length * ROW;
+        const plot = chart(holder, (mg) => mg.top + mols.length * group + (mols.length - 1) * GAP + mg.bottom, { left: 116, right: 52, top: 16, bottom: 36 });
+        const { draw, box, width } = plot;
+        plot.inset(legendNode);
+        plot.svg.setAttribute("role", "img");
+        plot.svg.setAttribute("aria-label", "Sums of the positive and of the negative Möbius interactions of 1, 2, 3 and 4 or more atoms, for the seven molecules");
+        const narrow = box.x1 - box.x0 < 300;
+        const x = plot.linear([-4.05, 4.05], [box.x0, box.x1]);
+        const X = (v) => x(symlog(v));
+        const ticks = [-1e4, -1e3, -1e2, -10, 0, 10, 1e2, 1e3, 1e4];
+        const y0 = (k) => box.y0 + k * (group + GAP); // the top of a molecule's rows
+        // the band of the molecule shown, under everything
+        const shown = mols.findIndex((m) => m.id === c.molecule.id);
+        if (shown >= 0) draw("rect", { class: "gsqf-ords-band", x: 0, y: y0(shown) - GAP / 2 + 1, width, height: group + GAP - 2, rx: 6 });
+        for (const t of ticks) draw("line", { class: t === 0 ? "gsqf-axis" : "gsqf-grid", x1: X(t), x2: X(t), y1: box.y0 - 4, y2: box.y1 });
+        for (const t of [-100, 100]) draw("line", { class: "gsqf-mark", x1: X(t), x2: X(t), y1: box.y0 - 4, y2: box.y1 });
+        const labelled = narrow ? ticks.filter((t) => t === 0 || Math.abs(t) === 1e2 || Math.abs(t) === 1e4) : ticks;
+        plot.xAxis(X, labelled, narrow ? "sum of the MIs (symmetric log scale)" : "sum of the Möbius interactions of each size (symmetric log scale)", tickLabel);
+        // the heads of the columns at the left and the right
+        draw("text", { x: box.x0 - 8, y: box.y0 - 6, "text-anchor": "end", class: "gsqf-ords-head" }, "atoms");
+        draw("text", { x: width - 2, y: box.y0 - 6, "text-anchor": "end", class: "gsqf-ords-head" }, "all MIs");
+        mols.forEach((m, k) => {
+          const d = part[m.id];
+          const at = y0(k);
+          const on = k === shown;
+          draw("text", { x: 4, y: at + group / 2, "dominant-baseline": "central", class: on ? "gsqf-strong" : "" }, m.short ?? m.name);
+          SIZES.forEach((size, j) => {
+            const { positive, negative } = d.moebius[size];
+            const yy = at + j * ROW + 1.5;
+            const h = ROW - 3;
+            draw("text", { x: box.x0 - 8, y: yy + h / 2, "dominant-baseline": "central", "text-anchor": "end", class: "gsqf-ords-size" }, SIZE_LABELS[size]);
+            draw("rect", { class: "gsqf-red gsqf-ords-bar", x: X(0), y: yy, width: Math.max(0, X(positive) - X(0)), height: h });
+            draw("rect", { class: "gsqf-blue gsqf-ords-bar", x: X(negative), y: yy, width: Math.max(0, X(0) - X(negative)), height: h });
+          });
+          draw("line", { class: "gsqf-ords-net", x1: X(d.difference), x2: X(d.difference), y1: at - 1, y2: at + group + 1 });
+          draw("text", { x: width - 2, y: at + group / 2, "dominant-baseline": "central", "text-anchor": "end", class: on ? "gsqf-strong" : "" }, signed(d.difference));
+        });
+      },
+    };
+  }
   // ===== end: orders =====
 
   // -- the frame of a figure: its selector, its stage, and its dots ----------------------------------
