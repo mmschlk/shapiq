@@ -197,10 +197,11 @@ class Sparse(Approximator[ValidSparseIndices]):
         # Filter the output as needed
         if self.top_order:
             result = self._filter_order(result)
-        # finalize the interactions
+        # finalize the interactions; the MoebiusConverter already returned ``self.index`` (e.g.
+        # k-SII), which must not be aggregated from SII a second time
         return InteractionValues(
             values=result,
-            index=self.approximation_index,
+            index=self.index,
             min_order=self.min_order,
             max_order=self.max_order,
             n_players=self.n,

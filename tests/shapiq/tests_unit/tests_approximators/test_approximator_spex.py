@@ -169,3 +169,19 @@ def test_undersampling(n, interaction, budget):
 
     with pytest.raises(ValueError):
         _ = spex.approximate(budget, game)
+
+
+def test_spex_ksii_no_double_aggregation():
+    """Verify SPEX with k-SII does not double-aggregate lower-order interactions."""
+    n = 8
+    interaction = (1, 2)
+    game = DummyGame(n=n, interaction=interaction)
+    spex = SPEX(n=n, max_order=2, index="k-SII", random_state=42)
+
+    estimates = spex.approximate(budget=800, game=game)
+
+    assert estimates.index == "k-SII"
+    assert estimates[interaction] == pytest.approx(1.0, abs=1e-2)
+    for player in range(n):
+        assert estimates[(player,)] == pytest.approx(1 / n, abs=1e-2)
+    assert estimates.values.sum() == pytest.approx(float(game([True] * n)[0]), abs=1e-2)
