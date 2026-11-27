@@ -227,12 +227,17 @@ masked with a baseline, as :shapiq-figure:`maskings` shows.
    game* :math:`\nu_i: \mathcal{P}(N) \to \mathbb{R}^{d_\ell}` is defined as :math:`\nu_i(T) :=
    f_i(\mathbf{X}^{(T)})` for :math:`i \in N` and each node :math:`v_i \in V`.
 
+The GNNs of the demo have two outputs, one for yes and one for no. In place of the component of
+the predicted class :math:`f_{g,\hat{y}}`, this page explains their log-odds :math:`f_{g,\text{yes}}
+- f_{g,\text{no}}`. The log-odds are still linear in the pooled node embeddings, so everything that
+follows holds for them. The explanation then describes the log-odds also for a molecule that the
+GNN predicts as no.
+
 Masking replaces node features and keeps all edges, so the topology of the graph is preserved.
 Computing SVs on such a game is known as Baseline Shapley :cite:p:`Sundararajan.2020a`. As a
 baseline :math:`\mathbf{b}`, GraphSHAP-IQ proposes the average of each node feature over the whole
 graph. The demo instead uses the average node features of the training set of each GNN, so that all
-molecules share one baseline. Its graph game is the log-odds, which is the difference of two
-components of :math:`f_g` and thus still the output of a linear layer.
+molecules share one baseline.
 
 .. shapiq-demo-figure:: graphshapiq-explorer maskings
    :alt: Four copies of the molecule with the probability and the log-odds that the GNN predicts for each. In the first, no atom is masked. In the second, all atoms are masked. In the third, a meaningful substructure is masked. The fourth is a random masking. Masked atoms are gray.
@@ -251,11 +256,15 @@ The graph and the node game are directly linked by :eq:`graphshapiq-gnn` as
 .. math::
    :label: graphshapiq-link
 
+   \begin{gathered}
    \nu_g(T) = f_{g,\hat{y}}(\mathbf{X}^{(T)})
+   = \sigma_{\hat{y}}\big(\Psi(\{\{f_i(\mathbf{X}^{(T)}) \mid v_i \in V\}\})\big) \\
    = \sigma_{\hat{y}}\big(\Psi(\{\{\nu_i(T) \mid i \in N\}\})\big)
+   \end{gathered}
 
 where :math:`\sigma_{\hat{y}}` outputs the component of :math:`\sigma` for the predicted class
-:math:`\hat{y}`. In words, the graph game pools the node games of all nodes. This link is what
+:math:`\hat{y}`. For the log-odds, it outputs the difference of the two components of
+:math:`\sigma`. In words, the graph game pools the node games of all nodes. This link is what
 GraphSHAP-IQ later exploits.
 
 .. _graphshapiq-sec-orders:
@@ -292,8 +301,10 @@ contributions :math:`\Delta_i(T) := \nu(T \cup i) - \nu(T)`.
    \frac{1}{n \cdot \binom{n-1}{\vert T \vert}} \Delta_i(T)
 
 The SVs satisfy *efficiency*, i.e. they sum to the difference between the prediction
-:math:`\nu(N)` and the prediction :math:`\nu(\emptyset)` without any node features. In terms of
-MIs, the SV distributes every MI equally among its players.
+:math:`\nu(N)` and the prediction :math:`\nu(\emptyset)` without any node features. The game may
+be normalized such that :math:`\nu(\emptyset) = 0`, which does not affect the SVs. The rest of this
+section assumes this normalization. In terms of MIs, the SV distributes every MI equally among its
+players.
 
 .. math::
    :label: graphshapiq-conversion
@@ -304,12 +315,15 @@ MIs, the SV distributes every MI equally among its players.
 Shapley interactions fill the range between these two extremes. Given an explanation order
 :math:`k = 1, \dots, n`, the SIs :math:`\Phi_k: \mathcal{P}_k(N) \to \mathbb{R}` assign
 contributions to all subsets of :math:`N` up to size :math:`k`, summarized in
-:math:`\mathcal{P}_k(N)`. After normalizing :math:`\nu(\emptyset) = 0`, they decompose the
-prediction as :math:`\nu(N) = \sum_{S \subseteq N, \vert S \vert \leq k} \Phi_k(S)`. SIs are based
-on discrete derivatives :cite:p:`Grabisch.1999`, which extend the marginal contribution to groups.
-For two players, :math:`\Delta_{ij}(T) := \nu(T \cup ij) - \nu(T) - \Delta_i(T) - \Delta_j(T)` is
-the quantity that :shapiq-figure:`nitro` measures. The Shapley interaction index (SII) summarizes
-the discrete derivatives of a set :math:`S` in the presence of all subsets :math:`T`.
+:math:`\mathcal{P}_k(N)`. The SIs decompose the prediction with :math:`\nu(N) = \sum_{S \subseteq
+N, \vert S \vert \leq k} \Phi_k(S)`. SIs are based on discrete derivatives
+:cite:p:`Grabisch.1999`, which extend the marginal contribution to groups. For two players
+:math:`i, j \in N` and a subset :math:`T \subseteq N \setminus ij`, the discrete derivative
+:math:`\Delta_{ij}(T) := \nu(T \cup ij) - \nu(T) - \Delta_i(T) - \Delta_j(T)` is the quantity that
+:shapiq-figure:`nitro` measures. A positive value of the discrete derivative :math:`\Delta_S(T)`
+indicates synergistic effects, and a negative value indicates redundancy. The Shapley interaction
+index (SII) summarizes the discrete derivatives of a set :math:`S` in the presence of all subsets
+:math:`T`.
 
 .. math::
    :label: graphshapiq-sii
@@ -321,8 +335,9 @@ the discrete derivatives of a set :math:`S` in the presence of all subsets :math
    \Delta_S(T) := \sum_{L \subseteq S} (-1)^{\vert S \vert - \vert L \vert} \nu(T \cup L)
    \end{gathered}
 
-The :math:`k`-SII :cite:p:`Lundberg.2020,Bordt.2023` constructs efficient SIs recursively from the
-SII, such that the interactions of the highest order coincide with the SII. For :math:`k = 1`, the
+The :math:`k`-Shapley values (:math:`k`-SII) :cite:p:`Lundberg.2020,Bordt.2023` construct SIs
+recursively based on the SII, such that the interactions of SII and :math:`k`-SII for the highest
+order coincide. For :math:`k = 1`, the
 :math:`k`-SII is the SV, and for :math:`k = n`, it is the MI. All explanations on this page are
 :math:`k`-SIIs. Like the SV in :eq:`graphshapiq-conversion`, every SI is a weighted sum of MIs, so
 SIs of any order follow from the MIs. GraphSHAP-IQ visualizes the SIs on the graph itself.
@@ -336,10 +351,11 @@ SIs of any order follow from the MIs. GraphSHAP-IQ visualizes the SIs on the gra
 
 The simplest SI-Graph displays the SVs as node attributes, whereas the most complex SI-Graph
 displays the MIs as node and hyperedge attributes. The explanation order :math:`k` adjusts the
-complexity in between, as :shapiq-figure:`order` shows. For every order, the contributions of the
-SI-Graph sum to the same value. For 1,3-dinitrobenzene, this value is 3.81, the log-odds of 3.98
-minus the prediction of 0.18 with no atoms. It is distributed among 12 SVs, among 78 contributions
-of order 2, or among 4,095 MIs.
+complexity in between, as :shapiq-figure:`order` shows. For every order, the sum of all
+contributions in the SI-Graph yields the prediction of the normalized game, which is the log-odds
+minus the prediction with no atoms. For 1,3-dinitrobenzene, this sum is 3.805, i.e. the log-odds
+of 3.983 minus 0.177. It is distributed among 12 SVs, among 78 contributions of order 2, or among
+4,095 MIs.
 
 .. shapiq-demo-figure:: graphshapiq-explorer order
    :alt: The SI-Graph of the molecule, drawn on its atoms and bonds. A slider sets the explanation order to 1, 2, 3, 4 or n. At order 1 only the atoms carry contributions. At higher orders, hyperedges between atoms appear. A reading shows that the contributions sum to the same value for every order.
@@ -354,8 +370,7 @@ Interpreting the SI-Graph
 -------------------------
 
 An SI-Graph is read like the graph it explains. :graphshapiq-red:`Red` marks contributions that
-raise the prediction and :graphshapiq-blue:`blue` marks contributions that lower it. A positive
-interaction indicates a synergy of its nodes, and a negative interaction indicates redundancy. A
+raise the prediction and :graphshapiq-blue:`blue` marks contributions that lower it. A
 node attribute of order :math:`k \geq 2` is not an SV. It is what remains for the node after its
 interactions up to order :math:`k` are accounted for. For 1,3-dinitrobenzene, each nitrogen atom
 has an SV of +1.86. At order 2, its node attribute is only +0.15, while each of its two pairs with
@@ -410,8 +425,8 @@ message-passing range defined by its :math:`\ell`-hop neighborhood
 
 The embedding of a node cannot depend on the features of a node outside its receptive field.
 Consequently, the node game is unaffected by maskings outside the :math:`\ell`-hop neighborhood.
-For a graph :math:`g` and an :math:`\ell`-layer GNN :math:`f_g`, the node game :math:`\nu_i`
-satisfies the invariance :cite:p:`Muschalik.2025`
+For a graph :math:`g` and an :math:`\ell`-Layer GNN :math:`f_g`, the GNN-induced node game
+:math:`\nu_i` with :math:`i \in N` satisfies the *node game invariance* :cite:p:`Muschalik.2025`
 
 .. math::
    :label: graphshapiq-invariance
@@ -440,13 +455,24 @@ graph prediction, GraphSHAP-IQ requires a structural assumption on how the GNN c
    functions, e.g. :math:`\Psi` is a mean or sum pooling operation and :math:`\sigma` is a dense
    layer.
 
-This assumption is common in practice :cite:p:`Xu.2019`, and the GNNs of the demo satisfy it. By
-the invariance, the MIs of a node game are zero for every set that is not fully contained in the
-receptive field of its node. Under :shapiq-statement:`graphshapiq-def-architecture`, the graph
-game in :eq:`graphshapiq-link` is a linear combination of the node games, and MIs are linear in
-the game. The zeros of the node games therefore carry over to the graph game
-:cite:p:`Muschalik.2025`. With the set of *non-trivial interactions* :math:`\mathcal{I}`, the MIs
-:math:`m_g` of the graph game satisfy
+This assumption is common in practice :cite:p:`Xu.2019`, and the GNNs of the demo satisfy it. Due
+to the node game invariance, the MIs of a node game are zero for every set that is not fully
+contained in the receptive field of its node. Formally, let :math:`m_i: \mathcal{P}(N) \to
+\mathbb{R}^{d_\ell}` be the MIs of the GNN-induced node game :math:`\nu_i` for :math:`i \in N`
+under :shapiq-statement:`graphshapiq-def-architecture`. Then, these trivial node game interactions
+are :cite:p:`Muschalik.2025`
+
+.. math::
+   :label: graphshapiq-trivial-node
+
+   m_i(S) = \mathbf{0} \quad \text{for all } S \not\subseteq \mathcal{N}_i^{(\ell)}
+
+Under :shapiq-statement:`graphshapiq-def-architecture`, the graph game in :eq:`graphshapiq-link`
+is a linear combination of the node games, and MIs are linear in the game. The zeros of the node
+games therefore carry over to the graph game as trivial graph game interactions
+:cite:p:`Muschalik.2025`. Let :math:`m_g: \mathcal{P}(N) \to \mathbb{R}` be the MIs of the
+GNN-induced graph game :math:`\nu_g` and :math:`\mathcal{I}` the set of *non-trivial
+interactions*. Then
 
 .. math::
    :label: graphshapiq-sparsity
@@ -528,7 +554,7 @@ For densely connected graphs and GNNs with many layers, :math:`\vert \mathcal{I}
 be infeasible. An approximation variant of GraphSHAP-IQ introduces a parameter :math:`\lambda`,
 which limits the size of the computed MIs, and assigns the remaining value of each larger
 receptive field to one MI, so that efficiency is maintained. GraphSHAP-IQ computes exact SIs if
-:math:`\lambda \geq n_{\max}^{(\ell)} - 1`.
+:math:`\lambda \geq n_{\max}^{(\ell)} - 1` :cite:p:`Muschalik.2025`.
 
 .. _graphshapiq-sec-evaluation:
 
