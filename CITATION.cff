@@ -16,7 +16,7 @@ authors:
 title: 'shapiq: Shapley Interactions for Machine Learning'
 version: 1.9.0
 url: https://openreview.net/forum?id=knxGmi6SJi
-date-released: '2026-11-27'
+date-released: '2026-11-30'
 preferred-citation:
   authors:
   - family-names: Muschalik

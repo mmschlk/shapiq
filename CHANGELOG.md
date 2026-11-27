@@ -2,7 +2,7 @@
 
 ## Development
 
-## v1.9.0 (2026-11-27)
+## v1.9.0 (2026-11-30)
 
 ### GraphSHAP-IQ for Graph Neural Networks [#550](https://github.com/mmschlk/shapiq/pull/550)
 
