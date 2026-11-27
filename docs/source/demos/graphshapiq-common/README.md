@@ -380,3 +380,9 @@ no longer held while the write-up slides over it as a sheet, and it no longer sh
 title, the first screen with "Read the write-up" and the divider stay. `stage()` in `demo.js` only
 measures where the block starts (with a CSS guess until then) and keeps the title on one line, and
 the link glides to the write-up in 1 to 1.7 s, stopped by the wheel, a touch or a key.
+
+A thirtieth pass lets the write-up's figures follow the explorer and lead it. When the reader picks
+a molecule or a question, the explorer sends `graphshapiq-demo-molecule` on `document` with
+`{molecule, task, source: null}` (`molecule` is an id from `data.js` or `"build"`), also once on
+load. It follows the same event when `source` is set, without sending it again, and keeps the shown
+pair in `ShapiqGraph.current`.

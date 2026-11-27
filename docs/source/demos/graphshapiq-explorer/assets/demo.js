@@ -604,7 +604,35 @@
       views.set(VIEWS.findIndex((v) => v[0] === state.view));
       draw();
       renderPanel();
+      tell();
     }
+
+    // -- the write-up's figures: the molecule and the question shown, both ways -------------------
+    // As the FIxLIP page's demo and figures do (fixlip-demo-image): the explorer tells the page
+    // which molecule and question it shows, by the id in data.js ("build" for the reader's own) and
+    // the task's id, in the event graphshapiq-demo-molecule with source null, and keeps it in
+    // ShapiqGraph.current for figures that start later. A figure sends the event with itself as
+    // the source, and the explorer then shows that molecule (and question) without telling again.
+    const EVENT = "graphshapiq-demo-molecule";
+    let told = "", hearing = false;
+    function tell() {
+      const molecule = built() ? "build" : state.mol.id, task = state.task.id, key = `${molecule}/${task}`;
+      G.current = { molecule, task };
+      if (key === told || hearing) { told = key; return; }
+      told = key;
+      document.dispatchEvent(new CustomEvent(EVENT, { detail: { molecule, task, source: null } }));
+    }
+    document.addEventListener(EVENT, (event) => {
+      const { molecule, task, source } = event.detail ?? {};
+      if (source == null) return; // the explorer's own, or another explorer's
+      const m = MOLS.find((x) => x.id === molecule), t = task != null ? taskById(task) : null;
+      if (!m || (task != null && !t)) return;
+      hearing = true;
+      try {
+        if (m !== state.mol) { state.mol = m; state.task = t || taskById(m.task); reset(true); } else if (t && t !== state.task) { state.task = t; reset(false); }
+      } finally { hearing = false; }
+    });
+
     scene.setMolecule(state.mol);
     update();
   });
