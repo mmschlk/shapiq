@@ -806,11 +806,13 @@
         add(
           check,
           el("span", "", "log-odds "),
-          el("strong", "", signed(part.logOdds)),
+          // four decimals (as the text: 3.9826 − 0.1774 = 3.8052), the difference rounded from the
+          // unrounded values (../compute/order.py)
+          el("strong", "", signed(part.logOdds, 4)),
           el("span", "", " − no atoms "),
-          el("strong", "", signed(part.empty)),
+          el("strong", "", signed(part.empty, 4)),
           el("span", "", " = "),
-          el("strong", part.difference >= 0 ? "gsqf-up" : "gsqf-down", signed(part.difference)),
+          el("strong", part.difference >= 0 ? "gsqf-up" : "gsqf-down", signed(part.difference, 4)),
         );
         layer.append(add(el("div", "gsqf-order"), add(el("div", "gsqf-order-left"), title, art), add(el("div", "gsqf-order-right"), table, check)));
         const show = (fade) => {

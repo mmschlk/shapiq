@@ -140,17 +140,23 @@ rings. What one atom contributes to the prediction then depends on its neighbors
 both to maskings of all other atoms and compares the changes of the log-odds.
 
 .. shapiq-demo-figure:: graphshapiq-explorer nitro
-   :alt: A bar chart for the two atoms with the strongest pairwise interaction of the molecule. Bars show the average change of the log-odds when the first atom is added, when the second atom is added, and when both are added to random maskings of the other atoms. A last bar shows the discrete derivative, which is the change for both minus the two single changes.
+   :alt: Two bar charts on one axis for the two atoms with the strongest pairwise interaction of the molecule. The first chart has all other atoms masked. Its bars show the change of the log-odds when the first atom is added, when the second atom is added and when both are added, the interaction, which is the change for both minus the two single changes, and the Möbius interaction of the pair from GraphSHAP-IQ, which equals this interaction. The second chart shows the same changes on average over 256 random maskings of the other atoms, the average interaction, and the 2-SII of the pair from GraphSHAP-IQ, which the average interaction estimates.
 
-   **An interaction measured on the model.** The average change of the log-odds when the two atoms
-   with the strongest 2-SII are added to random maskings of the other atoms, alone and together.
-   The discrete derivative is the change for both minus the changes for each atom alone.
+   **An interaction measured on the model.** The change of the log-odds when the two atoms with
+   the strongest 2-SII are added, alone and together, with all other atoms masked and on average
+   over 256 random maskings of the other atoms. The interaction is the change for both minus the
+   changes for each atom alone. With all other atoms masked, it is the MI of the pair. The random
+   maskings first draw the number of unmasked atoms uniformly and then the atoms, so their average
+   interaction estimates the 2-SII of the pair.
 
 An interaction is what two nodes add together beyond the sum of what each of them adds alone. For
 1,3-dinitrobenzene, the two atoms of the figure are a nitrogen and an oxygen of a nitro group. With
 all other atoms masked, the nitrogen atom alone changes the log-odds by +0.03 and the oxygen atom
 alone by −0.97. Both together change them by +1.85. The pair thus adds 2.79 beyond the sum of the
-two single changes, and this surplus remains positive on average over random maskings.
+two single changes. On average over 256 random maskings of the other atoms, the pair adds 1.86
+beyond the sum, with a standard error of 0.04. The interaction of two nodes thus depends on the
+masking of the others, and for other molecules it even changes its sign. An explanation has to
+summarize it over all maskings.
 
 A score per node cannot express such a surplus. It can only split the surplus among the nodes,
 which hides that they act together. For 1,3-dinitrobenzene, the SVs assign +1.86 to each nitrogen
@@ -353,8 +359,8 @@ The simplest SI-Graph displays the SVs as node attributes, whereas the most comp
 displays the MIs as node and hyperedge attributes. The explanation order :math:`k` adjusts the
 complexity in between, as :shapiq-figure:`order` shows. For every order, the sum of all
 contributions in the SI-Graph yields the prediction of the normalized game, which is the log-odds
-minus the prediction with no atoms. For 1,3-dinitrobenzene, this sum is 3.805, i.e. the log-odds
-of 3.983 minus 0.177. It is distributed among 12 SVs, among 78 contributions of order 2, or among
+minus the prediction with no atoms. For 1,3-dinitrobenzene, this sum is 3.8052, i.e. the log-odds
+of 3.9826 minus 0.1774. It is distributed among 12 SVs, among 78 contributions of order 2, or among
 4,095 MIs.
 
 .. shapiq-demo-figure:: graphshapiq-explorer order
@@ -388,14 +394,17 @@ benzene ring with two hydroxy groups. Only the positions of the two oxygen atoms
 GNN predicts 99.8% for catechol, 10.9% for resorcinol and 25.2% for hydroquinone. At order 2, the
 interaction of the two oxygen atoms is +1.12 for catechol, where they are neighbors on the ring. It
 is −0.43 for resorcinol and −0.15 for hydroquinone. Catechol is a known pattern of PAINS
-:cite:p:`Baell.2010`, and the sign of this interaction separates it from the other two
-arrangements.
+:cite:p:`Baell.2010`, and the sign of the interaction of the two oxygen atoms separates it from the
+other two arrangements. This pair is not the strongest contribution of catechol. The two carbon
+atoms that carry the hydroxy groups interact with +1.82, and each of them has a node attribute of
+−2.48. The figure therefore frames the pair of the two oxygen atoms and fades all other groups.
 
 .. shapiq-demo-figure:: graphshapiq-explorer arrangement
-   :alt: Three molecules side by side. Catechol, resorcinol and hydroquinone are benzene rings with two hydroxy groups in neighboring, alternate and opposite positions. Each is shown with the probability that the PAINS GNN predicts and with its SI-Graph of order 2. Catechol has strong red interactions around its two oxygen atoms. The other two have weak interactions.
+   :alt: Three molecules side by side. Catechol, resorcinol and hydroquinone are benzene rings with two hydroxy groups in neighboring, alternate and opposite positions. Each is shown with the probability that the PAINS GNN predicts and with its SI-Graph of order 2. The pair of the two oxygen atoms is framed and all other groups are faded. The pair is red for catechol and blue for the other two. Catechol also has strong red interactions between its ring atoms and blue node attributes on them.
 
    **Same atoms, other arrangement.** The predictions of the PAINS GNN for catechol, resorcinol
    and hydroquinone, and their SI-Graphs of order 2. The three molecules have the same eight atoms.
+   The interaction of the two oxygen atoms is framed, and all other groups are faded.
 
 .. _graphshapiq-sec-computation:
 
@@ -486,17 +495,19 @@ interactions*. Then
 In words, a group of nodes can only interact if all of its nodes lie in the receptive field of one
 node. :shapiq-figure:`sparsity` confirms this on the GNNs of the demo. ``shapiq`` computes all
 :math:`2^n` MIs by brute force and compares them with the set :math:`\mathcal{I}`. For indigo,
-1,010,688 of the 1,048,576 MIs lie outside :math:`\mathcal{I}`. Their largest absolute value is
-0.0004, which is at the level of the rounding errors of the GNN in single precision. The largest MI
-inside :math:`\mathcal{I}` is 9.13. For 1,3-dinitrobenzene, the receptive fields of three layers
+1,010,688 of the 1,048,576 MIs lie outside :math:`\mathcal{I}`. With the GNN in double precision,
+their largest absolute value is :math:`6 \cdot 10^{-13}`. With the GNN in single precision, as in
+the demo, it is 0.0004, which is the level of its rounding errors. The largest MI inside
+:math:`\mathcal{I}` is 9.13. For 1,3-dinitrobenzene, the receptive fields of three layers
 cover the whole molecule, so that :math:`\mathcal{I}` contains all sets.
 
 .. shapiq-demo-figure:: graphshapiq-explorer sparsity
-   :alt: A scatter plot of all Möbius interactions of the molecule. The horizontal axis is the size of the set. The vertical axis is the absolute value on a logarithmic scale. Interactions of sets inside the set I reach values above 1. Interactions of sets outside the set I stay at the level of rounding errors.
+   :alt: A scatter plot of all Möbius interactions of the molecule. The horizontal axis is the size of the set. The vertical axis is the absolute value on a logarithmic scale. Interactions of sets inside the set I reach values above 1. Interactions of sets outside the set I stay far below a dashed line, which marks the rounding errors of the GNN in single precision.
 
    **Möbius interactions vanish outside the receptive fields.** All :math:`2^n` MIs of the
-   molecule, computed by brute force, by the size of their set. The colors separate the sets inside
-   :math:`\mathcal{I}` from those outside, whose MIs are zero up to rounding errors.
+   molecule, computed by brute force with the GNN in double precision, by the size of their set.
+   The colors separate the sets inside :math:`\mathcal{I}` from those outside. The dashed line
+   marks the rounding errors of the GNN in single precision.
 
 .. _graphshapiq-sec-complexity:
 
@@ -544,11 +555,12 @@ three layers instead of 268,435,456. The saving grows with the size of the graph
 the number of layers.
 
 .. shapiq-demo-figure:: graphshapiq-explorer complexity
-   :alt: A chart of the number of model calls on a logarithmic scale against the number of atoms, for the seven molecules of the demo and the four molecules of the receptive-field figure. A dashed line marks 2 to the power of n. For each molecule, four dots mark the number of maskings that GraphSHAP-IQ needs for one, two, three and four layers. For large molecules, the dots lie far below the line.
+   :alt: A chart of the number of model calls on a logarithmic scale against the number of atoms, for the seven molecules of the demo and the four molecules of the receptive-field figure. A dashed line marks 2 to the power of n. One dot per molecule marks the number of maskings that GraphSHAP-IQ needs for the number of layers that a slider sets from one to four. The molecules of the demo are filled dots and the molecules of the receptive-field figure are rings. The chosen molecule is highlighted, and a dotted line leads from its dot up to the dashed line. For large molecules, the dots lie far below the line.
 
    **Maskings against** :math:`2^n`\ **.** The number of model calls :math:`\vert \mathcal{I}
-   \vert` of GraphSHAP-IQ for one to four layers, for the seven molecules of the demo and the four
-   molecules of the receptive-field figure. The dashed line marks all :math:`2^n` maskings.
+   \vert` of GraphSHAP-IQ for the seven molecules of the demo (dots) and the four molecules of the
+   receptive-field figure (rings). The slider sets the number of layers. The dashed line marks all
+   :math:`2^n` maskings, and the dotted line shows the saving for the chosen molecule.
 
 For densely connected graphs and GNNs with many layers, :math:`\vert \mathcal{I} \vert` can still
 be infeasible. An approximation variant of GraphSHAP-IQ introduces a parameter :math:`\lambda`,
@@ -568,21 +580,24 @@ cost with model-agnostic approximation.
 The first check is a computation by brute force. For each of the seven molecules, ``shapiq``
 evaluates the GNN on all :math:`2^n` maskings and computes all MIs with :eq:`graphshapiq-mi`. The
 MIs of GraphSHAP-IQ agree with them on every set in :math:`\mathcal{I}`, and no MI outside
-:math:`\mathcal{I}` exceeds 0.0004 in absolute value. For 1,3-dinitrobenzene, benzimidazole and
+:math:`\mathcal{I}` exceeds the rounding errors of the GNN in single precision. For 1,3-dinitrobenzene, benzimidazole and
 aspirin, :math:`\mathcal{I}` contains all sets, so that GraphSHAP-IQ evaluates all :math:`2^n`
 maskings as well.
 
 The comparison runs GraphSHAP-IQ and the model-agnostic approximators of ``shapiq`` with the same
-number of model calls. :shapiq-figure:`approximation` shows the mean squared error (MSE)
-of their 2-SII estimates. For indigo, GraphSHAP-IQ is exact after 37,888 model calls, which are
-3.6% of all maskings. With the same budget, KernelSHAP-IQ reaches an MSE of 0.002 and Permutation
-Sampling reaches 0.06, on average over three runs. Below this budget, the picture reverses. With
-:math:`\lambda = 8` and 30,248 model calls, the approximation variant has an MSE of 113, while
-KernelSHAP-IQ reaches 0.003. The GNNs of the demo have large MIs of high order, which the
-approximation variant cuts off.
+number of model calls. :shapiq-figure:`approximation` shows the mean squared error (MSE) of their
+2-SII estimates for each budget of the approximation variant. For indigo, GraphSHAP-IQ is exact
+after 37,888 model calls, which are 3.6% of all maskings. With the same budget, KernelSHAP-IQ
+reaches an MSE of 0.002, on average over three runs. Below this budget, the picture is mixed. With
+:math:`\lambda = 1` and 110 model calls, the approximation variant has an MSE of 0.52 and SVARM-IQ
+of 5.4. From about :math:`\lambda = 3` on, the approximation variant is worse than the
+approximators. With :math:`\lambda = 8` and 30,248 model calls, its MSE is 113, while KernelSHAP-IQ
+reaches 0.003. The reason is that the GNNs of the demo have large MIs of high order and opposite sign.
+The approximation variant reassigns their remaining value to sets of the size of a receptive
+field, which spreads it onto the pairs.
 
 .. shapiq-demo-figure:: graphshapiq-explorer approximation
-   :alt: A line chart of the mean squared error of the 2-SII estimates on a logarithmic scale against the number of model calls. The curve of GraphSHAP-IQ stays above the model-agnostic approximators for small budgets and drops to zero at the budget of the exact computation. The curves of KernelSHAP-IQ, SVARM-IQ, SHAP-IQ and Permutation Sampling decrease slowly.
+   :alt: A line chart of the mean squared error of the 2-SII estimates on a logarithmic scale against the number of model calls. Each curve is the mean of three runs with a band from the smallest to the largest value. For the smallest budgets, the approximation variant of GraphSHAP-IQ is level with or better than most approximators. For larger budgets it lies above KernelSHAP-IQ, SVARM-IQ, SHAP-IQ and Permutation Sampling, whose curves decrease. At the budget of the exact computation it is exact.
 
    **Approximation at equal budget.** The MSE of 2-SII estimates against the exact values of
    GraphSHAP-IQ, for the approximation variant of GraphSHAP-IQ with growing :math:`\lambda` and
@@ -593,16 +608,19 @@ in :shapiq-figure:`paper-approximation`. There, the approximation variant falls 
 :math:`10^{-6}` with about 2,500 model calls and reaches about :math:`10^{-10}` with about 7,800.
 All model-agnostic baselines stay above :math:`10^{-6}`. GraphSHAP-IQ thus outperforms the
 baselines in settings with a majority of lower-order MIs. The GNNs of the demo are not such a
-setting. At the exact budget, GraphSHAP-IQ takes about 2 seconds on average for such a molecule and a 2-layer
+setting. The interaction-informed variants of the baselines, which set all SIs outside
+:math:`\mathcal{I}` to zero, also change little for them. For indigo, only 28 of the 190 pairs lie
+outside :math:`\mathcal{I}`, and the MSE of SVARM-IQ at the exact budget improves from 0.0022 to
+0.0020. At the exact budget, GraphSHAP-IQ takes about 2 seconds on average for such a molecule and a 2-layer
 GCN, and its runtime does not increase with the explanation order.
 
 .. shapiq-demo-figure:: graphshapiq-explorer paper-approximation
    :alt: A line chart of the mean squared error of 2-SII estimates on a logarithmic scale from 10 to the power of minus 10 to 0.1, against up to 8,000 model evaluations. The curve of GraphSHAP-IQ falls to about 10 to the power of minus 10. The curves of KernelSHAP-IQ, inconsistent KernelSHAP-IQ, Permutation Sampling, SHAP-IQ and SVARM-IQ end between 10 to the power of minus 6 and 10 to the power of minus 3.
 
    **Approximation on Mutagenicity.** The MSE of 2-SII estimates for a 2-layer GIN on molecules of
-   Mutagenicity, for GraphSHAP-IQ and model-agnostic baselines. Dashed lines are the
-   interaction-informed variants of the baselines, which set all SIs outside :math:`\mathcal{I}`
-   to zero.
+   Mutagenicity, for GraphSHAP-IQ and model-agnostic baselines, redrawn from Figure 4 (left) of
+   GraphSHAP-IQ :cite:p:`Muschalik.2025`. Dashed lines are the interaction-informed variants of
+   the baselines, which set all SIs outside :math:`\mathcal{I}` to zero.
 
 The saving in model calls is largest for large and sparse graphs. On the 4,337 molecules of
 Mutagenicity with 30.3 nodes on average, GraphSHAP-IQ reduces the model calls by a factor of about
@@ -627,17 +645,19 @@ on the same substructure in the same way.
 The second finding concerns the order of the MIs. :shapiq-figure:`orders` splits the MIs of each
 molecule by the size of their set. For all seven molecules, the MIs of four or more atoms sum to
 more than +100 in their positive part and to less than −100 in their negative part. The two parts
-nearly cancel. The explained difference of the log-odds is at most 16.7 in absolute value. For
+nearly cancel. The explained difference of the log-odds is below 17 in absolute value. For
 serotonin, the largest MI is a group of seven atoms of the indole with +9.96, and the next largest
 is a group of eight atoms with −8.53. The GNNs thus spread their prediction over many terms of
 high order and opposite sign. SIs of low order are the readable summary of these terms.
 
 .. shapiq-demo-figure:: graphshapiq-explorer orders
-   :alt: For each of the seven molecules, stacked bars show the sum of the positive and the sum of the negative Möbius interactions of size 1, of size 2, of size 3 and of size 4 or more. For every molecule, the bars of size 4 or more are the longest in both directions.
+   :alt: Horizontal bars on a symmetric logarithmic axis, in one group per molecule. Each group has four rows for the Möbius interactions of size 1, of size 2, of size 3 and of size 4 or more. In each row, a red bar to the right shows the sum of the positive interactions and a blue bar to the left shows the sum of the negative interactions. A line marks the total of each molecule, and dashed lines mark plus and minus 100. For every molecule, the bars of size 4 or more are the longest in both directions and reach beyond the dashed lines.
 
-   **Möbius interactions by order.** The positive and the negative sum of the MIs of size 1, 2, 3
-   and 4 or more, for the seven molecules and the question of each. All bars of a molecule together
-   sum to the log-odds minus the prediction with no atoms.
+   **Möbius interactions by order.** The :graphshapiq-red:`positive` and the
+   :graphshapiq-blue:`negative` sum of the MIs of size 1, 2, 3 and 4 or more, for the seven
+   molecules and the question of each, on a symmetric logarithmic axis. The line marks the sum of
+   all bars of a molecule, which is the log-odds minus the prediction with no atoms. The dashed
+   lines mark ±100.
 
 The third finding is an error of a GNN. Indigo contains no indole, but the GNN for indoles predicts
 96.6%. The SVs assign +2.09 to each nitrogen atom and −1.38 to each oxygen atom. At order 2, each
@@ -660,8 +680,9 @@ Limitations
   molecule, and GraphSHAP-IQ saves nothing. ``shapiq`` supports receptive fields of up to 62 nodes
   and warns above :math:`2^{25}` maskings.
 - **Approximation.** Below the exact budget, the approximation variant can be far less accurate
-  than model-agnostic approximators. For indigo and 30,248 model calls, its MSE is 113 against
-  0.003 for KernelSHAP-IQ.
+  than model-agnostic approximators when the GNN has large MIs of high order. For indigo and 30,248
+  model calls, its MSE is 113 against 0.003 for KernelSHAP-IQ. For a molecule whose receptive
+  fields cover all atoms, the exact budget is :math:`2^n` and the comparison is trivial.
 - **Masking with a fixed baseline.** The explanation depends on the baseline, and masked graphs are
   not molecules. For the GNN for mutagenicity, a masked atom is 73% carbon, 15% oxygen and 8%
   nitrogen. Other masking strategies, such as induced subgraphs or removed edges, could emphasize
@@ -789,7 +810,7 @@ Citation
 This page is based on *Exact Computation of Any-Order Shapley Interactions for Graph Neural
 Networks* :cite:p:`Muschalik.2025`, the work that introduces GraphSHAP-IQ. The definitions, the
 theoretical results, the algorithm and the results on Mutagenicity are taken from it. This includes
-the data of :shapiq-figure:`paper-approximation`, which is redrawn here. Everything shown for the
+the data of :shapiq-figure:`paper-approximation`, which is redrawn here from Figure 4 (left). Everything shown for the
 molecules of the demo is computed for this page with ``shapiq``, with GNNs that were trained for
 the demo.
 
