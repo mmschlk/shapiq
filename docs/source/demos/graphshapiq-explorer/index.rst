@@ -530,20 +530,27 @@ where :math:`n_{\max}^{(\ell)} := \max_{i \in N} \vert \mathcal{N}_i^{(\ell)} \v
 the largest :math:`\ell`-hop neighborhood and :math:`d_{\max}` is the maximum degree of the graph.
 In other words, the complexity depends at most linearly on the size of the graph. It depends
 exponentially on the connectivity of the graph and on the number of layers. GraphSHAP-IQ turns this
-result into four steps.
+result into the four steps of :shapiq-figure:`algorithm`.
 
-.. shapiq-definition:: GraphSHAP-IQ
-   :name: graphshapiq-def-algorithm
+.. shapiq-demo-figure:: graphshapiq-explorer algorithm
+   :alt: Algorithm 1 of GraphSHAP-IQ in a box. Its Require line holds sliders for the number of layers and the explanation order, beside a drawing of the molecule with its largest receptive field highlighted. Below, line 1 of the model-agnostic computation, which sets I to all subsets of N, is struck out and followed by line 1 of GraphSHAP-IQ, which sets I to the union of the power sets of the receptive fields. Lines 2 to 4 follow. Two columns count, for each line, the sets, model calls, Möbius interactions and Shapley interactions of the model-agnostic computation and of GraphSHAP-IQ. A bar shows the share of model calls that GraphSHAP-IQ needs.
 
-   **Require:** Graph :math:`g = (V, E, \mathbf{X})`, :math:`\ell`-Layer GNN :math:`f_g`, SI order
-   :math:`k`.
+   **Algorithm 1 against the model-agnostic computation.** The struck line is line 1 of the
+   model-agnostic exact computation, which evaluates all :math:`2^n` maskings. GraphSHAP-IQ changes
+   only this line. The columns count the sets, model calls, MIs and SIs of each line for the chosen
+   molecule. They depend on the graph only, so the counts for :math:`\ell \neq 3` need no GNN.
 
-   1. :math:`\mathcal{I} \leftarrow \bigcup_{i \in N} \mathcal{P}(\mathcal{N}_i^{(\ell)})`
-   2. :math:`\nu_g \leftarrow [f_g(\mathbf{X}^{(T)})]_{T \in \mathcal{I}}`
-   3. :math:`m_g \leftarrow [\texttt{MI}(\nu_g, S)]_{S \in \mathcal{I}}`
-   4. :math:`\Phi_k \leftarrow \texttt{MItoSI}(m_g, k)`
+   .. container:: graphshapiq-algorithm-lines
 
-   **Return:** MIs :math:`m_g`, SIs :math:`\Phi_k`.
+      **Algorithm 1** (GraphSHAP-IQ). **Require:** Graph :math:`g = (V, E, \mathbf{X})`,
+      :math:`\ell`-Layer GNN :math:`f_g`, SI order :math:`k`.
+
+      1. :math:`\mathcal{I} \leftarrow \bigcup_{i \in N} \mathcal{P}(\mathcal{N}_i^{(\ell)})`
+      2. :math:`\nu_g \leftarrow [f_g(\mathbf{X}^{(T)})]_{T \in \mathcal{I}}`
+      3. :math:`m_g \leftarrow [\texttt{MI}(\nu_g, S)]_{S \in \mathcal{I}}`
+      4. :math:`\Phi_k \leftarrow \texttt{MItoSI}(m_g, k)`
+
+      **Return:** MIs :math:`m_g`, SIs :math:`\Phi_k`.
 
 GraphSHAP-IQ identifies the set :math:`\mathcal{I}` from the graph, evaluates the GNN for all
 maskings in :math:`\mathcal{I}`, computes the MIs with :eq:`graphshapiq-mi`, and converts them to

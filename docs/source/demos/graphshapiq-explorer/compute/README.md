@@ -92,3 +92,12 @@ all of it SVARM-IQ on indigo; `--all` adds the other questions (about an hour mo
 `paper_approximation.py` reads Figure 4 (left) of the paper from the vector graphic on page 9 of its
 PDF with PyMuPDF (`pip install pymupdf`; `python paper_approximation.py <the PDF>`): the axes are
 calibrated on their tick marks, the curves and bands are told apart by their colors and dashes.
+
+**`algorithm.py`** (figure `algorithm`; nothing random, a second). For the explorer's seven
+molecules and one to four layers, it counts what each line of Algorithm 1 produces: |I|, the sets of
+line 1 and the model calls and MIs of lines 2 and 3, from `GraphSHAPIQ(...).budget` on a game that
+is never evaluated, and the SIs of at most k atoms of line 4 for k = 1 to 4. It also writes the
+largest receptive field and its atom, which the figure draws. Everything depends on the graph only,
+so the counts for other numbers of layers than the demo's three need no GNN. It checks |I| against an
+enumeration of the union of the power sets of the receptive fields and against
+`parts/complexity.json`.

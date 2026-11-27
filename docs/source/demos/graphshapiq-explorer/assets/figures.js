@@ -1330,6 +1330,249 @@
   }
   // ===== end: orders =====
 
+  // ===== figure: algorithm =====
+  // Algorithm 1 of the paper as a diff against the model-agnostic exact computation: line 1 as the
+  // model-agnostic computation has it (struck, gray) over GraphSHAP-IQ's line 1 (amber), then the
+  // shared lines 2 to 4. Beside every line, what it produces for the molecule shown, for both
+  // versions: sets, model calls, MIs and SIs (../compute/algorithm.py; they depend on the graph only,
+  // so l = 1, 2 and 4 need no GNN). The inputs of the Require line are the controls: the molecule
+  // (the frame's selector), l and k (sliders). The molecule shows what line 1 takes from the graph:
+  // the largest receptive field (amber), or all of N while the pointer is on the struck line. The
+  // sliders change the numbers and the field in place (no redraw: the drag goes on); the numbers
+  // fade out and in, as morph does. The lines are HTML with the paper's symbols, and become the
+  // page's MathJax once it has typeset them (fixed heights, so nothing moves).
+  {
+    const KEY = "algorithm";
+    // the lines: TeX, for MathJax, and the same in HTML, until MathJax is there (constants)
+    const C = (tex, html) => ({ tex, html });
+    const SS = (sup, sub) => `<span class="gsqf-al-ss"><sup>${sup}</sup><sub>${sub}</sub></span>`;
+    const I = '<span class="gsqf-al-cal">ℐ</span>';
+    const FIELD = `<span class="gsqf-al-cal">𝒩</span>${SS("(<i>ℓ</i>)", "<i>i</i>")}`;
+    const MATH = {
+      g: C("g = (V, E, \\mathbf{X})", "<i>g</i> = (<i>V</i>, <i>E</i>, <b>X</b>)"),
+      l: C("\\ell", "<i>ℓ</i>"),
+      fg: C("f_g", "<i>f</i><sub><i>g</i></sub>"),
+      k: C("k", "<i>k</i>"),
+      minus: C("\\mathcal{I} \\leftarrow \\mathcal{P}(N)", `${I} ← <span class="gsqf-al-cal">𝒫</span>(<i>N</i>)`),
+      plus: C(
+        "\\mathcal{I} \\leftarrow \\bigcup_{i \\in N} \\mathcal{P}(\\mathcal{N}_i^{(\\ell)})",
+        `${I} ← <span class="gsqf-al-big">⋃</span><sub><i>i</i>∈<i>N</i></sub> <span class="gsqf-al-cal">𝒫</span>(${FIELD})`,
+      ),
+      calls: C("\\nu_g \\leftarrow [f_g(\\mathbf{X}^{(T)})]_{T \\in \\mathcal{I}}", `<i>ν</i><sub><i>g</i></sub> ← [<i>f</i><sub><i>g</i></sub>(<b>X</b><sup>(<i>T</i>)</sup>)]<sub><i>T</i>∈${I}</sub>`),
+      mis: C("m_g \\leftarrow [\\texttt{MI}(\\nu_g, S)]_{S \\in \\mathcal{I}}", `<i>m</i><sub><i>g</i></sub> ← [<code>MI</code>(<i>ν</i><sub><i>g</i></sub>, <i>S</i>)]<sub><i>S</i>∈${I}</sub>`),
+      sis: C("\\Phi_k \\leftarrow \\texttt{MItoSI}(m_g, k)", "Φ<sub><i>k</i></sub> ← <code>MItoSI</code>(<i>m</i><sub><i>g</i></sub>, <i>k</i>)"),
+      mg: C("m_g", "<i>m</i><sub><i>g</i></sub>"),
+      phi: C("\\Phi_k", "Φ<sub><i>k</i></sub>"),
+      field: C("\\mathcal{N}_i^{(\\ell)}", FIELD),
+      N: C("N", "<i>N</i>"),
+    };
+    // MathJax's rendering of every line, once the page's MathJax has typeset them (tex: node)
+    const typeset = new Map();
+    let asked = false;
+    const upgrade = (node) => {
+      const done = typeset.get(node.dataset.tex);
+      if (done && !node.classList.contains("gsqf-al-tex")) {
+        node.replaceChildren(done.cloneNode(true));
+        node.classList.add("gsqf-al-tex");
+      }
+    };
+    // typeset the lines once, off the page's flow, then show them in every drawing of the figure
+    const askMathJax = () => {
+      if (asked) return;
+      const mj = window.MathJax;
+      if (!mj?.typesetPromise) {
+        // MathJax comes later (it loads without blocking the page): ask again once it is there
+        if (document.readyState !== "complete") {
+          asked = true;
+          window.addEventListener("load", () => { asked = false; askMathJax(); }, { once: true });
+        }
+        return;
+      }
+      asked = true;
+      const box = el("div", "gsqf-al-typeset");
+      box.setAttribute("aria-hidden", "true");
+      const sources = Object.values(MATH).map(({ tex }) => add(el("span"), `\\(${tex}\\)`));
+      sources.forEach((span, k) => (span.dataset.tex = Object.values(MATH)[k].tex));
+      add(document.body, add(box, ...sources));
+      (mj.startup?.promise ?? Promise.resolve())
+        .then(() => mj.typesetPromise([box]))
+        .then(() => {
+          for (const span of sources) {
+            const out = span.querySelector("mjx-container");
+            if (out) typeset.set(span.dataset.tex, out);
+          }
+          box.remove();
+          for (const node of document.querySelectorAll(`figure[data-figure="${KEY}"] [data-tex]`)) upgrade(node);
+        })
+        .catch(() => box.remove()); // the HTML lines stay
+    };
+    const math = (name) => {
+      const node = el("span", "gsqf-al-math");
+      node.dataset.tex = MATH[name].tex;
+      node.innerHTML = MATH[name].html; // a constant of this section
+      upgrade(node);
+      return node;
+    };
+    // a number that changes: the old fades out, the new one fades in (as morph)
+    const setText = (node, text, fade) => {
+      if (node.dataset.text === text) return;
+      node.dataset.text = text;
+      clearTimeout(node.fading);
+      node.classList.remove("gsqf-out", "gsqf-al-in");
+      if (!fade || reducedMotion()) {
+        node.textContent = text;
+        return;
+      }
+      node.classList.add("gsqf-out");
+      node.fading = setTimeout(() => {
+        node.textContent = text;
+        node.classList.remove("gsqf-out");
+        node.classList.add("gsqf-al-in");
+        node.fading = setTimeout(() => node.classList.remove("gsqf-al-in"), 220);
+      }, 140);
+    };
+    const share = (part) => {
+      if (part >= 0.9995) return "100%";
+      const digits = part >= 0.1 ? 0 : part >= 0.01 ? 1 : Math.max(1, 1 - Math.floor(Math.log10(100 * part)));
+      return `${(100 * part).toFixed(digits)}%`;
+    };
+    FIGURES.algorithm = {
+      draw(layer, c, state) {
+        const part = c.part?.molecules?.[c.molecule.id];
+        if (!part) return placeholder(layer, c, KEY);
+        if (!layer.classList.contains("gsqf-probe")) askMathJax();
+        state.layers ??= 3; // the demo's GNNs
+        state.order ??= 2;
+        const m = c.molecule;
+        const n = part.n;
+        const all = 2 ** n;
+        let pointed = false; // the pointer on the struck line 1: the molecule shows all of N
+
+        // the molecule with the glow of the pipeline figure over the atoms of line 1
+        // as large as it fits a box of 84 x 60 in the middle of the square, so that the box has one
+        // height for every molecule
+        const xs = m.atoms.map((a) => a[1]);
+        const ys = m.atoms.map((a) => a[2]);
+        const [w, h] = [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)];
+        const room = Math.min(84, (60 * Math.max(w, h, 1e-6)) / Math.max(h, 1e-6));
+        const art = molecule(m, { room, cap: 16, box: [0, 15, 100, 70], label: `${m.name}: the largest receptive field` });
+        const { s, pos } = art.geom;
+        const glow = svgEl("g", { class: "gsqf-al-glow" });
+        const glowAtoms = pos.map(([x, y]) => glow.appendChild(svgEl("circle", { cx: x, cy: y, r: (0.56 * s).toFixed(2) })));
+        const glowBonds = m.bonds.map(([i, j]) => glow.appendChild(svgEl("line", { x1: pos[i][0], y1: pos[i][1], x2: pos[j][0], y2: pos[j][1], "stroke-width": (0.7 * s).toFixed(2) })));
+        art.layers.truth.append(glow);
+        const lines = [...art.layers.bonds.children]; // one line per bond order, in the bonds' order
+        const bondLines = [];
+        let at = 0;
+        for (const [, , order] of m.bonds) {
+          const count = order >= 3 ? 3 : order === 2 ? 2 : 1;
+          bondLines.push(lines.slice(at, at + count));
+          at += count;
+        }
+        const atoms = [...art.layers.atoms.children];
+        const frame = art.layers.over.appendChild(svgEl("circle", { class: "gsqf-al-frame", r: (0.38 * s).toFixed(2), cx: 0, cy: 0 }));
+        const fieldLabel = add(el("span", "gsqf-al-label"), "largest ", math("field"), ": ", el("strong"), " of ", el("strong", "", String(n)));
+        const allLabel = add(el("span", "gsqf-al-label"), math("N"), ": all ", el("strong", "", String(n)), " atoms");
+
+        // the sliders: l and k of the Require line
+        const symbol = (control, name, word) => {
+          const label = control.firstChild;
+          label.className = "gsqf-al-sym";
+          label.replaceChildren(math(name));
+          label.after(el("span", "gsqf-al-word", word));
+          return control;
+        };
+        const layersControl = symbol(slider("l", [1, 4], state.layers, (v) => { state.layers = v; show(true); }), "l", "layers");
+        const orderControl = symbol(slider("k", [1, 4], state.order, (v) => { state.order = v; show(true); }), "k", "SI order");
+        layersControl.input.setAttribute("aria-label", "Number of layers");
+        orderControl.input.setAttribute("aria-label", "SI order");
+
+        // the lines: marker, number, the line, model-agnostic, GraphSHAP-IQ, what is counted
+        const value = (className = "") => el("span", className);
+        const cells = { all: [], calls: [], zero: null, sis: [] };
+        const number = (key, gsq) => {
+          const node = add(el("span", `gsqf-al-num ${gsq ? "gsqf-al-gsq" : "gsqf-al-agn"}`), value("gsqf-al-value"));
+          if (key) cells[key].push(node.firstChild);
+          return node;
+        };
+        const row = (className, mark, no, line, agn, gsq, unit) =>
+          add(el("div", `gsqf-al-row ${className}`.trim()), el("span", "gsqf-al-mark", mark), el("span", "gsqf-al-no", no), add(el("span", "gsqf-al-code"), line), agn, gsq, el("span", "gsqf-al-unit", unit));
+        const zero = value("gsqf-al-zero");
+        cells.zero = zero;
+        const misAgn = number("all", false);
+        misAgn.append(add(el("small"), zero, " zero"));
+        const fill = el("span", "gsqf-al-fill");
+        const pct = el("span", "gsqf-al-pct");
+        const minus = row("gsqf-al-minus", "−", "1:", math("minus"), number("all", false), number(null, true), "sets");
+        const plus = row("gsqf-al-plus", "+", "1:", math("plus"), number(null, false), number("calls", true), "sets");
+        const table = add(
+          el("div", "gsqf-al-lines"),
+          add(el("div", "gsqf-al-row gsqf-al-head"), el("span", "gsqf-al-mark"), el("span", "gsqf-al-no"), el("span", "gsqf-al-code"), el("span", "gsqf-al-num gsqf-al-agn", "model-agnostic"), el("span", "gsqf-al-num gsqf-al-gsq", "GraphSHAP-IQ"), el("span", "gsqf-al-unit")),
+          minus,
+          plus,
+          row("", "", "2:", math("calls"), number("all", false), number("calls", true), "model calls"),
+          add(el("div", "gsqf-al-row gsqf-al-bar"), add(el("span", "gsqf-al-track"), fill), pct),
+          row("", "", "3:", math("mis"), misAgn, number("calls", true), "MIs"),
+          row("", "", "4:", math("sis"), number("sis", false), number("sis", true), "SIs"),
+        );
+        table.setAttribute("role", "group");
+        table.setAttribute("aria-label", "Algorithm 1 against the model-agnostic computation, with what each line produces");
+        for (const [line, on] of [[minus, true], [plus, false]]) {
+          line.addEventListener("pointerenter", () => { pointed = on; show(false); });
+          line.addEventListener("pointerleave", () => { pointed = false; show(false); });
+        }
+
+        const box = add(
+          el("div", "gsqf-al"),
+          add(el("p", "gsqf-al-title"), el("strong", "", "Algorithm 1"), " (GraphSHAP-IQ)"),
+          add(
+            el("div", "gsqf-al-require"),
+            add(
+              el("p", "gsqf-al-req"),
+              add(el("span", "gsqf-al-chunk"), el("strong", "", "Require:"), " Graph ", math("g"), ","),
+              " ",
+              add(el("span", "gsqf-al-chunk"), math("l"), "-Layer GNN ", math("fg"), ", SI order ", math("k"), "."),
+            ),
+            add(el("div", "gsqf-al-sliders"), layersControl, orderControl, add(el("div", "gsqf-al-labels"), fieldLabel, allLabel)),
+            add(el("div", "gsqf-al-art"), art),
+          ),
+          table,
+          add(el("p", "gsqf-al-return"), el("strong", "", "Return:"), " MIs ", math("mg"), ", SIs ", math("phi"), "."),
+        );
+        layer.append(box);
+
+        // the numbers and the field for l and k
+        const show = (fade) => {
+          const d = { calls: part.calls[state.layers - 1], largest: part.largest[state.layers - 1], focus: part.focus[state.layers - 1], field: new Set(part.field[state.layers - 1]) };
+          for (const node of cells.all) setText(node, thousands(all), fade);
+          for (const node of cells.calls) setText(node, thousands(d.calls), fade);
+          setText(cells.zero, all > d.calls ? thousands(all - d.calls) : "none", fade);
+          for (const node of cells.sis) setText(node, thousands(part.sis[state.order - 1]), fade);
+          setText(fieldLabel.querySelector("strong"), String(d.largest), fade);
+          setText(pct, share(d.calls / all), fade);
+          fill.style.width = `${(100 * d.calls) / all}%`;
+          const inside = pointed ? new Set(range(n)) : d.field;
+          glowAtoms.forEach((node, k) => node.classList.toggle("gsqf-al-on", inside.has(k)));
+          m.bonds.forEach(([i, j], b) => {
+            const on = inside.has(i) && inside.has(j);
+            glowBonds[b].classList.toggle("gsqf-al-on", on);
+            for (const line of bondLines[b]) line.classList.toggle("gsqf-faded", !on);
+          });
+          atoms.forEach((node, k) => node.classList.toggle("gsqf-faded", !inside.has(k)));
+          frame.setAttribute("cx", pos[d.focus][0]);
+          frame.setAttribute("cy", pos[d.focus][1]);
+          frame.classList.toggle("gsqf-al-off", pointed);
+          fieldLabel.classList.toggle("gsqf-al-off", pointed);
+          allLabel.classList.toggle("gsqf-al-off", !pointed);
+          minus.classList.toggle("gsqf-al-pointed", pointed);
+          art.setAttribute("aria-label", pointed ? `${m.name}: all ${n} atoms` : `${m.name}: the largest receptive field of ${state.layers} layers, ${d.largest} of ${n} atoms`);
+        };
+        show(false);
+      },
+    };
+  }
+  // ===== end: algorithm =====
+
   // -- the frame of a figure: its selector, its stage, and its dots ----------------------------------
 
   const specOf = (name) => {

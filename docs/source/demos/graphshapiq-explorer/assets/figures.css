@@ -1852,3 +1852,534 @@ body[data-theme="dark"] .graphshapiq-explorer-figure[data-figure="paper-approxim
   font-size: calc(10px * var(--gsqf-type, 1));
 }
 /* ===== end: orders ===== */
+
+/* ===== figure: algorithm ===== */
+/* Algorithm 1 as a diff against the model-agnostic computation, in a box of the page's statements
+   (custom.css, div.shapiq-statement): the Require line with the sliders and the molecule, the lines
+   with what each produces for both versions, the Return line. Every part has a fixed height, so
+   that nothing moves with the molecule, l, k or MathJax. */
+.graphshapiq-explorer-figure[data-figure="algorithm"] {
+  --gsqf-guess: 28.1rem; /* the stage at 1280 px: 449 px */
+  --gsqf-al-plus: rgba(245, 163, 0, 0.15); /* GraphSHAP-IQ's line 1 */
+  --gsqf-al-edge: transparent; /* its outline, in the dark, where an amber tint turns brown */
+  --gsqf-al-point: color-mix(in srgb, var(--gsqf-ink) 6%, transparent);
+}
+
+body[data-theme="dark"] .graphshapiq-explorer-figure[data-figure="algorithm"] {
+  --gsqf-al-plus: rgba(245, 163, 0, 0.07);
+  --gsqf-al-edge: rgba(245, 163, 0, 0.8);
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .graphshapiq-explorer-figure[data-figure="algorithm"] {
+    --gsqf-al-plus: rgba(245, 163, 0, 0.07);
+    --gsqf-al-edge: rgba(245, 163, 0, 0.8);
+  }
+}
+
+@container (max-width: 34rem) {
+  .graphshapiq-explorer-figure[data-figure="algorithm"] {
+    --gsqf-guess: 36.65rem; /* at 375 px: 586 px */
+  }
+}
+
+/* with JavaScript, the figure shows the lines; the caption's copy of them is for the page without
+   it and for the PDF */
+@media (scripting: enabled) {
+  .graphshapiq-explorer-figure[data-figure="algorithm"] .graphshapiq-algorithm-lines {
+    display: none;
+  }
+}
+
+.graphshapiq-explorer-figure .graphshapiq-algorithm-lines {
+  margin-top: 0.5rem;
+}
+
+.graphshapiq-algorithm-lines ol {
+  margin: 0.3rem 0;
+}
+
+/* the lines that the page's MathJax typesets once, out of sight */
+.gsqf-al-typeset {
+  position: absolute;
+  top: 0;
+  left: -9999px;
+  visibility: hidden;
+}
+
+.gsqf-al {
+  padding: 0.85rem 1.1rem 0.5rem;
+  border: 1px solid var(--color-background-border, var(--gsqf-line));
+  border-left: 4px solid var(--shapiq-amber, #f5a300);
+  border-radius: var(--shapiq-radius-small, 8px);
+  background: var(--color-background-secondary, var(--gsqf-raised));
+  color: var(--gsqf-ink);
+}
+
+.gsqf-al p {
+  margin: 0;
+}
+
+.gsqf-al-title {
+  margin-bottom: 0.45rem !important;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.gsqf-al-title strong {
+  font-weight: 700;
+  color: var(--shapiq-amber, #f5a300);
+}
+
+/* a line of the algorithm: HTML in the paper's symbols, until MathJax has typeset it */
+.gsqf-al-math {
+  position: relative;
+  display: inline-block;
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
+  font-size: 1.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.gsqf-al-math.gsqf-al-tex {
+  font-family: inherit;
+  font-size: 1em;
+}
+
+.gsqf-al-math mjx-container {
+  margin: 0 !important;
+}
+
+.gsqf-al-math sub,
+.gsqf-al-math sup {
+  font-size: 0.7em;
+  line-height: 0;
+}
+
+.gsqf-al-math code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-stack--monospace, ui-monospace, monospace);
+  font-size: 0.86em;
+  color: inherit;
+}
+
+.gsqf-al-math .gsqf-al-cal {
+  font-style: normal;
+}
+
+.gsqf-al-math .gsqf-al-big {
+  font-size: 1.25em;
+  vertical-align: -0.08em;
+}
+
+/* a superscript over a subscript: N with (l) over i */
+.gsqf-al-math .gsqf-al-ss {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: -0.35em;
+  line-height: 1;
+  font-size: 0.7em;
+}
+
+.gsqf-al-math .gsqf-al-ss sup,
+.gsqf-al-math .gsqf-al-ss sub {
+  font-size: 1em;
+  line-height: 1.05;
+}
+
+/* the Require line, the sliders and the molecule beside them */
+.gsqf-al-require {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.5rem;
+  grid-template-areas: "req req" "sliders art";
+  column-gap: 1rem;
+  align-items: center;
+}
+
+.gsqf-al-req {
+  grid-area: req;
+  height: 1.6rem;
+  line-height: 1.6rem;
+  white-space: nowrap;
+}
+
+.gsqf-al-chunk {
+  white-space: nowrap;
+}
+
+.gsqf-al-sliders {
+  grid-area: sliders;
+}
+
+.gsqf-al .gsqf-slider {
+  margin: 0;
+}
+
+.gsqf-al .gsqf-al-sym {
+  width: 0.9rem;
+  text-align: center;
+  font-size: calc(1rem / var(--gsqf-type, 1) / 0.78);
+  color: var(--gsqf-ink);
+}
+
+.gsqf-al-word {
+  width: 4.2rem;
+}
+
+.gsqf-al-art {
+  grid-area: art;
+}
+
+.gsqf-al-art .gsqf-molecule {
+  aspect-ratio: 100 / 70;
+}
+
+.gsqf-al-glow circle,
+.gsqf-al-glow line {
+  fill: var(--shapiq-amber, #f5a300);
+  stroke: var(--shapiq-amber, #f5a300);
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity var(--gsqf-duration) var(--gsqf-ease);
+}
+
+.gsqf-al-glow .gsqf-al-on {
+  opacity: 0.2;
+}
+
+.gsqf-al-art .gsqf-atom,
+.gsqf-al-art .gsqf-bond {
+  transition: opacity var(--gsqf-duration) var(--gsqf-ease);
+}
+
+.gsqf-al-frame {
+  fill: none;
+  stroke: var(--shapiq-amber, #f5a300);
+  stroke-width: 2.4px;
+  vector-effect: non-scaling-stroke;
+  transition: opacity var(--gsqf-duration) var(--gsqf-ease);
+}
+
+.gsqf-al-frame.gsqf-al-off {
+  opacity: 0;
+}
+
+/* the label under the molecule: the largest field, or all of N, in one place */
+.gsqf-al-labels {
+  display: grid;
+  justify-items: start;
+  height: 1.3rem;
+  margin-top: 0.15rem;
+  padding-left: 1.5rem;
+  font-size: calc(0.76rem * var(--gsqf-type, 1));
+  line-height: 1.3rem;
+  white-space: nowrap;
+  color: var(--gsqf-muted);
+}
+
+.gsqf-al-label {
+  grid-area: 1 / 1;
+  transition: opacity 140ms ease-out;
+}
+
+.gsqf-al-label.gsqf-al-off {
+  opacity: 0;
+}
+
+.gsqf-al-label strong {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--gsqf-ink);
+}
+
+/* the lines: marker, number, line, model-agnostic, GraphSHAP-IQ, what is counted */
+.gsqf-al-lines {
+  display: grid;
+  grid-template-columns: 1.3rem 1.35rem minmax(0, 1fr) 5.4rem 5.6rem 5.4rem;
+  margin: 0.55rem -0.5rem 0.25rem;
+}
+
+.gsqf-al-row {
+  display: contents;
+}
+
+.gsqf-al-row > * {
+  display: flex;
+  align-items: center;
+  height: 2.3rem;
+  transition: background-color var(--gsqf-duration) var(--gsqf-ease);
+}
+
+.gsqf-al-row > :first-child {
+  padding-left: 0.5rem;
+  border-radius: 6px 0 0 6px;
+}
+
+.gsqf-al-row > :last-child {
+  padding-right: 0.5rem;
+  border-radius: 0 6px 6px 0;
+}
+
+.gsqf-al-mark {
+  justify-content: center;
+  font-weight: 700;
+  color: var(--gsqf-muted);
+}
+
+.gsqf-al-no {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--gsqf-muted);
+}
+
+.gsqf-al-code {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gsqf-al-num {
+  flex-direction: column;
+  align-items: flex-end !important;
+  justify-content: center;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gsqf-al-num small {
+  font-size: calc(0.7rem * var(--gsqf-type, 1));
+  line-height: 1.15;
+  color: var(--gsqf-muted);
+}
+
+.gsqf-al-agn {
+  color: var(--gsqf-muted);
+}
+
+.gsqf-al-gsq {
+  font-weight: 650;
+}
+
+.gsqf-al-unit {
+  padding-left: 0.75rem;
+  font-size: calc(0.78rem * var(--gsqf-type, 1));
+  white-space: nowrap;
+  color: var(--gsqf-muted);
+}
+
+.gsqf-al-head > * {
+  height: 1.5rem;
+  font-size: calc(0.72rem * var(--gsqf-type, 1));
+  font-variant-numeric: normal;
+}
+
+.gsqf-al-head .gsqf-al-gsq {
+  color: var(--shapiq-amber-ink, #8c5800);
+}
+
+/* line 1 as the model-agnostic computation has it: gray and struck */
+.gsqf-al-minus .gsqf-al-code {
+  color: var(--gsqf-muted);
+}
+
+.gsqf-al-minus .gsqf-al-math {
+  opacity: 0.75;
+}
+
+.gsqf-al-minus .gsqf-al-math::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -0.1em;
+  left: -0.1em;
+  height: 1.5px;
+  background: var(--gsqf-gray);
+}
+
+.gsqf-al-minus.gsqf-al-pointed > * {
+  background: var(--gsqf-al-point);
+}
+
+/* line 1 as GraphSHAP-IQ has it: the one line that changes */
+.gsqf-al-plus > * {
+  --gsqf-al-t: inset 0 1px 0 var(--gsqf-al-edge);
+  --gsqf-al-b: inset 0 -1px 0 var(--gsqf-al-edge);
+  --gsqf-al-l: inset 1px 0 0 var(--gsqf-al-edge);
+  --gsqf-al-r: inset -1px 0 0 var(--gsqf-al-edge);
+  background: var(--gsqf-al-plus);
+  box-shadow: var(--gsqf-al-t), var(--gsqf-al-b);
+}
+
+.gsqf-al-plus > :first-child {
+  box-shadow: var(--gsqf-al-t), var(--gsqf-al-b), var(--gsqf-al-l);
+}
+
+.gsqf-al-plus > :last-child {
+  box-shadow: var(--gsqf-al-t), var(--gsqf-al-b), var(--gsqf-al-r);
+}
+
+.gsqf-al-plus :is(.gsqf-al-mark, .gsqf-al-no) {
+  color: var(--shapiq-amber-ink, #8c5800);
+}
+
+/* the model calls to scale: all maskings (the track) and GraphSHAP-IQ's (amber); the share
+   carries the smallest ones, which are a sliver */
+.gsqf-al-bar > * {
+  height: 0.85rem;
+  align-items: flex-start;
+}
+
+.gsqf-al-bar > .gsqf-al-track {
+  padding: 0;
+}
+
+.gsqf-al-track {
+  grid-column: 4 / 6;
+  position: relative;
+  height: 6px !important;
+  margin: 0 0 0 0.6rem;
+  border-radius: 3px !important;
+  background: var(--gsqf-line);
+}
+
+.gsqf-al-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 3px;
+  border-radius: 3px;
+  background: var(--shapiq-amber, #f5a300);
+  transition: width var(--gsqf-duration) var(--gsqf-ease);
+}
+
+.gsqf-al-pct {
+  padding-left: 0.75rem;
+  font-size: calc(0.74rem * var(--gsqf-type, 1));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 6px;
+  color: var(--shapiq-amber-ink, #8c5800);
+}
+
+.gsqf-al-return {
+  height: 1.7rem;
+  line-height: 1.7rem;
+}
+
+.gsqf-al-in {
+  animation: gsqf-in 220ms ease-out both;
+}
+
+/* a narrow figure: the Require line on two lines, the numbers under each line */
+@container (max-width: 34rem) {
+  .gsqf-al {
+    padding: 0.75rem 0.8rem 0.4rem;
+  }
+
+  .gsqf-al-require {
+    grid-template-columns: minmax(0, 1fr) 8.4rem;
+    column-gap: 0.6rem;
+  }
+
+  .gsqf-al-labels {
+    padding-left: 0;
+  }
+
+  .gsqf-al-req {
+    height: 3.2rem;
+    white-space: normal;
+  }
+
+  .gsqf-al-word {
+    display: none;
+  }
+
+  .gsqf-al-lines {
+    grid-template-columns: 1.2rem 1.3rem minmax(0, 1fr) minmax(0, 1fr) 5.3rem;
+    margin: 0.4rem -0.4rem 0.2rem;
+  }
+
+  .gsqf-al-row > :first-child {
+    padding-left: 0.4rem;
+  }
+
+  .gsqf-al-row > :last-child {
+    padding-right: 0.4rem;
+  }
+
+  .gsqf-al-row > * {
+    height: 1.95rem;
+  }
+
+  .gsqf-al-row > .gsqf-al-mark {
+    border-radius: 6px 0 0 0;
+  }
+
+  .gsqf-al-row > .gsqf-al-code {
+    grid-column: 3 / 6;
+    padding-right: 0.4rem;
+    border-radius: 0 6px 0 0;
+  }
+
+  .gsqf-al-row > :is(.gsqf-al-num, .gsqf-al-unit) {
+    height: 1.55rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .gsqf-al-row > .gsqf-al-agn {
+    grid-column: 1 / 4;
+    padding-left: 0.4rem;
+    border-radius: 0 0 0 6px;
+  }
+
+  .gsqf-al-row > .gsqf-al-unit {
+    padding-left: 0.6rem;
+    border-radius: 0 0 6px 0;
+  }
+
+  /* GraphSHAP-IQ's line 1 on two rows: its outline around both */
+  .gsqf-al-plus > :is(.gsqf-al-no, .gsqf-al-code) {
+    box-shadow: var(--gsqf-al-t);
+  }
+
+  .gsqf-al-plus > .gsqf-al-mark {
+    box-shadow: var(--gsqf-al-t), var(--gsqf-al-l);
+  }
+
+  .gsqf-al-plus > .gsqf-al-code {
+    box-shadow: var(--gsqf-al-t), var(--gsqf-al-r);
+  }
+
+  .gsqf-al-plus > .gsqf-al-gsq {
+    box-shadow: var(--gsqf-al-b);
+  }
+
+  .gsqf-al-plus > .gsqf-al-agn {
+    box-shadow: var(--gsqf-al-b), var(--gsqf-al-l);
+  }
+
+  .gsqf-al-plus > .gsqf-al-unit {
+    box-shadow: var(--gsqf-al-b), var(--gsqf-al-r);
+  }
+
+  .gsqf-al-head > :is(.gsqf-al-mark, .gsqf-al-no, .gsqf-al-code) {
+    display: none;
+  }
+
+  .gsqf-al-head > * {
+    height: 1.3rem !important;
+    padding-bottom: 0 !important;
+  }
+
+  .gsqf-al-track {
+    grid-column: 1 / 5;
+    margin-left: 2.7rem;
+  }
+
+  .gsqf-al-pct {
+    padding-left: 0.6rem;
+  }
+}
+/* ===== end: algorithm ===== */
