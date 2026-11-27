@@ -1545,18 +1545,12 @@
     });
   }
 
-  // The first page of the page is its title and the block of the demo (.fixlip-opening), which
-  // reaches to the end of the screen. The write-up is the second page. figures.css keeps the first
-  // page in place while the second slides over it, and needs the places for that: where the title
-  // and the block lie on the page, by how much the first page is higher than the screen, and where
-  // the second page starts in the section. They are measured with nothing held in place.
+  // The first screen of the page: the title and the block of the demo (.fixlip-opening), which
+  // reaches to the end of the screen (figures.css), for which it needs to know where it starts.
   const opening = document.querySelector(".fixlip-opening");
-  const stage = opening?.parentElement;
-  const title = stage?.querySelector(":scope > h1");
+  const title = opening?.parentElement.querySelector(":scope > h1");
   if (opening && title) {
-    stage.classList.add("fixlip-staged");
     const place = () => {
-      stage.classList.add("fixlip-placing");
       // the title stays on one line (figures.css), also in a font that runs wider than expected
       title.style.fontSize = "";
       const look = getComputedStyle(title);
@@ -1567,41 +1561,49 @@
         const room = title.clientWidth;
         if (width > room) title.style.fontSize = `${Math.floor((parseFloat(look.fontSize) * room * 10) / width) / 10}px`;
       }
-      const down = window.scrollY;
-      const top = Math.round(opening.getBoundingClientRect().top + down);
-      stage.style.setProperty("--fixlip-title-top", `${Math.round(title.getBoundingClientRect().top + down)}px`);
-      stage.style.setProperty("--fixlip-opening-top", `${top}px`);
-      // the block now has its height for this place
-      const height = opening.offsetHeight;
-      const over = Math.max(0, top + height - document.documentElement.clientHeight);
-      stage.style.setProperty("--fixlip-over", `${over}px`);
-      const start = top + height - (stage.getBoundingClientRect().top + down);
-      stage.style.setProperty("--fixlip-sheet-top", `${Math.round(start)}px`);
-      stage.classList.remove("fixlip-placing");
+      const top = Math.round(opening.getBoundingClientRect().top + window.scrollY);
+      opening.style.setProperty("--fixlip-opening-top", `${top}px`);
     };
     place();
-    // the title wraps anew at another width, the demo grows with its note, the screen changes
-    const watch = new ResizeObserver(place);
-    watch.observe(stage);
-    watch.observe(opening);
+    // the title wraps anew at another width, the screen changes
+    new ResizeObserver(place).observe(opening.parentElement);
     window.addEventListener("resize", place);
 
     // the link under the demo leads to the write-up, which starts with the box of the summary (the
     // label of the section lies inside the box)
     const link = opening.querySelector(".fixlip-more a");
     const summary = link && document.getElementById(link.hash.slice(1))?.closest("section");
+    // The page glides there, slower than the browser scrolls by itself: it starts and ends softly
+    // and takes longer for a longer way. The reader takes over with the wheel, a touch or a key.
+    let glide = 0;
+    const halt = () => cancelAnimationFrame(glide);
+    for (const kind of ["wheel", "touchstart", "keydown", "pointerdown"]) {
+      window.addEventListener(kind, halt, { passive: true });
+    }
     link?.addEventListener("click", (event) => {
       if (!summary) return;
       event.preventDefault();
-      const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      summary.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+      halt();
       history.replaceState(null, "", link.hash);
-    });
-    // a part of the first page that takes the focus while the write-up covers it comes into view
-    opening.addEventListener("focusin", () => {
-      if (window.scrollY > parseFloat(stage.style.getPropertyValue("--fixlip-over")) + 8) {
-        window.scrollTo({ top: 0 });
+      const from = window.scrollY;
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      const margin = parseFloat(getComputedStyle(summary).scrollMarginTop) || 0;
+      const to = Math.min(room, Math.round(summary.getBoundingClientRect().top + from - margin));
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        window.scrollTo({ top: to, behavior: "instant" });
+        return;
       }
+      const time = Math.min(1700, Math.max(1000, 750 + Math.abs(to - from) * 0.6));
+      let start = 0;
+      const step = (now) => {
+        start ||= now;
+        const share = Math.min(1, (now - start) / time);
+        const eased = share < 0.5 ? 4 * share ** 3 : 1 - (-2 * share + 2) ** 3 / 2;
+        // the docs scroll smoothly by themselves, which would lag behind every step
+        window.scrollTo({ top: from + (to - from) * eased, behavior: "instant" });
+        if (share < 1) glide = requestAnimationFrame(step);
+      };
+      glide = requestAnimationFrame(step);
     });
   }
 
