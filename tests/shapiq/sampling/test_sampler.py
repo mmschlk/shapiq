@@ -5,15 +5,14 @@ from math import comb
 import jax
 import jax.numpy as jnp
 
-from shapiq.game.exact import ExactComputer, discrete_derivative_coefficients
-from shapiq.game.table import TableGame
-from shapiq.index import ShapleyValueIndex
+from shapiq.game import DenseCoalitionGame
+from shapiq.index import ExactComputer, ShapleyValueIndex, discrete_derivative_coefficients
 from shapiq.players import FinitePlayers
 from shapiq.sampling._base import SizeWithReplacement
 
 N_PLAYERS = 5
 PLAYERS = FinitePlayers(N_PLAYERS)
-GAME = TableGame(jax.random.normal(jax.random.key(0), (2**N_PLAYERS,)), PLAYERS)
+GAME = DenseCoalitionGame(jax.random.normal(jax.random.key(0), (2**N_PLAYERS,)), PLAYERS)
 
 
 def test_keys_are_independent_runs_with_one_size_distribution_and_steps_advance():

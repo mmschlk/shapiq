@@ -40,7 +40,7 @@ def test_runtime_checks_do_not_require_typeguard():
             pack_bool_coalition,
             unpack_bool_coalition,
         )
-        from shapiq.game import TableGame
+        from shapiq.game import DenseCoalitionGame
         from shapiq.players import FinitePlayers
 
         # Check overloads without the import hook, which rewrites their registry keys.
@@ -69,7 +69,7 @@ def test_runtime_checks_do_not_require_typeguard():
                 raise AssertionError("A runtime coalition contract was not enforced")
 
         # Both union branches must retain jaxtyping's custom diagnostics.
-        game = TableGame(jnp.arange(8, dtype=float), FinitePlayers(3))
+        game = DenseCoalitionGame(jnp.arange(8, dtype=float), FinitePlayers(3))
         assert float(game(jnp.ones((3,), dtype=bool))) == 7
         assert float(game(jnp.array([7], dtype=jnp.uint8))) == 7
         for invalid, details in (

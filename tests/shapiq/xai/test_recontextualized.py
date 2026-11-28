@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from shapiq.game.discretederivative import subset_patterns
+from shapiq.game import subset_patterns
 from shapiq.players import FinitePlayers
 from shapiq.value import VectorValue
 from shapiq.xai import RecontextualizedGame

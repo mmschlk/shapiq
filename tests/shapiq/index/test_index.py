@@ -8,12 +8,11 @@ import numpy as np
 import pytest
 from ndlike.jax_functions import jax_broadcast_to
 
-from shapiq.game.discretederivative import subset_patterns
-from shapiq.game.exact import ExactComputer
-from shapiq.game.table import TableGame
+from shapiq.game import DenseCoalitionGame, subset_patterns
 from shapiq.index import (
     AlphaBetaIndex,
     BanzhafIndex,
+    ExactComputer,
     LeastSquaresIndex,
     ShapleyInteractionIndex,
     ShapleyValueIndex,
@@ -45,7 +44,9 @@ def _least_squares_fit(index: LeastSquaresIndex, table: np.ndarray) -> np.ndarra
 
 def test_shapley_kernel_reproduces_the_shapley_value():
     index = ShapleyValueIndex()
-    exact = ExactComputer.from_game(TableGame(TABLE, FinitePlayers(N_PLAYERS)))(index).values
+    exact = ExactComputer.from_game(DenseCoalitionGame(TABLE, FinitePlayers(N_PLAYERS)))(
+        index
+    ).values
     fit = _least_squares_fit(index, np.asarray(TABLE, dtype=float))
 
     assert isinstance(index, LeastSquaresIndex)

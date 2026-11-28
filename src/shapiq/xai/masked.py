@@ -84,7 +84,7 @@ class MaskedGame[In: HasShape, P](LocalXAIGame[In, P, "MaskedGame[In, P]"]):
         return super(MaskedGame, self)._infer_value_spec()
 
     @override
-    def _eval_bool(
+    def _coalition_bool(
         self, coalition: Bool[jax.Array, "#*batch {self.n_players}"]
     ) -> Float[JaxValue, "*batch"]:
         """Mask every explained input, call the model in batches and aggregate."""

@@ -56,7 +56,7 @@ Keep reusable jaxtyping aliases in assignment form (`BoolCoalition = Bool[...]`)
 
 `test_runtime_beartype.py` starts a fresh Python process with typeguard unavailable and exercises both coalition conversions and the notebook. This ensures explicit checks work independently of pytest's automatic instrumentation.
 
-`test_finite_player_game.py` runs evaluation and ordinary abstractness checks for `FinitePlayerGame`, `BoolFinitePlayerGame`, and `PackedFinitePlayerGame` with both the normal ABC metaclass and a test-only adapter that applies `_py_abc`'s namespace-based calculation. Resetting native evaluators to abstract base hooks is also tested without a dataclass decorator. These tests need no separate interpreter or additional dependencies.
+`test_finite_player_game.py` runs evaluation, basis-hook, and ordinary abstractness checks for `FinitePlayerGame`, `CoalitionDefinedGame`, `MoebiusDefinedGame`, and `FourierDefinedGame` with both the normal ABC metaclass and a test-only adapter that applies `_py_abc`'s namespace-based calculation. Resetting native hooks to abstract base hooks is also tested without a dataclass decorator. These tests need no separate interpreter or additional dependencies.
 
 ## Typing Conventions
 

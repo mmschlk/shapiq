@@ -51,27 +51,27 @@ A semantic or representation-based category of games. Storage-independent capabi
 _Avoid_: assuming that mathematical capability determines memory layout
 
 **K-Additivity**:
-For a finite game with suitable additive values, the guarantee that all Möbius coefficients above order `k` vanish. The `KAdditiveGame` interface declares a nonnegative upper bound through `additivity` and exposes Möbius coefficients through `coefficients`; the bound need not be tight. An empty-coalition coefficient is allowed.
-_Avoid_: maximum coalition size, storage layout
+For a finite game with suitable additive values, the property that all Möbius coefficients above order `k` vanish. Every `FinitePlayerGame` exposes `additivity()` (returning a static upper bound without evaluating coalitions when known, or computing the exact order otherwise) and basis coefficients through `coefficients`. `KnownAdditivity` identifies games with an evaluation-free static additivity bound (stored as `_additivity` on direct subclasses and propagated by lazy wrappers), so `isinstance(game, KnownAdditivity)` checks for fast `additivity()` without triggering coalition evaluation. An empty-coalition coefficient is allowed.
+_Avoid_: maximum coalition size, storage layout, separate nominal `KAdditiveGame` / `autocast` hierarchy
 
 **Möbius Coefficient**:
 The coefficient assigned to an interaction in the unique expansion of a finite **Game** as a sum of unanimity games. A coalition's value is the sum of the coefficients of all its subsets; the empty interaction's coefficient equals the empty-coalition value.
 _Avoid_: assuming a representation's stored values are Möbius coefficients regardless of its basis
 
 **1-Additive Game**:
-A finite **Game** whose coalition value is its empty-coalition value plus the sum of the participating players' singleton **Möbius Coefficients**. These coefficients are its per-player contributions; the empty-coalition value may be nonzero.
+A finite **Game** with `additivity() <= 1`, whose coalition value is its empty-coalition value plus the sum of the participating players' singleton **Möbius Coefficients** (`contributions()`). The empty-coalition value may be nonzero.
 _Avoid_: singleton evaluations as a synonym for contributions when the empty-coalition value is nonzero
 
 **Additive Game**:
-A **1-Additive Game** (`AdditiveGame`), allowing a nonzero empty-coalition value and exposing per-player singleton Möbius coefficients through `contributions`. This project's usage includes a constant offset (a modular set function); zero-empty is a separate property.
+A **1-Additive Game**, allowing a nonzero empty-coalition value and exposing per-player singleton Möbius coefficients through `contributions()` (equivalent to `moebius_coefficients(order=1)`). This project's usage includes a constant offset (a modular set function); zero-empty is a separate property.
 _Avoid_: assuming additivity implies zero empty value, assuming every additive game is a Shapley game of a particular source
 
 **Shapley Game**:
-The **Additive Game** produced by a Shapley **Game Transformation**: each singleton value is that player's Shapley value in the source game. It preserves the source player set and has empty-coalition value zero. Its grand-coalition value equals the source's grand-coalition value minus its empty-coalition value.
+The 1-additive **Game** (materialized as a `SparseMoebiusGame` with `_additivity = 1`) produced by a Shapley **Game Transformation**: each singleton Möbius coefficient is that player's Shapley value in the source game. It preserves the source player set and has empty-coalition value zero. Its grand-coalition value equals the source's grand-coalition value minus its empty-coalition value.
 _Avoid_: Shapley value array as the core result type
 
 **Game Cast**:
-A change of representation or interpretation that preserves the mathematical **Game**, including its players and coalition values. A basis conversion may require substantial computation; a value can be interpreted as a **Zero-Player Game**.
+A change of representation or basis that preserves the mathematical **Game**, including its players and coalition values (for example, between `DenseCoalitionGame`, `DenseMoebiusGame`, `DenseFourierGame`, and their `Sparse*` counterparts via `flextype.cast`). A basis conversion may require substantial computation; a value can be interpreted as a **Zero-Player Game**.
 _Avoid_: cast for player removal, estimation, or value-changing transformations
 
 **Game View**:
@@ -79,8 +79,8 @@ A constant-time, storage-sharing **Game Cast** exposing another interface to the
 _Avoid_: assuming every game cast is a view
 
 **Game Basis**:
-A collection of linearly independent coalition functions in which a finite numeric **Game** can be represented by coefficients. Coalition, Möbius, and Fourier bases represent the same game with different coefficients.
-_Avoid_: confusing a basis element with its coefficient
+One of the fixed discrete linear bases (`Basis.COALITION`, `Basis.MOEBIUS`, `Basis.FOURIER`) in which a `FinitePlayerGame` can be queried via `eval` / `coefficients` / `moebius_coefficients` / `fourier_coefficients` and materialized in dense (`Dense*Game`) or sparse (`Sparse*Game`) storage.
+_Avoid_: confusing a basis element with its coefficient, baking discrete bases into the universal `Game` base class
 
 **Reduction**:
 Supplying the missing input appropriate to an object: family parameters for a **Partial Game**, or a **Coalition** for a **Game**, to obtain the next result. Calling an object denotes its default reduction.

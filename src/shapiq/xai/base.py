@@ -29,7 +29,7 @@ from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.coalition import FiniteCoalition
 from shapiq.game.cast import CastGame
-from shapiq.game.finite import BoolFinitePlayerGame, _FiniteGame
+from shapiq.game.finite import CoalitionDefinedGame, _FiniteGame
 from shapiq.lazy_types import PANDAS_OUTPUT, SKLEARN_MODULE, TORCH_MODULE, TORCH_TENSOR
 from shapiq.players import FinitePlayers
 from shapiq.typing import HasShape, typechecked
@@ -173,11 +173,11 @@ def _(_: type[object]) -> None:
 @typechecked
 @dataclass(frozen=True, slots=True)
 class XAIGame[P, OwnerT: JaxLike[Any] = "XAIGame[Any, Any]"](
-    BoolFinitePlayerGame[P, Float[JaxValue, "..."]],
+    CoalitionDefinedGame[P, Float[JaxValue, "..."]],
     JaxAxisProtected[OwnerT, Any, _FiniteGame[P]],
     ABC,
 ):
-    """A game explaining a model; ``_eval_bool`` is left to the explanation.
+    """A game explaining a model; ``_coalition_bool`` is left to the explanation.
 
     ``model`` is static metadata, shared by the batch. An explicit ``output_dtype`` sets
     a strong value dtype and casts model values on evaluation.
@@ -258,7 +258,7 @@ def check_input_shape(name: str, data: HasShape, input_shape: tuple[int, ...]) -
 class LocalXAIGame[In: HasShape, P, OwnerT: JaxLike[Any] = "LocalXAIGame[Any, Any, Any]"](
     XAIGame[P, OwnerT], ABC
 ):
-    """Explain the inputs ``x_explain`` against a ``background``; ``_eval_bool`` is still open.
+    """Explain the inputs ``x_explain`` against a ``background``; ``_coalition_bool`` is still open.
 
     Both datasets stay in the model's own format ``In``, e.g. a tensor or a DataFrame, as static
     metadata. ``x_explain`` has the shape ``(*batch, *input_shape)``: the axes before the

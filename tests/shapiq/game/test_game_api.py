@@ -7,7 +7,7 @@ from types import ModuleType
 
 import pytest
 
-from shapiq.game import TableGame
+from shapiq.game import DenseCoalitionGame
 
 
 @pytest.fixture(scope="module")
@@ -30,6 +30,6 @@ def sketchbook(request: pytest.FixtureRequest) -> ModuleType:
     return module
 
 
-def test_sketchbook_uses_public_table_game(sketchbook):
-    assert sketchbook.TableGame is TableGame
-    assert isinstance(sketchbook.g, TableGame)
+def test_sketchbook_uses_public_dense_coalition_game(sketchbook):
+    assert sketchbook.DenseCoalitionGame is DenseCoalitionGame
+    assert isinstance(sketchbook.g, DenseCoalitionGame)

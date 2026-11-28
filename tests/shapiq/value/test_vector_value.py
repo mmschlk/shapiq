@@ -7,7 +7,7 @@ import pytest
 from ndlike.tuple.jax import JaxBroadcastTuple
 
 from shapiq.approximator.base import SHAPIQ
-from shapiq.game import MappedGame, TableGame
+from shapiq.game import DenseCoalitionGame, MappedGame
 from shapiq.index import ShapleyInteractionIndex, ShapleyValueIndex
 from shapiq.players import FinitePlayers
 from shapiq.sampling._base import PairedSizeWithoutReplacement, SizeWithReplacement
@@ -25,7 +25,9 @@ N_PLAYERS = 5
 def test_outputs_match_scalar_games(sampler_type, index):
     """Does every output of a vector-valued game get the estimate of its scalar game, step by step?"""
     tables = [
-        TableGame(jax.random.normal(jax.random.key(k), (2, 2**N_PLAYERS)), FinitePlayers(N_PLAYERS))
+        DenseCoalitionGame(
+            jax.random.normal(jax.random.key(k), (2, 2**N_PLAYERS)), FinitePlayers(N_PLAYERS)
+        )
         for k in range(3)
     ]
     # The tables' values are plain arrays: stack them into one vector per coalition.

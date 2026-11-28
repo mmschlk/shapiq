@@ -16,9 +16,7 @@ from jaxtyping import Bool, Float, Int, Real, Shaped, UInt8
 from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAxisProtected
 
-from shapiq.game import Game
-from shapiq.game.discretederivative import subset_patterns
-from shapiq.game.moebius import AdditiveMoebiusGame, MoebiusGame
+from shapiq.game import Game, SparseMoebiusGame, subset_patterns
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 from shapiq.value._dtype import default_float_dtype
@@ -105,8 +103,8 @@ class LeastSquaresIndex[R: Game](Index[R], Protocol):
 
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
-class CardinalInteractionIndex(DiscreteDerivativeIndex[MoebiusGame[Any, Any, Any]]):
-    """A batch of cardinal interaction indices, building an k-additive game on the Moebius Basis."""
+class CardinalInteractionIndex(DiscreteDerivativeIndex[SparseMoebiusGame[Any, Any]]):
+    """A batch of cardinal interaction indices, building a sparse Möbius game."""
 
     min_order: int = field(default=1, init=False)
     # A required field replaces the protocol's max_order property, which would be its default.
@@ -118,9 +116,9 @@ class CardinalInteractionIndex(DiscreteDerivativeIndex[MoebiusGame[Any, Any, Any
         values: Float[JaxValue, "*batch n_interactions"],
         interactions: Bool[jax.Array, "n_interactions n_players"],
         players: Shaped[FinitePlayers, "#*batch"],
-    ) -> MoebiusGame[Any, Any, Any]:
+    ) -> SparseMoebiusGame[Any, Any]:
         """Store the coefficients on their interaction sets, bounded by ``max_order``."""
-        return MoebiusGame(
+        return SparseMoebiusGame(
             values=values, interactions=interactions, players=players, additivity=self.max_order
         )
 
@@ -128,7 +126,7 @@ class CardinalInteractionIndex(DiscreteDerivativeIndex[MoebiusGame[Any, Any, Any
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class SemivalueIndex(CardinalInteractionIndex):
-    """A batch of semivalues: one coefficient per player, packaged as an additive game.
+    """A batch of semivalues: one coefficient per player, packaged as a 1-additive sparse Möbius game.
 
     A semivalue is a cardinal interaction index restricted to the singletons, so both orders are
     fixed to one.
@@ -143,9 +141,11 @@ class SemivalueIndex(CardinalInteractionIndex):
         values: Float[JaxValue, "*batch n_interactions"],
         interactions: Bool[jax.Array, "n_interactions n_players"],
         players: Shaped[FinitePlayers, "#*batch"],
-    ) -> AdditiveMoebiusGame:
+    ) -> SparseMoebiusGame[Any, Any]:
         """Package one coefficient per player; ``interactions`` are the singletons by construction."""
-        return AdditiveMoebiusGame(values=values, players=players, interactions=interactions)
+        return SparseMoebiusGame(
+            values=values, players=players, interactions=interactions, additivity=1
+        )
 
 
 @typechecked
@@ -264,7 +264,7 @@ class ShapleyInteractionIndex[OwnerT: JaxLike[Any] = "ShapleyInteractionIndex[An
 class ShapleyValueIndex(
     SemivalueIndex,
     ShapleyInteractionIndex["ShapleyValueIndex"],
-    LeastSquaresIndex[MoebiusGame[Any, Any, Any]],
+    LeastSquaresIndex[SparseMoebiusGame[Any, Any]],
 ):
     """The Shapley value: the Shapley interaction index restricted to the singletons."""
 

@@ -5,7 +5,6 @@ from typing import Any, ClassVar, override
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 from jax.core import Tracer
 from jaxtyping import Bool, Shaped, UInt8
 from ndlike.jax_functions import jax_multiply, jax_sum
@@ -13,51 +12,15 @@ from ndlike.jax_like import JaxLike
 from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
 from shapiq.coalition.coalition import unpack_bool_coalition
-from shapiq.game.finite import BoolFinitePlayerGame, FinitePlayerGame, _FiniteGame
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 from shapiq.value._dtype import op_spec
 from shapiq.value.value import JaxValue
 
+from ._transforms import powerset, subset_patterns
+from .finite import CoalitionDefinedGame, FinitePlayerGame, _FiniteGame
 
-@typechecked
-def subset_patterns(
-    size: int, min_size: int = 0, max_size: int | None = None
-) -> Bool[jax.Array, "n_subsets {size}"]:
-    """Return the subsets of a set of size ``size`` with ``min_size <= |T| <= max_size``.
-
-    Row ``i`` of the unfiltered powerset is the little-endian bit pattern of ``i``; filtering keeps
-    that order. Built with NumPy so the size filter stays static under ``jax.jit``.
-    """
-    max_size = size if max_size is None else max_size
-    patterns = (np.arange(1 << size)[:, None] >> np.arange(size)) & 1  # (2**size, size)
-    sizes = patterns.sum(axis=-1)
-    return jnp.asarray(patterns[(sizes >= min_size) & (sizes <= max_size)], dtype=bool)
-
-
-@typechecked
-def powerset(
-    coalition: Bool[jax.Array, "*batch n_players"],
-    order: int,
-    min_size: int = 0,
-    max_size: int | None = None,
-) -> Bool[jax.Array, "n_subsets *batch n_players"]:
-    """Generate the subsets of coalitions of size ``order`` with ``min_size <= |T| <= max_size``."""
-    patterns = subset_patterns(order, min_size, max_size)  # (n_subsets, order)
-    # Get the indices of the players in the coalition
-    rank = jnp.cumsum(coalition, axis=-1) - 1  # (*batch n_players)
-    # Compute the patterns for the players in the rank
-    pattern_columns_of_rank = (
-        rank[..., None, :] == jnp.arange(order)[:, None]
-    )  # (*batch, order, n_players)
-    # Mask out those ranks, which are not in the coalition
-    onehot = coalition[..., None, :] & pattern_columns_of_rank  # (*batch, order, n_players)
-    # Align patterns for broadcasting
-    patterns = patterns.reshape(
-        patterns.shape[0], *(1,) * (coalition.ndim - 1), order, 1
-    )  # (n_subsets, *batch, order, 1)
-    # Match player positions (onehot) with subset patterns (patterns) and build concrete coalition by ORing the player positions with the patterns.
-    return jnp.any(onehot & patterns, axis=-2)  # (n_subsets, *batch, n_players)
+__all__ = ["DiscreteDerivative", "powerset", "subset_patterns"]
 
 
 def _check_order(interaction: jax.Array, order: int) -> None:
@@ -79,7 +42,6 @@ def _derivative(
     coalition: Bool[jax.Array, "*coalition_batch n_players"],
 ) -> JaxValue:
     """Return Δ_T v(S) = sum over L ⊆ T of (-1)**|T - L| v(S | L)."""
-    # Include the game batch so the subset axis stays outside every evaluation batch axis.
     broadcasted_shape = jnp.broadcast_shapes(
         game.shape, coalition.shape[:-1], interaction.shape[:-1]
     )
@@ -90,7 +52,6 @@ def _derivative(
     game_evals = game.eval(
         coalition[None, :] | subsets
     )  # (2**order, *coalition_batch, *interaction_batch)
-    # The signs depend only on the subset patterns, not the specific interaction.
     differences = order - jnp.sum(subset_patterns(order), axis=-1)  # (2**order,)
     signs = jnp.where((differences & 1) == 0, 1, -1).reshape(
         -1, *(1,) * (game_evals.ndim - 1)
@@ -109,7 +70,7 @@ def _signed_sum(values: JaxValue, signs: jax.Array) -> JaxValue:
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class DiscreteDerivative[P, V: JaxLike[Any]](
-    BoolFinitePlayerGame[P, JaxValue],
+    CoalitionDefinedGame[P, JaxValue],
     JaxAxisProtected["DiscreteDerivative[P, V]", Any, _FiniteGame[P]],
 ):
     """The discrete derivative S ↦ Δ_T v(S) of a game with respect to interactions T.
@@ -172,7 +133,7 @@ class DiscreteDerivative[P, V: JaxLike[Any]](
         return op_spec(_signed_sum, child.update(shape=(1,)), 1)
 
     @override
-    def _eval_bool(
+    def _coalition_bool(
         self, coalition: Bool[jax.Array, "#*batch {self.game.n_players}"]
     ) -> Shaped[JaxValue, "*batch"]:
         return _derivative(self.game, self.interaction, self.order, coalition)

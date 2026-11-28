@@ -96,7 +96,7 @@ class FIxLIPGame[P](XAIGame[P, "FIxLIPGame[P]"]):
         return (self.pixel_values.shape[-2] // patch) * (self.pixel_values.shape[-1] // patch)
 
     @override
-    def _eval_bool(
+    def _coalition_bool(
         self, coalition: Bool[jax.Array, "#*batch {self.n_players}"]
     ) -> Float[jax.Array, "*batch"]:
         """Embed every coalition's image and text in batches and return their logits."""

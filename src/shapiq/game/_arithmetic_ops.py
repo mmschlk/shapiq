@@ -3,19 +3,19 @@
 import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, override
+from typing import TYPE_CHECKING, Any, ClassVar, cast, override
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flextype import CastUnavailable, autocast, castmethod
 from jax.core import Tracer
-from jaxtyping import Bool, Shaped
+from jaxtyping import Bool, Shaped, UInt8
 from ndlike import jax_functions as jf
 from ndlike.jax_like import JaxLike
 from ndlike.tuple import BroadcastTuple
 from ndlike.tuple.jax import JaxBroadcastTuple
 
+from shapiq.coalition import FiniteCoalition
 from shapiq.players import Players
 from shapiq.typing import typechecked
 from shapiq.value._dtype import (
@@ -33,24 +33,14 @@ from .arithmetic import (
     MappedGame,
     ProductGame,
     _ensure_shape,
-    _require_refinable_children,
     _zeros_from_arithmetic,
 )
-from .finite import FinitePlayerGame
-from .game import Game
-from .kadditive import AdditiveGame, KAdditiveGame
-from .moebius import _moebius_coefficients_by_eval, _moebius_zero_like
+from .base import Game
+from .finite import Basis, FinitePlayerGame
 
 
 def _known_int_exponent(other: object) -> int | None:
-    """Return a concrete integer scalar exponent (either sign), or ``None`` if general/dynamic.
-
-    Matches JAX's ``jnp.power`` concrete-integer specialization (which lowers scalar
-    integer exponents to ``jax.lax.integer_pow`` without truncating through
-    ``jnp.asarray``) while rejecting booleans as non-numeric. Concrete JAX scalars
-    are checked against ``Tracer`` first so closed-over JAX arrays inside
-    ``jax.jit`` are read without entering the active trace.
-    """
+    """Return a concrete integer scalar exponent (either sign), or ``None`` if general/dynamic."""
     if isinstance(other, (bool, np.bool_)):
         return None
     if isinstance(other, (int, np.integer)):
@@ -76,15 +66,7 @@ def _is_concrete_nonzero(
     *,
     target_dtype: object = None,
 ) -> bool:
-    """Return whether every leaf of ``divisor`` is concretely finite and nonzero at division dtype.
-
-    Host scalars/NumPy arrays are checked after normalization to ``divisor.dtype`` and
-    again after conversion to ``target_dtype`` (the ``true_divide`` computation dtype),
-    so values that underflow to zero or overflow to infinity under either conversion
-    (e.g., Python ``1e-8`` or ``1e5`` with a ``float16`` game) never falsely refine.
-    Concrete JAX leaves are inspected via host NumPy after a ``Tracer`` preflight so
-    closed-over JAX arrays inside ``jax.jit`` never enter the active trace.
-    """
+    """Return whether every leaf of ``divisor`` is concretely finite and nonzero at division dtype."""
     cast_dtype = None if target_dtype is None else jnp.dtype(cast("Any", target_dtype))
     if isinstance(raw, (int, float, complex, np.number, np.ndarray)) and isinstance(
         divisor, jax.Array
@@ -128,15 +110,7 @@ def _jit_dynamic_power(left: Any, right: Any) -> Any:  # noqa: ANN401 - generic 
 
 
 def _dynamic_power(left: JaxValue, right: JaxValue) -> JaxValue:
-    """Evaluate ``left ** right`` along JAX's dynamic power path.
-
-    In eager mode, ``jnp.power(x, y)`` specializes concrete 0-d integer ``y`` to
-    ``jax.lax.integer_pow`` (preserving ``x.dtype``), whereas batched and JIT-traced
-    calls use JAX's dynamic power path (promoting mixed integer operands, e.g.
-    ``int8 ** int32 -> int32``). Routing intrinsically dynamic powers (game-valued
-    and general-constant operands) through this path keeps runtime dtypes uniform
-    across scalar coalitions, batched coalitions, JIT, and lazy ``dtype`` inference.
-    """
+    """Evaluate ``left ** right`` along JAX's dynamic power path."""
     if isinstance(left, jax.Array) and isinstance(right, jax.Array):
         if (
             not isinstance(right, Tracer)
@@ -163,10 +137,7 @@ class _ScalarDivGame[
     P,
     V: JaxValue = JaxValue,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
-](
-    ArithmeticGame[P, V, GameT, "_ScalarDivGame[P, V, GameT]"],
-    metaclass=autocast(KAdditiveGame, max_cost=0.0),
-):
+](ArithmeticGame[P, V, GameT, "_ScalarDivGame[P, V, GameT]"]):
     """Private direct ``true_divide`` adapter for ``game / constant`` or ``constant / game``."""
 
     constant: JaxValue
@@ -194,6 +165,12 @@ class _ScalarDivGame[
         validate_numeric_value(self.constant, "Division constant")
         self.validate()
 
+    def _is_linear_division(self) -> bool:
+        """Return whether this division scales the child linearly without zero/nonfinite division."""
+        return not self.reciprocal and (
+            self.known_nonzero or _is_concrete_nonzero(self.constant, target_dtype=self.dtype)
+        )
+
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:
         """Return exact JAX ``true_divide`` dtype and ``weak_type`` without evaluating."""
@@ -209,6 +186,29 @@ class _ScalarDivGame[
     def dtype(self) -> jnp.dtype:
         """Return exact JAX ``true_divide`` dtype without evaluating the child game."""
         return self._value_spec().dtype
+
+    @override
+    def _known_additivity(self) -> int | None:
+        """Return the child's known additivity bound when dividing by a concrete nonzero constant."""
+        if self.n_players == 0:
+            return 0
+        child_bound = self.games.members[0]._known_additivity()  # noqa: SLF001 - internal static bound check
+        if child_bound is None or not self._is_linear_division():
+            return None
+        return child_bound
+
+    @override
+    def _zeros_like_value(self, shape: tuple[int, ...]) -> Shaped[V, "..."]:
+        """Construct zero values lazily matching the quotient representation."""
+        return cast(
+            "Shaped[V, '...']",
+            _zeros_from_arithmetic(self.games.members, (self.constant,), shape, self.dtype),
+        )
+
+    @override
+    def empty_value(self) -> Shaped[V, "..."]:
+        """Evaluate the empty coalition directly via child ``empty_value``."""
+        return _ensure_shape(self._compute((self.games.members[0].empty_value(),)), self.shape)
 
     @classmethod
     @override
@@ -227,117 +227,60 @@ class _ScalarDivGame[
         lhs, rhs = (self.constant, values[0]) if self.reciprocal else (values[0], self.constant)
         return cast("Shaped[V, '...']", jf.jax_true_divide(lhs, rhs))
 
-    @castmethod(AdditiveGame)
-    def _as_additive(self) -> AdditiveGame[P, V]:
-        """Refine division of an additive game by a nonzero divisor."""
-        members = _require_refinable_div_children(self, AdditiveGame)
-        return _AdditiveDivGame(
-            games=JaxBroadcastTuple(members), constant=self.constant, known_nonzero=True
-        )
-
-    @castmethod(KAdditiveGame)
-    def _as_kadditive(self) -> KAdditiveGame[P, V]:
-        """Refine division of a k-additive game by a nonzero divisor."""
-        members = _require_refinable_div_children(self, KAdditiveGame)
-        return _KAdditiveDivGame(
-            games=JaxBroadcastTuple(members), constant=self.constant, known_nonzero=True
-        )
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _KAdditiveDivGame[
-    P,
-    V: JaxValue = JaxValue,
-    GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
-](
-    _ScalarDivGame[P, V, GameT],
-    KAdditiveGame[P, V],
-):
-    """Private k-additive refinement of ``game / nonzero_constant``."""
-
-    @property
-    @override
-    def additivity(self) -> int:
-        return self.games.members[0].additivity
-
-    @override
-    def _zeros_like_value(self, shape: tuple[int, ...]) -> Shaped[V, "..."]:
-        return cast(
-            "Shaped[V, '...']",
-            _zeros_from_arithmetic(self.games.members, (self.constant,), shape, self.dtype),
-        )
-
-    @override
-    def empty_value(self) -> Shaped[V, "..."]:
-        return _ensure_shape(self._compute((self.games.members[0].empty_value(),)), self.shape)
-
     def _divide_last_axis(self, term: JaxValue) -> Shaped[V, "..."]:
         result = jf.jax_true_divide(term, jf.jax_expand_dims(self.constant, axis=-1))
         return _ensure_shape(cast("Shaped[V, '...']", result), (*self.shape, term.shape[-1]))
 
-    @override
-    def _coefficients_by_order(self, order: int) -> Shaped[V, "..."]:
-        n_combos = math.comb(self.n_players, order)
-        if order > self.additivity or n_combos == 0:
-            return self._zeros_like_value((*self.shape, n_combos))
-        if order == 0:
-            return cast("Shaped[V, '...']", jf.jax_expand_dims(self.empty_value(), axis=-1))
+    def _linear_basis_query(self, interaction: FiniteCoalition, basis: Basis) -> Shaped[V, "..."]:
         child = self.games.members[0]
-        return self._divide_last_axis(child.coefficients(order=order))
-
-    @override
-    def _coefficients_for_interactions(
-        self,
-        interactions: Bool[jax.Array, "#*batch {self.n_players}"],
-        *,
-        max_order: int | None = None,
-    ) -> Shaped[V, "..."]:
-        del max_order
-        child = self.games.members[0]
-        result = jf.jax_true_divide(child.coefficients(interactions), self.constant)
-        target_batch = jnp.broadcast_shapes(self.shape, interactions.shape[:-1])
+        result = jf.jax_true_divide(child.coefficients(interaction, basis=basis), self.constant)
+        target_batch = jnp.broadcast_shapes(self.shape, interaction.shape[:-1])
         return _ensure_shape(cast("Shaped[V, '...']", result), target_batch)
 
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _AdditiveDivGame[
-    P,
-    V: JaxValue = JaxValue,
-    GameT: AdditiveGame[Any, Any] = AdditiveGame[P, Any],
-](
-    _KAdditiveDivGame[P, V, GameT],
-    AdditiveGame[P, V],
-):
-    """Private additive refinement of ``game / nonzero_constant``."""
-
-    @property
     @override
-    def additivity(self) -> Literal[0, 1]:
-        if self.n_players == 0:
-            return 0
-        return super(_AdditiveDivGame, self).additivity  # ty: ignore[invalid-explicit-return]
+    def _moebius_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_division():
+            return self._linear_basis_query(interaction, Basis.MOEBIUS)
+        return super(_ScalarDivGame, self)._moebius_bool(interaction)
 
     @override
-    def contributions(self) -> Shaped[V, "..."]:
-        if self.n_players == 0 or self.additivity == 0:
-            return self._zeros_like_value((*self.shape, self.n_players))
-        child = self.games.members[0]
-        return self._divide_last_axis(child.contributions())
+    def _moebius_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_division():
+            return self._linear_basis_query(interaction, Basis.MOEBIUS)
+        return super(_ScalarDivGame, self)._moebius_packed(interaction)
 
+    @override
+    def _fourier_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_division():
+            return self._linear_basis_query(interaction, Basis.FOURIER)
+        return super(_ScalarDivGame, self)._fourier_bool(interaction)
 
-def _require_refinable_div_children[T: FinitePlayerGame](
-    game: _ScalarDivGame[Any, Any, Any],
-    target: type[T],
-) -> tuple[T, ...]:
-    """Validate division refinement eligibility and zero-cost refine child games to ``target``."""
-    if game.reciprocal or not (
-        game.known_nonzero or _is_concrete_nonzero(game.constant, target_dtype=game.dtype)
-    ):
-        msg = "Division refinement requires dividing by a concrete nonzero constant."
-        raise CastUnavailable(msg)
-    return _require_refinable_children(game, target)
+    @override
+    def _fourier_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_division():
+            return self._linear_basis_query(interaction, Basis.FOURIER)
+        return super(_ScalarDivGame, self)._fourier_packed(interaction)
+
+    @override
+    def _coefficients_by_order(self, order: int, basis: Basis) -> Shaped[V, "..."]:
+        if basis in (Basis.MOEBIUS, Basis.FOURIER) and self._is_linear_division():
+            n_combos = math.comb(self.n_players, order)
+            known = self._known_additivity()
+            if n_combos == 0 or (known is not None and order > known):
+                return self._zeros_like_value((*self.shape, n_combos))
+            if order == 0 and basis is Basis.MOEBIUS:
+                return cast("Shaped[V, '...']", jf.jax_expand_dims(self.empty_value(), axis=-1))
+            child = self.games.members[0]
+            return self._divide_last_axis(child.coefficients(order=order, basis=basis))
+        return super(_ScalarDivGame, self)._coefficients_by_order(order, basis)
 
 
 # --- Private direct-power adapters (static int exponent vs dynamic constant leaf) ---
@@ -349,18 +292,8 @@ class _IntPowerGame[
     P,
     V: JaxValue = JaxValue,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
-](
-    ArithmeticGame[P, V, GameT, "_IntPowerGame[P, V, GameT]"],
-    metaclass=autocast(KAdditiveGame, max_cost=0.0),
-):
-    """Private ``game ** m`` adapter storing a concrete scalar integer ``exponent`` statically.
-
-    Because ``exponent`` is static pytree metadata rather than a dynamic leaf, it is
-    the single source of truth for both evaluation (JAX's ``lax.integer_pow``
-    semantics, preserving base dtype and raising ``TypeError`` on negative powers of
-    integers even under ``jax.jit``) and k-additive refinement (for ``exponent >= 0``
-    and k-additive bases, yielding bound ``min(n_players, exponent * base.additivity)``).
-    """
+](ArithmeticGame[P, V, GameT, "_IntPowerGame[P, V, GameT]"]):
+    """Private ``game ** m`` adapter storing a concrete scalar integer ``exponent`` statically."""
 
     exponent: int
 
@@ -394,42 +327,15 @@ class _IntPowerGame[
         return self._value_spec().dtype
 
     @override
-    def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
-        return cast("Shaped[V, '...']", jf.jax_power(values[0], self.exponent))
-
-    @castmethod(KAdditiveGame)
-    def _as_kadditive(self) -> KAdditiveGame[P, V]:
-        """Refine a k-additive game raised to a nonnegative integer power."""
+    def _known_additivity(self) -> int | None:
+        """Return ``min(n_players, exponent * base._known_additivity())`` for ``exponent >= 0``."""
+        if self.n_players == 0:
+            return 0
         if self.exponent < 0:
-            msg = "Power refinement requires a nonnegative integer exponent."
-            raise CastUnavailable(msg)
-        members = _require_refinable_children(self, KAdditiveGame)
-        return _KAdditivePowerGame(games=JaxBroadcastTuple(members), exponent=self.exponent)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _KAdditivePowerGame[
-    P,
-    V: JaxValue = JaxValue,
-    GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
-](
-    _IntPowerGame[P, V, GameT],
-    KAdditiveGame[P, V],
-):
-    """Private k-additive refinement of ``game ** m`` for nonnegative static integer ``m``."""
-
-    def __post_init__(self) -> None:
-        super(_KAdditivePowerGame, self).__post_init__()
-        if self.exponent < 0:
-            msg = "K-additive power refinement requires a nonnegative integer exponent."
-            raise ValueError(msg)
-
-    @property
-    @override
-    def additivity(self) -> int:
-        """Return ``min(n_players, exponent * base.additivity)`` without evaluating coalitions."""
-        base_bound = self.games.members[0].additivity
+            return None
+        base_bound = self.games.members[0]._known_additivity()  # noqa: SLF001 - internal O(1) bound check
+        if base_bound is None:
+            return None
         return min(self.n_players, self.exponent * base_bound)
 
     @override
@@ -441,22 +347,8 @@ class _KAdditivePowerGame[
         )
 
     @override
-    def _coefficients_by_order(self, order: int) -> Shaped[V, "..."]:
-        """Match Möbius-inversion dtypes on zero-shortcut order queries."""
-        n_combos = math.comb(self.n_players, order)
-        if order > self.additivity or n_combos == 0:
-            return _moebius_zero_like(self, (*self.shape, n_combos))
-        return super(_KAdditivePowerGame, self)._coefficients_by_order(order)
-
-    @override
-    def _coefficients_for_interactions(
-        self,
-        interactions: Bool[jax.Array, "#*batch {self.n_players}"],
-        *,
-        max_order: int | None = None,
-    ) -> Shaped[V, "..."]:
-        """Compute integer-power Möbius coefficients explicitly via subset inversion."""
-        return _moebius_coefficients_by_eval(self, interactions, max_order=max_order)
+    def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
+        return cast("Shaped[V, '...']", jf.jax_power(values[0], self.exponent))
 
 
 @typechecked
@@ -465,16 +357,8 @@ class _ScalarPowerGame[
     P,
     V: JaxValue = JaxValue,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
-](
-    ArithmeticGame[P, V, GameT, "_ScalarPowerGame[P, V, GameT]"],
-):
-    """Private dynamic-constant ``power`` adapter for general ``game ** c`` and ``c ** game``.
-
-    Handles reflected, floating/complex, batched, and traced/dynamic exponents using
-    a dynamic pytree ``constant`` leaf and JAX's uniform dynamic power path so
-    metadata ``dtype`` and runtime dtypes agree across scalar, batched, sliced, and
-    JIT evaluations. Does not infer a reduced k-additive bound.
-    """
+](ArithmeticGame[P, V, GameT, "_ScalarPowerGame[P, V, GameT]"]):
+    """Private dynamic-constant ``power`` adapter for general ``game ** c`` and ``c ** game``."""
 
     constant: JaxValue
     reflected: bool = field(default=False, kw_only=True)

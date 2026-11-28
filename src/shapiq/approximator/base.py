@@ -21,9 +21,9 @@ from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.errors import HistoryError, UnsupportedSamplerError
 from shapiq.game import FinitePlayerGame, Game
-from shapiq.game.exact import discrete_derivative_coefficients
 from shapiq.index import DiscreteDerivativeIndex
 from shapiq.index._base import Index, weight_parameters
+from shapiq.index.exact import discrete_derivative_coefficients
 from shapiq.sampling._base import Border, Sampler, WithReplacement
 from shapiq.typing import typechecked
 from shapiq.value import Value

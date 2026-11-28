@@ -1,7 +1,7 @@
 """Base game class for shapiq."""
 
 from abc import abstractmethod
-from typing import Any, TypeIs
+from typing import Any, TypeIs, override
 
 import jax
 import jax.numpy as jnp
@@ -34,6 +34,12 @@ class Game[C, V: Value](JaxLike[Any]):
     @abstractmethod
     def players(self) -> Players[C]:
         """Return player sets whose logical shape broadcasts to ``shape``."""
+
+    @property
+    @override
+    def ndim(self) -> int:
+        """Return the number of logical game batch dimensions."""
+        return len(self.shape)
 
     def _value_spec(self) -> jax.ShapeDtypeStruct:
         """Return dtype metadata without evaluating a coalition."""

@@ -1,4 +1,4 @@
-"""Exact computation of interaction indices from a cached table of every coalition value."""
+"""Exact computation of interaction indices from a cached dense coalition table."""
 
 from dataclasses import dataclass
 from typing import Any, ClassVar, Self
@@ -8,12 +8,8 @@ import jax.numpy as jnp
 from jaxtyping import Bool, Float, Shaped
 from ndlike.protected_axis.jax import JaxAxisProtected
 
-from shapiq.game.discretederivative import subset_patterns
-from shapiq.game.finite import FinitePlayerGame
-from shapiq.game.game import Game
-from shapiq.game.table import TableGame
-from shapiq.index import DiscreteDerivativeIndex
-from shapiq.index._base import weight_parameters
+from shapiq.game import DenseCoalitionGame, FinitePlayerGame, Game, subset_patterns
+from shapiq.index._base import DiscreteDerivativeIndex, weight_parameters
 from shapiq.typing import typechecked
 from shapiq.value._dtype import resolve_weight_dtype
 
@@ -23,18 +19,18 @@ from shapiq.value._dtype import resolve_weight_dtype
 class ExactComputer(JaxAxisProtected["ExactComputer"]):
     """Exact interaction indices of a game batch, evaluating each coalition only once.
 
-    ``from_game`` stores every coalition value as a ``TableGame``; calling the computer with
-    an index reuses that table, so several indices cost one round of game evaluations. The
+    ``from_game`` stores every coalition value as a ``DenseCoalitionGame``; calling the computer
+    with an index reuses that table, so several indices cost one round of game evaluations. The
     batch is the game batch. Memory grows with ``2**n_players`` per game.
     """
 
-    table: TableGame
+    table: DenseCoalitionGame
     protected_axes: ClassVar[dict[str, int]] = {"table": 0}
 
     @classmethod
     def from_game(cls, game: Shaped[FinitePlayerGame, "#*batch"]) -> Self:
         """Evaluate ``game`` on every coalition and cache the values."""
-        return cls(table=TableGame.from_game(game))
+        return cls(table=DenseCoalitionGame.from_game(game))
 
     @typechecked
     def __call__[R: Game](self, index: Shaped[DiscreteDerivativeIndex[R], "#*batch"]) -> R:
@@ -45,7 +41,7 @@ class ExactComputer(JaxAxisProtected["ExactComputer"]):
         """
         n_players = self.table.n_players
         interactions = index.interactions(n_players)
-        # subset_patterns lists coalitions in TableGame order, matching the table's last axis.
+        # subset_patterns lists coalitions in DenseCoalitionGame order, matching the last axis.
         weights = discrete_derivative_coefficients(index, subset_patterns(n_players), interactions)
         values = self.table.values
         dtype = resolve_weight_dtype(values, *weight_parameters(index))

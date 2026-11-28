@@ -294,3 +294,6 @@ dev = [
     {include-group = "lint"},
     {include-group = "all_ml"},
 ]
+cuda13 = [
+    "jax[cuda13]>=0.10.1; sys_platform == 'linux'",
+]

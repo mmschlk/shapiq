@@ -1,11 +1,11 @@
-"""Lazy dtype conversion for evaluated coalition values."""
+"""Lazy dtype and device conversion for evaluated coalition values."""
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, override
+from typing import TYPE_CHECKING, Any, ClassVar, override
 
 import jax
 import jax.numpy as jnp
-from flextype import CastUnavailable, autocast, castmethod, try_cast
+from flextype import CastUnavailable, castmethod, try_cast
 from jaxtyping import Bool, Shaped, UInt8
 from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
 
@@ -14,9 +14,8 @@ from shapiq.typing import typechecked
 from shapiq.value import Value
 from shapiq.value._dtype import _resolve_dtype, cast_value, is_numeric_dtype
 
-from .finite import FinitePlayerGame, _FiniteGame
-from .kadditive import AdditiveGame, KAdditiveGame
-from .table import TableGame
+from .dense import DenseCoalitionGame
+from .finite import Basis, CoalitionDefinedGame, FinitePlayerGame, _FiniteGame
 
 if TYPE_CHECKING:
     from jax.sharding import Sharding
@@ -27,9 +26,8 @@ if TYPE_CHECKING:
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class CastGame[P, V: Value, GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, V]](
-    FinitePlayerGame[P, V],
+    CoalitionDefinedGame[P, V],
     JaxAxisProtected["CastGame[P, V, GameT]", Any, _FiniteGame[P]],
-    metaclass=autocast(KAdditiveGame, max_cost=0.0),
 ):
     """Cast or place each evaluated value, keeping the child game on its original device.
 
@@ -47,6 +45,27 @@ class CastGame[P, V: Value, GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame
         if self.target_dtype is not None:
             target = _resolve_dtype(self.target_dtype, "CastGame target_dtype", allow_bool=True)
             object.__setattr__(self, "target_dtype", target)
+
+    def _preserves_additivity(self) -> bool:
+        """Return whether this cast preserves additivity linearly on Möbius coefficients.
+
+        Floating/complex casts preserve structural additivity under ADR 0011's
+        floating-point rounding policy; integer targets require a lossless
+        widening or same-range integer conversion so modular wraparound cannot
+        introduce higher-order interactions.
+        """
+        if self.target_dtype is None:
+            return True
+        if not is_numeric_dtype(self.target_dtype):
+            return False
+        src_dtype = self.game.dtype
+        if jnp.issubdtype(self.target_dtype, jnp.integer):
+            if not jnp.issubdtype(src_dtype, jnp.integer):
+                return False
+            src_info = jnp.iinfo(src_dtype)
+            dst_info = jnp.iinfo(self.target_dtype)
+            return dst_info.min <= src_info.min and dst_info.max >= src_info.max
+        return True
 
     @property
     @override
@@ -66,6 +85,16 @@ class CastGame[P, V: Value, GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame
         if self.target_dtype is None:
             return self.game._value_spec()  # noqa: SLF001 - internal lazy abstract dtype hook
         return jax.ShapeDtypeStruct((), self.target_dtype)
+
+    @override
+    def _known_additivity(self) -> int | None:
+        """Propagate the child's known additivity bound when this cast preserves additivity."""
+        if self.n_players == 0:
+            return 0
+        child_bound = self.game._known_additivity()  # noqa: SLF001 - internal static bound check
+        if child_bound is None or not self._preserves_additivity():
+            return None
+        return child_bound
 
     @override
     def astype(
@@ -88,101 +117,75 @@ class CastGame[P, V: Value, GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame
         return cast_value(value, self.target_dtype, copy=False, device=self.device)
 
     @override
-    def _eval_bool(self, coalition: Bool[jax.Array, "... {self.n_players}"]) -> Shaped[V, "..."]:
-        return self._cast_value(self.game.eval(coalition))
-
-    @override
-    def _eval_packed(
-        self, coalition: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
-    ) -> Shaped[V, "..."]:
-        return self._cast_value(self.game.eval(coalition))
-
-    def _refinable_child[T: KAdditiveGame](self, capability: type[T]) -> T:
-        """Require a zero-cost child view and a cast that preserves additivity."""
-        if self.target_dtype is None or is_numeric_dtype(self.target_dtype):
-            result = try_cast(self.game, capability, max_cost=0.0)
-            if result is not None and not (
-                self.target_dtype is not None
-                and jnp.issubdtype(result.value.dtype, jnp.inexact)
-                and jnp.issubdtype(self.target_dtype, jnp.integer)
-            ):
-                return result.value
-        msg = f"CastGame cannot preserve {capability.__name__} for this child and target dtype."
-        raise CastUnavailable(msg)
-
-    @castmethod(KAdditiveGame)
-    def _as_kadditive(self) -> KAdditiveGame[P, V]:
-        """Refine this cast of a k-additive game."""
-        return _KAdditiveCastGame(
-            self._refinable_child(KAdditiveGame), self.target_dtype, device=self.device
-        )
-
-    @castmethod(AdditiveGame)
-    def _as_additive(self) -> AdditiveGame[P, V]:
-        """Refine this cast of an additive game."""
-        return _AdditiveCastGame(
-            self._refinable_child(AdditiveGame), self.target_dtype, device=self.device
-        )
-
-    @castmethod(TableGame, cost=1.0)
-    def _as_table(self) -> TableGame[P]:
-        """Cast the child's table directly when it has a fast materialization."""
-        if self.target_dtype is None or jnp.issubdtype(self.target_dtype, jnp.floating):
-            result = try_cast(self.game, TableGame, max_cost=1.0)
-            if result is not None:
-                return result.value.astype(self.target_dtype, device=self.device)
-        msg = "CastGame has no fast floating table representation."
-        raise CastUnavailable(msg)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _KAdditiveCastGame[P, V: Value, GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, V]](
-    CastGame[P, V, GameT], KAdditiveGame[P, V]
-):
-    """Cast the values and Möbius coefficients of a k-additive game."""
-
-    @property
-    @override
-    def additivity(self) -> int:
-        return self.game.additivity
-
-    @override
     def empty_value(self) -> Shaped[V, "..."]:
+        """Cast the child's empty-coalition value directly."""
         return self._cast_value(self.game.empty_value())
 
     @override
     def _zeros_like_value(self, shape: tuple[int, ...]) -> Shaped[V, "..."]:
-        return self._cast_value(self.game._zeros_like_value(shape))  # noqa: SLF001 - internal KAdditiveGame hook
+        """Cast the child's lazy zero template directly."""
+        if type(self.game)._zeros_like_value is not FinitePlayerGame._zeros_like_value:  # noqa: SLF001
+            return self._cast_value(self.game._zeros_like_value(shape))  # noqa: SLF001
+        return super(CastGame, self)._zeros_like_value(shape)
 
     @override
-    def _coefficients_by_order(self, order: int) -> Shaped[V, "..."]:
-        return self._cast_value(self.game.coefficients(order=order))
-
-    @override
-    def _coefficients_for_interactions(
-        self,
-        interactions: Bool[jax.Array, "#*batch {self.n_players}"],
-        *,
-        max_order: int | None = None,
+    def _coalition_bool(
+        self, coalition: Bool[jax.Array, "... {self.n_players}"]
     ) -> Shaped[V, "..."]:
-        return self._cast_value(
-            self.game._coefficients_for_interactions(interactions, max_order=max_order)  # noqa: SLF001 - internal KAdditiveGame hook
-        )
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _AdditiveCastGame[P, V: Value](
-    _KAdditiveCastGame[P, V, AdditiveGame[P, V]], AdditiveGame[P, V]
-):
-    """Cast the values and singleton contributions of an additive game."""
-
-    @property
-    @override
-    def additivity(self) -> Literal[0, 1]:
-        return 0 if self.n_players == 0 else self.game.additivity
+        return self._cast_value(self.game.eval(coalition))
 
     @override
-    def contributions(self) -> Shaped[V, "..."]:
-        return self._cast_value(self.game.contributions())
+    def _coalition_packed(
+        self, coalition: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        return self._cast_value(self.game.eval(coalition))
+
+    @override
+    def _moebius_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        if self._preserves_additivity():
+            return self._cast_value(self.game.moebius_coefficients(interaction))
+        return super(CastGame, self)._moebius_bool(interaction)
+
+    @override
+    def _moebius_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        if self._preserves_additivity():
+            return self._cast_value(self.game.moebius_coefficients(interaction))
+        return super(CastGame, self)._moebius_packed(interaction)
+
+    @override
+    def _fourier_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        if self.target_dtype is None:
+            return self._cast_value(self.game.fourier_coefficients(interaction))
+        return super(CastGame, self)._fourier_bool(interaction)
+
+    @override
+    def _fourier_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        if self.target_dtype is None:
+            return self._cast_value(self.game.fourier_coefficients(interaction))
+        return super(CastGame, self)._fourier_packed(interaction)
+
+    @override
+    def _coefficients_by_order(self, order: int, basis: Basis) -> Shaped[V, "..."]:
+        if basis is Basis.MOEBIUS and self._preserves_additivity():
+            return self._cast_value(self.game.moebius_coefficients(order=order))
+        if basis is Basis.FOURIER and self.target_dtype is None:
+            return self._cast_value(self.game.fourier_coefficients(order=order))
+        return super(CastGame, self)._coefficients_by_order(order, basis)
+
+    @castmethod(DenseCoalitionGame, cost=1.0)
+    def _as_dense_coalition(self) -> DenseCoalitionGame[P]:
+        """Cast the child's dense coalition table directly when it has a fast materialization."""
+        if self.target_dtype is None or jnp.issubdtype(self.target_dtype, jnp.floating):
+            result = try_cast(self.game, DenseCoalitionGame, max_cost=1.0)
+            if result is not None:
+                return result.value.astype(self.target_dtype, device=self.device)
+        msg = "CastGame has no fast floating DenseCoalitionGame representation."
+        raise CastUnavailable(msg)

@@ -72,7 +72,7 @@ class RecontextualizedGame[In: HasShape, P](LocalXAIGame[In, P, "Recontextualize
         super(RecontextualizedGame, self).__post_init__()
 
     @override
-    def _eval_bool(
+    def _coalition_bool(
         self, coalition: Bool[jax.Array, "#*batch {self.n_players}"]
     ) -> Float[JaxValue, "*batch"]:
         """Recontextualize once per distinct coalition and predict its inputs."""

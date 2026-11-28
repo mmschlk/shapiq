@@ -1,1 +1,0 @@
-"""Metagame implementation."""

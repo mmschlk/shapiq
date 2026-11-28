@@ -9,12 +9,11 @@ import pytest
 from ndlike.jax_functions import jax_broadcast_to
 
 from shapiq.approximator.base import SHAPIQ
-from shapiq.game.exact import ExactComputer
-from shapiq.game.moebius import MoebiusGame
-from shapiq.game.table import TableGame
+from shapiq.game import DenseCoalitionGame, SparseMoebiusGame
 from shapiq.index import (
     AlphaBetaIndex,
     BanzhafIndex,
+    ExactComputer,
     ShapleyInteractionIndex,
     ShapleyValueIndex,
     WeightedBanzhafIndex,
@@ -80,25 +79,25 @@ def _brute_force(table: list[float], weight, interactions: list[tuple[int, ...]]
 @pytest.mark.parametrize("index_shape", [(), (3, 1)])
 def test_exact_matches_the_index_definition(index, weight, index_shape):
     index = jax_broadcast_to(index, index_shape)
-    computer = ExactComputer.from_game(TableGame(TABLES, FinitePlayers(N_PLAYERS)))
+    computer = ExactComputer.from_game(DenseCoalitionGame(TABLES, FinitePlayers(N_PLAYERS)))
     result = computer(index)
     sets = [tuple(int(i) for i in jnp.flatnonzero(row)) for row in index.interactions(N_PLAYERS)]
     expected = jnp.array([_brute_force(table.tolist(), weight, sets) for table in TABLES])
 
-    assert isinstance(result, MoebiusGame)
+    assert isinstance(result, SparseMoebiusGame)
     assert result.shape == jnp.broadcast_shapes((2,), index_shape)
     assert jnp.allclose(result.values, expected, atol=1e-5)
 
 
 @pytest.mark.parametrize("index_shape", [(3,), (2, 3)])
 def test_game_and_index_batches_broadcast_and_the_computer_runs_under_jit(index_shape):
-    computer = ExactComputer.from_game(TableGame(TABLES, FinitePlayers(N_PLAYERS)))
+    computer = ExactComputer.from_game(DenseCoalitionGame(TABLES, FinitePlayers(N_PLAYERS)))
     p_values = jnp.linspace(0.3, 0.7, prod(index_shape)).reshape(index_shape)
     index = WeightedBanzhafIndex(p=p_values, max_order=2)
 
     every_pair = computer.reshape(2, *(1,) * index.ndim)(index)  # (games, *index_batch)
     jitted = jax.jit(lambda c: c(ShapleyValueIndex()).values)(computer)
-    single = ExactComputer.from_game(TableGame(TABLES[1], FinitePlayers(N_PLAYERS)))
+    single = ExactComputer.from_game(DenseCoalitionGame(TABLES[1], FinitePlayers(N_PLAYERS)))
     last = (-1,) * index.ndim
     single_p = WeightedBanzhafIndex(p=p_values[last], max_order=2)
 
@@ -119,7 +118,7 @@ def test_game_and_index_batches_broadcast_and_the_computer_runs_under_jit(index_
 )
 def test_exact_and_shapiq_respect_game_and_index_dtypes(index, expected_dtype):
     players = FinitePlayers(2)
-    table = TableGame(jnp.array([0, 1, 2, 3], dtype=jnp.float16), players)
+    table = DenseCoalitionGame(jnp.array([0, 1, 2, 3], dtype=jnp.float16), players)
     computer = ExactComputer.from_game(table)
     result = jax.jit(lambda c, i: c(i))(computer, index)
     assert result.dtype == expected_dtype
@@ -132,7 +131,7 @@ def test_exact_and_shapiq_respect_game_and_index_dtypes(index, expected_dtype):
 
 
 def test_shapiq_preserves_dtype_when_rescaling_earlier_estimates():
-    game = TableGame(jnp.array([0, 1, 2, 3], dtype=jnp.float16), FinitePlayers(2))
+    game = DenseCoalitionGame(jnp.array([0, 1, 2, 3], dtype=jnp.float16), FinitePlayers(2))
     sampler = UniformWithReplacement(keys=jax.random.key(0), n_players=2)
     approximator = SHAPIQ(sampler=sampler, game=game, index=ShapleyValueIndex())
     first, approximator = approximator(8)

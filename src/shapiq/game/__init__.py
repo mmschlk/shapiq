@@ -1,20 +1,38 @@
 """Definitions of games and related data structures."""
 
 from .arithmetic import AffineGame, ArithmeticGame, MappedGame, ProductGame
+from .base import Game, NumericGame
 from .cast import CastGame
-from .finite import BoolFinitePlayerGame, FinitePlayerGame, PackedFinitePlayerGame
-from .game import Game
-from .kadditive import AdditiveGame, KAdditiveGame
+from .dense import DenseCoalitionGame, DenseFourierGame, DenseGame, DenseMoebiusGame
+from .derivative import DiscreteDerivative, powerset, subset_patterns
+from .finite import (
+    Basis,
+    CoalitionDefinedGame,
+    FinitePlayerGame,
+    FourierDefinedGame,
+    KnownAdditivity,
+    MoebiusDefinedGame,
+)
 from .reduction import ReductionGame, SumReductionGame
-from .table import TableGame
+from .sparse import SparseCoalitionGame, SparseFourierGame, SparseGame, SparseMoebiusGame
 
 __all__ = [
     "Game",
+    "NumericGame",
+    "Basis",
     "FinitePlayerGame",
-    "BoolFinitePlayerGame",
-    "PackedFinitePlayerGame",
-    "KAdditiveGame",
-    "AdditiveGame",
+    "KnownAdditivity",
+    "CoalitionDefinedGame",
+    "MoebiusDefinedGame",
+    "FourierDefinedGame",
+    "DenseGame",
+    "DenseCoalitionGame",
+    "DenseMoebiusGame",
+    "DenseFourierGame",
+    "SparseGame",
+    "SparseCoalitionGame",
+    "SparseMoebiusGame",
+    "SparseFourierGame",
     "ArithmeticGame",
     "CastGame",
     "AffineGame",
@@ -22,5 +40,7 @@ __all__ = [
     "ProductGame",
     "ReductionGame",
     "SumReductionGame",
-    "TableGame",
+    "DiscreteDerivative",
+    "powerset",
+    "subset_patterns",
 ]

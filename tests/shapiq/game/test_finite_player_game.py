@@ -1,4 +1,4 @@
-"""Alternative native evaluators and finite-coalition game dispatch."""
+"""Native basis hooks, packed/boolean dispatch, and additivity on FinitePlayerGame."""
 
 import _py_abc
 from abc import abstractmethod
@@ -15,22 +15,31 @@ from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.coalition.coalition import pack_bool_coalition
 from shapiq.game import (
-    BoolFinitePlayerGame,
+    Basis,
+    CoalitionDefinedGame,
+    DenseCoalitionGame,
     FinitePlayerGame,
-    PackedFinitePlayerGame,
+    FourierDefinedGame,
+    KnownAdditivity,
+    MoebiusDefinedGame,
+    SparseMoebiusGame,
     finite as finite_game,
+    subset_patterns,
 )
 from shapiq.players import FinitePlayers
 from shapiq.typing import typechecked
 
 
-class _BooleanGame(BoolFinitePlayerGame[Any, jax.Array]):
-    def _eval_bool(self, coalition):
+class _BooleanGame(CoalitionDefinedGame[Any, jax.Array]):
+    def _coalition_bool(self, coalition):
         return self.values[..., 0] + jnp.sum(coalition, axis=-1)
 
 
-class _PackedGame(PackedFinitePlayerGame[Any, jax.Array]):
-    def _eval_packed(self, coalition):
+class _PackedGame(CoalitionDefinedGame[Any, jax.Array]):
+    def _coalition_bool(self, coalition):
+        return self._coalition_packed(pack_bool_coalition(coalition))
+
+    def _coalition_packed(self, coalition):
         remainder = self.players.n_players % 8
         if remainder:
             coalition = coalition.at[..., -1].set(
@@ -39,9 +48,9 @@ class _PackedGame(PackedFinitePlayerGame[Any, jax.Array]):
         return self.values[..., 0] + jnp.sum(jax.lax.population_count(coalition), axis=-1)
 
 
-class _BothGame(FinitePlayerGame[Any, jax.Array]):
-    _eval_bool = _BooleanGame._eval_bool
-    _eval_packed = _PackedGame._eval_packed
+class _BothGame(CoalitionDefinedGame[Any, jax.Array]):
+    _coalition_bool = _BooleanGame._coalition_bool
+    _coalition_packed = _PackedGame._coalition_packed
 
 
 class _PureABCMeta(_py_abc.ABCMeta, type(FinitePlayerGame)):
@@ -83,18 +92,19 @@ def game_class(request, game_metaclass):
 @pytest.mark.parametrize(
     ("base", "required"),
     [
-        (FinitePlayerGame, {"_eval_bool", "_eval_packed"}),
-        (BoolFinitePlayerGame, {"_eval_bool"}),
-        (PackedFinitePlayerGame, {"_eval_packed"}),
+        (FinitePlayerGame, {"_coalition_bool", "_moebius_bool", "_fourier_bool"}),
+        (CoalitionDefinedGame, {"_coalition_bool"}),
+        (MoebiusDefinedGame, {"_moebius_bool"}),
+        (FourierDefinedGame, {"_fourier_bool"}),
     ],
 )
 def test_native_hooks_are_ordinary_abstract_requirements(base, required, game_metaclass):
-    game_class = _array_game_class(base, metaclass=game_metaclass)
+    cls = _array_game_class(base, metaclass=game_metaclass)
     assert isabstract(base)
-    assert isabstract(game_class)
-    assert game_class.__abstractmethods__ == required
+    assert isabstract(cls)
+    assert cls.__abstractmethods__ == required
     with pytest.raises(TypeError, match="|".join(sorted(required))):
-        game_class(jnp.zeros(1), FinitePlayers(3))
+        cls(jnp.zeros(1), FinitePlayers(3))
 
 
 def test_implementing_the_chosen_native_hooks_allows_concrete_games(game_class):
@@ -123,66 +133,58 @@ def test_inherited_evaluation_hooks_count(base, game_metaclass):
     class Inherited(base):
         pass
 
-    game_class = _array_game_class(Inherited, metaclass=game_metaclass)
-    assert not isabstract(game_class)
-    game = game_class(jnp.zeros(1), FinitePlayers(3))
+    cls = _array_game_class(Inherited, metaclass=game_metaclass)
+    assert not isabstract(cls)
+    game = cls(jnp.zeros(1), FinitePlayers(3))
     assert float(game(jnp.array([True, False, True]))) == 2
 
 
 def test_inheriting_only_a_conversion_default_stays_abstract(game_metaclass):
-    class Intermediate(BoolFinitePlayerGame):
+    class Intermediate(CoalitionDefinedGame):
         pass
 
     class Descendant(Intermediate):
         pass
 
-    game_class = _array_game_class(Descendant, metaclass=game_metaclass)
-    assert isabstract(game_class)
-    with pytest.raises(TypeError, match="_eval_bool"):
-        game_class(jnp.zeros(1), FinitePlayers(3))
+    cls = _array_game_class(Descendant, metaclass=game_metaclass)
+    assert isabstract(cls)
+    with pytest.raises(TypeError, match="_coalition_bool"):
+        cls(jnp.zeros(1), FinitePlayers(3))
 
 
 def test_restoring_an_abstract_base_hook_restores_abstractness(game_metaclass):
     class Reset(_BooleanGame):
-        _eval_bool = FinitePlayerGame._eval_bool
+        _coalition_bool = FinitePlayerGame._coalition_bool
 
     assert isabstract(_array_game_class(Reset, metaclass=game_metaclass))
 
 
-def test_overriding_the_other_format_does_not_satisfy_the_native_requirement(game_metaclass):
-    class MissingBoolean(BoolFinitePlayerGame):
-        _eval_packed = _PackedGame._eval_packed
+def test_overriding_only_packed_does_not_satisfy_coalition_bool(game_metaclass):
+    class MissingBoolean(CoalitionDefinedGame):
+        _coalition_packed = _PackedGame._coalition_packed
 
-    class MissingPacked(PackedFinitePlayerGame):
-        _eval_bool = _BooleanGame._eval_bool
-
-    for base, required in [(MissingBoolean, "_eval_bool"), (MissingPacked, "_eval_packed")]:
-        game_class = _array_game_class(base, metaclass=game_metaclass)
-        assert game_class.__abstractmethods__ == {required}
-        with pytest.raises(TypeError, match=required):
-            game_class(jnp.zeros(1), FinitePlayers(3))
+    cls = _array_game_class(MissingBoolean, metaclass=game_metaclass)
+    assert cls.__abstractmethods__ == {"_coalition_bool"}
+    with pytest.raises(TypeError, match="_coalition_bool"):
+        cls(jnp.zeros(1), FinitePlayers(3))
 
 
-def test_the_common_base_requires_both_native_hooks(game_metaclass):
-    class MissingPacked(FinitePlayerGame):
-        _eval_bool = _BooleanGame._eval_bool
+def test_the_common_base_requires_all_three_basis_bool_hooks(game_metaclass):
+    class OnlyCoalition(FinitePlayerGame):
+        _coalition_bool = _BooleanGame._coalition_bool
 
-    class MissingBoolean(FinitePlayerGame):
-        _eval_packed = _PackedGame._eval_packed
-
-    for base, required in [(MissingBoolean, "_eval_bool"), (MissingPacked, "_eval_packed")]:
-        game_class = _array_game_class(base, metaclass=game_metaclass)
-        assert game_class.__abstractmethods__ == {required}
+    cls = _array_game_class(OnlyCoalition, metaclass=game_metaclass)
+    assert cls.__abstractmethods__ == {"_moebius_bool", "_fourier_bool"}
 
 
 def test_an_abstract_hook_does_not_satisfy_the_requirement(game_metaclass):
     class AbstractBoolean(_BooleanGame):
         @abstractmethod
-        def _eval_bool(self, coalition):
+        def _coalition_bool(self, coalition):
             pass
 
-    game_class = _array_game_class(AbstractBoolean, metaclass=game_metaclass)
-    assert game_class.__abstractmethods__ == {"_eval_bool"}
+    cls = _array_game_class(AbstractBoolean, metaclass=game_metaclass)
+    assert cls.__abstractmethods__ == {"_coalition_bool"}
 
 
 def test_other_abstract_requirements_are_not_cleared(game_metaclass):
@@ -191,18 +193,8 @@ def test_other_abstract_requirements_are_not_cleared(game_metaclass):
         def extra(self):
             pass
 
-    game_class = _array_game_class(ExtraRequirement, metaclass=game_metaclass)
-    assert game_class.__abstractmethods__ == {"extra"}
-
-
-def test_explicitly_abstract_hook_remains_required_even_with_other_native_hook(game_metaclass):
-    class AbstractBoolean(_BothGame):
-        @abstractmethod
-        def _eval_bool(self, coalition):
-            pass
-
-    game_class = _array_game_class(AbstractBoolean, metaclass=game_metaclass)
-    assert game_class.__abstractmethods__ == {"_eval_bool"}
+    cls = _array_game_class(ExtraRequirement, metaclass=game_metaclass)
+    assert cls.__abstractmethods__ == {"extra"}
 
 
 def test_overriding_only_eval_does_not_supply_a_native_hook(game_metaclass):
@@ -214,44 +206,34 @@ def test_overriding_only_eval_does_not_supply_a_native_hook(game_metaclass):
 
 
 def test_reset_without_a_dataclass_decorator_restores_abstractness(game_class):
-    # In particular, no dataclass/update_abstractmethods call may repair this class.
     class Reset(game_class):
         values: Float[jax.Array, "*batch 1"]
         _players: Shaped[FinitePlayers, "#*batch"]
-        _eval_bool = FinitePlayerGame._eval_bool
-        _eval_packed = FinitePlayerGame._eval_packed
+        _coalition_bool = FinitePlayerGame._coalition_bool
 
     assert isabstract(Reset)
-    assert Reset.__abstractmethods__ == {"_eval_bool", "_eval_packed"}
-    with pytest.raises(TypeError, match="_eval_bool"):
+    assert Reset.__abstractmethods__ == {"_coalition_bool"}
+    with pytest.raises(TypeError, match="_coalition_bool"):
         Reset(jnp.zeros(1), FinitePlayers(3))
 
 
-def test_explicit_abstract_default_alias_is_not_replaced(game_metaclass):
-    class ExplicitAbstract(_PackedGame):
-        _eval_bool = FinitePlayerGame._eval_bool
-
-    game_class = _array_game_class(ExplicitAbstract, metaclass=game_metaclass)
-    assert game_class.__abstractmethods__ == {"_eval_bool"}
-
-
 def test_both_native_hooks_can_be_implemented_directly(game_metaclass):
-    game_class = _array_game_class(_BothGame, metaclass=game_metaclass)
-    assert game_class._eval_bool is _BooleanGame._eval_bool
-    assert game_class._eval_packed is _PackedGame._eval_packed
+    cls = _array_game_class(_BothGame, metaclass=game_metaclass)
+    assert cls._coalition_bool is _BooleanGame._coalition_bool
+    assert cls._coalition_packed is _PackedGame._coalition_packed
 
 
 def test_abstract_hooks_follow_normal_mro_priority(game_metaclass):
     class AbstractPacked(FinitePlayerGame):
         @abstractmethod
-        def _eval_packed(self, coalition):
+        def _coalition_packed(self, coalition):
             pass
 
     class Combined(AbstractPacked, _BooleanGame):
         pass
 
-    game_class = _array_game_class(Combined, metaclass=game_metaclass)
-    assert game_class.__abstractmethods__ == {"_eval_packed"}
+    cls = _array_game_class(Combined, metaclass=game_metaclass)
+    assert cls.__abstractmethods__ == {"_coalition_packed"}
 
 
 @pytest.mark.parametrize("packed", [False, True])
@@ -308,24 +290,8 @@ def test_two_native_hooks_do_not_convert_input(monkeypatch, packed):
         msg = "A native representation must be evaluated without conversion"
         raise AssertionError(msg)
 
-    monkeypatch.setattr(finite_game, "pack_bool_coalition", unexpected_conversion)
     monkeypatch.setattr(finite_game, "unpack_bool_coalition", unexpected_conversion)
     assert float(game(coalition)) == 2
-
-
-def test_boolean_fallback_packs_and_clears_padding(monkeypatch):
-    game = _array_game_class(_PackedGame)(jnp.zeros(1), FinitePlayers(9))
-    received = []
-
-    def record(coalition):
-        received.append(coalition)
-        return jnp.array(9.0)
-
-    monkeypatch.setattr(game, "_eval_packed", record)
-    assert float(game(jnp.ones(9, dtype=bool))) == 9
-    assert len(received) == 1
-    assert received[0].dtype == jnp.uint8
-    assert received[0].tolist() == [255, 1]
 
 
 def test_packed_fallback_unpacks_local_count_and_ignores_padding(monkeypatch):
@@ -336,7 +302,7 @@ def test_packed_fallback_unpacks_local_count_and_ignores_padding(monkeypatch):
         received.append(coalition)
         return jnp.array(9.0)
 
-    monkeypatch.setattr(game, "_eval_bool", record)
+    monkeypatch.setattr(game, "_coalition_bool", record)
     assert float(game(jnp.array([255, 255], dtype=jnp.uint8))) == 9
     assert len(received) == 1
     assert received[0].dtype == jnp.bool_
@@ -353,8 +319,8 @@ class _StructuredValue(JaxAxisProtected["_StructuredValue"]):
 
 @pytest.mark.parametrize("compiled", [False, True])
 def test_evaluation_preserves_shaped_structured_values(compiled):
-    class StructuredGame(BoolFinitePlayerGame[Any, _StructuredValue]):
-        def _eval_bool(self, coalition):
+    class StructuredGame(CoalitionDefinedGame[Any, _StructuredValue]):
+        def _coalition_bool(self, coalition):
             count = self.values[..., 0] + jnp.sum(coalition, axis=-1)
             return _StructuredValue(count, jnp.stack((count, count + 1), axis=-1))
 
@@ -378,10 +344,10 @@ def test_evaluation_preserves_shaped_structured_values(compiled):
 @pytest.mark.parametrize("result_shape", [(), (1,), (2, 1), (2, 3, 4)])
 def test_evaluation_rejects_wrong_logical_value_shape(packed, compiled, result_shape):
     class WrongShapeGame(_BothGame):
-        def _eval_bool(self, coalition):
+        def _coalition_bool(self, coalition):
             return jnp.zeros(result_shape)
 
-        _eval_packed = _eval_bool
+        _coalition_packed = _coalition_bool
 
     game = _array_game_class(WrongShapeGame)(jnp.zeros((2, 1, 1)), FinitePlayers(3))
     coalition = jnp.ones((3, 3), dtype=bool)
@@ -400,7 +366,7 @@ def test_evaluation_rejects_wrong_logical_value_shape(packed, compiled, result_s
 @pytest.mark.parametrize("result", [{"count": jnp.array(2)}, 2, [2], np.zeros(())])
 def test_evaluation_rejects_unshaped_values(result):
     class UnshapedGame(_BooleanGame):
-        def _eval_bool(self, coalition):
+        def _coalition_bool(self, coalition):
             return result
 
     game = _array_game_class(UnshapedGame)(jnp.zeros(1), FinitePlayers(3))
@@ -413,7 +379,7 @@ def test_evaluation_rejects_values_without_dtype():
         shape = ()
 
     class InvalidValueGame(_BooleanGame):
-        def _eval_bool(self, coalition):
+        def _coalition_bool(self, coalition):
             return MissingDtype()
 
     game = _array_game_class(InvalidValueGame)(jnp.zeros(1), FinitePlayers(3))
@@ -448,3 +414,44 @@ def test_validation_uses_game_batch_not_only_shared_players(game_class, packed):
     assert not game.is_valid(coalition)
     with pytest.raises(ValueError, match="Inadmissible coalition batch"):
         game(coalition)
+
+
+def test_basis_router_and_additivity_fallback_vs_known():
+    players = FinitePlayers(3)
+    all_sets = subset_patterns(3)
+    # 1-additive game stored as DenseCoalitionGame (not KnownAdditivity).
+    dense_add = DenseCoalitionGame(
+        jnp.array([2.0, 3.0, 5.0, 6.0, 9.0, 10.0, 12.0, 13.0], dtype=jnp.float32), players
+    )
+    assert not isinstance(dense_add, KnownAdditivity)
+    assert dense_add.additivity() == 1
+    assert jnp.allclose(dense_add.contributions(), jnp.array([1.0, 3.0, 7.0]))
+    assert jnp.allclose(
+        dense_add.coefficients(all_sets, basis=Basis.COALITION), dense_add.eval(all_sets)
+    )
+    assert jnp.allclose(
+        dense_add.coefficients(all_sets, basis=Basis.MOEBIUS),
+        dense_add.moebius_coefficients(all_sets),
+    )
+    assert jnp.allclose(
+        dense_add.coefficients(all_sets, basis=Basis.FOURIER),
+        dense_add.fourier_coefficients(all_sets),
+    )
+    assert jnp.allclose(dense_add.coefficients(all_sets), dense_add.moebius_coefficients(all_sets))
+
+    # KnownAdditivity game returns its declared bound without evaluating coalitions.
+    sparse_m = SparseMoebiusGame(
+        values=jnp.array([2.0, 1.0, 3.0, 7.0], dtype=jnp.float32),
+        players=players,
+        interactions=jnp.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=bool),
+        additivity=2,
+    )
+    assert isinstance(sparse_m, KnownAdditivity)
+    assert sparse_m.additivity() == 2
+
+    # Constant dense game has exact additivity 0.
+    const_dense = DenseCoalitionGame(jnp.full((8,), 5.0, dtype=jnp.float32), players)
+    assert const_dense.additivity() == 0
+
+    with pytest.raises(TypeError, match="Basis"):
+        dense_add.coefficients(all_sets, basis="moebius")  # type: ignore[arg-type]

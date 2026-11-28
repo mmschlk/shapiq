@@ -7,7 +7,7 @@ import pytest
 
 from shapiq.approximator.base import SHAPIQ
 from shapiq.coalition.coalition import pack_bool_coalition
-from shapiq.game.discretederivative import subset_patterns
+from shapiq.game import subset_patterns
 from shapiq.index import ShapleyValueIndex
 from shapiq.masker import BaselineMasker
 from shapiq.players import FinitePlayers

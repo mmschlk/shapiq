@@ -11,8 +11,7 @@ from jaxtyping import Float, Shaped
 from ndlike.protected_axis.jax import JaxAxisProtected
 
 from shapiq.coalition.coalition import pack_bool_coalition
-from shapiq.game import BoolFinitePlayerGame
-from shapiq.game.discretederivative import DiscreteDerivative, powerset, subset_patterns
+from shapiq.game import CoalitionDefinedGame, DiscreteDerivative, powerset, subset_patterns
 from shapiq.players import FinitePlayers
 
 N_PLAYERS = 4
@@ -21,23 +20,23 @@ COEFFICIENTS = jnp.array([1.0, 2.0, 3.0, 4.0])
 
 
 @dataclass
-class _CubicGame(BoolFinitePlayerGame[Any, jax.Array], JaxAxisProtected["_CubicGame"]):
+class _CubicGame(CoalitionDefinedGame[Any, jax.Array], JaxAxisProtected["_CubicGame"]):
     """v(S) = (sum of the coefficients in S)**3; cubic so that pair derivatives depend on S."""
 
-    coefficients: Float[jax.Array, "*batch n_players"]
+    weights: Float[jax.Array, "*batch n_players"]
     _players: Shaped[FinitePlayers, "#*batch"]
-    protected_axes: ClassVar[dict[str, int]] = {"coefficients": 1}
+    protected_axes: ClassVar[dict[str, int]] = {"weights": 1}
 
     @classmethod
     def _pytree_child_names(cls):
-        return ("coefficients", "_players")
+        return ("weights", "_players")
 
     @property
     def players(self) -> FinitePlayers:
         return self._players
 
-    def _eval_bool(self, coalition):
-        return jnp.sum(coalition * self.coefficients, axis=-1) ** 3
+    def _coalition_bool(self, coalition):
+        return jnp.sum(coalition * self.weights, axis=-1) ** 3
 
 
 def _coalition(*players):

@@ -12,16 +12,19 @@ from ._base import (
     ShapleyValueIndex,
     WeightedBanzhafIndex,
 )
+from .exact import ExactComputer, discrete_derivative_coefficients
 
 __all__ = [
     "AlphaBetaIndex",
     "BanzhafIndex",
     "CardinalInteractionIndex",
     "DiscreteDerivativeIndex",
+    "ExactComputer",
     "Index",
     "LeastSquaresIndex",
     "SemivalueIndex",
     "ShapleyInteractionIndex",
     "ShapleyValueIndex",
     "WeightedBanzhafIndex",
+    "discrete_derivative_coefficients",
 ]

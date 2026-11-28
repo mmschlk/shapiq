@@ -1,16 +1,16 @@
-"""Lazy reduction wrappers and k-additive refinements for finite games."""
+"""Lazy reduction wrappers for finite games."""
 
 import inspect
 import math
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import InitVar, dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self, cast, overload, override
+from typing import TYPE_CHECKING, Any, ClassVar, Self, cast, overload, override
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flextype import CastUnavailable, autocast, castmethod, try_cast
+from flextype import CastUnavailable, castmethod, try_cast
 from jax.core import Tracer
 from jaxtyping import Bool, Shaped, UInt8
 from ndlike import jax_functions as jf
@@ -22,10 +22,17 @@ from shapiq.typing import typechecked
 from shapiq.value import Value
 from shapiq.value._dtype import op_spec, validate_numeric_dtype, validate_numeric_value
 
+from ._transforms import _scale_by_pow2
 from .arithmetic import _ensure_shape
-from .finite import FinitePlayerGame, _FiniteGame
-from .kadditive import AdditiveGame, KAdditiveGame
-from .table import TableGame
+from .base import Game
+from .dense import DenseCoalitionGame
+from .finite import (
+    Basis,
+    CoalitionDefinedGame,
+    FinitePlayerGame,
+    MoebiusDefinedGame,
+    _FiniteGame,
+)
 
 if TYPE_CHECKING:
     from jax.typing import DTypeLike
@@ -76,18 +83,7 @@ def _validate_and_reduce_players[P](
     *,
     keepdims: bool,
 ) -> FinitePlayers[P]:
-    """Validate player-set compatibility along ``reduced_axes`` and return surviving players.
-
-    Broadcast/shared player axes (missing leading axes or size-1 axes) are
-    compatible by construction and stay compact without inspecting IDs, so
-    they work under ``jax.jit`` even with traced player IDs. Non-broadcast
-    reduced axes require concrete equal IDs within every reduction group.
-
-    Raises:
-        TypeError: Non-broadcast reduced player axes carry traced IDs under JIT.
-        ValueError: Player sets differ along a reduced axis or cannot be
-            determined from a zero-length player-set axis.
-    """
+    """Validate player-set compatibility along ``reduced_axes`` and return surviving players."""
     if jnp.broadcast_shapes(players.shape, game_shape) != game_shape:
         msg = "Player-set batch must broadcast to the game's batch shape."
         raise ValueError(msg)
@@ -189,15 +185,22 @@ def _sum_spec(operand: object, output_dtype: jnp.dtype | None) -> jax.ShapeDtype
     return op_spec(lambda x: jnp.sum(x, dtype=output_dtype), operand)
 
 
-def _child_value_leaf_specs(child: KAdditiveGame[Any, Any]) -> tuple[jax.ShapeDtypeStruct, ...]:
-    """Inspect every leaf dtype and ``weak_type`` of ``child``'s values lazily."""
-    if type(child)._zeros_like_value is not KAdditiveGame._zeros_like_value:  # noqa: SLF001 - internal lazy KAdditiveGame hook
-        template: object = child._zeros_like_value(())  # noqa: SLF001 - internal lazy KAdditiveGame hook
-    else:
+def _child_value_leaf_specs(child: FinitePlayerGame[Any, Any]) -> tuple[jax.ShapeDtypeStruct, ...]:
+    """Inspect every leaf dtype and ``weak_type`` of ``child``'s values without calling ``eval``."""
+    if type(child)._zeros_like_value is not FinitePlayerGame._zeros_like_value:  # noqa: SLF001 - internal lazy zero hook
+        template: object = child._zeros_like_value(())  # noqa: SLF001 - internal lazy zero hook
+    elif type(child).empty_value not in (
+        FinitePlayerGame.empty_value,
+        MoebiusDefinedGame.empty_value,
+    ):
         try:
             template = jax.eval_shape(child.empty_value)
-        except Exception:  # noqa: BLE001 - eager-only games may fail abstract tracing; decline refinement cleanly
+        except Exception:  # noqa: BLE001 - eager-only games may fail abstract tracing
             return ()
+    elif type(child)._value_spec is not Game._value_spec:  # noqa: SLF001 - internal lazy spec hook
+        return (child._value_spec(),)  # noqa: SLF001 - internal lazy spec hook
+    else:
+        return ()
     specs: list[jax.ShapeDtypeStruct] = []
     for leaf in jax.tree.leaves(template):
         if isinstance(leaf, (jax.Array, jax.ShapeDtypeStruct)):
@@ -208,17 +211,10 @@ def _child_value_leaf_specs(child: KAdditiveGame[Any, Any]) -> tuple[jax.ShapeDt
 
 
 def _preserves_child_dtypes_for_sum(
-    child: KAdditiveGame[Any, Any],
+    child: FinitePlayerGame[Any, Any],
     output_dtype: jnp.dtype | None,
 ) -> bool:
-    """Return whether summing ``child`` with ``output_dtype`` keeps every leaf dtype unchanged.
-
-    Any dtype conversion—whether narrowing, truncation, or post-overflow widening—can
-    cause the sum of converted Möbius coefficients to disagree with the converted sum
-    of coalition values. Automatic k-additive/additive refinement therefore requires
-    every leaf of ``child``'s value representation to keep its exact dtype under
-    ``jnp.sum(..., dtype=output_dtype)``.
-    """
+    """Return whether summing ``child`` with ``output_dtype`` keeps every leaf dtype unchanged."""
     specs = _child_value_leaf_specs(child)
     if not specs:
         return False
@@ -229,26 +225,6 @@ def _preserves_child_dtypes_for_sum(
     return True
 
 
-def _require_refinable_sum_child[T: KAdditiveGame](
-    game: "SumReductionGame[Any, Any, Any]",
-    target: type[T],
-) -> T:
-    """Validate dtype invariance and zero-cost child refinement."""
-    child = game.game
-    if isinstance(child, target):
-        refined = child
-    else:
-        result = try_cast(child, target, max_cost=0.0)
-        if result is None:
-            msg = f"Underlying game of {type(game).__name__} must be {target.__name__}."
-            raise CastUnavailable(msg)
-        refined = result.value
-    if not _preserves_child_dtypes_for_sum(refined, cast("jnp.dtype | None", game.output_dtype)):
-        msg = "SumReductionGame refinement requires every value leaf dtype to be preserved."
-        raise CastUnavailable(msg)
-    return refined
-
-
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class ReductionGame[
@@ -257,21 +233,10 @@ class ReductionGame[
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[Any, Any],
     OwnerT: "ReductionGame[Any, Any, Any, Any]" = "ReductionGame[Any, Any, Any, Any]",
 ](
-    FinitePlayerGame[P, V],
+    CoalitionDefinedGame[P, V],
     JaxAxisProtected[OwnerT, Any, _FiniteGame[P]],
 ):
-    """Abstract lazy reduction game protecting one flattened trailing reduction axis.
-
-    During construction, all batch axes selected by ``axis`` are moved to the
-    end of ``game`` and flattened into its final protected axis. Indexing,
-    reshaping, transposing, and stacking operate strictly on the surviving
-    logical batch axes while keeping the protected reduction axis intact.
-
-    Subclasses implement ``_reduce`` to reduce evaluated child coalition values
-    over their trailing axis ``axis=-1`` (and fast ``TableGame`` casting
-    delegates directly to ``_reduce``). Representation-level fieldwise
-    arithmetic and indexed updates remain disabled.
-    """
+    """Abstract lazy reduction game protecting one flattened trailing reduction axis."""
 
     game: GameT
     axis: InitVar[int | Sequence[int] | None] = field(default=-1, kw_only=True)
@@ -286,15 +251,7 @@ class ReductionGame[
         axis: int | Sequence[int] | None,
         keepdims: bool,
     ) -> None:
-        """Validate ``game`` and players along ``axis``, then flatten reduced axes to axis ``-1``.
-
-        Raises:
-            TypeError: ``game`` is not a ``FinitePlayerGame``, ``axis`` or
-                ``keepdims`` has an invalid type, or non-broadcast reduced
-                player axes carry traced IDs under JIT.
-            ValueError: ``axis`` is out of bounds or contains duplicates, or
-                player sets are incompatible along the reduced axes.
-        """
+        """Validate ``game`` and players along ``axis``, then flatten reduced axes to axis ``-1``."""
         if not isinstance(self.game, FinitePlayerGame):
             msg = f"{type(self).__name__} requires a FinitePlayerGame."
             raise TypeError(msg)
@@ -401,12 +358,14 @@ class ReductionGame[
         return self._reduce(self.game.eval(coalition[..., None, :]))
 
     @override
-    def _eval_bool(self, coalition: Bool[jax.Array, "... {self.n_players}"]) -> Shaped[V, "..."]:
+    def _coalition_bool(
+        self, coalition: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
         """Forward boolean coalitions lazily across the protected axis and reduce."""
         return self._eval_child(coalition)
 
     @override
-    def _eval_packed(
+    def _coalition_packed(
         self, coalition: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
     ) -> Shaped[V, "..."]:
         """Forward packed coalitions lazily across the protected axis without unpacking."""
@@ -433,28 +392,28 @@ class ReductionGame[
             raise ValueError(msg)
         return {}
 
-    @castmethod(TableGame, cost=1.0)
-    def _as_table(self) -> TableGame[P]:
-        """Materialize directly on raw tables when the underlying game supports fast table casting."""
-        if isinstance(self.game, TableGame):
+    @castmethod(DenseCoalitionGame, cost=1.0)
+    def _as_dense_coalition(self) -> DenseCoalitionGame[P]:
+        """Materialize directly on raw tables when the child supports fast dense casting."""
+        if isinstance(self.game, DenseCoalitionGame):
             table = self.game
         else:
-            result = try_cast(self.game, TableGame, max_cost=1.0)
+            result = try_cast(self.game, DenseCoalitionGame, max_cost=1.0)
             if result is None:
-                msg = "Fast TableGame cast requires a TableGame leaf."
+                msg = "Fast DenseCoalitionGame cast requires a DenseCoalitionGame leaf."
                 raise CastUnavailable(msg)
             table = result.value
         # Keep the 2**n table axis at axis 0 so axis -1 remains the protected reduction axis.
         moved = jnp.moveaxis(table.values, -1, 0)
         computed = self._reduce(moved)
         if not isinstance(computed, jax.Array) or not jnp.issubdtype(computed.dtype, jnp.floating):
-            msg = "TableGame requires floating jax.Array values."
+            msg = "DenseCoalitionGame requires floating jax.Array values."
             raise CastUnavailable(msg)
         values = jnp.moveaxis(computed, 0, -1)
         expected_shape = (*self.shape, 2**self.n_players)
         if values.shape != expected_shape:
             values = jnp.broadcast_to(values, expected_shape)
-        return TableGame(values, self.players)
+        return DenseCoalitionGame(values, self.players)
 
 
 @typechecked
@@ -463,19 +422,12 @@ class SumReductionGame[
     P,
     V: Value = Value,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[Any, Any],
-](
-    ReductionGame[P, V, GameT, "SumReductionGame[P, V, GameT]"],
-    metaclass=autocast(KAdditiveGame, max_cost=0.0),
-):
+](ReductionGame[P, V, GameT, "SumReductionGame[P, V, GameT]"]):
     """A lazy pointwise sum reduction over one or more batch axes of a finite game.
 
-    When the underlying game is zero-cost castable to ``AdditiveGame`` or
-    ``KAdditiveGame`` and summing with ``output_dtype`` preserves every value
-    leaf dtype, construction automatically refines the instance via
-    ``flextype.autocast`` (following exact mathematical linearity, consistent
-    with ``AffineGame``). Subclasses that require custom additive/k-additive
-    behavior should define their own ``@castmethod``s to ``AdditiveGame`` or
-    ``KAdditiveGame``.
+    When summing with ``output_dtype`` preserves every value leaf dtype, Möbius and
+    Fourier queries forward linearly across the reduced axis and ``additivity()``
+    propagates the child's known bound in ``O(1)``.
     """
 
     output_dtype: Any = field(default=None, kw_only=True)
@@ -539,6 +491,12 @@ class SumReductionGame[
         super(SumReductionGame, self).__post_init__(axis, keepdims)
         validate_numeric_value(self.game, "SumReductionGame game")
 
+    def _is_linear_sum(self) -> bool:
+        """Return whether summing preserves every child leaf dtype (exact linearity)."""
+        return _preserves_child_dtypes_for_sum(
+            self.game, cast("jnp.dtype | None", self.output_dtype)
+        )
+
     @override
     def _value_spec(self) -> jax.ShapeDtypeStruct:
         """Return exact JAX ``jnp.sum`` dtype and ``weak_type`` without evaluating."""
@@ -550,139 +508,56 @@ class SumReductionGame[
         """Return the summed value dtype without evaluating the underlying game."""
         return self._value_spec().dtype
 
-    def _sum_values(self, values: Shaped[Value, "..."], *, axis: int) -> Shaped[V, "..."]:
-        """Sum ``values`` along logical ``axis`` with ``output_dtype``."""
+    @override
+    def _known_additivity(self) -> int | None:
+        """Return ``0`` for zero-player or empty reductions, or the child's known bound when linear."""
+        if self.n_players == 0 or self.n_reduced == 0:
+            return 0
+        child_bound = self.game._known_additivity()  # noqa: SLF001 - internal static bound check
+        if child_bound is None or not self._is_linear_sum():
+            return None
+        return child_bound
+
+    def _sum_values(
+        self,
+        values: Shaped[Value, "..."],
+        *,
+        axis: int,
+        dtype: jnp.dtype | None = None,
+    ) -> Shaped[V, "..."]:
+        """Sum ``values`` along logical ``axis`` with ``dtype``."""
         if isinstance(values, jax.Array):
             return cast(
                 "Shaped[V, '...']",
-                jnp.sum(values, axis=axis, dtype=self.output_dtype),
+                jnp.sum(values, axis=axis, dtype=dtype),
             )
         return cast(
             "Shaped[V, '...']",
-            jf.jax_sum(values, axis=axis, dtype=self.output_dtype),
+            jf.jax_sum(values, axis=axis, dtype=dtype),
         )
+
+    def _basis_sum_dtype(self, basis: Basis) -> jnp.dtype | None:
+        """Return the reduction dtype for ``basis``, avoiding integer truncation on Fourier."""
+        if (
+            basis is Basis.FOURIER
+            and self.output_dtype is not None
+            and not jnp.issubdtype(self.output_dtype, jnp.inexact)
+        ):
+            return None
+        return self.output_dtype
 
     @override
     def _reduce(self, values: Shaped[Value, "..."]) -> Shaped[V, "..."]:
         """Sum evaluated child coalition values over the protected trailing axis."""
-        return self._sum_values(values, axis=-1)
-
-    @classmethod
-    def _build_validated(cls, **field_values: Any) -> Self:
-        """Construct a sum reduction refinement without repeating player validation."""
-        obj = object.__new__(cls)
-        for name, value in field_values.items():
-            object.__setattr__(obj, name, value)
-        return obj
-
-    @castmethod(AdditiveGame)
-    def _as_additive(self) -> AdditiveGame[P, V]:
-        """Refine a sum reduction of an additive game."""
-        child = _require_refinable_sum_child(self, AdditiveGame)
-        return cast(
-            "AdditiveGame[P, V]",
-            _AdditiveSumReductionGame._build_validated(  # noqa: SLF001 - inherited factory
-                game=child,
-                _players=self._players,
-                output_dtype=self.output_dtype,
-            ),
-        )
-
-    @castmethod(KAdditiveGame)
-    def _as_kadditive(self) -> KAdditiveGame[P, V]:
-        """Refine a sum reduction of a k-additive game."""
-        child = _require_refinable_sum_child(self, KAdditiveGame)
-        return cast(
-            "KAdditiveGame[P, V]",
-            _KAdditiveSumReductionGame._build_validated(  # noqa: SLF001 - inherited factory
-                game=child,
-                _players=self._players,
-                output_dtype=self.output_dtype,
-            ),
-        )
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _KAdditiveSumReductionGame[
-    P,
-    V: Value = Value,
-    GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
-](
-    SumReductionGame[P, V, GameT],
-    KAdditiveGame[P, V],
-):
-    """Private k-additive refinement of ``SumReductionGame``."""
-
-    if TYPE_CHECKING:
-
-        @overload
-        def __init__[P2](
-            self: "_KAdditiveSumReductionGame[P2, jax.Array, KAdditiveGame[P2, Any]]",
-            game: KAdditiveGame[P2, jax.Array],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-        @overload
-        def __init__[P2, ResultT: Value](
-            self: "_KAdditiveSumReductionGame[P2, ResultT, KAdditiveGame[P2, Any]]",
-            game: KAdditiveGame[P2, JaxLikeImplementation[Any, Any, ResultT, Any, Any, Any, Any]],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-        @overload
-        def __init__[P2](
-            self: "_KAdditiveSumReductionGame[P2, Value, KAdditiveGame[P2, Any]]",
-            game: KAdditiveGame[P2, Value],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-        def __init__(
-            self,
-            game: KAdditiveGame[Any, Any],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-    def __post_init__(
-        self,
-        axis: int | Sequence[int] | None,
-        keepdims: bool,
-    ) -> None:
-        super(_KAdditiveSumReductionGame, self).__post_init__(axis, keepdims)
-        if not isinstance(self.game, KAdditiveGame):
-            msg = f"{type(self).__name__} requires a KAdditiveGame."
-            raise TypeError(msg)
-        if not _preserves_child_dtypes_for_sum(
-            self.game, cast("jnp.dtype | None", self.output_dtype)
-        ):
-            msg = f"{type(self).__name__} requires every value leaf dtype to be preserved."
-            raise ValueError(msg)
-
-    @property
-    @override
-    def additivity(self) -> int:
-        """Return ``0`` for an empty reduction and the child game's bound otherwise."""
-        if self.n_reduced == 0:
-            return 0
-        return self.game.additivity
+        return self._sum_values(values, axis=-1, dtype=self.output_dtype)
 
     @override
     def _zeros_like_value(self, shape: tuple[int, ...]) -> Shaped[V, "..."]:
         """Construct zero values lazily matching the reduced value structure and dtype."""
-        child_zero = self.game._zeros_like_value((*shape, 1))  # noqa: SLF001 - internal KAdditiveGame hook
-        return self._sum_values(child_zero, axis=-1)
+        if type(self.game)._zeros_like_value is not FinitePlayerGame._zeros_like_value:  # noqa: SLF001
+            child_zero = self.game._zeros_like_value((*shape, 1))  # noqa: SLF001
+            return self._sum_values(child_zero, axis=-1, dtype=self.output_dtype)
+        return super(SumReductionGame, self)._zeros_like_value(shape)
 
     @override
     def empty_value(self) -> Shaped[V, "..."]:
@@ -690,154 +565,104 @@ class _KAdditiveSumReductionGame[
         child_empty = _ensure_shape(self.game.empty_value(), self.game.shape)
         return _ensure_shape(self._reduce(child_empty), self.shape)
 
-    @override
-    def _coefficients_by_order(self, order: int) -> Shaped[V, "..."]:
-        """Sum order-``order`` Möbius coefficients linearly across the reduced axis."""
-        n_combos = math.comb(self.n_players, order)
-        if order > self.additivity or n_combos == 0:
-            return self._zeros_like_value((*self.shape, n_combos))
-        if order == 0:
-            return cast("Shaped[V, '...']", jf.jax_expand_dims(self.empty_value(), axis=-1))
-        child_coeffs = _ensure_shape(
-            self.game.coefficients(order=order), (*self.game.shape, n_combos)
-        )
-        return _ensure_shape(
-            self._sum_values(child_coeffs, axis=-2),
-            (*self.shape, n_combos),
-        )
-
-    @override
-    def _coefficients_for_interactions(
-        self,
-        interactions: Bool[jax.Array, "#*batch {self.n_players}"],
-        *,
-        max_order: int | None = None,
-    ) -> Shaped[V, "..."]:
-        """Sum explicit Möbius coefficients linearly across the reduced axis."""
-        del max_order
-        target_batch = jnp.broadcast_shapes(self.shape, interactions.shape[:-1])
+    def _linear_basis_query(self, interaction: FiniteCoalition, basis: Basis) -> Shaped[V, "..."]:
+        target_batch = jnp.broadcast_shapes(self.shape, interaction.shape[:-1])
         if self.n_reduced == 0:
-            return self._zeros_like_value(target_batch)
+            zero = self._zeros_like_value(target_batch)
+            if basis is Basis.FOURIER:
+                return cast("Shaped[V, '...']", _scale_by_pow2(cast("Any", zero), 0))
+            return zero
         child_coeffs = _ensure_shape(
-            self.game.coefficients(interactions[..., None, :]),
+            self.game.coefficients(interaction[..., None, :], basis=basis),
             (*target_batch, self.n_reduced),
         )
-        return _ensure_shape(self._sum_values(child_coeffs, axis=-1), target_batch)
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _AdditiveSumReductionGame[
-    P,
-    V: Value = Value,
-    GameT: AdditiveGame[Any, Any] = AdditiveGame[P, Any],
-](
-    _KAdditiveSumReductionGame[P, V, GameT],
-    AdditiveGame[P, V],
-):
-    """Private additive refinement of ``SumReductionGame``."""
-
-    if TYPE_CHECKING:
-
-        @overload
-        def __init__[P2](
-            self: "_AdditiveSumReductionGame[P2, jax.Array, AdditiveGame[P2, Any]]",
-            game: AdditiveGame[P2, jax.Array],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-        @overload
-        def __init__[P2, ResultT: Value](
-            self: "_AdditiveSumReductionGame[P2, ResultT, AdditiveGame[P2, Any]]",
-            game: AdditiveGame[P2, JaxLikeImplementation[Any, Any, ResultT, Any, Any, Any, Any]],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-        @overload
-        def __init__[P2](
-            self: "_AdditiveSumReductionGame[P2, Value, AdditiveGame[P2, Any]]",
-            game: AdditiveGame[P2, Value],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-        def __init__(
-            self,
-            game: AdditiveGame[Any, Any],
-            *,
-            axis: int | Sequence[int] | None = ...,
-            keepdims: bool = ...,
-            output_dtype: "DTypeLike | None" = ...,
-        ) -> None: ...
-
-    def __post_init__(
-        self,
-        axis: int | Sequence[int] | None,
-        keepdims: bool,
-    ) -> None:
-        super(_AdditiveSumReductionGame, self).__post_init__(axis, keepdims)
-        if not isinstance(self.game, AdditiveGame):
-            msg = f"{type(self).__name__} requires an AdditiveGame."
-            raise TypeError(msg)
-
-    @property
-    @override
-    def additivity(self) -> Literal[0, 1]:
-        """Return ``0`` for zero-player or empty reductions and the child bound otherwise."""
-        if self.n_players == 0 or self.n_reduced == 0:
-            return 0
-        return super(_AdditiveSumReductionGame, self).additivity  # ty: ignore[invalid-explicit-return]
-
-    @override
-    def contributions(self) -> Shaped[V, "..."]:
-        """Sum singleton contributions directly without evaluating coalitions."""
-        if self.n_players == 0 or self.additivity == 0:
-            return self._zeros_like_value((*self.shape, self.n_players))
-        child_contribs = _ensure_shape(
-            self.game.contributions(), (*self.game.shape, self.n_players)
-        )
         return _ensure_shape(
-            self._sum_values(child_contribs, axis=-2),
-            (*self.shape, self.n_players),
+            self._sum_values(child_coeffs, axis=-1, dtype=self._basis_sum_dtype(basis)),
+            target_batch,
         )
 
+    @override
+    def _moebius_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_sum():
+            return self._linear_basis_query(interaction, Basis.MOEBIUS)
+        return super(SumReductionGame, self)._moebius_bool(interaction)
 
-# --- Dispatch helper invoked via FinitePlayerGame.__jax_function__ ---
+    @override
+    def _moebius_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_sum():
+            return self._linear_basis_query(interaction, Basis.MOEBIUS)
+        return super(SumReductionGame, self)._moebius_packed(interaction)
 
-_JAX_SUM_SIGNATURE = inspect.signature(jf.jax_sum)
+    @override
+    def _fourier_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_sum():
+            return self._linear_basis_query(interaction, Basis.FOURIER)
+        return super(SumReductionGame, self)._fourier_bool(interaction)
+
+    @override
+    def _fourier_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        if self._is_linear_sum():
+            return self._linear_basis_query(interaction, Basis.FOURIER)
+        return super(SumReductionGame, self)._fourier_packed(interaction)
+
+    @override
+    def _coefficients_by_order(self, order: int, basis: Basis) -> Shaped[V, "..."]:
+        if basis in (Basis.MOEBIUS, Basis.FOURIER) and self._is_linear_sum():
+            n_combos = math.comb(self.n_players, order)
+            known = self._known_additivity()
+            if n_combos == 0 or self.n_reduced == 0 or (known is not None and order > known):
+                zero = self._zeros_like_value((*self.shape, n_combos))
+                if basis is Basis.FOURIER:
+                    return cast("Shaped[V, '...']", _scale_by_pow2(cast("Any", zero), 0))
+                return zero
+            if order == 0 and basis is Basis.MOEBIUS:
+                return cast("Shaped[V, '...']", jf.jax_expand_dims(self.empty_value(), axis=-1))
+            child_coeffs = _ensure_shape(
+                self.game.coefficients(order=order, basis=basis),
+                (*self.game.shape, n_combos),
+            )
+            return _ensure_shape(
+                self._sum_values(child_coeffs, axis=-2, dtype=self._basis_sum_dtype(basis)),
+                (*self.shape, n_combos),
+            )
+        return super(SumReductionGame, self)._coefficients_by_order(order, basis)
+
+
+_JAX_SUM_SIGNATURE = inspect.signature(jnp.sum)
 
 
 def _dispatch_game_sum(
     args: tuple[Any, ...],
     kwargs: dict[str, Any] | None,
-) -> Any:  # noqa: ANN401 - returns NotImplemented when ``a`` is not a FinitePlayerGame
-    """Dispatch ``ndlike.jax_functions.jax_sum`` on finite games to ``SumReductionGame``."""
+) -> Any:  # noqa: ANN401 - returns NotImplemented for non-game operands
+    """Dispatch ``ndlike.jax_functions.jax_sum`` on a ``FinitePlayerGame``."""
     bound = _JAX_SUM_SIGNATURE.bind(*args, **(kwargs or {}))
     bound.apply_defaults()
-    game = bound.arguments["a"]
-    if not isinstance(game, FinitePlayerGame):
+    operand = bound.arguments["a"]
+    if not isinstance(operand, FinitePlayerGame):
         return NotImplemented
-
     if bound.arguments["out"] is not None:
-        msg = "The 'out' argument to jax_sum is not supported."
+        msg = "Game sum reduction does not support the 'out' argument."
         raise NotImplementedError(msg)
     if bound.arguments["initial"] is not None:
-        msg = "The 'initial' argument to jax_sum is not supported for finite games."
+        msg = "Game sum reduction does not support the 'initial' argument."
         raise NotImplementedError(msg)
     if bound.arguments["where"] is not None:
-        msg = "The 'where' argument to jax_sum is not supported for finite games."
+        msg = "Game sum reduction does not support the 'where' argument."
         raise NotImplementedError(msg)
-
+    if bound.arguments["promote_integers"] is not True:
+        msg = "Game sum reduction does not support custom 'promote_integers'."
+        raise NotImplementedError(msg)
     return SumReductionGame(
-        game,
+        operand,
         axis=bound.arguments["axis"],
         keepdims=bound.arguments["keepdims"],
         output_dtype=bound.arguments["dtype"],

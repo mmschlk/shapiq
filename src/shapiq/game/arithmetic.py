@@ -1,14 +1,14 @@
-"""Lazy arithmetic wrappers and k-additive refinements for finite games."""
+"""Lazy arithmetic wrappers for finite games."""
 
 import math
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, override
+from typing import TYPE_CHECKING, Any, ClassVar, cast, override
 
 import jax
 import jax.numpy as jnp
-from flextype import CastUnavailable, autocast, castmethod, try_cast
+from flextype import CastUnavailable, castmethod, try_cast
 from jaxtyping import Bool, Shaped, UInt8
 from ndlike import jax_functions as jf
 from ndlike.protected_axis.jax import JaxAtMethod, JaxAxisProtected
@@ -30,10 +30,8 @@ from shapiq.value._dtype import (
 )
 from shapiq.value.value import JaxValue
 
-from .finite import FinitePlayerGame, _FiniteGame
-from .kadditive import AdditiveGame, KAdditiveGame
-from .moebius import _moebius_coefficients_by_eval, _moebius_zero_like
-from .table import TableGame
+from .dense import DenseCoalitionGame
+from .finite import Basis, CoalitionDefinedGame, FinitePlayerGame, _FiniteGame
 
 
 def _ensure_shape[T: JaxValue](value: Shaped[T, "..."], shape: tuple[int, ...]) -> Shaped[T, "..."]:
@@ -45,16 +43,30 @@ def _ensure_shape[T: JaxValue](value: Shaped[T, "..."], shape: tuple[int, ...]) 
     )
 
 
-def _scalar_zero_for_game(game: KAdditiveGame[Any, Any]) -> JaxValue:
+def _packed_is_empty(
+    packed: UInt8[jax.Array, "... bytes"],
+    n_players: int,
+) -> Bool[jax.Array, "..."]:
+    """Return whether each packed coalition is empty, ignoring unused padding bits."""
+    if n_players == 0:
+        return jnp.ones(packed.shape[:-1], dtype=jnp.bool_)
+    rem = n_players % 8
+    if rem != 0:
+        mask = jnp.uint8((1 << rem) - 1)
+        packed = packed.at[..., -1].set(packed[..., -1] & mask)
+    return jnp.all(packed == 0, axis=-1)
+
+
+def _scalar_zero_for_game(game: FinitePlayerGame[Any, Any]) -> JaxValue:
     """Return a scalar-batch zero preserving ``game``'s structure, field dtypes, and weak type."""
-    zero = game._zeros_like_value(())  # noqa: SLF001 - internal KAdditiveGame hook
+    zero = game._zeros_like_value(())  # noqa: SLF001 - internal lazy zero hook
     if isinstance(zero, jax.Array) and game._value_spec().weak_type:  # noqa: SLF001 - internal lazy abstract dtype hook
         return weak_zero_for_dtype(zero.dtype)
     return zero
 
 
 def _zeros_from_arithmetic(
-    games: tuple[KAdditiveGame[Any, Any], ...],
+    games: tuple[FinitePlayerGame[Any, Any], ...],
     params: tuple[JaxValue, ...],
     shape: tuple[int, ...],
     dtype: jnp.dtype,
@@ -71,7 +83,7 @@ def _zeros_from_arithmetic(
     first_zero: JaxValue | None = None
     if structured is None:
         for idx, game in enumerate(games):
-            child_zero = game._zeros_like_value(shape)  # noqa: SLF001 - internal KAdditiveGame hook
+            child_zero = game._zeros_like_value(shape)  # noqa: SLF001 - internal lazy zero hook
             if not isinstance(child_zero, jax.Array):
                 structured = child_zero
                 structured_game_idx = idx
@@ -110,24 +122,6 @@ def _weighted_sum(
     return result
 
 
-def _require_refinable_children[T: FinitePlayerGame](
-    game: "ArithmeticGame[Any, Any, Any, Any]",
-    target: type[T],
-) -> tuple[T, ...]:
-    """Zero-cost cast every child game to ``target``."""
-    converted: list[T] = []
-    for member in game.games.members:
-        if isinstance(member, target):
-            converted.append(member)
-            continue
-        result = try_cast(member, target, max_cost=0.0)
-        if result is None:
-            msg = f"All component games of {type(game).__name__} must be {target.__name__}."
-            raise CastUnavailable(msg)
-        converted.append(result.value)
-    return tuple(converted)
-
-
 @typechecked
 @dataclass(frozen=True, slots=True, weakref_slot=True)
 class ArithmeticGame[
@@ -136,7 +130,7 @@ class ArithmeticGame[
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
     OwnerT: "ArithmeticGame[Any, Any, Any, Any]" = "ArithmeticGame[P, V, GameT, Any]",
 ](
-    FinitePlayerGame[P, V],
+    CoalitionDefinedGame[P, V],
     JaxAxisProtected[OwnerT, Any, _FiniteGame[P]],
 ):
     """Abstract lazy arithmetic game combining a nonempty tuple of finite games.
@@ -146,10 +140,8 @@ class ArithmeticGame[
     fieldwise arithmetic and indexed updates remain disabled.
 
     Subclasses implement ``_compute`` to combine the tuple of lazily evaluated
-    child coalition values (and fast ``TableGame`` casting delegates directly
-    to ``_compute``). ``GameT`` tracks the operand game type stored in
-    ``games`` (broadly bounded by ``FinitePlayerGame[Any, Any]`` because PEP 695
-    bounds cannot reference ``P``, while defaulting to ``FinitePlayerGame[P, Any]``).
+    child coalition values (and fast ``DenseCoalitionGame`` casting delegates
+    directly to ``_compute``).
     """
 
     games: JaxBroadcastTuple[tuple[GameT, ...]]
@@ -208,32 +200,34 @@ class ArithmeticGame[
         return self._compute(tuple(game.eval(coalition) for game in self.games.members))
 
     @override
-    def _eval_bool(self, coalition: Bool[jax.Array, "... {self.n_players}"]) -> Shaped[V, "..."]:
+    def _coalition_bool(
+        self, coalition: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
         """Forward boolean coalitions lazily to component games."""
         return self._eval_children(coalition)
 
     @override
-    def _eval_packed(
+    def _coalition_packed(
         self, coalition: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
     ) -> Shaped[V, "..."]:
         """Forward packed coalitions lazily to component games without unpacking."""
         return self._eval_children(coalition)
 
-    @castmethod(TableGame, cost=1.0)
-    def _as_table(self) -> TableGame[P]:
-        """Materialize directly on raw tables when every leaf is a ``TableGame``."""
+    @castmethod(DenseCoalitionGame, cost=1.0)
+    def _as_dense_coalition(self) -> DenseCoalitionGame[P]:
+        """Materialize directly on raw dense tables when every leaf is a ``DenseCoalitionGame``."""
         n_coalitions = 2**self.n_players
         child_tables: list[jax.Array] = []
         for member in self.games.members:
-            if isinstance(member, TableGame):
+            if isinstance(member, DenseCoalitionGame):
                 table = member
             else:
-                result = try_cast(member, TableGame, max_cost=1.0)
+                result = try_cast(member, DenseCoalitionGame, max_cost=1.0)
                 if result is None:
-                    msg = "Fast TableGame cast requires TableGame leaves."
+                    msg = "Fast DenseCoalitionGame cast requires DenseCoalitionGame leaves."
                     raise CastUnavailable(msg)
                 table = result.value
-            # Align trailing batch rank with self.ndim while keeping the 2**n table axis at axis 0.
+            # Align trailing batch rank with self.ndim while keeping the 2**n axis at axis 0.
             moved = jnp.moveaxis(table.values, -1, 0)
             pad = self.ndim - table.ndim
             if pad > 0:
@@ -241,27 +235,17 @@ class ArithmeticGame[
             child_tables.append(moved)
         computed = self._compute(tuple(child_tables))
         if not isinstance(computed, jax.Array) or not jnp.issubdtype(computed.dtype, jnp.floating):
-            msg = "TableGame requires floating jax.Array values."
+            msg = "DenseCoalitionGame requires floating jax.Array values."
             raise CastUnavailable(msg)
         values = jnp.moveaxis(computed, 0, -1)
         expected_shape = (*self.shape, n_coalitions)
         if values.shape != expected_shape:
             values = jnp.broadcast_to(values, expected_shape)
-        return TableGame(values, self.players)
+        return DenseCoalitionGame(values, self.players)
 
 
 def _can_flatten_affine(outer_dtype: jnp.dtype, inner: "AffineGame[Any, Any, Any]") -> bool:
-    """Return whether flattening ``inner`` into an ``outer_dtype`` affine game preserves semantics.
-
-    Flattening is permitted when either:
-    - ``inner`` and every inner ``(weight, game)`` term evaluate in an inexact
-      (floating/complex) dtype, where no integer modular wraparound can be lost; or
-    - ``inner``, every inner ``(weight, game)`` term, and the parent share the exact same
-      integer dtype (same modular ring).
-
-    Integer subexpressions whose dtype differs from the parent are preserved so widening
-    cannot alter integer overflow or wraparound.
-    """
+    """Return whether flattening ``inner`` into an ``outer_dtype`` affine game preserves semantics."""
     inner_dtype = inner.dtype
     if jnp.issubdtype(inner_dtype, jnp.inexact):
         return all(
@@ -282,22 +266,16 @@ class AffineGame[
     P,
     V: JaxValue = JaxValue,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
-](
-    ArithmeticGame[P, V, GameT, "AffineGame[P, V, GameT]"],
-    metaclass=autocast(KAdditiveGame, max_cost=0.0),
-):
+](ArithmeticGame[P, V, GameT, "AffineGame[P, V, GameT]"]):
     """A lazy affine combination ``sum(w_i * g_i(S)) + bias`` of compatible finite games.
 
     ``games`` defines the logical batch shape; ``weights`` and ``bias`` must
     broadcast into ``games.shape`` without enlarging it. Nested ``AffineGame``
-    instances are normalized during construction by multiplying weights and
-    accumulating scaled inner biases when all inner terms are inexact
-    (floating/complex) or share the parent's exact integer ring; integer
-    subexpressions that would widen under promotion are preserved intact.
+    instances are normalized during construction when safe for dtype semantics.
 
-    When all component games are zero-cost castable to ``AdditiveGame`` or
-    ``KAdditiveGame``, construction automatically refines the instance via
-    ``flextype.autocast``.
+    Möbius and Fourier queries forward linearly to component games (adding
+    ``bias`` on the empty interaction), and ``additivity()`` propagates known
+    child bounds in ``O(1)``.
     """
 
     weights: JaxBroadcastTuple[tuple[JaxValue, ...]]
@@ -372,56 +350,17 @@ class AffineGame[
         return self._value_spec().dtype
 
     @override
-    def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
-        """Compute ``sum(weight * value) + bias`` with logical-batch alignment."""
-        return cast(
-            "Shaped[V, '...']",
-            jf.jax_add(_weighted_sum(self.weights.members, values), self.bias),
-        )
-
-    @castmethod(AdditiveGame)
-    def _as_additive(self) -> AdditiveGame[P, V]:
-        """Refine this affine game when every component is additive."""
-        members = _require_refinable_children(self, AdditiveGame)
-        return _AdditiveAffineGame(
-            games=JaxBroadcastTuple(members), weights=self.weights, bias=self.bias
-        )
-
-    @castmethod(KAdditiveGame)
-    def _as_kadditive(self) -> KAdditiveGame[P, V]:
-        """Refine this affine game when every component is k-additive."""
-        members = _require_refinable_children(self, KAdditiveGame)
-        return _KAdditiveAffineGame(
-            games=JaxBroadcastTuple(members), weights=self.weights, bias=self.bias
-        )
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _KAdditiveAffineGame[
-    P,
-    V: JaxValue = JaxValue,
-    GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
-](
-    AffineGame[P, V, GameT],
-    KAdditiveGame[P, V],
-):
-    """Private k-additive refinement of ``AffineGame`` with all k-additive components."""
-
-    if TYPE_CHECKING:
-
-        def __init__[P2, V2: JaxValue = JaxValue](
-            self: "_KAdditiveAffineGame[P2, V2, KAdditiveGame[P2, Any]]",
-            games: JaxBroadcastTuple[tuple[KAdditiveGame[P2, Any], ...]],
-            weights: JaxBroadcastTuple[tuple[JaxValue, ...]],
-            bias: JaxValue = ...,
-        ) -> None: ...
-
-    @property
-    @override
-    def additivity(self) -> int:
-        """Return the maximum additivity bound across component games."""
-        return max(game.additivity for game in self.games.members)
+    def _known_additivity(self) -> int | None:
+        """Return the maximum known child additivity bound if every child has one."""
+        if self.n_players == 0:
+            return 0
+        bounds: list[int] = []
+        for game in self.games.members:
+            bound = game._known_additivity()  # noqa: SLF001 - internal O(1) bound check
+            if bound is None:
+                return None
+            bounds.append(bound)
+        return max(bounds)
 
     @override
     def _zeros_like_value(self, shape: tuple[int, ...]) -> Shaped[V, "..."]:
@@ -439,38 +378,33 @@ class _KAdditiveAffineGame[
         result = self._compute(tuple(game.empty_value() for game in self.games.members))
         return _ensure_shape(result, self.shape)
 
+    @override
+    def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
+        """Compute ``sum(weight * value) + bias`` with logical-batch alignment."""
+        return cast(
+            "Shaped[V, '...']",
+            jf.jax_add(_weighted_sum(self.weights.members, values), self.bias),
+        )
+
     def _linear_combine_last_axis(self, child_terms: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
         """Combine child coefficient arrays along a shared trailing interaction axis."""
         combined = _weighted_sum(self.weights.members, child_terms, expand_weight_axis=True)
-        result = match_promoted_dtype(combined, self.bias)
+        zero_bias = jf.jax_zeros_like(self.bias, shape=(*self.bias.shape, 1))
+        result = jf.jax_add(combined, zero_bias)
         return _ensure_shape(
             cast("Shaped[V, '...']", result), (*self.shape, child_terms[0].shape[-1])
         )
 
-    @override
-    def _coefficients_by_order(self, order: int) -> Shaped[V, "..."]:
-        """Combine order-``order`` Möbius coefficients linearly across component games."""
-        n_combos = math.comb(self.n_players, order)
-        if order > self.additivity or n_combos == 0:
-            return self._zeros_like_value((*self.shape, n_combos))
-        if order == 0:
-            return cast("Shaped[V, '...']", jf.jax_expand_dims(self.empty_value(), axis=-1))
-        terms = tuple(game.coefficients(order=order) for game in self.games.members)
-        return self._linear_combine_last_axis(terms)
-
-    @override
-    def _coefficients_for_interactions(
+    def _linear_basis_query(
         self,
-        interactions: Bool[jax.Array, "#*batch {self.n_players}"],
-        *,
-        max_order: int | None = None,
+        interaction: FiniteCoalition,
+        basis: Basis,
+        is_empty: Bool[jax.Array, "..."],
     ) -> Shaped[V, "..."]:
-        """Delegate explicit Möbius queries to child games and add ``bias`` on empty sets."""
-        del max_order
-        terms = tuple(game.coefficients(interactions) for game in self.games.members)
+        """Forward a Möbius or Fourier query linearly to children and add ``bias`` on empty sets."""
+        terms = tuple(game.coefficients(interaction, basis=basis) for game in self.games.members)
         result = _weighted_sum(self.weights.members, terms)
-        is_empty = jnp.sum(interactions, axis=-1) == 0
-        target_batch = jnp.broadcast_shapes(self.shape, interactions.shape[:-1])
+        target_batch = jnp.broadcast_shapes(self.shape, interaction.shape[:-1])
         result_b = jf.jax_broadcast_to(result, target_batch)
         bias_b = jf.jax_broadcast_to(self.bias, target_batch)
         is_empty_b = jnp.broadcast_to(is_empty, target_batch)
@@ -479,43 +413,64 @@ class _KAdditiveAffineGame[
             jf.jax_where(is_empty_b, jf.jax_add(result_b, bias_b), result_b),
         )
 
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _AdditiveAffineGame[
-    P,
-    V: JaxValue = JaxValue,
-    GameT: AdditiveGame[Any, Any] = AdditiveGame[P, Any],
-](
-    _KAdditiveAffineGame[P, V, GameT],
-    AdditiveGame[P, V],
-):
-    """Private additive refinement of ``AffineGame`` sharing k-additive affine mechanics."""
-
-    if TYPE_CHECKING:
-
-        def __init__[P2, V2: JaxValue = JaxValue](
-            self: "_AdditiveAffineGame[P2, V2, AdditiveGame[P2, Any]]",
-            games: JaxBroadcastTuple[tuple[AdditiveGame[P2, Any], ...]],
-            weights: JaxBroadcastTuple[tuple[JaxValue, ...]],
-            bias: JaxValue = ...,
-        ) -> None: ...
-
-    @property
     @override
-    def additivity(self) -> Literal[0, 1]:
-        """Return ``0`` for zero-player games and the component maximum otherwise."""
-        if self.n_players == 0:
-            return 0
-        return super(_AdditiveAffineGame, self).additivity  # ty: ignore[invalid-explicit-return]
+    def _moebius_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        """Forward boolean Möbius queries linearly to component games."""
+        return self._linear_basis_query(
+            interaction, Basis.MOEBIUS, jnp.sum(interaction, axis=-1) == 0
+        )
 
     @override
-    def contributions(self) -> Shaped[V, "..."]:
-        """Combine component singleton contributions linearly without evaluating coalitions."""
-        if self.n_players == 0 or self.additivity == 0:
-            return self._zeros_like_value((*self.shape, self.n_players))
-        terms = tuple(game.contributions() for game in self.games.members)
-        return self._linear_combine_last_axis(terms)
+    def _moebius_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        """Forward packed Möbius queries linearly to component games without unpacking."""
+        return self._linear_basis_query(
+            interaction, Basis.MOEBIUS, _packed_is_empty(interaction, self.n_players)
+        )
+
+    @override
+    def _fourier_bool(
+        self, interaction: Bool[jax.Array, "... {self.n_players}"]
+    ) -> Shaped[V, "..."]:
+        """Forward boolean Fourier queries linearly to component games."""
+        return self._linear_basis_query(
+            interaction, Basis.FOURIER, jnp.sum(interaction, axis=-1) == 0
+        )
+
+    @override
+    def _fourier_packed(
+        self, interaction: UInt8[jax.Array, "... bytes=({self.n_players}+7)//8"]
+    ) -> Shaped[V, "..."]:
+        """Forward packed Fourier queries linearly to component games without unpacking."""
+        return self._linear_basis_query(
+            interaction, Basis.FOURIER, _packed_is_empty(interaction, self.n_players)
+        )
+
+    @override
+    def _coefficients_by_order(self, order: int, basis: Basis) -> Shaped[V, "..."]:
+        """Combine order-``order`` Möbius or Fourier coefficients linearly across component games."""
+        if basis in (Basis.MOEBIUS, Basis.FOURIER):
+            n_combos = math.comb(self.n_players, order)
+            known = self._known_additivity()
+            if n_combos == 0 or (known is not None and order > known):
+                return self._zeros_like_value((*self.shape, n_combos))
+            if order == 0:
+                if basis is Basis.MOEBIUS:
+                    return cast("Shaped[V, '...']", jf.jax_expand_dims(self.empty_value(), axis=-1))
+                terms = tuple(game.fourier_coefficients(order=0) for game in self.games.members)
+                combined = self._linear_combine_last_axis(terms)
+                return cast(
+                    "Shaped[V, '...']",
+                    jf.jax_add(combined, jf.jax_expand_dims(self.bias, axis=-1)),
+                )
+            terms = tuple(
+                game.coefficients(order=order, basis=basis) for game in self.games.members
+            )
+            return self._linear_combine_last_axis(terms)
+        return super(AffineGame, self)._coefficients_by_order(order, basis)
 
 
 @typechecked
@@ -524,15 +479,12 @@ class ProductGame[
     P,
     V: JaxValue = JaxValue,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
-](
-    ArithmeticGame[P, V, GameT, "ProductGame[P, V, GameT]"],
-    metaclass=autocast(KAdditiveGame, max_cost=0.0),
-):
+](ArithmeticGame[P, V, GameT, "ProductGame[P, V, GameT]"]):
     """A lazy pointwise product ``prod_i g_i(S)`` of compatible finite games.
 
     Nesting is preserved to maintain exact multiplication order and floating-point
-    behavior. When every component game is zero-cost castable to ``KAdditiveGame``,
-    construction automatically refines the instance.
+    behavior. When every component game has a known additivity bound, ``additivity()``
+    returns ``min(n_players, sum(g.additivity()))`` in ``O(1)``.
     """
 
     if TYPE_CHECKING:
@@ -544,37 +496,16 @@ class ProductGame[
             """Construct a product game with broadly typed stored operands."""
 
     @override
-    def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
-        """Multiply component coalition values pointwise with logical-batch alignment."""
-        result = values[0]
-        for value in values[1:]:
-            result = jf.jax_multiply(result, value)
-        return cast("Shaped[V, '...']", result)
-
-    @castmethod(KAdditiveGame)
-    def _as_kadditive(self) -> KAdditiveGame[P, V]:
-        """Refine this product when every component is k-additive."""
-        members = _require_refinable_children(self, KAdditiveGame)
-        return _KAdditiveProductGame(games=JaxBroadcastTuple(members))
-
-
-@typechecked
-@dataclass(frozen=True, slots=True, weakref_slot=True)
-class _KAdditiveProductGame[
-    P,
-    V: JaxValue = JaxValue,
-    GameT: KAdditiveGame[Any, Any] = KAdditiveGame[P, Any],
-](
-    ProductGame[P, V, GameT],
-    KAdditiveGame[P, V],
-):
-    """Private k-additive refinement of ``ProductGame`` with capped sum of bounds."""
-
-    @property
-    @override
-    def additivity(self) -> int:
-        """Return ``min(n_players, sum(g.additivity))`` without evaluating coalitions."""
-        total = sum(game.additivity for game in self.games.members)
+    def _known_additivity(self) -> int | None:
+        """Return ``min(n_players, sum(g._known_additivity()))`` when all children are known."""
+        if self.n_players == 0:
+            return 0
+        total = 0
+        for game in self.games.members:
+            bound = game._known_additivity()  # noqa: SLF001 - internal O(1) bound check
+            if bound is None:
+                return None
+            total += bound
         return min(self.n_players, total)
 
     @override
@@ -585,22 +516,12 @@ class _KAdditiveProductGame[
         )
 
     @override
-    def _coefficients_by_order(self, order: int) -> Shaped[V, "..."]:
-        """Match Möbius-inversion dtypes on zero-shortcut order queries."""
-        n_combos = math.comb(self.n_players, order)
-        if order > self.additivity or n_combos == 0:
-            return _moebius_zero_like(self, (*self.shape, n_combos))
-        return super(_KAdditiveProductGame, self)._coefficients_by_order(order)
-
-    @override
-    def _coefficients_for_interactions(
-        self,
-        interactions: Bool[jax.Array, "#*batch {self.n_players}"],
-        *,
-        max_order: int | None = None,
-    ) -> Shaped[V, "..."]:
-        """Compute product Möbius coefficients explicitly via subset inversion."""
-        return _moebius_coefficients_by_eval(self, interactions, max_order=max_order)
+    def _compute(self, values: tuple[JaxValue, ...]) -> Shaped[V, "..."]:
+        """Multiply component coalition values pointwise with logical-batch alignment."""
+        result = values[0]
+        for value in values[1:]:
+            result = jf.jax_multiply(result, value)
+        return cast("Shaped[V, '...']", result)
 
 
 def _infer_mapped_spec(
@@ -632,20 +553,7 @@ class MappedGame[
     V: JaxValue = JaxValue,
     GameT: FinitePlayerGame[Any, Any] = FinitePlayerGame[P, Any],
 ](ArithmeticGame[P, V, GameT, "MappedGame[P, V, GameT]"]):
-    """A lazy finite game applying a pure batch-local callable to child coalition values.
-
-    Args:
-        games: Nonempty ``JaxBroadcastTuple`` of compatible finite games.
-        fn: Pure batch-local callable receiving a tuple of broadcast-aligned
-            child coalition value batches (one per game in ``games``) and
-            returning a numeric value batch with the same logical batch shape.
-            Stored as static pytree metadata.
-        output_dtype: Optional explicit numeric output dtype metadata. When
-            omitted, inferred lazily via ``jax.eval_shape`` on abstract child
-            array specs without evaluating any child game; specify explicitly
-            when ``fn`` expects structured ``JaxLike`` inputs that cannot be
-            abstractly traced from plain array specs.
-    """
+    """A lazy finite game applying a pure batch-local callable to child coalition values."""
 
     fn: Callable[[tuple[JaxValue, ...]], Shaped[V, "..."]]
     output_dtype: Any = field(default=None, kw_only=True)

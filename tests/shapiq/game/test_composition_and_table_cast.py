@@ -1,4 +1,4 @@
-"""Tests for ndlike 0.8.0 batch composition, JIT structural rebuilds, and TableGame casting."""
+"""Tests for ndlike batch composition, JIT structural rebuilds, and DenseCoalitionGame casting."""
 
 import jax
 import jax.numpy as jnp
@@ -7,31 +7,34 @@ from flextype import CastUnavailable, try_cast
 from ndlike import jax_functions as jf
 from ndlike.tuple.jax import JaxBroadcastTuple
 
-from shapiq.game import AffineGame, MappedGame, TableGame
-from shapiq.game.discretederivative import DiscreteDerivative, subset_patterns
-from shapiq.game.exact import ExactComputer
-from shapiq.game.finite import FinitePlayerGame
-from shapiq.game.fourier import FourierGame
-from shapiq.game.moebius import AdditiveMoebiusGame, MoebiusGame
+from shapiq.game import (
+    AffineGame,
+    DenseCoalitionGame,
+    DiscreteDerivative,
+    FinitePlayerGame,
+    MappedGame,
+    SparseFourierGame,
+    SparseMoebiusGame,
+    subset_patterns,
+)
+from shapiq.index import ExactComputer
 from shapiq.players import FinitePlayers, LatentPlayers
 
 
-def _table(values: list[float] | list[list[float]], players: FinitePlayers) -> TableGame:
-    return TableGame(jnp.array(values, dtype=jnp.float32), players)
+def _dense(values: list[float] | list[list[float]], players: FinitePlayers) -> DenseCoalitionGame:
+    return DenseCoalitionGame(jnp.array(values, dtype=jnp.float32), players)
 
 
-def test_table_game_from_game_fast_path_and_recursive_leaf_check(monkeypatch):
+def test_dense_coalition_from_game_fast_path_and_recursive_leaf_check(monkeypatch):
     p = FinitePlayers(2)
     all_sets = subset_patterns(2)
-    t1 = _table([[0.0, 1.0, 2.0, 4.0], [1.0, 2.0, 3.0, 5.0]], p)
-    t2 = _table([0.5, 1.5, 2.5, 3.5], p)  # scalar batch broadcast with t1 (2,)
+    t1 = _dense([[0.0, 1.0, 2.0, 4.0], [1.0, 2.0, 3.0, 5.0]], p)
+    t2 = _dense([0.5, 1.5, 2.5, 3.5], p)  # scalar batch broadcast with t1 (2,)
 
-    # Already a TableGame returns itself at cost 0.
-    assert TableGame.from_game(t1) is t1
+    assert DenseCoalitionGame.from_game(t1) is t1
 
-    # Pure ArithmeticGame trees with TableGame leaves cast without calling eval().
     def fail_eval(*args, **kwargs):
-        msg = "Fast ArithmeticGame -> TableGame cast must not call eval()"
+        msg = "Fast ArithmeticGame -> DenseCoalitionGame cast must not call eval()"
         raise AssertionError(msg)
 
     aff = 2.0 * t1 + 3.0 * t2 - 1.0
@@ -41,69 +44,63 @@ def test_table_game_from_game_fast_path_and_recursive_leaf_check(monkeypatch):
     with monkeypatch.context() as mp:
         mp.setattr(FinitePlayerGame, "eval", fail_eval)
         for expr in (aff, nested, mapped):
-            casted = TableGame.from_game(expr)
-            assert isinstance(casted, TableGame)
+            casted = DenseCoalitionGame.from_game(expr)
+            assert isinstance(casted, DenseCoalitionGame)
             assert casted.shape == (2,)
             assert casted.players is t1.players
-            # ExactComputer.from_game also uses the fast path.
             comp = ExactComputer.from_game(expr)
-            assert isinstance(comp.table, TableGame)
+            assert isinstance(comp.table, DenseCoalitionGame)
             assert jnp.array_equal(comp.table.values, casted.values)
 
     for expr in (aff, nested, mapped):
-        casted = TableGame.from_game(expr)
+        casted = DenseCoalitionGame.from_game(expr)
         assert jnp.allclose(casted(all_sets[:, None]), expr(all_sets[:, None]))
 
-    # Mixed tree with a non-TableGame leaf declines the cost<=1.0 fast path and falls back to full eval.
-    mg = MoebiusGame(
+    mg = SparseMoebiusGame(
         values=jnp.array([1.0, 2.0]),
         interactions=jnp.array([[0, 0], [1, 0]], dtype=bool),
         players=p,
         additivity=1,
     )
     mixed = t1 + mg
-    assert try_cast(mixed, TableGame, max_cost=1.0) is None
-    assert try_cast(mixed, TableGame, max_cost=999.0) is None
-    mixed_cast = try_cast(mixed, TableGame, max_cost=1000.0)
+    assert try_cast(mixed, DenseCoalitionGame, max_cost=1.0) is None
+    assert try_cast(mixed, DenseCoalitionGame, max_cost=999.0) is None
+    mixed_cast = try_cast(mixed, DenseCoalitionGame, max_cost=1000.0)
     assert mixed_cast is not None
-    assert isinstance(mixed_cast.value, TableGame)
-    mixed_table = TableGame.from_game(mixed)
-    assert isinstance(mixed_table, TableGame)
+    assert isinstance(mixed_cast.value, DenseCoalitionGame)
+    mixed_table = DenseCoalitionGame.from_game(mixed)
+    assert isinstance(mixed_table, DenseCoalitionGame)
     assert jnp.allclose(mixed_table(all_sets[:, None]), mixed(all_sets[:, None]))
 
-    # Non-floating values cannot cast to TableGame.
     int_mapped = MappedGame(
         JaxBroadcastTuple((t1,)),
         lambda vs: vs[0].astype(jnp.int32),
         output_dtype=jnp.int32,
     )
     with pytest.raises(CastUnavailable):
-        TableGame.from_game(int_mapped)
+        DenseCoalitionGame.from_game(int_mapped)
 
 
-def test_table_game_at_set_casts_arithmetic_and_preserves_compact_players_under_jit():
+def test_dense_coalition_at_set_casts_arithmetic_and_preserves_compact_players_under_jit():
     p = FinitePlayers(2)
-    g = _table([[0.0, 1.0, 2.0, 4.0], [1.0, 3.0, 5.0, 7.0]], p)
+    g = _dense([[0.0, 1.0, 2.0, 4.0], [1.0, 3.0, 5.0, 7.0]], p)
 
-    # Eager and JIT replacement with an arithmetic expression.
     updated = g.at[1].set(g[1] * 2.0)
-    assert isinstance(updated, TableGame)
+    assert isinstance(updated, DenseCoalitionGame)
     assert jnp.allclose(updated.values[0], g.values[0])
     assert jnp.allclose(updated.values[1], g.values[1] * 2.0)
     assert jnp.array_equal(updated.players.ids, jnp.broadcast_to(p.ids, (2, 2)))
 
-    # Direct replacement sharing the exact same scalar players object stays compact!
-    g_same_p = _table([10.0, 20.0, 30.0, 40.0], p)
+    g_same_p = _dense([10.0, 20.0, 30.0, 40.0], p)
     updated_compact = g.at[1].set(g_same_p)
     assert updated_compact.players is p
     assert updated_compact.players.shape == ()
 
     jitted = jax.jit(lambda x: x.at[1].set(x[1] * 2.0))(g)
-    assert isinstance(jitted, TableGame)
+    assert isinstance(jitted, DenseCoalitionGame)
     assert jnp.allclose(jitted.values, updated.values)
 
-    # Replacement with a MoebiusGame works via general TableGame cast.
-    mg = MoebiusGame(
+    mg = SparseMoebiusGame(
         values=jnp.array([2.0, 3.0]),
         interactions=jnp.array([[0, 0], [0, 1]], dtype=bool),
         players=p,
@@ -113,26 +110,25 @@ def test_table_game_at_set_casts_arithmetic_and_preserves_compact_players_under_
     assert jnp.allclose(with_mg.values[0], jnp.array([2.0, 2.0, 5.0, 5.0]))
     assert with_mg.players is p
 
-    # Mismatched LatentPlayers catalog or latent_n_players is rejected.
     cat1 = LatentPlayers(["a", "b"])
     cat2 = LatentPlayers(["a", "b"])
-    g_cat1 = _table([[0.0, 1.0, 2.0, 3.0]], FinitePlayers(cat1))
-    g_cat2 = _table([0.0, 1.0, 2.0, 3.0], FinitePlayers(cat2))
+    g_cat1 = _dense([[0.0, 1.0, 2.0, 3.0]], FinitePlayers(cat1))
+    g_cat2 = _dense([0.0, 1.0, 2.0, 3.0], FinitePlayers(cat2))
     with pytest.raises(ValueError, match="catalog"):
         g_cat1.at[0].set(g_cat2)
 
-    g_lat3 = _table([0.0, 1.0, 2.0, 3.0], FinitePlayers(2, latent_n_players=3))
+    g_lat3 = _dense([0.0, 1.0, 2.0, 3.0], FinitePlayers(2, latent_n_players=3))
     with pytest.raises(ValueError, match="latent_n_players"):
         g.at[0].set(g_lat3)
 
 
-def test_finite_players_and_table_game_stack_concat_jit_and_compact_broadcast():
+def test_finite_players_and_dense_coalition_stack_concat_jit_and_compact_broadcast():
     p = FinitePlayers(2)
-    g1 = _table([0.0, 1.0, 2.0, 3.0], p)
-    g2 = _table([1.0, 2.0, 3.0, 4.0], p)
+    g1 = _dense([0.0, 1.0, 2.0, 3.0], p)
+    g2 = _dense([1.0, 2.0, 3.0, 4.0], p)
 
     stacked = jf.jax_stack([g1, g2])
-    assert isinstance(stacked, TableGame)
+    assert isinstance(stacked, DenseCoalitionGame)
     assert stacked.shape == (2,)
     assert stacked.players is p
     assert stacked.players.shape == ()
@@ -141,16 +137,14 @@ def test_finite_players_and_table_game_stack_concat_jit_and_compact_broadcast():
     assert jnp.allclose(jitted_stack.values, stacked.values)
     assert jnp.array_equal(jitted_stack.players.ids, jnp.broadcast_to(p.ids, (2, 2)))
 
-    # Distinct FinitePlayers materialize cleanly under JIT too.
     p_a = FinitePlayers(jnp.array([0, 1]), latent_n_players=3)
     p_b = FinitePlayers(jnp.array([1, 2]), latent_n_players=3)
-    ga = _table([0.0, 1.0, 2.0, 3.0], p_a)
-    gb = _table([1.0, 2.0, 3.0, 4.0], p_b)
+    ga = _dense([0.0, 1.0, 2.0, 3.0], p_a)
+    gb = _dense([1.0, 2.0, 3.0, 4.0], p_b)
     jitted_diff = jax.jit(lambda a, b: jf.jax_stack([a, b]))(ga, gb)
     assert jitted_diff.players.shape == (2,)
     assert jnp.array_equal(jitted_diff.players.ids, jnp.array([[0, 1], [1, 2]]))
 
-    # Mismatched catalog or latent_n_players rejected on stack/concat.
     p_cat1 = FinitePlayers(LatentPlayers(["a", "b"]))
     p_cat2 = FinitePlayers(LatentPlayers(["a", "b"]))
     with pytest.raises(ValueError, match="Static field 'players'"):
@@ -159,54 +153,46 @@ def test_finite_players_and_table_game_stack_concat_jit_and_compact_broadcast():
         jf.jax_stack([p, FinitePlayers(2, latent_n_players=3)])
 
 
-def test_basis_game_composition_lcca_additivity_and_assignment():
+def test_sparse_game_composition_additivity_and_assignment():
     p = FinitePlayers(2)
     inter = jnp.array([[0, 0], [1, 0], [1, 1]], dtype=bool)
     inter1 = jnp.array([[0, 0], [1, 0], [0, 1]], dtype=bool)
 
-    mg2 = MoebiusGame(
+    mg2 = SparseMoebiusGame(
         values=jnp.array([1.0, 2.0, 3.0]), interactions=inter, players=p, additivity=2
     )
-    mg1 = MoebiusGame(
+    mg1 = SparseMoebiusGame(
         values=jnp.array([1.0, 2.0, 0.0]), interactions=inter1, players=p, additivity=1
     )
-    am1 = AdditiveMoebiusGame(values=jnp.array([1.0, 2.0, 3.0]), interactions=inter1, players=p)
-    am0 = AdditiveMoebiusGame(
+    mg0 = SparseMoebiusGame(
         values=jnp.array([5.0, 0.0, 0.0]),
         interactions=jnp.zeros((3, 2), dtype=bool),
         players=p,
         additivity=0,
     )
-    fg = FourierGame(values=jnp.array([1.0, 2.0, 3.0]), interactions=inter, players=p, additivity=2)
+    fg = SparseFourierGame(
+        values=jnp.array([1.0, 2.0, 3.0]), interactions=inter, players=p, additivity=2
+    )
 
-    # Order-independent additivity = max(...) on MoebiusGame stack.
     s12 = jf.jax_stack([mg1, mg2])
     s21 = jf.jax_stack([mg2, mg1])
-    assert type(s12) is MoebiusGame
-    assert type(s21) is MoebiusGame
-    assert s12.additivity == 2
-    assert s21.additivity == 2
+    assert type(s12) is SparseMoebiusGame
+    assert type(s21) is SparseMoebiusGame
+    assert s12.additivity() == 2
+    assert s21.additivity() == 2
     assert s12.players is p
 
-    # LCCA: MoebiusGame + AdditiveMoebiusGame -> MoebiusGame; AdditiveMoebiusGame(0) + (1) -> AdditiveMoebiusGame(1).
-    mixed_moebius = jf.jax_stack([mg2, am1])
-    assert type(mixed_moebius) is MoebiusGame
-    assert mixed_moebius.additivity == 2
+    mixed_add = jf.jax_stack([mg0, mg1])
+    assert type(mixed_add) is SparseMoebiusGame
+    assert mixed_add.additivity() == 1
 
-    mixed_add = jf.jax_stack([am0, am1])
-    assert type(mixed_add) is AdditiveMoebiusGame
-    assert mixed_add.additivity == 1
-
-    # Sibling BasisGame types (MoebiusGame + FourierGame) are rejected.
     with pytest.raises((TypeError, ValueError)):
         jf.jax_stack([mg2, fg])
 
-    # Compact interactions & players preserved when identical by identity.
     s_same = jf.jax_stack([mg2, mg2])
     assert s_same.players is p
     assert s_same.interactions is inter
 
-    # Assignment enforces basis type and additivity bound (eager and JIT).
     mg1_batch = jf.jax_stack([mg1, mg1])
     with pytest.raises(ValueError, match="additivity"):
         mg1_batch.at[0].set(mg2)
@@ -218,7 +204,7 @@ def test_basis_game_composition_lcca_additivity_and_assignment():
 
 def test_discrete_derivative_and_arithmetic_game_composition():
     p = FinitePlayers(3)
-    t = _table([0.0, 1.0, 2.0, 4.0, 3.0, 5.0, 6.0, 10.0], p)
+    t = _dense([0.0, 1.0, 2.0, 4.0, 3.0, 5.0, 6.0, 10.0], p)
     d1 = DiscreteDerivative(t, jnp.array([True, False, False]), order=1)
     d1_b = DiscreteDerivative(t, jnp.array([False, True, False]), order=1)
     d2 = DiscreteDerivative(t, jnp.array([True, True, False]), order=2)
@@ -241,14 +227,13 @@ def test_discrete_derivative_and_arithmetic_game_composition():
     with pytest.raises(ValueError, match="Static field 'order'"):
         jf.jax_stack([d1, d2])
 
-    # ArithmeticGame LCCA: _AdditiveAffineGame + _KAdditiveAffineGame -> _KAdditiveAffineGame
-    # (and inner AdditiveMoebiusGame + MoebiusGame -> MoebiusGame).
-    am = AdditiveMoebiusGame(
+    am = SparseMoebiusGame(
         values=jnp.array([1.0, 2.0, 3.0]),
         interactions=jnp.eye(3, dtype=bool),
         players=p,
+        additivity=1,
     )
-    mg2 = MoebiusGame(
+    mg2 = SparseMoebiusGame(
         values=jnp.array([1.0, 2.0, 3.0]),
         interactions=jnp.array([[1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=bool),
         players=p,
@@ -259,13 +244,11 @@ def test_discrete_derivative_and_arithmetic_game_composition():
     stacked_aff = jf.jax_stack([a_add, a_k])
     assert isinstance(stacked_aff, AffineGame)
     assert stacked_aff.shape == (2,)
-    assert stacked_aff.additivity == 2
+    assert stacked_aff.additivity() == 2
 
-    # Heterogeneous child game types (AdditiveMoebiusGame + TableGame) are rejected.
     with pytest.raises(TypeError, match="common AxisProtected ancestor"):
         jf.jax_stack([a_add, 2.0 * t])
 
-    # MappedGame static metadata (fn equality, _output_weak_type combination).
     fn1 = lambda vs: vs[0] + 1.0  # noqa: E731
     fn2 = lambda vs: vs[0] + 2.0  # noqa: E731
     m1 = MappedGame(JaxBroadcastTuple((t,)), fn1)
@@ -275,7 +258,6 @@ def test_discrete_derivative_and_arithmetic_game_composition():
     with pytest.raises(ValueError, match="Static field 'fn'"):
         jf.jax_stack([m1, m2])
 
-    # _IntPowerGame exponent mismatch & _ScalarDivGame reciprocal mismatch rejected.
     with pytest.raises(ValueError, match="Static field 'exponent'"):
         jf.jax_stack([t**2, t**3])
     with pytest.raises(ValueError, match="Static field 'reciprocal'"):
